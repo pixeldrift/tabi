@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, X, ChevronLeft, ChevronRight, Info, Sparkles } from "lucide-react";
+import { Check, X, Info, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -23,9 +23,9 @@ export interface TrialCardProps {
   initialTrialCount?: number;
 }
 
-const BUBBLE = 28; // small bubble diameter
+const BUBBLE = 18; // small bubble diameter (smaller)
 const BUBBLE_CENTER = 64; // center bubble diameter
-const GAP = 12;
+const GAP = 6; // tighter spacing
 
 export function TrialCard({
   title,
@@ -55,12 +55,12 @@ export function TrialCard({
   const progress = Math.min(100, Math.round((completedCount / target) * 100));
   const isComplete = completedCount >= target;
   const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
+  const remaining = Math.max(0, minTrials - completedCount);
 
   const setResult = (value: Exclude<TrialResult, null>) => {
     if (isMaxReached) return;
     setTrials((prev) => {
       const next = [...prev];
-      // Ensure capacity if no max
       if (current >= next.length - 2 && maxTrials === undefined) {
         next.push(null, null, null);
       }
@@ -81,18 +81,15 @@ export function TrialCard({
     setCurrent(Math.max(0, Math.min(idx, max)));
   };
 
-  // Bubble track offset — center bubble stays centered
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(() => -current * stepWidth, [current, stepWidth]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    const totalOffset = trackOffset + info.offset.x + dragX.get() - dragX.get();
     const targetIdx = Math.round(-(trackOffset + info.offset.x) / stepWidth);
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
     const clamped = Math.max(0, Math.min(targetIdx, max));
     setCurrent(clamped);
     animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
-    void totalOffset;
   };
 
   return (
@@ -109,9 +106,9 @@ export function TrialCard({
             <SheetTrigger asChild>
               <button
                 aria-label="Trial details"
-                className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <Info className="size-4" />
+                <Info className="size-6" />
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[88%] sm:max-w-md">
@@ -150,48 +147,35 @@ export function TrialCard({
         </div>
       </header>
 
-      {/* Trial subtitle */}
+      {/* Trial title (no number) */}
       <div className="px-5 pt-2 text-center">
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className="font-display text-3xl tracking-tight">
-            Trial {current + 1}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            of {target} {maxTrials ? "max" : "required"}
-          </span>
-        </div>
+        <span className="font-display text-3xl tracking-tight">Trial</span>
       </div>
 
       {/* Bubble row */}
       <div className="relative mt-4 px-2">
-        {/* Side nav */}
-        <button
-          aria-label="Previous trial"
+        {/* Triangle nav buttons */}
+        <TriangleNav
+          direction="left"
           onClick={() => goTo(current - 1)}
           disabled={current === 0}
-          className="absolute left-1 top-1/2 -translate-y-1/2 z-20 grid place-items-center size-8 rounded-full bg-background/80 backdrop-blur border border-border text-foreground/70 disabled:opacity-30 hover:text-foreground"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <button
-          aria-label="Next trial"
+        />
+        <TriangleNav
+          direction="right"
           onClick={() => goTo(current + 1)}
           disabled={maxTrials ? current >= maxTrials - 1 : false}
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-20 grid place-items-center size-8 rounded-full bg-background/80 backdrop-blur border border-border text-foreground/70 disabled:opacity-30 hover:text-foreground"
+        />
+
+        <div
+          ref={containerRef}
+          className="relative h-20 overflow-hidden"
+          style={{
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+            maskImage:
+              "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+          }}
         >
-          <ChevronRight className="size-4" />
-        </button>
-
-        {/* Edge fade masks */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-card to-transparent z-10" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-card to-transparent z-10" />
-
-        <div ref={containerRef} className="relative h-20 overflow-hidden">
-          {/* Center reference */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="size-16" />
-          </div>
-
           <motion.div
             className="absolute top-1/2 left-1/2 flex items-center"
             style={{
@@ -211,9 +195,9 @@ export function TrialCard({
               const isRequired = i < minTrials;
               const bg =
                 t === "correct"
-                  ? "bg-green-200/80 border-green-400"
+                  ? "bg-green-300 border-green-400"
                   : t === "incorrect"
-                    ? "bg-red-200/80 border-red-400"
+                    ? "bg-red-300 border-red-400"
                     : "bg-muted border-border";
               const centerBg =
                 lastAction.value === "correct" && i === current - 1
@@ -225,7 +209,7 @@ export function TrialCard({
                 <motion.button
                   key={i}
                   onClick={() => goTo(i)}
-                  className="relative shrink-0 grid place-items-center rounded-full border-2 font-medium select-none"
+                  className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
                   animate={{
                     width: isCenter ? BUBBLE_CENTER : BUBBLE,
                     height: isCenter ? BUBBLE_CENTER : BUBBLE,
@@ -262,22 +246,26 @@ export function TrialCard({
                     ) : (
                       isRequired &&
                       t === null && (
-                        <span className="size-1.5 rounded-full bg-foreground/30" />
+                        <span className="size-1 rounded-full bg-foreground/30" />
                       )
                     )}
                   </motion.div>
                 </motion.button>
               );
             })}
-            {/* End marker */}
             {maxTrials && (
               <div
                 className="shrink-0 self-stretch w-px bg-foreground/40 mx-2"
-                style={{ height: 48 }}
+                style={{ height: 40 }}
                 aria-hidden
               />
             )}
           </motion.div>
+        </div>
+
+        {/* Helper text under bubbles */}
+        <div className="mt-1 text-center text-xs text-muted-foreground">
+          of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
 
@@ -310,26 +298,35 @@ export function TrialCard({
         </AnimatePresence>
       </div>
 
-      {/* Progress bar */}
-      <div className="px-5 pb-5 pt-3">
-        <div className="relative h-9 rounded-full bg-muted overflow-hidden border border-border">
+      {/* Progress bar — indicator layered on top, not clipped */}
+      <div className="px-5 pb-6 pt-3">
+        <div className="relative h-3 mt-4 mb-2">
+          <div className="absolute inset-0 rounded-full bg-muted border border-border overflow-hidden">
+            <motion.div
+              className={cn(
+                "absolute inset-y-0 left-0",
+                isComplete ? "bg-green-300" : "bg-accent/70",
+              )}
+              animate={{ width: `${progress}%` }}
+              transition={{ type: "spring", stiffness: 180, damping: 26 }}
+            />
+          </div>
+
+          {/* Status text inside bar */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[10px] font-medium text-foreground/75 px-10 text-center leading-none">
+              {isComplete
+                ? isMaxReached
+                  ? "Maximum trials reached! Congrats!"
+                  : "Minimum trials reached. This data can now be graphed."
+                : `Conduct at least ${remaining} more ${remaining === 1 ? "trial" : "trials"} to graph this target`}
+            </span>
+          </div>
+
+          {/* Progress bubble — layered on top of bar (not clipped) */}
           <motion.div
-            className={cn(
-              "absolute inset-y-0 left-0 rounded-full",
-              isComplete ? "bg-green-300/70" : "bg-accent/60",
-            )}
-            animate={{ width: `${progress}%` }}
-            transition={{ type: "spring", stiffness: 180, damping: 26 }}
-          />
-          {isComplete && (
-            <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-foreground/80">
-              {isMaxReached
-                ? "Maximum trials reached! Congrats!"
-                : "Minimum trials reached. This data can now be graphed."}
-            </div>
-          )}
-          <motion.div
-            className="absolute top-1/2 -translate-y-1/2"
+            className="absolute top-1/2 z-10"
+            style={{ translateY: "-50%" }}
             animate={{ left: `calc(${progress}% - 18px)` }}
             transition={{ type: "spring", stiffness: 180, damping: 26 }}
           >
@@ -344,7 +341,7 @@ export function TrialCard({
                 "relative grid place-items-center size-9 rounded-full border-2 shadow-soft text-xs font-semibold",
                 isComplete
                   ? "bg-green-500 border-green-600 text-white"
-                  : "bg-card border-foreground/30 text-foreground",
+                  : "bg-card border-foreground/40 text-foreground",
               )}
             >
               {isComplete ? <Check className="size-4" /> : `${progress}%`}
@@ -354,6 +351,43 @@ export function TrialCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function TriangleNav({
+  direction,
+  onClick,
+  disabled,
+}: {
+  direction: "left" | "right";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isLeft = direction === "left";
+  return (
+    <button
+      aria-label={isLeft ? "Previous trial" : "Next trial"}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-9 text-foreground/80 hover:text-foreground transition disabled:opacity-25",
+        isLeft ? "left-1" : "right-1",
+      )}
+    >
+      <svg viewBox="0 0 24 24" className="size-7" fill="currentColor" aria-hidden>
+        {isLeft ? (
+          <path
+            d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <path
+            d="M8.5 4.2c-1.1-.7-2.5.1-2.5 1.4v12.8c0 1.3 1.4 2.1 2.5 1.4l8.6-5.8a1.9 1.9 0 0 0 0-3.2L8.5 4.2z"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </button>
   );
 }
 
