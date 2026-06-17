@@ -82,10 +82,14 @@ export function TrialCard({
   };
 
   const stepWidth = BUBBLE + GAP;
-  const trackOffset = useMemo(() => -current * stepWidth, [current, stepWidth]);
+  const trackOffset = useMemo(
+    () => -(current * stepWidth + BUBBLE_CENTER / 2),
+    [current, stepWidth],
+  );
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    const targetIdx = Math.round(-(trackOffset + info.offset.x) / stepWidth);
+    const finalOffset = trackOffset + info.offset.x;
+    const targetIdx = Math.round(-(finalOffset + BUBBLE_CENTER / 2) / stepWidth);
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
     const clamped = Math.max(0, Math.min(targetIdx, max));
     setCurrent(clamped);
