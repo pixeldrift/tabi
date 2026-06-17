@@ -366,16 +366,19 @@ function TriangleNav({
 }) {
   const isLeft = direction === "left";
   return (
-    <button
+    <motion.button
       aria-label={isLeft ? "Previous trial" : "Next trial"}
       onClick={onClick}
       disabled={disabled}
+      whileTap={{ scale: 0.82 }}
+      whileHover={{ scale: 1.08 }}
+      transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-9 text-foreground/80 hover:text-foreground transition disabled:opacity-25",
-        isLeft ? "left-1" : "right-1",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-colors disabled:opacity-25 disabled:pointer-events-none",
+        isLeft ? "left-0" : "right-0",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-7" fill="currentColor" aria-hidden>
+      <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>
         {isLeft ? (
           <path
             d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z"
@@ -388,7 +391,7 @@ function TriangleNav({
           />
         )}
       </svg>
-    </button>
+    </motion.button>
   );
 }
 
