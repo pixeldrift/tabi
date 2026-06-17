@@ -324,10 +324,9 @@ export function TrialCard({
             </span>
           </div>
 
-          {/* Progress bubble — layered on top of bar (not clipped) */}
+          {/* Progress bubble — anchored to bar bottom so it sits on top without clipping */}
           <motion.div
-            className="absolute top-1/2 z-10"
-            style={{ translateY: "-50%" }}
+            className="absolute bottom-0 z-10"
             animate={{ left: `calc(${progress}% - 18px)` }}
             transition={{ type: "spring", stiffness: 180, damping: 26 }}
           >
