@@ -1,29 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { DataCollectionForm } from "@/components/DataCollectionForm";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Onboard — interactive data collection" },
+      {
+        name: "description",
+        content:
+          "A warm, animated onboarding flow that collects your details step by step with delightful, responsive feedback.",
+      },
+      { property: "og:title", content: "Onboard — interactive data collection" },
+      {
+        property: "og:description",
+        content:
+          "A warm, animated onboarding flow that collects your details step by step with delightful, responsive feedback.",
+      },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="relative min-h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-24 h-96 w-96 rounded-full bg-accent/30 blur-3xl" />
+        <div className="absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
+      </div>
+
+      <div className="relative flex min-h-screen items-center justify-center px-5 py-12 sm:py-20">
+        <DataCollectionForm />
+      </div>
+
+      <Toaster position="top-center" richColors closeButton={false} />
+    </main>
   );
 }
