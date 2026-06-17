@@ -152,12 +152,12 @@ export function TrialCard({
       </header>
 
       {/* Trial title (no number) */}
-      <div className="px-5 pt-2 text-center">
-        <span className="font-display text-3xl tracking-tight">Trial</span>
+      <div className="px-5 pt-1 text-center">
+        <span className="font-display text-xl tracking-tight">Trial</span>
       </div>
 
       {/* Bubble row */}
-      <div className="relative mt-4 px-2">
+      <div className="relative mt-1 px-2">
         {/* Triangle nav buttons */}
         <TriangleNav
           direction="left"
@@ -196,13 +196,12 @@ export function TrialCard({
           >
             {trials.map((t, i) => {
               const isCenter = i === current;
-              const isRequired = i < minTrials;
               const bg =
                 t === "correct"
                   ? "bg-green-300 border-green-400"
                   : t === "incorrect"
                     ? "bg-red-300 border-red-400"
-                    : "bg-muted border-border";
+                    : "bg-foreground/5 border-foreground/10";
               const centerBg =
                 lastAction.value === "correct" && i === current - 1
                   ? "bg-green-400 border-green-500 text-white"
@@ -217,8 +216,6 @@ export function TrialCard({
                   animate={{
                     width: isCenter ? BUBBLE_CENTER : BUBBLE,
                     height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                    marginLeft: isCenter ? (BUBBLE_CENTER - BUBBLE) / 2 : 0,
-                    marginRight: isCenter ? (BUBBLE_CENTER - BUBBLE) / 2 : 0,
                   }}
                   transition={{ type: "spring", stiffness: 360, damping: 28 }}
                 >
@@ -248,10 +245,9 @@ export function TrialCard({
                         </motion.span>
                       </AnimatePresence>
                     ) : (
-                      isRequired &&
-                      t === null && (
-                        <span className="size-1 rounded-full bg-foreground/30" />
-                      )
+                      <span className="text-[7px] leading-none font-medium text-foreground/35">
+                        {i + 1}
+                      </span>
                     )}
                   </motion.div>
                 </motion.button>
@@ -272,6 +268,7 @@ export function TrialCard({
           of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
+
 
       {/* Action buttons row with slide animation */}
       <div className="relative mt-4 px-5 h-24 overflow-hidden">
