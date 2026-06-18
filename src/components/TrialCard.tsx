@@ -21,6 +21,8 @@ export interface TrialCardProps {
   minTrials?: number;
   maxTrials?: number;
   initialTrialCount?: number;
+  isActive?: boolean;
+  onActivate?: () => void;
 }
 
 const BUBBLE = 18; // small bubble diameter (smaller)
