@@ -21,6 +21,8 @@ export interface TrialCardProps {
   minTrials?: number;
   maxTrials?: number;
   initialTrialCount?: number;
+  isActive?: boolean;
+  onActivate?: () => void;
 }
 
 const BUBBLE = 18; // small bubble diameter (smaller)
@@ -35,6 +37,8 @@ export function TrialCard({
   minTrials = 10,
   maxTrials,
   initialTrialCount = 20,
+  isActive = true,
+  onActivate,
 }: TrialCardProps) {
   const initial = maxTrials ?? Math.max(initialTrialCount, minTrials + 5);
   const [trials, setTrials] = useState<TrialResult[]>(() =>
@@ -97,7 +101,15 @@ export function TrialCard({
   };
 
   return (
-    <article className="relative w-full max-w-md rounded-3xl bg-card text-card-foreground shadow-lift overflow-hidden border border-border/60">
+    <article
+      onClick={onActivate}
+      className={cn(
+        "relative w-full max-w-md rounded-3xl bg-card text-card-foreground shadow-lift overflow-hidden border-2 transition-all duration-200",
+        isActive
+          ? "border-blue-400/80 shadow-[0_0_0_4px_rgba(96,165,250,0.15)]"
+          : "border-border/40 opacity-70 hover:opacity-90",
+      )}
+    >
       {/* Header */}
       <header className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
         <h2 className="font-display text-xl leading-tight flex-1">{title}</h2>
@@ -154,109 +166,111 @@ export function TrialCard({
 
       {/* Bubble row */}
       <div className="relative mt-1 px-2">
-        {/* Triangle nav buttons */}
-        <TriangleNav
-          direction="left"
-          onClick={() => goTo(current - 1)}
-          disabled={current === 0}
-        />
-        <TriangleNav
-          direction="right"
-          onClick={() => goTo(current + 1)}
-          disabled={maxTrials ? current >= maxTrials - 1 : false}
-        />
+        <div className="relative h-20">
+          {/* Triangle nav buttons — centered with bubbles */}
+          <TriangleNav
+            direction="left"
+            onClick={() => goTo(current - 1)}
+            disabled={current === 0}
+          />
+          <TriangleNav
+            direction="right"
+            onClick={() => goTo(current + 1)}
+            disabled={maxTrials ? current >= maxTrials - 1 : false}
+          />
 
-        <div
-          ref={containerRef}
-          className="relative h-20 overflow-hidden"
-          style={{
-            WebkitMaskImage:
-              "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-            maskImage:
-              "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-          }}
-        >
-          <motion.div
-            className="absolute top-1/2 left-1/2 flex items-center"
+          <div
+            ref={containerRef}
+            className="relative h-20 overflow-hidden"
             style={{
-              gap: GAP,
-              x: dragX,
-              translateY: "-50%",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+              maskImage:
+                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
             }}
-            animate={{ x: trackOffset }}
-            transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            drag="x"
-            dragConstraints={{ left: -((trials.length - 1) * stepWidth) - 200, right: 200 }}
-            dragElastic={0.08}
-            onDragEnd={handleDragEnd}
           >
-            {trials.map((t, i) => {
-              const isCenter = i === current;
-              const bg =
-                t === "correct"
-                  ? "bg-green-300 border-green-400"
-                  : t === "incorrect"
-                    ? "bg-red-300 border-red-400"
-                    : "bg-foreground/5 border-foreground/10";
-              const centerBg =
-                lastAction.value === "correct" && i === current - 1
-                  ? "bg-green-400 border-green-500 text-white"
-                  : lastAction.value === "incorrect" && i === current - 1
-                    ? "bg-red-400 border-red-500 text-white"
-                    : "";
-              return (
-                <motion.button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
-                  animate={{
-                    width: isCenter ? BUBBLE_CENTER : BUBBLE,
-                    height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                  }}
-                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
-                >
-                  <motion.div
-                    key={`${i}-${t ?? "none"}`}
-                    initial={isCenter && t ? { scale: 0.6 } : false}
-                    animate={isCenter && t ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.45 }}
-                    className={cn(
-                      "absolute inset-0 rounded-full border-2 flex items-center justify-center",
-                      bg,
-                      isCenter && !t && "bg-card border-foreground/30 shadow-soft",
-                      isCenter && centerBg,
-                    )}
+            <motion.div
+              className="absolute top-1/2 left-1/2 flex items-center"
+              style={{
+                gap: GAP,
+                x: dragX,
+                translateY: "-50%",
+              }}
+              animate={{ x: trackOffset }}
+              transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              drag="x"
+              dragConstraints={{ left: -((trials.length - 1) * stepWidth) - 200, right: 200 }}
+              dragElastic={0.08}
+              onDragEnd={handleDragEnd}
+            >
+              {trials.map((t, i) => {
+                const isCenter = i === current;
+                const bg =
+                  t === "correct"
+                    ? "bg-green-300 border-green-400"
+                    : t === "incorrect"
+                      ? "bg-red-300 border-red-400"
+                      : "bg-foreground/5 border-foreground/10";
+                const centerBg =
+                  lastAction.value === "correct" && i === current - 1
+                    ? "bg-green-400 border-green-500 text-white"
+                    : lastAction.value === "incorrect" && i === current - 1
+                      ? "bg-red-400 border-red-500 text-white"
+                      : "";
+                return (
+                  <motion.button
+                    key={i}
+                    onClick={() => goTo(i)}
+                    className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
+                    animate={{
+                      width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                      height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                    }}
+                    transition={{ type: "spring", stiffness: 360, damping: 28 }}
                   >
-                    {isCenter ? (
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          key={i}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.25 }}
-                          className="font-display text-3xl text-foreground"
-                        >
+                    <motion.div
+                      key={`${i}-${t ?? "none"}`}
+                      initial={isCenter && t ? { scale: 0.6 } : false}
+                      animate={isCenter && t ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                      transition={{ duration: 0.45 }}
+                      className={cn(
+                        "absolute inset-0 rounded-full border-2 flex items-center justify-center",
+                        bg,
+                        isCenter && !t && "bg-card border-foreground/30 shadow-soft",
+                        isCenter && centerBg,
+                      )}
+                    >
+                      {isCenter ? (
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={i}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.25 }}
+                            className="font-display text-3xl text-foreground"
+                          >
+                            {i + 1}
+                          </motion.span>
+                        </AnimatePresence>
+                      ) : (
+                        <span className="text-[7px] leading-none font-medium text-foreground/35">
                           {i + 1}
-                        </motion.span>
-                      </AnimatePresence>
-                    ) : (
-                      <span className="text-[7px] leading-none font-medium text-foreground/35">
-                        {i + 1}
-                      </span>
-                    )}
-                  </motion.div>
-                </motion.button>
-              );
-            })}
-            {maxTrials && (
-              <div
-                className="shrink-0 self-stretch w-px bg-foreground/40 mx-2"
-                style={{ height: 40 }}
-                aria-hidden
-              />
-            )}
-          </motion.div>
+                        </span>
+                      )}
+                    </motion.div>
+                  </motion.button>
+                );
+              })}
+              {maxTrials && (
+                <div
+                  className="shrink-0 w-px bg-foreground/40 mx-2"
+                  style={{ height: 40 }}
+                  aria-hidden
+                />
+              )}
+            </motion.div>
+          </div>
         </div>
 
         {/* Helper text under bubbles */}

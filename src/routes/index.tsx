@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { TrialCard } from "@/components/TrialCard";
 
 export const Route = createFileRoute("/")({
@@ -50,6 +51,8 @@ const trialCards = [
 ];
 
 function Index() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
   return (
     <main className="min-h-screen bg-background">
       <header className="px-5 pt-10 pb-4 max-w-md mx-auto">
@@ -60,7 +63,12 @@ function Index() {
       </header>
       <section className="px-5 pb-16 flex flex-col items-center gap-5">
         {trialCards.map((card, i) => (
-          <TrialCard key={i} {...card} />
+          <TrialCard
+            key={i}
+            {...card}
+            isActive={i === activeIndex}
+            onActivate={() => setActiveIndex(i)}
+          />
         ))}
       </section>
     </main>
