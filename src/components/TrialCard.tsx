@@ -122,7 +122,7 @@ export function TrialCard({
       )}
     >
       {/* Header */}
-      <header className="flex items-start gap-3 pl-5 pr-3 pt-3 pb-1">
+      <header className="flex items-start gap-3 pl-5 pr-3 pt-3 pb-0">
         <h2 className="font-display text-xl leading-tight flex-1 mr-auto">{title}</h2>
         <div className="flex items-start gap-2">
           <div className="text-right leading-tight">
@@ -176,8 +176,8 @@ export function TrialCard({
 
 
       {/* Bubble row */}
-      <div className="relative px-2">
-        <div className="relative h-20">
+      <div className="relative px-2 -mt-1">
+        <div className="relative h-16">
           {/* Triangle nav buttons — centered with bubbles */}
           <TriangleNav
             direction="left"
@@ -192,7 +192,7 @@ export function TrialCard({
 
           <div
             ref={containerRef}
-            className="relative h-20 overflow-hidden"
+            className="relative h-16 overflow-hidden"
             style={{
               WebkitMaskImage:
                 "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
@@ -291,10 +291,11 @@ export function TrialCard({
         </div>
 
         {/* Helper text under bubbles */}
-        <div className="text-center text-xs text-muted-foreground -mt-1">
+        <div className="text-center text-xs text-muted-foreground">
           Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
+
 
 
       {/* Action buttons row with slide animation */}
@@ -327,47 +328,43 @@ export function TrialCard({
       {/* Progress bar — flush to bottom of card */}
       {minTrials > 0 && (
         <div className="relative mt-3">
-          {/* Status text above the bar */}
-          <div className="px-5 pb-1.5 text-center text-[11px] text-foreground/75 leading-snug">
-            {isComplete ? (
-              isMaxReached
-                ? "Maximum trials reached! Congrats!"
-                : "Minimum trials reached. This data can now be graphed."
-            ) : (
-              <>
-                Conduct at least <strong className="font-semibold">{remaining} more</strong>{" "}
-                {remaining === 1 ? "trial" : "trials"} to graph this target.
-              </>
-            )}
-          </div>
-
-          <div className="relative h-1.5">
+          <div className="relative h-7">
             <div className="absolute inset-0 bg-muted rounded-b-[10px] overflow-hidden">
               <motion.div
                 className={cn(
                   "absolute inset-y-0 left-0",
-                  isComplete ? "bg-green-500" : "bg-blue-400/80",
+                  isComplete ? "bg-green-500/25" : "bg-blue-400/25",
                 )}
                 animate={{ width: `${progress}%` }}
                 transition={{ type: "spring", stiffness: 180, damping: 26 }}
               />
             </div>
 
-            {/* Progress indicator — floats above the bar with a pointed bottom */}
+            {/* Helper text inside the bar */}
+            <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
+              {isComplete ? (
+                isMaxReached
+                  ? "Maximum trials reached! Congrats!"
+                  : "Minimum trials reached. This data can now be graphed."
+              ) : (
+                <span>
+                  Conduct at least <strong className="font-semibold">{remaining} more</strong>{" "}
+                  {remaining === 1 ? "trial" : "trials"} to graph this target.
+                </span>
+              )}
+            </div>
+
+            {/* Progress indicator — label above bar, arrow tail overlaps into bar */}
             <motion.div
-              className="absolute bottom-full z-30 pointer-events-none"
-              animate={{ left: `${progress}%`, translateX: `-${progress}%` }}
+              className="absolute bottom-0 left-0 z-30 pointer-events-none"
+              animate={{ left: `${progress}%` }}
               transition={{ type: "spring", stiffness: 180, damping: 26 }}
+              style={{ translateX: "-50%" }}
             >
               <motion.div
-                animate={
-                  isComplete
-                    ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] }
-                    : { scale: 1 }
-                }
-                transition={{ duration: 0.7, repeat: isComplete ? 1 : 0 }}
-                className="relative mb-1 flex flex-col items-center"
-                style={{ alignItems: progress < 8 ? "flex-start" : progress > 92 ? "flex-end" : "center" }}
+                animate={isComplete ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+                transition={{ duration: 0.7 }}
+                className="relative flex flex-col items-center"
               >
                 <div
                   className={cn(
@@ -379,7 +376,7 @@ export function TrialCard({
                 </div>
                 <div
                   className={cn(
-                    "w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent",
+                    "w-0 h-0 border-l-[6px] border-r-[6px] border-t-[28px] border-l-transparent border-r-transparent -mt-[1px]",
                     isComplete ? "border-t-green-500" : "border-t-blue-500",
                   )}
                   aria-hidden
@@ -387,9 +384,12 @@ export function TrialCard({
                 {isComplete && <Starburst />}
               </motion.div>
             </motion.div>
+
           </div>
         </div>
       )}
+
+
 
 
     </article>
