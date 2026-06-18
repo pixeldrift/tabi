@@ -62,22 +62,25 @@ export function TrialCard({
   const remaining = Math.max(0, minTrials - completedCount);
 
   const setResult = (value: Exclude<TrialResult, null>) => {
-    if (isMaxReached) return;
+    if (isMaxReached && trials[current] === null) return;
+    const isToggleOff = trials[current] === value;
     setTrials((prev) => {
       const next = [...prev];
-      if (current >= next.length - 2 && maxTrials === undefined) {
+      if (!isToggleOff && current >= next.length - 2 && maxTrials === undefined) {
         next.push(null, null, null);
       }
-      next[current] = value;
+      next[current] = isToggleOff ? null : value;
       return next;
     });
-    setLastAction({ id: Date.now(), value });
-    setTimeout(() => {
-      setCurrent((c) => {
-        const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
-        return Math.min(c + 1, max);
-      });
-    }, 280);
+    setLastAction({ id: Date.now(), value: isToggleOff ? null : value });
+    if (!isToggleOff) {
+      setTimeout(() => {
+        setCurrent((c) => {
+          const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
+          return Math.min(c + 1, max);
+        });
+      }, 280);
+    }
   };
 
   const goTo = (idx: number) => {
