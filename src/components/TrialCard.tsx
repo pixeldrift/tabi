@@ -354,9 +354,9 @@ export function TrialCard({
               )}
             </div>
 
-            {/* Progress indicator — floats above the bar, arrow overlaps into bar */}
+            {/* Progress indicator — label above bar, arrow tail overlaps into bar */}
             <motion.div
-              className="absolute bottom-full left-0 z-30 pointer-events-none"
+              className="absolute bottom-0 left-0 z-30 pointer-events-none"
               animate={{ left: `${progress}%` }}
               transition={{ type: "spring", stiffness: 180, damping: 26 }}
               style={{ translateX: "-50%" }}
@@ -384,6 +384,7 @@ export function TrialCard({
                 {isComplete && <Starburst />}
               </motion.div>
             </motion.div>
+
           </div>
         </div>
       )}
