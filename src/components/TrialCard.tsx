@@ -115,9 +115,9 @@ export function TrialCard({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground overflow-hidden transition-all duration-200",
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
-          ? "border-2 border-blue-400/80 shadow-[0_0_0_4px_rgba(96,165,250,0.30)]"
+          ? "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
@@ -126,7 +126,7 @@ export function TrialCard({
         <h2 className="font-display text-xl leading-tight flex-1 mr-auto">{title}</h2>
         <div className="flex items-start gap-2">
           <div className="text-right leading-tight">
-            <div className="text-xs font-medium text-foreground/80">{phase}</div>
+            <div className="text-xs font-medium text-blue-400">{phase}</div>
             <div className="text-[11px] text-muted-foreground">{dataType}</div>
           </div>
           <Sheet>
@@ -265,17 +265,16 @@ export function TrialCard({
                             {i + 1}
                           </motion.span>
                         </AnimatePresence>
-                      ) : t ? (
-                        <span className="text-[7px] leading-none font-medium text-foreground/35">
-                          {i + 1}
+                      ) : (
+                        <span className="relative flex flex-col items-center justify-center leading-none">
+                          <span className="text-[7px] font-medium text-foreground/40">
+                            {i + 1}
+                          </span>
+                          {i < minTrials && (
+                            <span className="mt-[1px] size-[2px] rounded-full bg-foreground/40" aria-hidden />
+                          )}
                         </span>
-                      ) : i < minTrials ? (
-                        <span className="size-1 rounded-full bg-foreground/30" aria-hidden />
-                      ) : i < current ? (
-                        <span className="text-[7px] leading-none font-medium text-foreground/35">
-                          {i + 1}
-                        </span>
-                      ) : null}
+                      )}
                     </motion.div>
                   </motion.button>
                 );
@@ -292,7 +291,7 @@ export function TrialCard({
         </div>
 
         {/* Helper text under bubbles */}
-        <div className="mt-1 text-center text-xs text-muted-foreground">
+        <div className="text-center text-xs text-muted-foreground -mt-1">
           Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
@@ -328,8 +327,22 @@ export function TrialCard({
       {/* Progress bar — flush to bottom of card */}
       {minTrials > 0 && (
         <div className="relative mt-3">
-          <div className="relative h-5">
-            <div className="absolute inset-0 bg-muted border-t border-border overflow-hidden">
+          {/* Status text above the bar */}
+          <div className="px-5 pb-1.5 text-center text-[11px] text-foreground/75 leading-snug">
+            {isComplete ? (
+              isMaxReached
+                ? "Maximum trials reached! Congrats!"
+                : "Minimum trials reached. This data can now be graphed."
+            ) : (
+              <>
+                Conduct at least <strong className="font-semibold">{remaining} more</strong>{" "}
+                {remaining === 1 ? "trial" : "trials"} to graph this target.
+              </>
+            )}
+          </div>
+
+          <div className="relative h-1.5">
+            <div className="absolute inset-0 bg-muted rounded-b-[10px] overflow-hidden">
               <motion.div
                 className={cn(
                   "absolute inset-y-0 left-0",
@@ -340,21 +353,9 @@ export function TrialCard({
               />
             </div>
 
-            {/* Status text inside bar — single line */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-12">
-              <span className="text-[10px] font-medium text-foreground/75 leading-none whitespace-nowrap">
-                {isComplete
-                  ? isMaxReached
-                    ? "Maximum trials reached! Congrats!"
-                    : "Minimum trials reached. This data can now be graphed."
-                  : `Conduct at least ${remaining} more ${remaining === 1 ? "trial" : "trials"} to graph this target`}
-              </span>
-            </div>
-
-            {/* Progress indicator — sized to fit within bar */}
+            {/* Progress indicator — floats above the bar with a pointed bottom */}
             <motion.div
-              className="absolute top-1/2 z-10"
-              style={{ translateY: "-50%" }}
+              className="absolute bottom-full z-30 pointer-events-none"
               animate={{ left: `${progress}%`, translateX: `-${progress}%` }}
               transition={{ type: "spring", stiffness: 180, damping: 26 }}
             >
@@ -365,20 +366,31 @@ export function TrialCard({
                     : { scale: 1 }
                 }
                 transition={{ duration: 0.7, repeat: isComplete ? 1 : 0 }}
-                className={cn(
-                  "relative grid place-items-center h-[18px] min-w-[28px] px-1.5 rounded-full border shadow-soft text-[10px] font-semibold leading-none",
-                  isComplete
-                    ? "bg-green-500 border-green-600 text-white"
-                    : "bg-white border-blue-600 text-blue-700",
-                )}
+                className="relative mb-1 flex flex-col items-center"
+                style={{ alignItems: progress < 8 ? "flex-start" : progress > 92 ? "flex-end" : "center" }}
               >
-                {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
+                <div
+                  className={cn(
+                    "grid place-items-center h-[18px] min-w-[30px] px-1.5 rounded-md text-[10px] font-semibold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,0.18)]",
+                    isComplete ? "bg-green-500" : "bg-blue-500",
+                  )}
+                >
+                  {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
+                </div>
+                <div
+                  className={cn(
+                    "w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent",
+                    isComplete ? "border-t-green-500" : "border-t-blue-500",
+                  )}
+                  aria-hidden
+                />
                 {isComplete && <Starburst />}
               </motion.div>
             </motion.div>
           </div>
         </div>
       )}
+
 
     </article>
   );
