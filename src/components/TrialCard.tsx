@@ -331,7 +331,7 @@ export function TrialCard({
             <motion.div
               className={cn(
                 "absolute inset-y-0 left-0",
-                isComplete ? "bg-green-500" : "bg-blue-500",
+                isComplete ? "bg-green-500" : "bg-blue-400/80",
               )}
               animate={{ width: `${progress}%` }}
               transition={{ type: "spring", stiffness: 180, damping: 26 }}
