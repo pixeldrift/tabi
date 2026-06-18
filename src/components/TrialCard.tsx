@@ -235,7 +235,7 @@ export function TrialCard({
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -6 }}
                           transition={{ duration: 0.25 }}
-                          className="font-display text-xl text-foreground"
+                          className="font-display text-3xl text-foreground"
                         >
                           {i + 1}
                         </motion.span>
@@ -267,7 +267,7 @@ export function TrialCard({
 
 
       {/* Action buttons row with slide animation */}
-      <div className="relative mt-4 px-5 h-24 overflow-hidden">
+      <div className="relative mt-4 px-5 h-16 overflow-hidden">
         <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent z-10" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent z-10" />
         <AnimatePresence mode="popLayout" initial={false}>
@@ -411,7 +411,7 @@ function ActionButton({
       animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "flex-1 h-20 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-colors disabled:opacity-40",
+        "flex-1 h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
         isCorrect
           ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
           : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
@@ -421,8 +421,8 @@ function ActionButton({
             : "bg-red-400 border-red-500 text-white"),
       )}
     >
-      {isCorrect ? <Check className="size-7" strokeWidth={3} /> : <X className="size-7" strokeWidth={3} />}
-      <span className="text-[10px] uppercase tracking-wider font-medium">
+      {isCorrect ? <Check className="size-5" strokeWidth={3} /> : <X className="size-5" strokeWidth={3} />}
+      <span className="text-sm font-medium">
         {isCorrect ? "Correct" : "Incorrect"}
       </span>
     </motion.button>
