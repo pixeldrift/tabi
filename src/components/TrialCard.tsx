@@ -176,8 +176,8 @@ export function TrialCard({
 
 
       {/* Bubble row */}
-      <div className="relative px-2">
-        <div className="relative h-20">
+      <div className="relative px-2 -mt-1">
+        <div className="relative h-16">
           {/* Triangle nav buttons — centered with bubbles */}
           <TriangleNav
             direction="left"
@@ -192,7 +192,7 @@ export function TrialCard({
 
           <div
             ref={containerRef}
-            className="relative h-20 overflow-hidden"
+            className="relative h-16 overflow-hidden"
             style={{
               WebkitMaskImage:
                 "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
@@ -291,10 +291,11 @@ export function TrialCard({
         </div>
 
         {/* Helper text under bubbles */}
-        <div className="text-center text-xs text-muted-foreground -mt-1">
+        <div className="text-center text-xs text-muted-foreground">
           Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
+
 
 
       {/* Action buttons row with slide animation */}
