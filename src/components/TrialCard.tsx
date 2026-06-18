@@ -115,7 +115,7 @@ export function TrialCard({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200 overflow-hidden",
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
@@ -333,8 +333,9 @@ export function TrialCard({
       {/* Progress bar — flush to bottom of card */}
       {minTrials > 0 && (
         <div className="relative mt-3">
-          <div className="relative h-5">
-            <div className="absolute inset-0 bg-muted overflow-hidden">
+          {/* Bar background + fill — clipped to card corners */}
+          <div className="relative h-5 overflow-hidden rounded-b-xl">
+            <div className="absolute inset-0 bg-muted">
               <motion.div
                 className={cn(
                   "absolute inset-y-0 left-0",
@@ -358,39 +359,38 @@ export function TrialCard({
                 </span>
               )}
             </div>
-
-            {/* Progress indicator — floats above bar */}
-            <motion.div
-              className="absolute bottom-0 left-0 z-30 pointer-events-none"
-              animate={{ left: `${progress}%` }}
-              transition={{ type: "spring", stiffness: 180, damping: 26 }}
-              style={{ translateX: "-50%" }}
-            >
-              <motion.div
-                animate={isComplete ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-                transition={{ duration: 0.7 }}
-                className="relative flex flex-col items-center"
-              >
-                <div
-                  className={cn(
-                    "grid place-items-center h-[18px] min-w-[30px] px-1.5 rounded-md text-[10px] font-semibold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,0.18)]",
-                    isComplete ? "bg-green-500" : "bg-blue-500",
-                  )}
-                >
-                  {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
-                </div>
-                <div
-                  className={cn(
-                    "w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent",
-                    isComplete ? "border-t-green-500" : "border-t-blue-500",
-                  )}
-                  aria-hidden
-                />
-                {isComplete && <Starburst />}
-              </motion.div>
-            </motion.div>
-
           </div>
+
+          {/* Progress indicator — sits on top of bar, can extend outside card */}
+          <motion.div
+            className="absolute bottom-0 left-0 z-30 pointer-events-none"
+            animate={{ left: `${progress}%` }}
+            transition={{ type: "spring", stiffness: 180, damping: 26 }}
+            style={{ translateX: "-50%" }}
+          >
+            <motion.div
+              animate={isComplete ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+              transition={{ duration: 0.7 }}
+              className="relative flex flex-col items-center"
+            >
+              <div
+                className={cn(
+                  "grid place-items-center h-[18px] min-w-[30px] px-1.5 rounded-md text-[10px] font-semibold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,0.18)]",
+                  isComplete ? "bg-green-500" : "bg-blue-500",
+                )}
+              >
+                {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
+              </div>
+              <div
+                className={cn(
+                  "w-0 h-0 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent",
+                  isComplete ? "border-t-green-500" : "border-t-blue-500",
+                )}
+                aria-hidden
+              />
+              {isComplete && <Starburst />}
+            </motion.div>
+          </motion.div>
         </div>
       )}
 
