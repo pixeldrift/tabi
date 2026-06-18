@@ -45,6 +45,14 @@ export function TrialCard({
     Array.from({ length: initial }, () => null),
   );
   const [current, setCurrent] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const setCurrentDir = (next: number | ((c: number) => number)) => {
+    setCurrent((c) => {
+      const n = typeof next === "function" ? (next as (c: number) => number)(c) : next;
+      setDirection(n >= c ? 1 : -1);
+      return n;
+    });
+  };
   const [lastAction, setLastAction] = useState<{ id: number; value: TrialResult }>({
     id: 0,
     value: null,
