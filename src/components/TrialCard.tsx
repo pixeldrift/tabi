@@ -265,17 +265,16 @@ export function TrialCard({
                             {i + 1}
                           </motion.span>
                         </AnimatePresence>
-                      ) : t ? (
-                        <span className="text-[7px] leading-none font-medium text-foreground/35">
-                          {i + 1}
+                      ) : (
+                        <span className="relative flex flex-col items-center justify-center leading-none">
+                          <span className="text-[7px] font-medium text-foreground/40">
+                            {i + 1}
+                          </span>
+                          {i < minTrials && (
+                            <span className="mt-[1px] size-[2px] rounded-full bg-foreground/40" aria-hidden />
+                          )}
                         </span>
-                      ) : i < minTrials ? (
-                        <span className="size-1 rounded-full bg-foreground/30" aria-hidden />
-                      ) : i < current ? (
-                        <span className="text-[7px] leading-none font-medium text-foreground/35">
-                          {i + 1}
-                        </span>
-                      ) : null}
+                      )}
                     </motion.div>
                   </motion.button>
                 );
