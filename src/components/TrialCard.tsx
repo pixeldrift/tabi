@@ -25,8 +25,8 @@ export interface TrialCardProps {
   onActivate?: () => void;
 }
 
-const BUBBLE = 18; // small bubble diameter (smaller)
-const BUBBLE_CENTER = 64; // center bubble diameter
+const BUBBLE = 18; // small bubble diameter
+const BUBBLE_CENTER = 48; // center bubble diameter
 const GAP = 6; // tighter spacing
 
 export function TrialCard({
@@ -117,7 +117,7 @@ export function TrialCard({
       className={cn(
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground overflow-hidden transition-all duration-200",
         isActive
-          ? "border-2 border-blue-400/80 shadow-lift shadow-[0_0_0_4px_rgba(96,165,250,0.15)]"
+          ? "border-2 border-blue-400/80 shadow-[0_0_0_4px_rgba(96,165,250,0.30)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
@@ -176,7 +176,7 @@ export function TrialCard({
 
 
       {/* Bubble row */}
-      <div className="relative mt-1 px-2">
+      <div className="relative px-2">
         <div className="relative h-20">
           {/* Triangle nav buttons — centered with bubbles */}
           <TriangleNav
@@ -245,9 +245,10 @@ export function TrialCard({
                       animate={isCenter && t ? { scale: [1, 1.2, 1] } : { scale: 1 }}
                       transition={{ duration: 0.45 }}
                       className={cn(
-                        "absolute inset-0 rounded-full border-2 flex items-center justify-center",
+                        "absolute inset-0 rounded-full flex items-center justify-center",
+                        isCenter ? "border-2" : "border",
                         bg,
-                        isCenter && !t && "bg-card border-foreground/30 shadow-soft",
+                        isCenter && !t && "bg-card border-foreground/30 shadow-[0_2px_10px_rgba(0,0,0,0.15)]",
                         isCenter && centerBg,
                       )}
                     >
@@ -298,7 +299,7 @@ export function TrialCard({
 
 
       {/* Action buttons row with slide animation */}
-      <div className="relative mt-4 px-5 h-16 overflow-hidden">
+      <div className="relative mt-3 px-5 h-12 overflow-hidden">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={current}
@@ -325,57 +326,59 @@ export function TrialCard({
       </div>
 
       {/* Progress bar — flush to bottom of card */}
-      <div className="relative mt-3">
-        <div className="relative h-5">
-          <div className="absolute inset-0 bg-muted border-t border-border overflow-hidden">
+      {minTrials > 0 && (
+        <div className="relative mt-3">
+          <div className="relative h-5">
+            <div className="absolute inset-0 bg-muted border-t border-border overflow-hidden">
+              <motion.div
+                className={cn(
+                  "absolute inset-y-0 left-0",
+                  isComplete ? "bg-green-500" : "bg-blue-400/80",
+                )}
+                animate={{ width: `${progress}%` }}
+                transition={{ type: "spring", stiffness: 180, damping: 26 }}
+              />
+            </div>
+
+            {/* Status text inside bar — single line */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-12">
+              <span className="text-[10px] font-medium text-foreground/75 leading-none whitespace-nowrap">
+                {isComplete
+                  ? isMaxReached
+                    ? "Maximum trials reached! Congrats!"
+                    : "Minimum trials reached. This data can now be graphed."
+                  : `Conduct at least ${remaining} more ${remaining === 1 ? "trial" : "trials"} to graph this target`}
+              </span>
+            </div>
+
+            {/* Progress indicator — sized to fit within bar */}
             <motion.div
-              className={cn(
-                "absolute inset-y-0 left-0",
-                isComplete ? "bg-green-500" : "bg-blue-400/80",
-              )}
-              animate={{ width: `${progress}%` }}
+              className="absolute top-1/2 z-10"
+              style={{ translateY: "-50%" }}
+              animate={{ left: `${progress}%`, translateX: `-${progress}%` }}
               transition={{ type: "spring", stiffness: 180, damping: 26 }}
-            />
-          </div>
-
-          {/* Status text inside bar — single line */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-12">
-            <span className="text-[10px] font-medium text-foreground/75 leading-none whitespace-nowrap">
-              {isComplete
-                ? isMaxReached
-                  ? "Maximum trials reached! Congrats!"
-                  : "Minimum trials reached. This data can now be graphed."
-                : `Conduct at least ${remaining} more ${remaining === 1 ? "trial" : "trials"} to graph this target`}
-            </span>
-          </div>
-
-          {/* Progress indicator — sized to fit within bar */}
-          <motion.div
-            className="absolute top-1/2 z-10"
-            style={{ translateY: "-50%" }}
-            animate={{ left: `${progress}%`, translateX: `-${progress}%` }}
-            transition={{ type: "spring", stiffness: 180, damping: 26 }}
-          >
-            <motion.div
-              animate={
-                isComplete
-                  ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] }
-                  : { scale: 1 }
-              }
-              transition={{ duration: 0.7, repeat: isComplete ? 1 : 0 }}
-              className={cn(
-                "relative grid place-items-center h-[18px] min-w-[28px] px-1.5 rounded-full border shadow-soft text-[10px] font-semibold leading-none",
-                isComplete
-                  ? "bg-green-500 border-green-600 text-white"
-                  : "bg-white border-blue-600 text-blue-700",
-              )}
             >
-              {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
-              {isComplete && <Starburst />}
+              <motion.div
+                animate={
+                  isComplete
+                    ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] }
+                    : { scale: 1 }
+                }
+                transition={{ duration: 0.7, repeat: isComplete ? 1 : 0 }}
+                className={cn(
+                  "relative grid place-items-center h-[18px] min-w-[28px] px-1.5 rounded-full border shadow-soft text-[10px] font-semibold leading-none",
+                  isComplete
+                    ? "bg-green-500 border-green-600 text-white"
+                    : "bg-white border-blue-600 text-blue-700",
+                )}
+              >
+                {isComplete ? <Check className="size-3" strokeWidth={3} /> : `${progress}%`}
+                {isComplete && <Starburst />}
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
-      </div>
+      )}
 
     </article>
   );
@@ -441,7 +444,7 @@ function ActionButton({
       animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "flex-1 h-14 rounded-lg border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
+        "flex-1 h-10 rounded-lg border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
         isCorrect
           ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
           : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
@@ -453,7 +456,7 @@ function ActionButton({
     >
       {isCorrect ? <Check className="size-5" strokeWidth={3} /> : <X className="size-5" strokeWidth={3} />}
       <span className="text-sm font-medium">
-        {isCorrect ? "Correct" : "Incorrect"}
+        {isCorrect ? "Correct" : "Error"}
       </span>
     </motion.button>
   );

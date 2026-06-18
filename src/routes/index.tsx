@@ -29,7 +29,7 @@ const trialCards = [
     dataType: "% correct",
     description:
       "Score correct if the learner reaches for and maintains hand-hold from the start of the transition through arrival at the destination.",
-    minTrials: 10,
+    minTrials: 5,
   },
   {
     title: "Requests break appropriately",
@@ -37,8 +37,8 @@ const trialCards = [
     dataType: "% correct",
     description:
       "Score correct if the learner uses a vocal or AAC request to ask for a break instead of engaging in challenging behavior.",
-    minTrials: 8,
-    maxTrials: 15,
+    minTrials: 5,
+    maxTrials: 6,
   },
   {
     title: "Identifies named object",
@@ -46,7 +46,7 @@ const trialCards = [
     dataType: "% correct",
     description:
       "Place 3 objects in the field. Score correct on independent identification within 5 seconds of the SD.",
-    minTrials: 12,
+    minTrials: 5,
   },
 ];
 
