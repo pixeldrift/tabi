@@ -256,6 +256,12 @@ export function TrialCard({
                             {i + 1}
                           </motion.span>
                         </AnimatePresence>
+                      ) : t ? (
+                        <span className="text-[7px] leading-none font-medium text-foreground/35">
+                          {i + 1}
+                        </span>
+                      ) : i < minTrials ? (
+                        <span className="size-1 rounded-full bg-foreground/30" aria-hidden />
                       ) : (
                         <span className="text-[7px] leading-none font-medium text-foreground/35">
                           {i + 1}
