@@ -101,7 +101,15 @@ export function TrialCard({
   };
 
   return (
-    <article className="relative w-full max-w-md rounded-3xl bg-card text-card-foreground shadow-lift overflow-hidden border border-border/60">
+    <article
+      onClick={onActivate}
+      className={cn(
+        "relative w-full max-w-md rounded-3xl bg-card text-card-foreground shadow-lift overflow-hidden border-2 transition-all duration-200",
+        isActive
+          ? "border-blue-400/80 shadow-[0_0_0_4px_rgba(96,165,250,0.15)]"
+          : "border-border/40 opacity-70 hover:opacity-90",
+      )}
+    >
       {/* Header */}
       <header className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
         <h2 className="font-display text-xl leading-tight flex-1">{title}</h2>
