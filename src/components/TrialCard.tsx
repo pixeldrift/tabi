@@ -261,7 +261,7 @@ export function TrialCard({
 
         {/* Helper text under bubbles */}
         <div className="mt-1 text-center text-xs text-muted-foreground">
-          of {target} {maxTrials ? "max" : "required"}
+          Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
 
