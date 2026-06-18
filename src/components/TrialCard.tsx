@@ -151,10 +151,6 @@ export function TrialCard({
         </div>
       </header>
 
-      {/* Trial title (no number) */}
-      <div className="px-5 pt-1 text-center">
-        <span className="font-display text-xl tracking-tight">Trial</span>
-      </div>
 
       {/* Bubble row */}
       <div className="relative mt-1 px-2">
