@@ -83,7 +83,7 @@ export function TrialCard({
     setLastAction({ id: Date.now(), value: isToggleOff ? null : value });
     if (!isToggleOff) {
       setTimeout(() => {
-        setCurrent((c) => {
+        setCurrentDir((c) => {
           const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
           return Math.min(c + 1, max);
         });
@@ -93,7 +93,7 @@ export function TrialCard({
 
   const goTo = (idx: number) => {
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
-    setCurrent(Math.max(0, Math.min(idx, max)));
+    setCurrentDir(Math.max(0, Math.min(idx, max)));
   };
 
   const stepWidth = BUBBLE + GAP;
@@ -107,7 +107,7 @@ export function TrialCard({
     const targetIdx = Math.round(-(finalOffset + BUBBLE_CENTER / 2) / stepWidth);
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
     const clamped = Math.max(0, Math.min(targetIdx, max));
-    setCurrent(clamped);
+    setCurrentDir(clamped);
     animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
   };
 
@@ -115,10 +115,10 @@ export function TrialCard({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-3xl bg-card text-card-foreground shadow-lift overflow-hidden border-2 transition-all duration-200",
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground overflow-hidden transition-all duration-200",
         isActive
-          ? "border-blue-400/80 shadow-[0_0_0_4px_rgba(96,165,250,0.15)]"
-          : "border-border/40 opacity-70 hover:opacity-90",
+          ? "border-2 border-blue-400/80 shadow-lift shadow-[0_0_0_4px_rgba(96,165,250,0.15)]"
+          : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
       {/* Header */}
