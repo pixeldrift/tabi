@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { Minus, Plus, Delete, Check } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export interface FrequencyCardProps {
   title: string;
