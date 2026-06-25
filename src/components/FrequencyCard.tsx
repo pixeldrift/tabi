@@ -43,7 +43,7 @@ export function FrequencyCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
-      progress={minCount > 0 ? progress : null}
+      progress={null}
       isComplete={isComplete}
       helperText={
         isComplete ? (

@@ -420,7 +420,7 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/5 active:bg-foreground/10 transition-colors disabled:opacity-25 disabled:pointer-events-none",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 active:bg-blue-500/10 transition-colors disabled:text-foreground/30 disabled:pointer-events-none",
         isLeft ? "left-0" : "right-0",
       )}
     >

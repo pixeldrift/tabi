@@ -71,7 +71,7 @@ export function DurationCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
-      progress={minDurationSec > 0 ? progress : null}
+      progress={null}
       isComplete={isComplete}
       helperText={
         isComplete ? (
@@ -155,9 +155,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function formatTime(ms: number) {
-  const totalCs = Math.floor(ms / 10);
-  const m = Math.floor(totalCs / 6000);
-  const s = Math.floor((totalCs % 6000) / 100);
-  const cs = totalCs % 100;
-  return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
