@@ -56,12 +56,6 @@ export function RateCard({
     startRef.current = null;
   };
 
-  const seconds = elapsed / 1000;
-  const ratePerMin = seconds > 0 ? (count / seconds) * 60 : 0;
-  const progress = Math.min(100, Math.round((seconds / minDurationSec) * 100));
-  const isComplete = seconds >= minDurationSec;
-  const remaining = Math.max(0, Math.ceil(minDurationSec - seconds));
-
   return (
     <CardShell
       title={title}
@@ -70,17 +64,7 @@ export function RateCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
-      progress={progress}
-      isComplete={isComplete}
-      helperText={
-        isComplete ? (
-          "Observation window complete. This data can now be graphed."
-        ) : (
-          <span>
-            Observe for at least <strong className="font-semibold">{remaining}s more</strong>.
-          </span>
-        )
-      }
+      progress={null}
       details={
         <dl className="space-y-3">
           <Row label="Phase" value={phase} />
@@ -92,34 +76,18 @@ export function RateCard({
       }
     >
       <div className="px-5 pt-2 pb-4">
-        <div className="flex items-baseline justify-center gap-4">
-          <div className="flex flex-col items-center">
-            <span className="font-display text-4xl leading-none tabular-nums">
-              {ratePerMin.toFixed(1)}
-            </span>
-            <span className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-              per min
-            </span>
-          </div>
-          <span className="text-stone-300">·</span>
-          <div className="flex flex-col items-center">
-            <span className="font-display text-2xl leading-none tabular-nums text-foreground/70">
-              {count}
-            </span>
-            <span className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-              count
-            </span>
-          </div>
-          <span className="text-stone-300">·</span>
-          <div className="flex flex-col items-center">
-            <span className="font-display text-2xl leading-none tabular-nums text-foreground/70">
-              {formatTime(elapsed)}
-            </span>
-            <span className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-              time
-            </span>
-          </div>
+        <div className="flex flex-col items-center">
+          <span className="font-display text-5xl leading-none tabular-nums">
+            {count}
+          </span>
+          <span className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+            tally
+          </span>
+          <span className="mt-2 font-mono text-sm tabular-nums text-muted-foreground">
+            {formatTime(elapsed)}
+          </span>
         </div>
+
 
         <div className="mt-4 flex items-center justify-center gap-3">
           <button
