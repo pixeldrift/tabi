@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberKeypad } from "./NumberKeypad";
+import { TimeKeypad } from "./TimeKeypad";
 import { cn } from "@/lib/utils";
 
 export interface RateCardProps {
