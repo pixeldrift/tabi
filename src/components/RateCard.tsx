@@ -26,6 +26,7 @@ export function RateCard({
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
   const [flash, setFlash] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [elapsed, setElapsed] = useState(0); // ms
   const [running, setRunning] = useState(false);
   const startRef = useRef<number | null>(null);
@@ -81,6 +82,7 @@ export function RateCard({
       isActive={isActive}
       onActivate={onActivate}
       progress={null}
+      editing={editing}
       details={
         <dl className="space-y-3">
           <Row label="Phase" value={phase} />
@@ -97,12 +99,16 @@ export function RateCard({
             value={count}
             onReplace={(v) => commit(v)}
             onAdd={(delta) => commit(count + delta)}
+            onOpenChange={setEditing}
           >
             {({ isEditing, open }) => (
               <button
                 type="button"
                 onClick={open}
-                className="flex flex-col items-center cursor-text rounded-lg px-3 py-1"
+                className={cn(
+                  "flex flex-col items-center cursor-text rounded-lg px-3 py-1 transition-colors",
+                  isEditing && "border-2 border-blue-400/80",
+                )}
                 aria-label={`Current tally is ${count}. Tap to edit.`}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -110,7 +116,7 @@ export function RateCard({
                     key={bumpKey}
                     initial={{ scale: 0.7, opacity: 0, y: 8 }}
                     animate={{
-                      scale: flash ? [1, 1.18, 1] : 1,
+                      scale: 1,
                       opacity: 1,
                       y: 0,
                     }}
