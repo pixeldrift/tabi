@@ -76,26 +76,35 @@ const cards: CardConfig[] = [
   },
   {
     kind: "frequency",
-    title: "Raises hand before speaking",
+    title: "Giggles/laughs during therapist-led play",
     phase: "Intervention",
     description:
-      "Tally each instance the learner raises their hand and waits to be called on before speaking during group instruction.",
+      "Tally each instance the learner giggles or laughs during therapist-led play.",
     minCount: 5,
   },
   {
     kind: "rate",
-    title: "Math facts answered",
+    title: "Flopping/dropping to floor",
     phase: "Baseline",
     description:
-      "During a timed observation, tally each correct answer. Rate is reported as responses per minute.",
+      "During a timed observation, tally each flop/drop. Rate is reported as occurrences per minute.",
     minDurationSec: 60,
   },
   {
-    kind: "duration",
-    title: "On-task during independent work",
+    kind: "rate",
+    title: "Uses AAC to request",
     phase: "Intervention",
     description:
-      "Start the timer when the learner begins engaging with the task; stop when off-task. Multiple bouts are summed.",
+      "Tally each independent AAC request. This timer is linked to the session timer.",
+    minDurationSec: 60,
+    locked: true,
+  },
+  {
+    kind: "duration",
+    title: "Tantruming",
+    phase: "Intervention",
+    description:
+      "Track each tantrum instance separately. Start a new instance with the plus button; pause/resume the current instance with the play/pause button.",
     minDurationSec: 30,
   },
   {
