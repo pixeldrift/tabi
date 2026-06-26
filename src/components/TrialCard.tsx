@@ -295,7 +295,7 @@ export function TrialCard({
                     {i < minTrials && (
                       <span
                         className={cn(
-                          "absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full",
+                          "absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full",
                           t === "correct"
                             ? "bg-green-500"
                             : t === "incorrect"
