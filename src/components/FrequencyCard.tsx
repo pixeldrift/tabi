@@ -24,6 +24,7 @@ export function FrequencyCard({
 }: FrequencyCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
+  const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
 
@@ -31,15 +32,18 @@ export function FrequencyCard({
   const remaining = Math.max(0, minCount - count);
 
   const inc = () => {
+    setDir(1);
     setCount((c) => c + 1);
     setBumpKey((k) => k + 1);
   };
   const dec = () => {
+    setDir(-1);
     setCount((c) => Math.max(0, c - 1));
     setBumpKey((k) => k + 1);
   };
 
   const commit = (next: number) => {
+    setDir(next >= count ? 1 : -1);
     setCount(next);
     setBumpKey((k) => k + 1);
     setFlash(true);
