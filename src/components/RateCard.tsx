@@ -54,6 +54,14 @@ export function RateCard({
     }
   };
 
+  const setElapsedMs = (ms: number) => {
+    baseRef.current = ms;
+    startRef.current = performance.now();
+    setElapsed(ms);
+  };
+
+
+
 
   const triggerFlash = () => {
     setFlash(true);
