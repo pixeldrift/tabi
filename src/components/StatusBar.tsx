@@ -106,7 +106,7 @@ export function StatusBar({
         </div>
 
         {/* Tabs */}
-        <nav className="mt-3 flex items-end gap-1" role="tablist" aria-label="Session sections">
+        <nav className="mt-2 flex items-end gap-1" role="tablist" aria-label="Session sections">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = t.id === activeTab;
@@ -117,14 +117,14 @@ export function StatusBar({
                 aria-selected={isActive}
                 onClick={() => onTabChange(t.id)}
                 className={cn(
-                  "relative -mb-px flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
+                  "relative -mb-px flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
                   isActive
                     ? "bg-background text-foreground border-stone-200 font-medium"
                     : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
                 )}
               >
                 <Icon className="size-4" />
-                <span>{t.label}</span>
+                <span className="hidden sm:inline">{t.label}</span>
                 {isActive && (
                   <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
                 )}
