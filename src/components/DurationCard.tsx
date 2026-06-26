@@ -218,9 +218,13 @@ export function DurationCard({
 
         <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
           <span>
-            Total{" "}
+            Instance{" "}
             <span className="font-mono normal-case tracking-normal tabular-nums text-foreground">
-              {formatTime(totalMs)}
+              {viewIdx + 1}
+            </span>{" "}
+            of{" "}
+            <span className="font-mono normal-case tracking-normal tabular-nums text-foreground">
+              {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
             </span>
           </span>
         </div>
