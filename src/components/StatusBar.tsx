@@ -235,7 +235,7 @@ function SessionBox({
             className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
           >
             <Check className="size-3" strokeWidth={3} />
-            End & submit data
+            End & Submit Data
           </button>
           {confirmDiscard ? (
             <div className="flex gap-1">
