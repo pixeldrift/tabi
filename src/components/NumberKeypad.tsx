@@ -168,28 +168,30 @@ export function NumberKeypad({
           </div>
 
           {/* Actions */}
-          <div className="mt-2 flex items-center gap-1.5">
-            <button
+          <div className="mt-2 flex items-center justify-between gap-1.5">
+            <motion.button
               type="button"
               onClick={() => handleOpenChange(false)}
-              className="flex h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              whileTap={{ scale: 0.92 }}
+              className="grid size-8 place-items-center rounded-full border border-stone-200 text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
+              aria-label="Close"
             >
-              <X className="size-3.5" /> Close
-            </button>
-            <div className="ml-auto flex items-center gap-1.5">
+              <X className="size-4" />
+            </motion.button>
+            <div className="flex items-center gap-1.5">
               <ActionButton
                 onClick={commitAdd}
                 disabled={!hasPending}
                 tone="outline"
-                icon={<Plus className="size-3.5" strokeWidth={3} />}
-                label="Add"
+                icon={<Plus className="size-4" strokeWidth={3} />}
+                aria-label="Add to total"
               />
               <ActionButton
                 onClick={commitReplace}
                 disabled={!hasPending}
                 tone="solid"
-                icon={<Check className="size-3.5" strokeWidth={3} />}
-                label="Update"
+                icon={<Check className="size-4" strokeWidth={3} />}
+                aria-label="Update total"
               />
             </div>
           </div>
@@ -233,28 +235,29 @@ function ActionButton({
   disabled,
   tone,
   icon,
-  label,
+  "aria-label": ariaLabel,
 }: {
   onClick: () => void;
   disabled?: boolean;
   tone: "solid" | "outline";
   icon: React.ReactNode;
-  label: string;
+  "aria-label": string;
 }) {
   return (
     <motion.button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      whileTap={disabled ? undefined : { scale: 0.95 }}
+      whileTap={disabled ? undefined : { scale: 0.92 }}
+      aria-label={ariaLabel}
       className={cn(
-        "flex h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none",
+        "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
         tone === "solid"
           ? "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
           : "border-2 border-blue-500 text-blue-600 hover:bg-blue-50 active:bg-blue-100",
       )}
     >
-      {icon} {label}
+      {icon}
     </motion.button>
   );
 }

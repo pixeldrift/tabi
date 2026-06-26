@@ -105,10 +105,7 @@ export function RateCard({
               <button
                 type="button"
                 onClick={open}
-                className={cn(
-                  "flex flex-col items-center cursor-text rounded-lg px-3 py-1 transition-colors",
-                  isEditing && "border-2 border-blue-400/80",
-                )}
+                className="flex flex-col items-center cursor-text rounded-lg px-3 py-1 transition-colors"
                 aria-label={`Current tally is ${count}. Tap to edit.`}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -123,8 +120,9 @@ export function RateCard({
                     exit={{ opacity: 0 }}
                     transition={{ type: "spring", stiffness: 360, damping: 22 }}
                     className={cn(
-                      "font-display text-5xl leading-none tabular-nums transition-colors",
-                      (isEditing || flash) ? "text-blue-600" : "text-foreground",
+                      "font-display text-5xl leading-none tabular-nums transition-colors rounded-lg px-2 py-0.5",
+                      isEditing ? "border-2 border-blue-400/80 text-blue-600" : "text-foreground",
+                      flash && "text-blue-600",
                     )}
                   >
                     {count}
