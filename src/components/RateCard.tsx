@@ -145,25 +145,28 @@ export function RateCard({
               </div>
               <div
                 className={cn(
-                  "mt-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors",
+                  "mt-1 flex items-center text-[11px] uppercase tracking-wider transition-colors",
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
                 <span>Times per</span>
-                <span className="inline-flex items-center rounded border border-stone-200 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal text-foreground">
+                <span className={cn(
+                  "inline-flex items-center border border-stone-200 bg-white pl-1.5 pr-0 py-0.5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal",
+                  running ? "text-foreground" : "text-muted-foreground",
+                )}>
                   {formatTime(elapsed)}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle();
+                    }}
+                    aria-label={running ? "Pause timer" : "Resume timer"}
+                    className="ml-1 grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
+                  >
+                    {running ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}
+                  </button>
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggle();
-                  }}
-                  aria-label={running ? "Pause timer" : "Resume timer"}
-                  className="grid size-5 place-items-center rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                >
-                  {running ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}
-                </button>
               </div>
             </button>
           )}
