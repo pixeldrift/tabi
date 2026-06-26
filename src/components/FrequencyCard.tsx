@@ -24,6 +24,7 @@ export function FrequencyCard({
 }: FrequencyCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
+  const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
 
@@ -31,15 +32,18 @@ export function FrequencyCard({
   const remaining = Math.max(0, minCount - count);
 
   const inc = () => {
+    setDir(1);
     setCount((c) => c + 1);
     setBumpKey((k) => k + 1);
   };
   const dec = () => {
+    setDir(-1);
     setCount((c) => Math.max(0, c - 1));
     setBumpKey((k) => k + 1);
   };
 
   const commit = (next: number) => {
+    setDir(next >= count ? 1 : -1);
     setCount(next);
     setBumpKey((k) => k + 1);
     setFlash(true);
@@ -99,26 +103,27 @@ export function FrequencyCard({
               className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={bumpKey}
-                  initial={{ scale: 0.7, opacity: 0, y: 8 }}
-                  animate={{
-                    scale: 1,
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  exit={{ opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 360, damping: 22 }}
-                  className={cn(
-                    "font-display text-5xl leading-none tabular-nums transition-colors rounded-lg px-2 py-0.5",
-                    isEditing ? "border-2 border-blue-400/80 text-blue-600" : "text-foreground",
-                    flash && "text-blue-600",
-                  )}
-                >
-                  {count}
-                </motion.span>
-              </AnimatePresence>
+              <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={bumpKey}
+                    initial={{ y: dir > 0 ? "100%" : "-100%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                    className={cn(
+                      "block font-display text-5xl leading-none tabular-nums transition-colors",
+                      isEditing ? "text-blue-600" : "text-foreground",
+                      flash && "text-blue-600",
+                    )}
+                  >
+                    {count}
+                  </motion.span>
+                </AnimatePresence>
+                {isEditing && (
+                  <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
+                )}
+              </div>
               <span
                 className={cn(
                   "mt-1 text-[11px] uppercase tracking-wider transition-colors",

@@ -92,6 +92,7 @@ export function TrialCard({
   };
 
   const goTo = (idx: number) => {
+    if (trials[current] === null) return;
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
     setCurrentDir(Math.max(0, Math.min(idx, max)));
   };
@@ -222,15 +223,27 @@ export function TrialCard({
                 const isCenter = i === current;
                 const bg =
                   t === "correct"
-                    ? "bg-green-300 border-green-400"
+                    ? "bg-green-50 border-green-300"
                     : t === "incorrect"
-                      ? "bg-red-300 border-red-400"
+                      ? "bg-red-50 border-red-300"
                       : "bg-foreground/5 border-foreground/10";
+                const textColor =
+                  t === "correct"
+                    ? "text-green-700"
+                    : t === "incorrect"
+                      ? "text-red-700"
+                      : "text-foreground/40";
+                const centerTextColor =
+                  t === "correct"
+                    ? "text-green-700"
+                    : t === "incorrect"
+                      ? "text-red-700"
+                      : "text-foreground";
                 const centerBg =
                   lastAction.value === "correct" && i === current - 1
-                    ? "bg-green-400 border-green-500 text-white"
+                    ? "bg-green-100 border-green-400"
                     : lastAction.value === "incorrect" && i === current - 1
-                      ? "bg-red-400 border-red-500 text-white"
+                      ? "bg-red-100 border-red-400"
                       : "";
                 return (
                   <motion.button
@@ -266,21 +279,27 @@ export function TrialCard({
                             transition={{ duration: 0.25 }}
                             className="flex flex-col items-center justify-center"
                           >
-                            <span className="font-display text-3xl text-foreground leading-none">
+                            <span className={cn("font-display text-3xl leading-none", centerTextColor)}>
                               {i + 1}
                             </span>
                             {i < minTrials && (
-                              <span className="mt-[2px] size-[3px] rounded-full bg-foreground/40" aria-hidden />
+                              <span className={cn(
+                                "mt-[2px] size-[3px] rounded-full",
+                                t === "correct" ? "bg-green-700" : t === "incorrect" ? "bg-red-700" : "bg-foreground/40",
+                              )} aria-hidden />
                             )}
                           </motion.span>
                         </AnimatePresence>
                       ) : (
                         <span className="relative flex flex-col items-center justify-center leading-none">
-                          <span className="text-[7px] font-medium text-foreground/40">
+                          <span className={cn("text-[7px] font-medium", textColor)}>
                             {i + 1}
                           </span>
                           {i < minTrials && (
-                            <span className="mt-[1px] size-[2px] rounded-full bg-foreground/40" aria-hidden />
+                            <span className={cn(
+                              "mt-[1px] size-[2px] rounded-full",
+                              t === "correct" ? "bg-green-700" : t === "incorrect" ? "bg-red-700" : "bg-foreground/40",
+                            )} aria-hidden />
                           )}
                         </span>
                       )}
