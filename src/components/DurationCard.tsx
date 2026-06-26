@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronUp, ChevronDown, Pause, Play, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { cn } from "@/lib/utils";
 
@@ -22,17 +22,13 @@ export function DurationCard({
   isActive = true,
   onActivate,
 }: DurationCardProps) {
-  // Each instance has a stored (paused) accumulated ms.
   const [instances, setInstances] = useState<number[]>([]);
-  // Index of the instance currently being viewed.
   const [viewIdx, setViewIdx] = useState(0);
-  // Live ms accumulated since the current run started (only meaningful when running).
   const [liveMs, setLiveMs] = useState(0);
   const [running, setRunning] = useState(false);
   const startRef = useRef<number | null>(null);
-  // Which instance the timer belongs to (always the latest when running).
   const runningIdxRef = useRef<number | null>(null);
-  const [bumpKey, setBumpKey] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
 
   useEffect(() => {
     if (!running) return;
@@ -45,8 +41,7 @@ export function DurationCard({
     return () => window.clearInterval(id);
   }, [running]);
 
-  const isViewingRunning =
-    running && runningIdxRef.current === viewIdx;
+  const isViewingRunning = running && runningIdxRef.current === viewIdx;
 
   const currentInstanceMs = (idx: number) => {
     if (idx < 0 || idx >= instances.length) return 0;
@@ -62,7 +57,6 @@ export function DurationCard({
   const isComplete = totalSec >= minDurationSec;
   const remaining = Math.max(0, Math.ceil(minDurationSec - totalSec));
 
-  // Commit live ms into stored instance.
   const flushLive = () => {
     if (running && runningIdxRef.current !== null) {
       const idx = runningIdxRef.current;
@@ -77,15 +71,12 @@ export function DurationCard({
   };
 
   const addInstance = () => {
-    // Pause and bank any in-progress time first.
-    if (running) {
-      flushLive();
-    }
+    if (running) flushLive();
+    const newIdx = instances.length;
     setInstances((arr) => [...arr, 0]);
-    const newIdx = instances.length; // before update
     runningIdxRef.current = newIdx;
+    setDirection(1);
     setViewIdx(newIdx);
-    setBumpKey((k) => k + 1);
     setRunning(true);
   };
 
@@ -94,11 +85,11 @@ export function DurationCard({
       addInstance();
       return;
     }
-    if (running) {
+    if (isViewingRunning) {
       flushLive();
       setRunning(false);
     } else {
-      // Resume the currently viewed instance.
+      if (running) flushLive();
       runningIdxRef.current = viewIdx;
       setRunning(true);
     }
@@ -107,16 +98,15 @@ export function DurationCard({
   const navigate = (delta: 1 | -1) => {
     const next = Math.max(0, Math.min(instances.length - 1, viewIdx + delta));
     if (next !== viewIdx) {
+      setDirection(delta);
       setViewIdx(next);
-      setBumpKey((k) => k + 1);
     }
   };
 
-  const displayInstanceMs = currentInstanceMs(viewIdx);
   const hasInstances = instances.length > 0;
-  const instanceLabel = hasInstances ? `${viewIdx + 1} of ${instances.length}` : "—";
   const canPrev = viewIdx > 0;
   const canNext = viewIdx < instances.length - 1;
+  const displayInstanceMs = currentInstanceMs(viewIdx);
 
   return (
     <CardShell
@@ -147,99 +137,177 @@ export function DurationCard({
         </dl>
       }
     >
-      <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">
-        {/* Left: instance navigation */}
-        <div className="flex flex-col items-center justify-center gap-1">
-          <button
+      <div className="px-5 pt-3 pb-4">
+        {/* Main row: nav < [ timer box ] nav > */}
+        <div className="flex items-center justify-center gap-2">
+          <TriangleNav
+            direction="left"
             onClick={() => navigate(-1)}
             disabled={!canPrev}
-            aria-label="Previous instance"
-            className="size-7 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
-          >
-            <ChevronUp className="size-4" strokeWidth={2.5} />
-          </button>
-          <button
+          />
+
+          <div className="relative flex-1 h-20 overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+              {hasInstances ? (
+                <motion.div
+                  key={viewIdx}
+                  initial={{ x: direction > 0 ? "110%" : "-110%", opacity: 0, scale: 0.9 }}
+                  animate={{ x: 0, opacity: 1, scale: 1 }}
+                  exit={{ x: direction > 0 ? "-110%" : "110%", opacity: 0, scale: 0.85 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 32 }}
+                  className="absolute inset-0 flex items-stretch justify-center"
+                >
+                  <TimerBox
+                    ms={displayInstanceMs}
+                    running={isViewingRunning}
+                    onToggle={togglePause}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
+                >
+                  Press <Plus className="inline size-4 mx-1" /> to start the first instance
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <TriangleNav
+            direction="right"
             onClick={() => navigate(1)}
             disabled={!canNext}
-            aria-label="Next instance"
-            className="size-7 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
-          >
-            <ChevronDown className="size-4" strokeWidth={2.5} />
-          </button>
+          />
         </div>
 
-        {/* Center: total time + this-instance pill */}
-        <div className="flex flex-col items-center justify-center min-w-[8rem] px-2">
-          <div className="flex items-baseline gap-2">
-            <motion.span
-              animate={running ? { opacity: [1, 0.55, 1] } : { opacity: 1 }}
-              transition={{ duration: 1.2, repeat: running ? Infinity : 0 }}
-              className={cn(
-                "size-2 rounded-full self-center",
-                running ? "bg-red-500" : "bg-stone-300",
-              )}
-              aria-hidden
-            />
-            <span className="font-display text-4xl leading-none tabular-nums text-foreground">
+        {/* Caption: instance counter + total */}
+        <div className="mt-2 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <span>
+            Instance{" "}
+            <span className="font-mono normal-case tracking-normal tabular-nums text-foreground">
+              {hasInstances ? viewIdx + 1 : 0}
+            </span>{" "}
+            of{" "}
+            <span className="font-mono normal-case tracking-normal tabular-nums text-foreground">
+              {instances.length}
+            </span>
+          </span>
+          <span className="size-1 rounded-full bg-stone-300" aria-hidden />
+          <span>
+            Total{" "}
+            <span className="font-mono normal-case tracking-normal tabular-nums text-foreground">
               {formatTime(totalMs)}
             </span>
-          </div>
-          <span className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Total time
           </span>
-
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <span>Instance {instanceLabel}</span>
-            <span className="inline-flex items-center">
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={`pill-${bumpKey}-${viewIdx}`}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.18 }}
-                  className={cn(
-                    "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full",
-                    isViewingRunning ? "text-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  {formatTime(displayInstanceMs)}
-                </motion.span>
-              </AnimatePresence>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePause();
-                }}
-                disabled={!hasInstances}
-                aria-label={isViewingRunning ? "Pause this instance" : "Resume this instance"}
-                className="grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-40"
-              >
-                {isViewingRunning ? (
-                  <Pause className="size-3" fill="currentColor" />
-                ) : (
-                  <Play className="size-3" fill="currentColor" />
-                )}
-              </button>
-            </span>
-          </div>
         </div>
 
-        {/* Right: Add Instance */}
-        <motion.button
-          onClick={addInstance}
-          whileTap={{ scale: 0.94 }}
-          aria-label="Add instance"
-          className={cn(
-            "size-16 rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
-            "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-          )}
-        >
-          <Plus className="size-7" strokeWidth={3} />
-        </motion.button>
+        {/* Add Instance action */}
+        <div className="mt-3 flex justify-center">
+          <motion.button
+            onClick={addInstance}
+            whileTap={{ scale: 0.96 }}
+            aria-label="Add instance"
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full pl-3 pr-5 py-2 text-white text-sm font-medium shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
+              "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+            )}
+          >
+            <span className="grid size-7 place-items-center rounded-full bg-white/20">
+              <Plus className="size-5" strokeWidth={3} />
+            </span>
+            Add instance
+          </motion.button>
+        </div>
       </div>
     </CardShell>
+  );
+}
+
+function TimerBox({
+  ms,
+  running,
+  onToggle,
+}: {
+  ms: number;
+  running: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-stretch w-full max-w-[18rem]">
+      <div
+        className={cn(
+          "flex-1 flex items-center justify-center gap-2 rounded-l-2xl border-2 border-r-0 border-blue-500 bg-white px-4",
+        )}
+      >
+        <motion.span
+          animate={running ? { opacity: [1, 0.4, 1], scale: [1, 1.15, 1] } : { opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, repeat: running ? Infinity : 0 }}
+          className={cn(
+            "size-2.5 rounded-full",
+            running ? "bg-blue-500" : "bg-stone-300",
+          )}
+          aria-hidden
+        />
+        <span
+          className={cn(
+            "font-display text-4xl leading-none tabular-nums transition-colors",
+            running ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {formatTime(ms)}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        aria-label={running ? "Pause this instance" : "Resume this instance"}
+        className={cn(
+          "grid w-14 place-items-center rounded-r-2xl text-white transition-colors",
+          "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+        )}
+      >
+        {running ? (
+          <Pause className="size-6" fill="currentColor" />
+        ) : (
+          <Play className="size-6" fill="currentColor" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+function TriangleNav({
+  direction,
+  onClick,
+  disabled,
+}: {
+  direction: "left" | "right";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isLeft = direction === "left";
+  const Icon = isLeft ? ChevronLeft : ChevronRight;
+  return (
+    <motion.button
+      aria-label={isLeft ? "Previous instance" : "Next instance"}
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={{ scale: 0.85 }}
+      whileHover={{ scale: 1.08 }}
+      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+      className={cn(
+        "size-9 shrink-0 grid place-items-center rounded-full border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 transition disabled:opacity-30",
+      )}
+    >
+      <Icon className="size-5" strokeWidth={2.5} />
+    </motion.button>
   );
 }
 
