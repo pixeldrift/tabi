@@ -92,10 +92,13 @@ export function TrialCard({
   };
 
   const goTo = (idx: number) => {
-    if (trials[current] === null) return;
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
-    setCurrentDir(Math.max(0, Math.min(idx, max)));
+    const clamped = Math.max(0, Math.min(idx, max));
+    // Allow navigation to any trial with data, or the next empty trial after the last completed one.
+    if (trials[clamped] === null && clamped > completedCount) return;
+    setCurrentDir(clamped);
   };
+
 
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
@@ -189,10 +192,11 @@ export function TrialCard({
             direction="right"
             onClick={() => goTo(current + 1)}
             disabled={
-              trials[current] === null ||
+              (trials[current] === null && current >= completedCount) ||
               (maxTrials ? current >= maxTrials - 1 : false)
             }
           />
+
 
 
           <div
@@ -490,8 +494,9 @@ function ActionButton({
           : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
         selected &&
           (isCorrect
-            ? "bg-green-400 border-green-500 text-white"
-            : "bg-red-400 border-red-500 text-white"),
+            ? "bg-green-500 border-green-600 text-white hover:bg-green-500"
+            : "bg-red-500 border-red-600 text-white hover:bg-red-500"),
+
       )}
     >
       {isCorrect ? <Check className="size-5" strokeWidth={3} /> : <X className="size-5" strokeWidth={3} />}

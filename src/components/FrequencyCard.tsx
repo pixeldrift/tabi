@@ -31,24 +31,32 @@ export function FrequencyCard({
   const isComplete = count >= minCount;
   const remaining = Math.max(0, minCount - count);
 
+  const triggerFlash = () => {
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 450);
+  };
+
   const inc = () => {
     setDir(1);
     setCount((c) => c + 1);
     setBumpKey((k) => k + 1);
+    triggerFlash();
   };
   const dec = () => {
     setDir(-1);
     setCount((c) => Math.max(0, c - 1));
     setBumpKey((k) => k + 1);
+    triggerFlash();
   };
+
 
   const commit = (next: number) => {
     setDir(next >= count ? 1 : -1);
     setCount(next);
     setBumpKey((k) => k + 1);
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 650);
+    triggerFlash();
   };
+
 
   return (
     <CardShell
