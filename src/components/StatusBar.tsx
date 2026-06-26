@@ -45,7 +45,7 @@ export function StatusBar({
 
   return (
     <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
-      <div className="max-w-5xl mx-auto px-4 pt-3">
+      <div className="max-w-5xl mx-auto px-4 pt-2">
         {/* Top row: title + active timers + session box */}
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
@@ -106,7 +106,7 @@ export function StatusBar({
         </div>
 
         {/* Tabs */}
-        <nav className="mt-3 flex items-end gap-1" role="tablist" aria-label="Session sections">
+        <nav className="mt-2 flex items-end gap-1" role="tablist" aria-label="Session sections">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = t.id === activeTab;
@@ -117,14 +117,14 @@ export function StatusBar({
                 aria-selected={isActive}
                 onClick={() => onTabChange(t.id)}
                 className={cn(
-                  "relative -mb-px flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
+                  "relative -mb-px flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
                   isActive
                     ? "bg-background text-foreground border-stone-200 font-medium"
                     : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
                 )}
               >
                 <Icon className="size-4" />
-                <span>{t.label}</span>
+                <span className="hidden sm:inline">{t.label}</span>
                 {isActive && (
                   <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
                 )}
@@ -171,11 +171,11 @@ function SessionBox({
   return (
     <div
       className={cn(
-        "shrink-0 rounded-xl border-2 px-3 py-2 min-w-[180px] flex flex-col items-stretch gap-1.5 transition-colors",
+        "shrink-0 rounded-xl border-2 px-3 py-1.5 min-w-[180px] flex flex-col items-stretch gap-1 transition-colors",
         status === "running"
           ? "border-blue-500 bg-blue-50/40"
           : status === "paused"
-            ? "border-amber-400 bg-amber-50/40"
+            ? "border-stone-300 bg-stone-50/60"
             : "border-stone-300 bg-white",
       )}
     >
@@ -200,13 +200,13 @@ function SessionBox({
             className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
           >
             <Play className="size-3" fill="currentColor" />
-            Start new session
+            Start New Session
           </button>
           <button
             onClick={onStart}
             className="flex items-center justify-center gap-1.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-foreground text-[11px] px-2 py-1 transition-colors"
           >
-            Resume paused session
+            Resume Paused Session
           </button>
         </div>
       )}
@@ -217,7 +217,7 @@ function SessionBox({
           className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
         >
           <Pause className="size-3" fill="currentColor" />
-          Pause session
+          Pause Session
         </button>
       )}
 
@@ -235,7 +235,7 @@ function SessionBox({
             className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
           >
             <Check className="size-3" strokeWidth={3} />
-            End & submit data
+            End & Submit Data
           </button>
           {confirmDiscard ? (
             <div className="flex gap-1">
@@ -261,7 +261,7 @@ function SessionBox({
               className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
             >
               <Trash2 className="size-3" />
-              Clear & discard
+              Clear & Discard
             </button>
           )}
         </div>
