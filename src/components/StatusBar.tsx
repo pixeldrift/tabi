@@ -171,11 +171,11 @@ function SessionBox({
   return (
     <div
       className={cn(
-        "shrink-0 rounded-xl border-2 px-3 py-2 min-w-[180px] flex flex-col items-stretch gap-1.5 transition-colors",
+        "shrink-0 rounded-xl border-2 px-3 py-1.5 min-w-[180px] flex flex-col items-stretch gap-1 transition-colors",
         status === "running"
           ? "border-blue-500 bg-blue-50/40"
           : status === "paused"
-            ? "border-amber-400 bg-amber-50/40"
+            ? "border-stone-300 bg-stone-50/60"
             : "border-stone-300 bg-white",
       )}
     >
@@ -200,13 +200,13 @@ function SessionBox({
             className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
           >
             <Play className="size-3" fill="currentColor" />
-            Start new session
+            Start New Session
           </button>
           <button
             onClick={onStart}
             className="flex items-center justify-center gap-1.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-foreground text-[11px] px-2 py-1 transition-colors"
           >
-            Resume paused session
+            Resume Paused Session
           </button>
         </div>
       )}
@@ -217,7 +217,7 @@ function SessionBox({
           className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
         >
           <Pause className="size-3" fill="currentColor" />
-          Pause session
+          Pause Session
         </button>
       )}
 
