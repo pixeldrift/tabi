@@ -53,14 +53,6 @@ export function RateCard({
     }
   };
 
-  const reset = () => {
-    setRunning(false);
-    setCount(0);
-    setElapsed(0);
-    baseRef.current = 0;
-    startRef.current = null;
-    setBumpKey((k) => k + 1);
-  };
 
   const triggerFlash = () => {
     setFlash(true);
