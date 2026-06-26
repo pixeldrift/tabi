@@ -23,6 +23,7 @@ export interface CardShellProps {
   isComplete?: boolean;
   helperText?: ReactNode;
   details?: ReactNode;
+  editing?: boolean;
   children: ReactNode;
 }
 
