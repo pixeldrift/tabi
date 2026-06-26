@@ -38,6 +38,7 @@ export function CardShell({
   isComplete = false,
   helperText,
   details,
+  editing = false,
   children,
 }: CardShellProps) {
   const showProgress = typeof progress === "number";
