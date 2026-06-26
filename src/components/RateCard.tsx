@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
+import { Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberKeypad } from "./NumberKeypad";
 import { cn } from "@/lib/utils";
