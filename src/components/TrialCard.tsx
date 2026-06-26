@@ -187,8 +187,12 @@ export function TrialCard({
           <TriangleNav
             direction="right"
             onClick={() => goTo(current + 1)}
-            disabled={maxTrials ? current >= maxTrials - 1 : false}
+            disabled={
+              trials[current] === null ||
+              (maxTrials ? current >= maxTrials - 1 : false)
+            }
           />
+
 
           <div
             ref={containerRef}

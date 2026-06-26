@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause, Plus, RotateCcw } from "lucide-react";
 import { CardShell } from "./CardShell";
+import { NumberKeypad } from "./NumberKeypad";
 import { cn } from "@/lib/utils";
 
 export interface RateCardProps {
@@ -23,6 +24,8 @@ export function RateCard({
   onActivate,
 }: RateCardProps) {
   const [count, setCount] = useState(0);
+  const [bumpKey, setBumpKey] = useState(0);
+  const [flash, setFlash] = useState(false);
   const [elapsed, setElapsed] = useState(0); // ms
   const [running, setRunning] = useState(false);
   const startRef = useRef<number | null>(null);
@@ -54,6 +57,19 @@ export function RateCard({
     setElapsed(0);
     baseRef.current = 0;
     startRef.current = null;
+    setBumpKey((k) => k + 1);
+  };
+
+  const tally = () => {
+    setCount((c) => c + 1);
+    setBumpKey((k) => k + 1);
+  };
+
+  const commit = (next: number) => {
+    setCount(next);
+    setBumpKey((k) => k + 1);
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 650);
   };
 
   return (
@@ -77,17 +93,52 @@ export function RateCard({
     >
       <div className="px-5 pt-2 pb-4">
         <div className="flex flex-col items-center">
-          <span className="font-display text-5xl leading-none tabular-nums">
-            {count}
-          </span>
-          <span className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-            tally
-          </span>
+          <NumberKeypad
+            value={count}
+            onReplace={(v) => commit(v)}
+            onAdd={(delta) => commit(count + delta)}
+          >
+            {({ isEditing, open }) => (
+              <button
+                type="button"
+                onClick={open}
+                className="flex flex-col items-center cursor-text rounded-lg px-3 py-1"
+                aria-label={`Current tally is ${count}. Tap to edit.`}
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={bumpKey}
+                    initial={{ scale: 0.7, opacity: 0, y: 8 }}
+                    animate={{
+                      scale: flash ? [1, 1.18, 1] : 1,
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 22 }}
+                    className={cn(
+                      "font-display text-5xl leading-none tabular-nums transition-colors",
+                      (isEditing || flash) ? "text-blue-600" : "text-foreground",
+                    )}
+                  >
+                    {count}
+                  </motion.span>
+                </AnimatePresence>
+                <span
+                  className={cn(
+                    "mt-1 text-[11px] uppercase tracking-wider transition-colors",
+                    isEditing ? "text-blue-500" : "text-muted-foreground",
+                  )}
+                >
+                  tally
+                </span>
+              </button>
+            )}
+          </NumberKeypad>
           <span className="mt-2 font-mono text-sm tabular-nums text-muted-foreground">
             {formatTime(elapsed)}
           </span>
         </div>
-
 
         <div className="mt-4 flex items-center justify-center gap-3">
           <button
@@ -103,7 +154,7 @@ export function RateCard({
             {running ? "Pause" : elapsed > 0 ? "Resume" : "Start"}
           </button>
           <motion.button
-            onClick={() => setCount((c) => c + 1)}
+            onClick={tally}
             disabled={!running}
             whileTap={{ scale: 0.94 }}
             className="h-10 px-5 rounded-lg flex items-center gap-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-30 disabled:pointer-events-none"
