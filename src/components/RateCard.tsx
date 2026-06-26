@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberKeypad } from "./NumberKeypad";
+import { TimeKeypad } from "./TimeKeypad";
 import { cn } from "@/lib/utils";
 
 export interface RateCardProps {
@@ -52,6 +53,14 @@ export function RateCard({
       setRunning(true);
     }
   };
+
+  const setElapsedMs = (ms: number) => {
+    baseRef.current = ms;
+    startRef.current = performance.now();
+    setElapsed(ms);
+  };
+
+
 
 
   const triggerFlash = () => {
@@ -116,13 +125,13 @@ export function RateCard({
           onOpenChange={setEditing}
         >
           {({ isEditing, open }) => (
-            <button
-              type="button"
-              onClick={open}
-              className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors"
-              aria-label={`Current tally is ${count}. Tap to edit.`}
-            >
-              <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
+            <div className="flex flex-col items-center justify-center min-w-[6rem] px-3 py-1">
+              <button
+                type="button"
+                onClick={open}
+                className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text"
+                aria-label={`Current tally is ${count}. Tap to edit.`}
+              >
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={bumpKey}
@@ -142,21 +151,37 @@ export function RateCard({
                 {isEditing && (
                   <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
                 )}
-              </div>
+              </button>
               <div
                 className={cn(
-                  "mt-1 flex items-center text-[11px] uppercase tracking-wider transition-colors",
+                  "mt-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors",
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                <span>Times per</span>
+                <span>Times in</span>
                 <span className="inline-flex items-center">
-                  <span className={cn(
-                    "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full",
-                    running ? "text-foreground" : "text-muted-foreground",
-                  )}>
-                    {formatTime(elapsed)}
-                  </span>
+                  <TimeKeypad
+                    valueMs={elapsed}
+                    onReplace={(ms) => setElapsedMs(ms)}
+                    onAdd={(ms) => setElapsedMs(elapsed + ms)}
+                  >
+                    {({ open: openTime }) => (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTime();
+                        }}
+                        aria-label="Edit elapsed time"
+                        className={cn(
+                          "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors",
+                          running ? "text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatTime(elapsed)}
+                      </button>
+                    )}
+                  </TimeKeypad>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -170,9 +195,10 @@ export function RateCard({
                   </button>
                 </span>
               </div>
-            </button>
+            </div>
           )}
         </NumberKeypad>
+
 
         <motion.button
           onClick={inc}
