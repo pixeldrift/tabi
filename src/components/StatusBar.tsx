@@ -45,7 +45,7 @@ export function StatusBar({
 
   return (
     <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
-      <div className="max-w-5xl mx-auto px-4 pt-3">
+      <div className="max-w-5xl mx-auto px-4 pt-2">
         {/* Top row: title + active timers + session box */}
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
