@@ -150,11 +150,13 @@ export function RateCard({
                 )}
               >
                 <span>Times per</span>
-                <span className={cn(
-                  "inline-flex items-center border border-stone-200 bg-white pl-1.5 pr-0 py-0.5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal",
-                  running ? "text-foreground" : "text-muted-foreground",
-                )}>
-                  {formatTime(elapsed)}
+                <span className="inline-flex items-center">
+                  <span className={cn(
+                    "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full",
+                    running ? "text-foreground" : "text-muted-foreground",
+                  )}>
+                    {formatTime(elapsed)}
+                  </span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -162,7 +164,7 @@ export function RateCard({
                       toggle();
                     }}
                     aria-label={running ? "Pause timer" : "Resume timer"}
-                    className="ml-1 grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
+                    className="grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
                   >
                     {running ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}
                   </button>
