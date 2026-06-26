@@ -279,21 +279,27 @@ export function TrialCard({
                             transition={{ duration: 0.25 }}
                             className="flex flex-col items-center justify-center"
                           >
-                            <span className="font-display text-3xl text-foreground leading-none">
+                            <span className={cn("font-display text-3xl leading-none", centerTextColor)}>
                               {i + 1}
                             </span>
                             {i < minTrials && (
-                              <span className="mt-[2px] size-[3px] rounded-full bg-foreground/40" aria-hidden />
+                              <span className={cn(
+                                "mt-[2px] size-[3px] rounded-full",
+                                t === "correct" ? "bg-green-700" : t === "incorrect" ? "bg-red-700" : "bg-foreground/40",
+                              )} aria-hidden />
                             )}
                           </motion.span>
                         </AnimatePresence>
                       ) : (
                         <span className="relative flex flex-col items-center justify-center leading-none">
-                          <span className="text-[7px] font-medium text-foreground/40">
+                          <span className={cn("text-[7px] font-medium", textColor)}>
                             {i + 1}
                           </span>
                           {i < minTrials && (
-                            <span className="mt-[1px] size-[2px] rounded-full bg-foreground/40" aria-hidden />
+                            <span className={cn(
+                              "mt-[1px] size-[2px] rounded-full",
+                              t === "correct" ? "bg-green-700" : t === "incorrect" ? "bg-red-700" : "bg-foreground/40",
+                            )} aria-hidden />
                           )}
                         </span>
                       )}
