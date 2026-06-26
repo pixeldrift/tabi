@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Pause, Play, Plus } from "lucide-react";
+import { Play } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,6 @@ export function DurationCard({
   isActive = true,
   onActivate,
 }: DurationCardProps) {
-  // Always start with instance 1 visible, paused at 0.
   const [instances, setInstances] = useState<number[]>([0]);
   const [viewIdx, setViewIdx] = useState(0);
   const [liveMs, setLiveMs] = useState(0);
@@ -60,8 +59,10 @@ export function DurationCard({
   const remaining = Math.max(0, Math.ceil(minDurationSec - totalSec));
 
   const flushLive = () => {
+    let bankedIdx: number | null = null;
     if (running && runningIdxRef.current !== null) {
       const idx = runningIdxRef.current;
+      bankedIdx = idx;
       setInstances((arr) => {
         const next = arr.slice();
         next[idx] = (next[idx] ?? 0) + liveMs;
@@ -70,27 +71,25 @@ export function DurationCard({
     }
     setLiveMs(0);
     startRef.current = null;
+    return bankedIdx;
   };
 
   const togglePause = () => {
     if (running && runningIdxRef.current === viewIdx) {
+      const wasLast = viewIdx === instances.length - 1;
       flushLive();
       setRunning(false);
       runningIdxRef.current = null;
+      if (wasLast) {
+        // Auto-add a new (paused) instance and navigate to it.
+        setInstances((arr) => [...arr, 0]);
+        setViewIdx(instances.length);
+      }
     } else {
       if (running) flushLive();
       runningIdxRef.current = viewIdx;
       setRunning(true);
     }
-  };
-
-  const addInstance = () => {
-    if (running) flushLive();
-    const newIdx = instances.length;
-    setInstances((arr) => [...arr, 0]);
-    runningIdxRef.current = newIdx;
-    setViewIdx(newIdx);
-    setRunning(true);
   };
 
   const goTo = (idx: number) => {
@@ -105,7 +104,8 @@ export function DurationCard({
   );
 
   const isViewingRunning = running && runningIdxRef.current === viewIdx;
-  const isViewedRunning = (i: number) => running && runningIdxRef.current === i;
+  const isIdxRunning = (i: number) => running && runningIdxRef.current === i;
+  const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
   return (
     <CardShell
@@ -136,8 +136,7 @@ export function DurationCard({
         </dl>
       }
     >
-      {/* Bubble row */}
-      <div className="relative px-2 pt-2">
+      <div className="relative px-2 pt-2 pb-4">
         <div className="relative h-[68px]">
           <TriangleNav
             direction="left"
@@ -168,12 +167,13 @@ export function DurationCard({
               {instances.map((_, i) => {
                 const isCenter = i === viewIdx;
                 const centerRunning = isCenter && isViewingRunning;
-                const itemRunning = isViewedRunning(i);
+                const itemRunning = isIdxRunning(i);
+                const activated = isActivated(i);
                 return (
                   <motion.button
                     key={i}
                     onClick={() => (isCenter ? togglePause() : goTo(i))}
-                    className="relative shrink-0 grid place-items-center rounded-full select-none"
+                    className="relative shrink-0 grid place-items-center select-none"
                     animate={{
                       width: isCenter ? CENTER_W : BUBBLE,
                       height: isCenter ? CENTER_H : BUBBLE,
@@ -185,10 +185,15 @@ export function DurationCard({
                         index={i}
                         ms={instanceMs(i)}
                         running={centerRunning}
+                        activated={activated}
                         onToggle={togglePause}
                       />
                     ) : (
-                      <SideBubble index={i} running={itemRunning} />
+                      <SideBubble
+                        index={i}
+                        running={itemRunning}
+                        activated={activated}
+                      />
                     )}
                   </motion.button>
                 );
@@ -197,7 +202,6 @@ export function DurationCard({
           </div>
         </div>
 
-        {/* Caption */}
         <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
           <span>
             Instance{" "}
@@ -218,24 +222,6 @@ export function DurationCard({
           </span>
         </div>
       </div>
-
-      {/* Add Instance action */}
-      <div className="mt-3 mb-4 flex justify-center">
-        <motion.button
-          onClick={addInstance}
-          whileTap={{ scale: 0.96 }}
-          aria-label="Add instance"
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full pl-3 pr-5 py-2 text-white text-sm font-medium shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
-            "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
-          )}
-        >
-          <span className="grid size-7 place-items-center rounded-full bg-white/20">
-            <Plus className="size-5" strokeWidth={3} />
-          </span>
-          Add instance
-        </motion.button>
-      </div>
     </CardShell>
   );
 }
@@ -244,20 +230,27 @@ function CenterPill({
   index,
   ms,
   running,
+  activated,
   onToggle,
 }: {
   index: number;
   ms: number;
   running: boolean;
+  activated: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div className="absolute inset-0 flex items-stretch">
-      <div className="flex-1 flex items-center gap-2 rounded-l-2xl border-2 border-r-0 border-blue-500 bg-white pl-3 pr-2">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-blue-500 text-white text-xs font-semibold tabular-nums">
+    <div className="absolute inset-0 flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white">
+      <div className="flex-1 flex items-center gap-2 pl-2 pr-2">
+        <span
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-full text-white text-xs font-semibold tabular-nums transition-colors",
+            activated ? "bg-blue-500" : "bg-stone-300",
+          )}
+        >
           {index + 1}
         </span>
-        <div className="flex-1 flex flex-col items-center justify-center leading-none">
+        <div className="flex-1 grid place-items-center leading-none">
           <AnimatePresence mode="wait">
             <motion.span
               key={index}
@@ -267,17 +260,9 @@ function CenterPill({
               transition={{ duration: 0.2 }}
               className="font-display text-2xl tabular-nums text-foreground"
             >
-              {formatTime(ms)}
+              <TimeText ms={ms} pulseColons={running} />
             </motion.span>
           </AnimatePresence>
-          {running && (
-            <motion.span
-              animate={{ opacity: [1, 0.35, 1], scale: [1, 1.25, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
-              className="mt-1 size-1.5 rounded-full bg-blue-500"
-              aria-hidden
-            />
-          )}
         </div>
       </div>
       <button
@@ -287,29 +272,82 @@ function CenterPill({
           onToggle();
         }}
         aria-label={running ? "Pause this instance" : "Start this instance"}
-        className="grid w-12 place-items-center rounded-r-2xl text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
+        className="grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
       >
-        {running ? (
-          <Pause className="size-5" fill="currentColor" />
-        ) : (
-          <Play className="size-5" fill="currentColor" />
-        )}
+        {running ? <EqualsIcon /> : <Play className="size-5" fill="currentColor" />}
       </button>
     </div>
   );
 }
 
-function SideBubble({ index, running }: { index: number; running: boolean }) {
+function TimeText({ ms, pulseColons }: { ms: number; pulseColons: boolean }) {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600).toString().padStart(2, "0");
+  const m = Math.floor((total % 3600) / 60).toString().padStart(2, "0");
+  const s = (total % 60).toString().padStart(2, "0");
   return (
-    <span
-      className={cn(
-        "absolute inset-0 grid place-items-center rounded-full border text-[9px] font-medium tabular-nums",
-        running
-          ? "bg-blue-100 border-blue-300 text-blue-600"
-          : "bg-stone-100 border-stone-200 text-stone-400",
-      )}
+    <span className="inline-flex">
+      <span>{h}</span>
+      <Colon pulse={pulseColons} />
+      <span>{m}</span>
+      <Colon pulse={pulseColons} delay={0.6} />
+      <span>{s}</span>
+    </span>
+  );
+}
+
+function Colon({ pulse, delay = 0 }: { pulse: boolean; delay?: number }) {
+  if (!pulse) return <span>:</span>;
+  return (
+    <motion.span
+      animate={{ opacity: [1, 0.2, 1] }}
+      transition={{ duration: 1.2, repeat: Infinity, delay, ease: "easeInOut" }}
     >
-      {index + 1}
+      :
+    </motion.span>
+  );
+}
+
+function EqualsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+      <rect x="5" y="8.5" width="14" height="2.5" rx="1" fill="currentColor" />
+      <rect x="5" y="13" width="14" height="2.5" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SideBubble({
+  index,
+  running,
+  activated,
+}: {
+  index: number;
+  running: boolean;
+  activated: boolean;
+}) {
+  return (
+    <span className="absolute inset-0 grid place-items-center">
+      <span
+        className={cn(
+          "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums",
+          running
+            ? "bg-blue-100 border-blue-300 text-blue-600"
+            : activated
+              ? "bg-stone-100 border-stone-200 text-stone-500"
+              : "bg-stone-50 border-stone-200 text-stone-400",
+        )}
+      >
+        {index + 1}
+      </span>
+      {running && (
+        <motion.span
+          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-blue-500"
+          aria-hidden
+        />
+      )}
     </span>
   );
 }
