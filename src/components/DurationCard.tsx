@@ -122,6 +122,7 @@ export function DurationCard({
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
   return (
+    <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full max-w-md scroll-mt-32">
     <CardShell
       title={title}
       phase={phase}
