@@ -96,7 +96,6 @@ export function TrialCard({
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
     setCurrentDir(Math.max(0, Math.min(idx, max)));
   };
-  };
 
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
