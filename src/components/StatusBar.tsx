@@ -138,127 +138,118 @@ function SaveIndicator({
   lastSavedAt: Date | null;
   onSync: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const isDirty = status === "dirty";
   const isSaving = status === "saving";
 
-  const Icon = isDirty ? CloudUpload : isSaving ? Cloud : CloudCheck;
-  const iconColorClass = isDirty
-    ? "text-blue-600 hover:bg-blue-50"
-    : isSaving
-      ? "text-blue-600"
-      : "text-stone-400 hover:bg-stone-100";
+  const bgColorClass = isDirty || isSaving ? "bg-blue-500" : "bg-stone-400";
+  const SymbolIcon = isDirty ? ArrowUp : isSaving ? RefreshCw : Check;
 
   const justSaved = status === "clean" && lastSavedAt
     ? Date.now() - lastSavedAt.getTime() < 2500
     : false;
 
   return (
-    <>
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={isDirty ? onSync : undefined}
-          aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
-          title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
-          className={cn(
-            "relative grid place-items-center size-9 rounded-md transition-colors",
-            iconColorClass,
-          )}
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={isDirty ? onSync : undefined}
+        aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
+        title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
+        className={cn(
+          "relative grid place-items-center size-9 rounded-full transition-colors",
+          bgColorClass,
+          isDirty && "hover:bg-blue-600 cursor-pointer",
+          !isDirty && "cursor-default",
+        )}
+      >
+        {/* Cloud silhouette as solid white outline of the badge already; render a white cloud-shaped mask via Lucide cloud filled */}
+        <CloudShape className="absolute inset-0 m-auto size-9 text-white" />
+        <SymbolIcon
+          className="relative size-3.5 text-white"
+          strokeWidth={3}
+          style={{ transform: "translateY(2px)" }}
+        />
+      </button>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex flex-col leading-tight text-left hover:opacity-80 transition-opacity"
+          >
+            {isSaving ? (
+              <>
+                <span className="text-[11px] font-medium text-blue-600">Saving</span>
+                <span className="text-[11px] text-blue-600">Changes</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[11px] font-medium text-stone-700">
+                  {formatRelativeDay(lastSavedAt)}
+                </span>
+                <span
+                  className={cn(
+                    "text-[11px] font-mono tabular-nums transition-colors",
+                    justSaved ? "text-blue-600" : "text-stone-500",
+                  )}
+                >
+                  {formatTimeOfDay(lastSavedAt)}
+                </span>
+              </>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          className="w-72 rounded-xl border-2 border-stone-300 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          <Icon className="size-7" strokeWidth={1.75} />
-          {isSaving && (
-            <Loader2
-              className="absolute size-3 animate-spin"
-              style={{ top: "calc(50% + 3px)", left: "50%", transform: "translate(-50%, -50%)" }}
-              strokeWidth={2.5}
-            />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex flex-col leading-tight text-left hover:opacity-80 transition-opacity"
-        >
-          {isSaving ? (
-            <>
-              <span className="text-[11px] font-medium text-blue-600">Saving</span>
-              <span className="text-[11px] text-blue-600">Changes</span>
-            </>
-          ) : (
-            <>
-              <span className="text-[11px] font-medium text-stone-700">
-                {formatRelativeDay(lastSavedAt)}
-              </span>
-              <span
-                className={cn(
-                  "text-[11px] font-mono tabular-nums transition-colors",
-                  justSaved ? "text-blue-600" : "text-stone-500",
-                )}
-              >
-                {formatTimeOfDay(lastSavedAt)}
-              </span>
-            </>
-          )}
-        </button>
-      </div>
-      <SaveDetailsDialog
-        open={open}
-        onOpenChange={setOpen}
-        lastSavedAt={lastSavedAt}
-        status={status}
-      />
-    </>
+          <div className="px-5 pt-4 pb-2 border-b border-stone-200">
+            <h3 className="font-display text-lg leading-tight">Data Last Saved</h3>
+          </div>
+          <div className="px-5 py-4 space-y-3 text-sm">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</div>
+              <div className="font-medium">
+                {status === "saving"
+                  ? "Saving changes…"
+                  : status === "dirty"
+                    ? "Unsaved changes"
+                    : "All changes saved"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last Saved</div>
+              <div className="font-mono tabular-nums">
+                {formatFullDate(lastSavedAt)} · {formatFullTime(lastSavedAt)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
+              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm">
+                Perry Plat
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
-function SaveDetailsDialog({
-  open,
-  onOpenChange,
-  lastSavedAt,
-  status,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  lastSavedAt: Date | null;
-  status: SaveStatus;
-}) {
+function CloudShape({ className }: { className?: string }) {
+  // Filled cloud silhouette so the badge reads as a "cloud" with a symbol on top.
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-2xl border-2 border-stone-300 bg-white p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-stone-200">
-          <DialogTitle className="font-display text-lg">Data Last Saved</DialogTitle>
-        </DialogHeader>
-        <div className="px-5 py-4 space-y-3 text-sm">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</div>
-            <div className="font-medium">
-              {status === "saving"
-                ? "Saving changes…"
-                : status === "dirty"
-                  ? "Unsaved changes"
-                  : "All changes saved"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Date</div>
-            <div className="font-mono tabular-nums">{formatFullDate(lastSavedAt)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Time</div>
-            <div className="font-mono tabular-nums">{formatFullTime(lastSavedAt)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
-            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm">
-              Perry Plat
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M7 18a5 5 0 0 1-.5-9.97A6 6 0 0 1 18 9.08 4.5 4.5 0 0 1 17.5 18H7Z"
+      />
+    </svg>
   );
 }
+
 
 function formatRelativeDay(d: Date | null) {
   if (!d) return "Never";
