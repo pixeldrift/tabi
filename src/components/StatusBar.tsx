@@ -544,9 +544,14 @@ function ExpandedSessionBox({
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
       <div className="flex flex-col items-center gap-1">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <motion.span
+          animate={{ opacity: dimmed ? 0 : 1 }}
+          initial={false}
+          transition={{ duration: 0.2 }}
+          className="text-[10px] uppercase tracking-wider text-muted-foreground"
+        >
           {label}
-        </span>
+        </motion.span>
 
         {showPill && (
           <motion.div
@@ -576,20 +581,27 @@ function ExpandedSessionBox({
           </motion.div>
         )}
 
-        {contextTime && (
-          <div className="flex flex-col items-center gap-0.5 mt-0.5 leading-tight">
-            <span className="text-[10px] text-muted-foreground tabular-nums">
-              {formatRelativeFromNow(contextTime)} ({formatMDY(contextTime)})
-            </span>
-            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
-              Last saved by:
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-[10px]">
-                <User className="size-2.5" fill="currentColor" strokeWidth={0} />
-                <span>Perry Plat</span>
+        <motion.div
+          animate={{ opacity: dimmed ? 0 : 1 }}
+          initial={false}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col items-center gap-0.5 mt-0.5 leading-tight"
+        >
+          {contextTime && (
+            <>
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {formatRelativeFromNow(contextTime)} ({formatMDY(contextTime)})
               </span>
-            </span>
-          </div>
-        )}
+              <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                Last saved by:
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-[10px]">
+                  <User className="size-2.5" fill="currentColor" strokeWidth={0} />
+                  <span>Perry Plat</span>
+                </span>
+              </span>
+            </>
+          )}
+        </motion.div>
       </div>
 
       <AnimatePresence>
