@@ -172,6 +172,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         </LayoutGroup>
       </div>
     </div>
+    </>
   );
 }
 
