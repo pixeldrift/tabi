@@ -178,7 +178,17 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             <motion.div
               initial={false}
               animate={{ height: collapsed ? 0 : "auto", opacity: collapsed ? 0 : 1 }}
-              transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+              transition={
+                collapsed
+                  ? {
+                      height: { duration: 0.45, ease: [0.4, 0, 0.2, 1], delay: TRANSITION_MS / 1000 },
+                      opacity: { duration: 0.2, delay: TRANSITION_MS / 1000 },
+                    }
+                  : {
+                      height: { duration: 0.45, ease: [0.4, 0, 0.2, 1] },
+                      opacity: { duration: 0.3, delay: 0.3 },
+                    }
+              }
               className="flex justify-center overflow-hidden"
             >
               <ExpandedSessionBox
