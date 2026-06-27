@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X, Info, Sparkles } from "lucide-react";
 import {
@@ -70,7 +70,15 @@ export function TrialCard({
   const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
   const remaining = Math.max(0, minTrials - completedCount);
 
-  const { markDirty } = useSession();
+  const { markDirty, resetSignal } = useSession();
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setTrials(Array.from({ length: initial }, () => null));
+    setCurrent(0);
+    setDirection(1);
+    setLastAction({ id: 0, value: null });
+  }, [resetSignal, initial]);
 
   const setResult = (value: Exclude<TrialResult, null>) => {
     markDirty();
@@ -285,7 +293,7 @@ export function TrialCard({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.25 }}
-                            className={cn("font-display text-5xl leading-none tabular-nums", centerTextColor)}
+                            className={cn("font-display text-4xl leading-none tabular-nums", centerTextColor)}
                           >
                             {i + 1}
                           </motion.span>

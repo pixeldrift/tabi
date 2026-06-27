@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
@@ -28,7 +28,14 @@ export function FrequencyCard({
   const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
-  const { markDirty } = useSession();
+  const { markDirty, resetSignal } = useSession();
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setCount(0);
+    setFlash(false);
+    setBumpKey((k) => k + 1);
+  }, [resetSignal]);
 
   const isComplete = count >= minCount;
   const remaining = Math.max(0, minCount - count);
@@ -124,8 +131,9 @@ export function FrequencyCard({
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
                     transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                     className={cn(
-                      "block font-display text-5xl leading-none tabular-nums transition-colors",
+                      "block font-display text-4xl leading-none tabular-nums",
                       isEditing ? "text-blue-600" : "text-foreground",
                       flash && "text-blue-600",
                     )}

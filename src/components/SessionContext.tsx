@@ -16,6 +16,7 @@ interface SessionContextValue {
   elapsedMs: number;
   lastUpdated: Date | null;
   start: (initialMs?: number) => void;
+  startFresh: () => void;
   pause: () => void;
   resume: () => void;
   endAndSubmit: () => void;
@@ -32,6 +33,8 @@ interface SessionContextValue {
   lastSavedAt: Date | null;
   markDirty: () => void;
   forceSync: () => void;
+  // increments whenever a fresh session is started — cards listen and reset.
+  resetSignal: number;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -116,6 +119,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSaveStatus("clean");
   }, []);
 
+  // Bumped whenever a brand-new (empty) session is started, so every card
+  // can subscribe and reset its local state.
+  const [resetSignal, setResetSignal] = useState(0);
+  const startFresh = useCallback(() => {
+    setResetSignal((n) => n + 1);
+    start(0);
+  }, [start]);
+
+
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
     setStatus("paused");
@@ -177,8 +189,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastSavedAt,
       markDirty,
       forceSync,
+      startFresh,
+      resetSignal,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync],
+    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync, startFresh, resetSignal],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

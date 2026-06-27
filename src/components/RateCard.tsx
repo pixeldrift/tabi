@@ -36,7 +36,16 @@ export function RateCard({
   const [elapsed, setElapsed] = useState(0); // ms
   const [running, setRunning] = useState(true);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const { sessionRunning, subscribeTick, markDirty } = useSession();
+  const { sessionRunning, subscribeTick, markDirty, resetSignal } = useSession();
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setCount(0);
+    setElapsed(0);
+    setRunning(true);
+    setFlash(false);
+    setBumpKey((k) => k + 1);
+  }, [resetSignal]);
   // Locked timers always follow the session. Unlocked timers tick only when
   // BOTH the session is running and the card timer is running.
   const ticking = locked ? sessionRunning : sessionRunning && running;
@@ -152,8 +161,9 @@ export function RateCard({
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
                     transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                     className={cn(
-                      "block font-display text-5xl leading-none tabular-nums transition-colors",
+                      "block font-display text-4xl leading-none tabular-nums",
                       isEditing ? "text-blue-600" : "text-foreground",
                       flash && "text-blue-600",
                     )}
