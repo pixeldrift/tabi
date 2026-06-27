@@ -592,7 +592,7 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
         className={cn(
           "absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing touch-none",
           !armed && "pointer-events-none",
-        )}"
+        )}
       >
         <ArrowRight className="size-4" strokeWidth={2.75} />
       </motion.div>
