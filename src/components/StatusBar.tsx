@@ -514,15 +514,11 @@ function ExpandedSessionBox({
   }, [contextTime]);
 
   return (
-    <motion.div
-      layout
-      transition={{ layout: { duration: 0.7, ease } }}
-      className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2"
-    >
-      <motion.div layout className="flex flex-col items-center gap-1">
-        <motion.span layout className="text-[10px] uppercase tracking-wider text-muted-foreground">
+    <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {label}
-        </motion.span>
+        </span>
 
         <motion.div
           layoutId="session-pill"
@@ -551,7 +547,7 @@ function ExpandedSessionBox({
         </motion.div>
 
         {contextTime && (
-          <motion.div layout className="flex flex-col items-center gap-0.5 mt-0.5 leading-tight">
+          <div className="flex flex-col items-center gap-0.5 mt-0.5 leading-tight">
             <span className="text-[10px] text-muted-foreground tabular-nums">
               {formatRelativeFromNow(contextTime)} ({formatMDY(contextTime)})
             </span>
@@ -562,9 +558,9 @@ function ExpandedSessionBox({
                 <span>Perry Plat</span>
               </span>
             </span>
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
 
       <AnimatePresence>
         {!picked && (
@@ -605,7 +601,7 @@ function ExpandedSessionBox({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
