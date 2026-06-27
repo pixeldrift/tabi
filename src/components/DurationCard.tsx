@@ -225,7 +225,7 @@ export function DurationCard({
 
         <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
           <span>
-            Instance{" "}
+            Time{" "}
             <span className="normal-case tracking-normal tabular-nums text-foreground">
               {viewIdx + 1}
             </span>{" "}
