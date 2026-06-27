@@ -567,30 +567,36 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
       )}
 
       {/* Drag handle */}
-      <motion.button
-        type="button"
-        aria-label="Drag to confirm discard"
+      <motion.div
         initial={false}
         animate={{ scale: armed ? 1 : 0, opacity: armed ? 1 : 0 }}
         transition={{ type: "spring", stiffness: 400, damping: 22 }}
-        drag={armed && !confirmed ? "x" : false}
-        dragConstraints={{ left: 0, right: maxX }}
-        dragElastic={0}
-        dragMomentum={false}
-        style={{ x }}
-        onDragEnd={() => {
-          if (x.get() >= maxX - 6) {
-            setConfirmed(true);
-            animate(x, maxX, { duration: 0.15 });
-            setTimeout(onConfirm, 150);
-          } else {
-            revert();
-          }
-        }}
-        className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing touch-none"
+        className="absolute left-1 top-1/2 -translate-y-1/2 size-9"
+        style={{ originX: 0.5, originY: 0.5 }}
       >
-        <ArrowRight className="size-4" strokeWidth={2.75} />
-      </motion.button>
+        <motion.button
+          type="button"
+          aria-label="Drag to confirm discard"
+          drag={armed && !confirmed ? "x" : false}
+          dragConstraints={{ left: 0, right: maxX }}
+          dragElastic={0}
+          dragMomentum={false}
+          style={{ x }}
+          onDragEnd={() => {
+            if (x.get() >= maxX - 6) {
+              setConfirmed(true);
+              animate(x, maxX, { duration: 0.15 });
+              setTimeout(onConfirm, 150);
+            } else {
+              revert();
+            }
+          }}
+          className="grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing touch-none"
+        >
+          <ArrowRight className="size-4" strokeWidth={2.75} />
+        </motion.button>
+      </motion.div>
+
     </div>
   );
 }
