@@ -132,7 +132,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             <motion.div
               layout
               className="flex justify-center overflow-hidden"
-              transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
+              transition={{ layout: { duration: 0.7, ease: [0.4, 0, 0.2, 1] } }}
             >
               {!isRunning && (
                 <ExpandedSessionBox
@@ -485,7 +485,7 @@ function ExpandedSessionBox({
   return (
     <motion.div
       layout
-      transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
+      transition={{ layout: { duration: 0.7, ease: [0.4, 0, 0.2, 1] } }}
       className="shrink-0 rounded-xl px-3 py-1.5 min-w-[220px] flex flex-col items-stretch gap-2"
     >
       <motion.div layout className="flex flex-col items-center gap-1">
@@ -499,7 +499,7 @@ function ExpandedSessionBox({
           layoutId="session-timer"
           initial={false}
           animate={{ scale: 1 }}
-          transition={{ duration: 0.3, ease }}
+          transition={{ duration: 0.6, ease }}
           className="text-3xl tabular-nums leading-none text-stone-800 font-medium px-3 py-1 rounded-lg border border-stone-300"
         >
           {formatTime(elapsedMs)}
@@ -525,7 +525,7 @@ function ExpandedSessionBox({
             }
             exit={{ opacity: 0, y: -4 }}
             whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
-            transition={{ duration: 0.25, ease, layout: { duration: 0.35, ease } }}
+            transition={{ duration: 0.5, ease, layout: { duration: 0.7, ease } }}
             onClick={() => handlePick("new")}
             style={{ backgroundColor: "#22c55e" }}
             className="flex items-center justify-center gap-1.5 rounded-[0.875rem] h-7 text-white text-xs font-medium px-3 overflow-hidden whitespace-nowrap"
@@ -558,7 +558,7 @@ function ExpandedSessionBox({
           onClick={() => handlePick("resume")}
           whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
           animate={picked === "new" ? { opacity: 0 } : { opacity: 1 }}
-          transition={{ duration: 0.25, ease, layout: { duration: 0.35, ease } }}
+          transition={{ duration: 0.5, ease, layout: { duration: 0.7, ease } }}
           style={{ backgroundColor: "#3b82f6" }}
           className="flex items-center justify-center gap-1.5 rounded-[0.875rem] h-7 text-white text-xs font-medium px-3 overflow-hidden whitespace-nowrap"
         >
@@ -694,7 +694,7 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
       <div className="flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white">
         <motion.span
           layoutId="session-timer"
-          transition={{ duration: 0.35, ease }}
+          transition={{ duration: 0.7, ease }}
           className="flex items-center px-2.5 text-base sm:text-lg tabular-nums leading-none text-blue-700 font-medium"
         >
           {formatTime(elapsedMs)}
@@ -703,7 +703,7 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
           layoutId="session-toggle"
           onClick={onPause}
           whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
-          transition={{ duration: 0.35, ease, layout: { duration: 0.35, ease } }}
+          transition={{ duration: 0.7, ease, layout: { duration: 0.7, ease } }}
           style={{ backgroundColor: "#3b82f6" }}
           aria-label="Pause session"
           title="Pause session"
