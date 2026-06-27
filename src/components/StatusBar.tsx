@@ -10,10 +10,13 @@ import {
   Bell,
   Check,
   Trash2,
+  CloudUpload,
+  CloudCheck,
   Cloud,
-  RotateCw,
+  Loader2,
 } from "lucide-react";
 import { useSession, type SaveStatus } from "./SessionContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications";
@@ -137,8 +140,11 @@ function SaveIndicator({
   lastSavedAt: Date | null;
   onSync: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const isDirty = status === "dirty";
   const isSaving = status === "saving";
+
+  const Icon = isDirty ? CloudUpload : isSaving ? Cloud : CloudCheck;
   const iconColorClass = isDirty
     ? "text-blue-600 hover:bg-blue-50"
     : isSaving
@@ -150,47 +156,136 @@ function SaveIndicator({
     : false;
 
   return (
-    <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={onSync}
-        disabled={!isDirty}
-        aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
-        title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
-        className={cn(
-          "relative grid place-items-center size-7 rounded-md transition-colors disabled:cursor-default",
-          iconColorClass,
-        )}
-      >
-        <Cloud className="size-5" strokeWidth={2} />
-        {isSaving && (
-          <RotateCw
-            className="absolute size-2.5 animate-spin"
-            style={{ top: "calc(50% + 1px)", left: "50%", transform: "translate(-50%, -50%)" }}
-            strokeWidth={2.5}
-          />
-        )}
-      </button>
-      <div className="flex flex-col leading-tight">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {isSaving ? "Saving..." : "Last Saved"}
-        </span>
-        <span
+    <>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={isDirty ? onSync : undefined}
+          aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
+          title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
           className={cn(
-            "text-[11px] font-mono tabular-nums transition-colors",
-            justSaved ? "text-blue-600" : "text-stone-500",
-            isSaving && "text-blue-600",
+            "relative grid place-items-center size-9 rounded-md transition-colors",
+            iconColorClass,
           )}
         >
-          {isSaving ? "…" : formatSaved(lastSavedAt)}
-        </span>
+          <Icon className="size-7" strokeWidth={1.75} />
+          {isSaving && (
+            <Loader2
+              className="absolute size-3 animate-spin"
+              style={{ top: "calc(50% + 3px)", left: "50%", transform: "translate(-50%, -50%)" }}
+              strokeWidth={2.5}
+            />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex flex-col leading-tight text-left hover:opacity-80 transition-opacity"
+        >
+          {isSaving ? (
+            <>
+              <span className="text-[11px] font-medium text-blue-600">Saving</span>
+              <span className="text-[11px] text-blue-600">Changes</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] font-medium text-stone-700">
+                {formatRelativeDay(lastSavedAt)}
+              </span>
+              <span
+                className={cn(
+                  "text-[11px] font-mono tabular-nums transition-colors",
+                  justSaved ? "text-blue-600" : "text-stone-500",
+                )}
+              >
+                {formatTimeOfDay(lastSavedAt)}
+              </span>
+            </>
+          )}
+        </button>
       </div>
-    </div>
+      <SaveDetailsDialog
+        open={open}
+        onOpenChange={setOpen}
+        lastSavedAt={lastSavedAt}
+        status={status}
+      />
+    </>
   );
 }
 
-function formatSaved(d: Date | null) {
-  if (!d) return "never";
+function SaveDetailsDialog({
+  open,
+  onOpenChange,
+  lastSavedAt,
+  status,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  lastSavedAt: Date | null;
+  status: SaveStatus;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm rounded-2xl border-2 border-stone-300 bg-white p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-stone-200">
+          <DialogTitle className="font-display text-lg">Data Last Saved</DialogTitle>
+        </DialogHeader>
+        <div className="px-5 py-4 space-y-3 text-sm">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</div>
+            <div className="font-medium">
+              {status === "saving"
+                ? "Saving changes…"
+                : status === "dirty"
+                  ? "Unsaved changes"
+                  : "All changes saved"}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Date</div>
+            <div className="font-mono tabular-nums">{formatFullDate(lastSavedAt)}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Time</div>
+            <div className="font-mono tabular-nums">{formatFullTime(lastSavedAt)}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
+            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm">
+              Perry Plat
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function formatRelativeDay(d: Date | null) {
+  if (!d) return "Never";
+  const now = new Date();
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((b.getTime() - a.getTime()) / 86400000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatTimeOfDay(d: Date | null) {
+  if (!d) return "—";
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function formatFullDate(d: Date | null) {
+  if (!d) return "—";
+  return d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+
+function formatFullTime(d: Date | null) {
+  if (!d) return "—";
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
 }
 
