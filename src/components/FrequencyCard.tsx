@@ -131,8 +131,9 @@ export function FrequencyCard({
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
                     transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                     className={cn(
-                      "block font-display text-5xl leading-none tabular-nums transition-colors",
+                      "block font-display text-4xl leading-none tabular-nums",
                       isEditing ? "text-blue-600" : "text-foreground",
                       flash && "text-blue-600",
                     )}
