@@ -182,12 +182,58 @@ function IndexInner() {
           </div>
         )}
 
-        {tab === "info" && <PlaceholderPane title="Session info" description="Goals, programs, and learner notes will live here." />}
+        {tab === "info" && <InfoPane />}
         {tab === "schedule" && <PlaceholderPane title="Schedule" description="Planned sessions, calendar, and reminders will live here." />}
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
       </section>
     </main>
   );
+}
+
+function InfoPane() {
+  const { lastUpdated } = useSession();
+  return (
+    <div className="max-w-2xl mx-auto mt-10 px-4">
+      <h2 className="font-display text-2xl sm:text-3xl">Phineas Flynn&apos;s Data Sheet</h2>
+      <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <span>For</span>
+          <UserLink name="Phineas Flynn" />
+          <span>by</span>
+          <UserLink name="Heinz Doofenshmirtz" />
+        </div>
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+          <span>Last updated {formatUpdated(lastUpdated)} by</span>
+          <UserLink name="Perry Plat" />
+        </div>
+      </div>
+      <div className="mt-8 rounded-xl border border-dashed border-stone-300 bg-white p-8 text-center">
+        <h3 className="font-display text-xl">Session info</h3>
+        <p className="mt-2 text-sm text-muted-foreground">Goals, programs, and learner notes will live here.</p>
+      </div>
+    </div>
+  );
+}
+
+function UserLink({ name }: { name: string }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors text-sm"
+    >
+      <User className="size-3" />
+      <span>{name}</span>
+    </button>
+  );
+}
+
+function formatUpdated(d: Date | null) {
+  if (!d) return "—";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return `today at ${time}`;
+  return `${d.toLocaleDateString()} ${time}`;
 }
 
 function PlaceholderPane({ title, description }: { title: string; description: string }) {
