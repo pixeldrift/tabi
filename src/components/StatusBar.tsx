@@ -80,7 +80,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   return (
     <>
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
-        <div className="max-w-5xl mx-auto px-4 pt-2">
+        <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           <LayoutGroup id="session-bar">
             {/* Top row: back + title | save status + session box */}
             <div className="flex flex-col gap-3">
