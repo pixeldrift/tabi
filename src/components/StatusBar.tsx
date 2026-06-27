@@ -75,6 +75,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   const isRunning = status === "running";
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
 
   return (
     <>
