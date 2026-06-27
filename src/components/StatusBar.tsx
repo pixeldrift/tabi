@@ -703,7 +703,7 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
         style={{ backgroundColor: "#3b82f6" }}
         aria-label="Pause session"
         title="Pause session"
-        className="grid place-items-center h-7 w-7 rounded-full text-white"
+        className="grid place-items-center h-7 w-7 rounded-[0.875rem] text-white"
       >
         <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
           <Pause className="size-3" fill="currentColor" />
