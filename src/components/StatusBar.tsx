@@ -458,6 +458,7 @@ function ExpandedSessionBox({
   status,
   elapsedMs,
   contextTime,
+  showPill = true,
   onResumePrevious,
   onStartNew,
   onResume,
@@ -469,6 +470,7 @@ function ExpandedSessionBox({
   status: SessionStatus;
   elapsedMs: number;
   contextTime: Date | null;
+  showPill?: boolean;
   onResumePrevious: () => void;
   onStartNew: () => void;
   onResume: () => void;
