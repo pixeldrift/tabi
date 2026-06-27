@@ -188,7 +188,7 @@ function SaveIndicator({
                 </span>
                 <span
                   className={cn(
-                    "text-[11px] font-mono tabular-nums transition-colors",
+                    "text-[11px] tabular-nums transition-colors",
                     justSaved ? "text-blue-600" : "text-stone-500",
                   )}
                 >
