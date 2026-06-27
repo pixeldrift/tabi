@@ -192,7 +192,7 @@ function IndexInner() {
         )}
 
         {tab === "info" && <InfoPane />}
-        {tab === "schedule" && <PlaceholderPane title="Schedule" description="Planned sessions, calendar, and reminders will live here." />}
+        {tab === "schedule" && <ScheduleView />}
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
       </section>
     </main>
