@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Pencil,
@@ -10,8 +10,6 @@ import {
   BellOff,
   Volume2,
   VolumeX,
-  Image as ImageIcon,
-  X,
   ChevronDown,
   Layers,
   Activity,
