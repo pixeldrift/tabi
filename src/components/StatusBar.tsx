@@ -172,6 +172,61 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         </LayoutGroup>
       </div>
     </div>
+
+    <AnimatePresence>
+      {discardOpen && isPaused && (
+        <motion.div
+          key="discard-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80"
+          onClick={() => setDiscardOpen(false)}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 500, damping: 28 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-sm mx-4 my-4 border-2 border-red-500 rounded-xl bg-background p-6 shadow-lg"
+          >
+            <div className="flex flex-col space-y-2 text-left">
+              <h2 className="text-lg font-semibold text-red-600">Warning!</h2>
+              <p className="text-sm text-muted-foreground text-left">
+                Are you sure? This will end the current session and discard any data collected during the session so far!
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 mt-6 items-stretch">
+              <DiscardAction
+                onConfirm={() => {
+                  clearAndDiscard();
+                  setDiscardOpen(false);
+                }}
+              />
+              <span className="text-xs text-muted-foreground text-center">Or:</span>
+              <button
+                onClick={() => setDiscardOpen(false)}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              >
+                Continue Session Safely
+                <Play className="size-4" fill="currentColor" />
+              </button>
+            </div>
+            <button
+              onClick={() => setDiscardOpen(false)}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 }
