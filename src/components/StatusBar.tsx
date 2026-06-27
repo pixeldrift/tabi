@@ -177,21 +177,19 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 shared layoutId, letting motion morph cleanly between the two positions. */}
             <motion.div
               initial={false}
-              animate={{ height: isRunning ? 0 : "auto", opacity: isRunning ? 0 : 1 }}
+              animate={{ height: collapsed ? 0 : "auto", opacity: collapsed ? 0 : 1 }}
               transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
               className="flex justify-center overflow-hidden"
             >
               <ExpandedSessionBox
                 status={status}
-                elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
+                elapsedMs={pillElapsed}
                 contextTime={status === "paused" ? null : previousSessionEndedAt}
-                showPill={!isRunning}
-                onResumePrevious={() => start(previousSessionMs)}
-                onStartNew={() => start(0)}
-                onResume={resume}
-                onPause={pause}
+                showPill={!collapsed}
+                dimmed={pendingStart !== null}
+                onPlay={requestPlay}
+                onStartNew={requestStartNew}
                 onEnd={() => setEndOpen(true)}
-                onDiscard={clearAndDiscard}
                 onRequestDiscard={() => setDiscardOpen(true)}
               />
             </motion.div>
@@ -200,7 +198,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
             {/* Tabs row + mini session (when running) */}
             <nav
-              className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-2")}
+              className={cn("flex items-end justify-between gap-2 -mb-px", collapsed ? "mt-1" : "mt-2")}
               role="tablist"
               aria-label="Session sections"
             >
@@ -233,12 +231,13 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 })}
               </div>
 
-              {isRunning && (
+              {collapsed && (
                 <div className="pb-1.5 sm:pb-2 pr-1">
-                  <MiniSession elapsedMs={elapsedMs} onPause={pause} />
+                  <MiniSession elapsedMs={pillElapsed} onPause={pause} disabled={!isRunning} />
                 </div>
               )}
             </nav>
+
 
           </LayoutGroup>
         </div>
