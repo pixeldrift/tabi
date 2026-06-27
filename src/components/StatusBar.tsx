@@ -139,7 +139,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                     onStartNew={() => start(0)}
                     onResume={resume}
                     onPause={pause}
-                    onEnd={endAndSubmit}
+                    onEnd={() => setEndOpen(true)}
                     onDiscard={clearAndDiscard}
                     onRequestDiscard={() => setDiscardOpen(true)}
                   />
