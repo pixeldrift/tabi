@@ -81,72 +81,74 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     <>
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
-          <LayoutGroup id="session-bar">
-            {/* Top row: back + title | save status + session box */}
-            <motion.div layout className="flex flex-col gap-3" transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0 pt-1">
-                  <button
-                    type="button"
-                    aria-label="Back to sessions"
-                    title="Back to sessions"
-                    className="grid place-items-center size-8 -ml-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors shrink-0"
-                  >
-                    <ArrowLeft className="size-5" />
-                  </button>
-                  <h1 className="font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
-                </div>
+          {/* Title row — static, never scales or layout-animates */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 pt-1">
+              <button
+                type="button"
+                aria-label="Back to sessions"
+                title="Back to sessions"
+                className="grid place-items-center size-8 -ml-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors shrink-0"
+              >
+                <ArrowLeft className="size-5" />
+              </button>
+              <h1 className="font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
+            </div>
 
-                <div className="flex items-start gap-3 shrink-0">
-                  <div className="pt-1">
-                    <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
-                  </div>
-
-                  <div className="hidden sm:flex items-center gap-1 pt-1">
-                    <AnimatePresence>
-                      {durationTimers.map((t) => (
-                        <motion.button
-                          key={t.id}
-                          initial={{ opacity: 0, scale: 0.6 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.6 }}
-                          onClick={t.scrollTo}
-                          aria-label={`Jump to running timer: ${t.label}`}
-                          title={`Running: ${t.label}`}
-                          className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
-                        >
-                          <Timer className="size-4" />
-                          <motion.span
-                            animate={{ opacity: [1, 0.3, 1] }}
-                            transition={{ duration: 1.2, repeat: Infinity }}
-                            className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
-                            aria-hidden
-                          />
-                        </motion.button>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                </div>
+            <div className="flex items-start gap-3 shrink-0">
+              <div className="pt-1">
+                <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
               </div>
 
-              <motion.div layout className="flex justify-center" transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}>
-                {!isRunning && (
-                  <ExpandedSessionBox
-                    status={status}
-                    elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
-                    contextTime={status === "paused" ? null : previousSessionEndedAt}
-                    onResumePrevious={() => start(previousSessionMs)}
-                    onStartNew={() => start(0)}
-                    onResume={resume}
-                    onPause={pause}
-                    onEnd={() => setEndOpen(true)}
-                    onDiscard={clearAndDiscard}
-                    onRequestDiscard={() => setDiscardOpen(true)}
-                  />
-                )}
-              </motion.div>
-            </motion.div>
+              <div className="hidden sm:flex items-center gap-1 pt-1">
+                <AnimatePresence>
+                  {durationTimers.map((t) => (
+                    <motion.button
+                      key={t.id}
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.6 }}
+                      onClick={t.scrollTo}
+                      aria-label={`Jump to running timer: ${t.label}`}
+                      title={`Running: ${t.label}`}
+                      className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+                    >
+                      <Timer className="size-4" />
+                      <motion.span
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
+                        aria-hidden
+                      />
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
 
+          <LayoutGroup id="session-bar">
+            {/* Session box area — only this collapses/expands smoothly */}
+            <motion.div
+              layout
+              className="flex justify-center overflow-hidden"
+              transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}
+            >
+              {!isRunning && (
+                <ExpandedSessionBox
+                  status={status}
+                  elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
+                  contextTime={status === "paused" ? null : previousSessionEndedAt}
+                  onResumePrevious={() => start(previousSessionMs)}
+                  onStartNew={() => start(0)}
+                  onResume={resume}
+                  onPause={pause}
+                  onEnd={() => setEndOpen(true)}
+                  onDiscard={clearAndDiscard}
+                  onRequestDiscard={() => setDiscardOpen(true)}
+                />
+              )}
+            </motion.div>
 
             {/* Tabs row + mini session (when running) */}
             <nav
