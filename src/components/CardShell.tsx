@@ -48,12 +48,12 @@ export function CardShell({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground border-2 transition-all duration-200",
         isActive
           ? editing
-            ? "border border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-            : "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-          : "border border-stone-200 opacity-80 hover:opacity-95",
+            ? "border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+            : "border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          : "border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
       <header className="flex items-start gap-3 pl-5 pr-3 pt-3 pb-0">

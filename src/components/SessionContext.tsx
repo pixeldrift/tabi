@@ -58,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [status]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => new Date());
 
   const markDirty = useCallback(() => {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
@@ -69,7 +69,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => {
       setSaveStatus("clean");
       setLastSavedAt(new Date());
-    }, 1800);
+    }, 2200);
   }, []);
 
   const forceSync = useCallback(() => {
@@ -126,15 +126,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
 
-  // Simulate ongoing data changes while a session is running
-  useEffect(() => {
-    if (status !== "running") return;
-    const id = window.setInterval(() => {
-      setSaveStatus((s) => (s === "saving" ? s : "dirty"));
-    }, 3500);
-    return () => window.clearInterval(id);
-  }, [status]);
-
   // Autosave loop: every ~10s if dirty, perform a save
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -147,6 +138,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }, 10000);
     return () => window.clearInterval(id);
   }, [performSave]);
+
+
 
   const value = useMemo(
     () => ({
