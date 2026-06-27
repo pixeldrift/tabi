@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Play,
   Pause,
-  User,
   Timer,
   Info,
   ClipboardList,
@@ -20,10 +19,6 @@ export type StatusTab = "info" | "data" | "schedule" | "notifications";
 interface StatusBarProps {
   activeTab: StatusTab;
   onTabChange: (t: StatusTab) => void;
-  sessionName?: string;
-  forName?: string;
-  byName?: string;
-  lastUpdatedBy?: string;
 }
 
 const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
@@ -33,80 +28,17 @@ const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
   { id: "notifications", label: "Alerts", icon: Bell },
 ];
 
-export function StatusBar({
-  activeTab,
-  onTabChange,
-  sessionName = "Phineas Flynn's Data Sheet",
-  forName = "Phineas Flynn",
-  byName = "Heinz Doofenshmirtz",
-  lastUpdatedBy = "Perry Plat",
-}: StatusBarProps) {
-  const { status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers } = useSession();
+export function StatusBar({ activeTab, onTabChange }: StatusBarProps) {
+  const { status, elapsedMs, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers } =
+    useSession();
+
+  const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
   return (
     <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
-      <div className="max-w-5xl mx-auto px-4 pt-2">
-        {/* Top row: title + active timers + session box */}
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display text-lg sm:text-xl leading-tight truncate">
-              {sessionName}
-            </h1>
-            <div className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-0.5">
-              <span>For</span>
-              <PersonLink name={forName} />
-              <span>by</span>
-              <PersonLink name={byName} />
-              <span className="mx-1 text-stone-300">·</span>
-              <span>
-                Last updated{" "}
-                <span className="text-foreground/80">{formatUpdated(lastUpdated)}</span>{" "}
-                by
-              </span>
-              <PersonLink name={lastUpdatedBy} />
-            </div>
-          </div>
-
-          {/* Active timers area */}
-          <div className="hidden sm:flex items-center gap-1 max-w-[180px] flex-wrap justify-end">
-            <AnimatePresence>
-              {activeTimers.map((t) => (
-                <motion.button
-                  key={t.id}
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  onClick={t.scrollTo}
-                  aria-label={`Jump to running timer: ${t.label}`}
-                  title={`Running: ${t.label}`}
-                  className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
-                >
-                  <Timer className="size-4" />
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
-                    aria-hidden
-                  />
-                </motion.button>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {/* Session timer box */}
-          <SessionBox
-            status={status}
-            elapsedMs={elapsedMs}
-            onStart={start}
-            onPause={pause}
-            onResume={resume}
-            onEnd={endAndSubmit}
-            onDiscard={clearAndDiscard}
-          />
-        </div>
-
+      <div className="max-w-5xl mx-auto px-4 flex items-end justify-between gap-3 py-2">
         {/* Tabs */}
-        <nav className="mt-2 flex items-end gap-1" role="tablist" aria-label="Session sections">
+        <nav className="flex items-end gap-1" role="tablist" aria-label="Session sections">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = t.id === activeTab;
@@ -132,20 +64,46 @@ export function StatusBar({
             );
           })}
         </nav>
+
+        {/* Right side: duration timer alerts + session box */}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1">
+            <AnimatePresence>
+              {durationTimers.map((t) => (
+                <motion.button
+                  key={t.id}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  onClick={t.scrollTo}
+                  aria-label={`Jump to running timer: ${t.label}`}
+                  title={`Running: ${t.label}`}
+                  className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+                >
+                  <Timer className="size-4" />
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                    className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
+                    aria-hidden
+                  />
+                </motion.button>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          <SessionBox
+            status={status}
+            elapsedMs={elapsedMs}
+            onStart={start}
+            onPause={pause}
+            onResume={resume}
+            onEnd={endAndSubmit}
+            onDiscard={clearAndDiscard}
+          />
+        </div>
       </div>
     </div>
-  );
-}
-
-function PersonLink({ name }: { name: string }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-foreground/80 hover:text-foreground transition-colors text-[11px] sm:text-xs"
-    >
-      <User className="size-3" />
-      <span>{name}</span>
-    </button>
   );
 }
 
@@ -276,13 +234,4 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
-
-function formatUpdated(d: Date | null) {
-  if (!d) return "—";
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `today at ${time}`;
-  return `${d.toLocaleDateString()} ${time}`;
 }

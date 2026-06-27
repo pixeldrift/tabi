@@ -36,7 +36,7 @@ export function DurationCard({
   const startRef = useRef<number | null>(null);
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
-  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running, elementRef: cardRef });
+  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running, elementRef: cardRef, source: "duration" });
 
 
   useEffect(() => {

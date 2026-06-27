@@ -6,6 +6,7 @@ export interface ActiveTimer {
   id: string;
   label: string;
   scrollTo: () => void;
+  source?: string;
 }
 
 interface SessionContextValue {
@@ -109,9 +110,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
-export function useRegisterActiveTimer(args: { id: string; label: string; active: boolean; elementRef: React.RefObject<HTMLElement | null> }) {
+export function useRegisterActiveTimer(args: {
+  id: string;
+  label: string;
+  active: boolean;
+  elementRef: React.RefObject<HTMLElement | null>;
+  source?: string;
+}) {
   const { registerActiveTimer, unregisterActiveTimer } = useSession();
-  const { id, label, active, elementRef } = args;
+  const { id, label, active, elementRef, source } = args;
   useEffect(() => {
     if (!active) {
       unregisterActiveTimer(id);
@@ -123,7 +130,8 @@ export function useRegisterActiveTimer(args: { id: string; label: string; active
       scrollTo: () => {
         elementRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       },
+      source,
     });
     return () => unregisterActiveTimer(id);
-  }, [active, id, label, elementRef, registerActiveTimer, unregisterActiveTimer]);
+  }, [active, id, label, elementRef, source, registerActiveTimer, unregisterActiveTimer]);
 }

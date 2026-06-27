@@ -38,7 +38,7 @@ export function RateCard({
   const startRef = useRef<number | null>(null);
   const baseRef = useRef(0);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  useRegisterActiveTimer({ id: `rate:${title}`, label: title, active: running && !locked, elementRef: cardRef });
+  useRegisterActiveTimer({ id: `rate:${title}`, label: title, active: running && !locked, elementRef: cardRef, source: "rate" });
 
   useEffect(() => {
     if (!running) return;
