@@ -377,6 +377,28 @@ function formatFullTime(d: Date | null) {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
 }
 
+function formatRelativeFromNow(d: Date) {
+  const diff = Date.now() - d.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes === 1) return "One minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = diff / 3600000;
+  if (hours < 24) {
+    const rounded = Math.round(hours * 10) / 10;
+    if (rounded === 1) return "One hour ago";
+    return `${rounded} hours ago`;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.round((today.getTime() - that.getTime()) / 86400000);
+  const timeStr = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  if (days === 1) return `Yesterday at ${timeStr}`;
+  if (days < 7) return `${d.toLocaleDateString(undefined, { weekday: "long" })} at ${timeStr}`;
+  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} at ${timeStr}`;
+}
+
 function ExpandedSessionBox({
   status,
   elapsedMs,
