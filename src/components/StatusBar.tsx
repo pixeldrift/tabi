@@ -61,9 +61,12 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   }, []);
 
   const isRunning = status === "running";
+  const isPaused = status === "paused";
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+    <>
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
       <div className="max-w-5xl mx-auto px-4 pt-2">
         <LayoutGroup id="session-bar">
           {/* Top row: back + title | save status + session box */}
