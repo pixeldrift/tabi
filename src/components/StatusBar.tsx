@@ -180,7 +180,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         </div>
       </div>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
-        <DialogContent className="max-w-xs border-2 border-red-500 rounded-xl m-4">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-500 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-red-600">Warning!</DialogTitle>
             <DialogDescription className="text-left">
@@ -412,8 +412,8 @@ function ExpandedSessionBox({
     <motion.div
       layout
       className={cn(
-        "shrink-0 rounded-xl border-2 px-3 py-1.5 min-w-[200px] flex flex-col items-stretch gap-1",
-        isPaused ? "border-stone-300 bg-stone-50/60" : "border-stone-300 bg-white",
+        "shrink-0 rounded-xl px-3 py-1.5 min-w-[200px] flex flex-col items-stretch gap-1",
+        isPaused ? "bg-stone-50/60" : "bg-white",
       )}
     >
       <motion.div layout className="flex flex-col items-center gap-0.5">
