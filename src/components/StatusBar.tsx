@@ -467,10 +467,12 @@ function ExpandedSessionBox({
   onEnd: () => void;
   onDiscard: () => void;
   onRequestDiscard: () => void;
+  showPill?: boolean;
 }) {
   const isPaused = status === "paused";
   const label = isPaused ? "Session Paused" : "Previous Session";
   const [picked, setPicked] = useState<"resume" | "new" | null>(null);
+
 
   const handlePick = (which: "resume" | "new") => {
     if (picked) return;
