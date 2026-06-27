@@ -511,7 +511,7 @@ function ExpandedSessionBox({
           {label}
         </motion.span>
         <motion.span
-          layoutId="session-timer"
+          layoutId={showPill ? "session-timer" : undefined}
           initial={false}
           animate={{ scale: 1 }}
           transition={{ duration: 0.6, ease }}
@@ -519,6 +519,7 @@ function ExpandedSessionBox({
         >
           {formatTime(elapsedMs)}
         </motion.span>
+
         {contextTime && (
           <span className="text-[10px] text-muted-foreground">
             {formatRelativeFromNow(contextTime)}
