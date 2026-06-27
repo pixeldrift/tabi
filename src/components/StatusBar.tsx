@@ -325,7 +325,7 @@ function SessionBox({
         </span>
         <span
           className={cn(
-            "font-mono text-lg tabular-nums leading-none",
+            "text-lg tabular-nums leading-none",
             status === "idle" && "text-stone-400",
           )}
         >
