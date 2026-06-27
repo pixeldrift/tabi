@@ -200,12 +200,18 @@ function SaveIndicator({
         <PopoverContent
           side="bottom"
           align="start"
-          sideOffset={8}
-          className="w-72 rounded-xl border-2 border-stone-300 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          sideOffset={10}
+          className="relative w-72 rounded-xl border-2 border-stone-300 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          <div className="px-5 pt-4 pb-2 border-b border-stone-200">
+          {/* Arrow */}
+          <span
+            aria-hidden
+            className="absolute -top-[9px] left-4 size-3 rotate-45 border-l-2 border-t-2 border-stone-300 bg-white"
+          />
+          <div className="relative px-5 pt-4 pb-2 border-b border-stone-200 bg-white rounded-t-xl">
             <h3 className="font-display text-lg leading-tight">Data Last Saved</h3>
           </div>
+
           <div className="px-5 py-4 space-y-3 text-sm">
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</div>
