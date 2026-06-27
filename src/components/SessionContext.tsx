@@ -16,6 +16,7 @@ interface SessionContextValue {
   elapsedMs: number;
   lastUpdated: Date | null;
   start: (initialMs?: number) => void;
+  startFresh: () => void;
   pause: () => void;
   resume: () => void;
   endAndSubmit: () => void;
@@ -32,6 +33,8 @@ interface SessionContextValue {
   lastSavedAt: Date | null;
   markDirty: () => void;
   forceSync: () => void;
+  // increments whenever a fresh session is started — cards listen and reset.
+  resetSignal: number;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
