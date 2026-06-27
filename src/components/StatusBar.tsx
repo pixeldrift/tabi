@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
