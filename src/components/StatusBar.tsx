@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   Play,
@@ -13,10 +13,17 @@ import {
   ArrowUp,
   RefreshCw,
   User,
-  CornerDownLeft,
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 
@@ -53,11 +60,10 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
   // Random previous session length between 1-5 hours, generated once on the client.
-  const previousSessionMsRef = useRef<number | null>(null);
-  if (previousSessionMsRef.current === null && typeof window !== "undefined") {
-    previousSessionMsRef.current = Math.floor((1 + Math.random() * 4) * 3600 * 1000);
-  }
-  const previousSessionMs = previousSessionMsRef.current ?? 2 * 3600 * 1000;
+  const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
+  useEffect(() => {
+    setPreviousSessionMs(Math.floor((1 + Math.random() * 4) * 3600 * 1000));
+  }, []);
 
   const isRunning = status === "running";
 
@@ -335,7 +341,7 @@ function ExpandedSessionBox({
   onEnd: () => void;
   onDiscard: () => void;
 }) {
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const isPaused = status === "paused";
   const label = isPaused ? "Paused Session" : "Previous Session";
 
@@ -366,11 +372,8 @@ function ExpandedSessionBox({
         <motion.button
           layoutId="session-toggle"
           onClick={isPaused ? onResume : onResumePrevious}
-          className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5"
+          className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5"
         >
-          <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
-            <Play className="size-3" fill="currentColor" />
-          </motion.span>
           <motion.span
             layoutId="session-toggle-label"
             initial={{ opacity: 0 }}
@@ -378,6 +381,9 @@ function ExpandedSessionBox({
             exit={{ opacity: 0 }}
           >
             {isPaused ? "Resume Session" : "Resume Session"}
+          </motion.span>
+          <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
+            <Play className="size-3" fill="currentColor" />
           </motion.span>
         </motion.button>
 
@@ -387,10 +393,10 @@ function ExpandedSessionBox({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             onClick={onStartNew}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5"
+            className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5"
           >
-            <CornerDownLeft className="size-3" strokeWidth={2.5} />
             Start New Session
+            <RefreshCw className="size-3" strokeWidth={2.5} />
           </motion.button>
         )}
 
@@ -403,36 +409,45 @@ function ExpandedSessionBox({
               onClick={onEnd}
               className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5"
             >
-              <Check className="size-3" strokeWidth={3} />
               End & Submit Data
+              <Check className="size-3" strokeWidth={3} />
             </motion.button>
-            {confirmDiscard ? (
-              <div className="flex gap-1">
-                <button
-                  onClick={() => {
-                    onDiscard();
-                    setConfirmDiscard(false);
-                  }}
-                  className="flex-1 rounded-md bg-red-500 hover:bg-red-600 text-white text-[10px] font-medium px-1.5 py-1 transition-colors"
-                >
-                  Discard
-                </button>
-                <button
-                  onClick={() => setConfirmDiscard(false)}
-                  className="flex-1 rounded-md bg-stone-100 hover:bg-stone-200 text-foreground text-[10px] px-1.5 py-1 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
+            <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
               <button
-                onClick={() => setConfirmDiscard(true)}
+                onClick={() => setDiscardOpen(true)}
                 className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
               >
+                End & Discard Session!
                 <Trash2 className="size-3" />
-                Clear & Discard
               </button>
-            )}
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-red-600">Severe Warning</DialogTitle>
+                  <DialogDescription>
+                    Warning! End the current session and disregard any data collected during this session?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      onDiscard();
+                      setDiscardOpen(false);
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-2 transition-colors"
+                  >
+                    <Trash2 className="size-3" />
+                    End & Discard Session!
+                  </button>
+                  <button
+                    onClick={() => setDiscardOpen(false)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 py-2 transition-colors"
+                  >
+                    <Play className="size-3" fill="currentColor" />
+                    Continue Session Safely
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </>
         )}
       </motion.div>
