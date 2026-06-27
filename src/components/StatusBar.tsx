@@ -279,9 +279,12 @@ function SaveIndicator({
   const cloudColorClass = isDirty || isSaving ? "text-blue-500" : "text-stone-400";
   const SymbolIcon = isDirty ? ArrowUp : isSaving ? RefreshCw : Check;
 
-  const justSaved = status === "clean" && lastSavedAt
-    ? Date.now() - lastSavedAt.getTime() < 2500
-    : false;
+  const labelLines = isSaving
+    ? ["Saving", "Data"]
+    : isDirty
+      ? ["Unsaved", "Data"]
+      : ["Data", "Saved"];
+  const labelColor = isSaving || isDirty ? "text-blue-600" : "text-stone-700";
 
   return (
     <div className="flex items-center gap-1.5">
@@ -289,28 +292,10 @@ function SaveIndicator({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex flex-col leading-tight text-right items-end hover:opacity-80 transition-opacity"
+            className="flex flex-col leading-[15px] text-right items-end hover:opacity-80 transition-opacity h-8 justify-center"
           >
-            {isSaving ? (
-              <>
-                <span className="text-[10px] font-medium text-blue-600">Saving</span>
-                <span className="text-[10px] text-blue-600">Changes</span>
-              </>
-            ) : (
-              <>
-                <span className="text-[10px] font-medium text-stone-700">
-                  {formatSavedLabel(status, lastSavedAt)}
-                </span>
-                <span
-                  className={cn(
-                    "text-[10px] tabular-nums transition-colors",
-                    justSaved ? "text-blue-600" : "text-stone-500",
-                  )}
-                >
-                  {formatTimeOfDay(lastSavedAt)}
-                </span>
-              </>
-            )}
+            <span className={cn("text-[13px] font-medium", labelColor)}>{labelLines[0]}</span>
+            <span className={cn("text-[13px] font-medium", labelColor)}>{labelLines[1]}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -325,8 +310,14 @@ function SaveIndicator({
             aria-hidden
             className="absolute -top-[7px] right-4 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
           />
+          <PopoverPrimitive.Close
+            aria-label="Close"
+            className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
+          >
+            <X className="size-4" />
+          </PopoverPrimitive.Close>
           <div className="relative px-5 pt-4 pb-2 border-b border-stone-200 bg-white rounded-t-xl">
-            <h3 className="font-display text-lg leading-tight">Session Data Status</h3>
+            <h3 className="font-display text-lg leading-tight pr-8">Session Data Status</h3>
           </div>
 
           <div className="px-5 py-4 space-y-3 text-sm">
@@ -336,9 +327,9 @@ function SaveIndicator({
                 <span className="relative grid place-items-center size-6 text-stone-400 shrink-0">
                   <CloudShape className="absolute inset-0 size-6" />
                   <SymbolIcon
-                    className="relative size-2.5 text-white"
+                    className={cn("relative text-white", isSaving ? "size-2" : "size-2.5")}
                     strokeWidth={3.5}
-                    style={{ transform: "translateY(1px)" }}
+                    style={{ transform: isSaving ? "translateY(-0.5px)" : "translateY(1px)" }}
                   />
                 </span>
                 <span className="font-medium">
@@ -383,9 +374,9 @@ function SaveIndicator({
       >
         <CloudShape className={cn("absolute inset-0 size-8", cloudColorClass, isDirty && "hover:text-blue-600")} />
         <SymbolIcon
-          className="relative size-3 text-white"
+          className={cn("relative text-white", isSaving ? "size-2.5" : "size-3")}
           strokeWidth={3.5}
-          style={{ transform: "translateY(1.5px)" }}
+          style={{ transform: isSaving ? "translateY(0px)" : "translateY(1.5px)" }}
         />
       </button>
     </div>
