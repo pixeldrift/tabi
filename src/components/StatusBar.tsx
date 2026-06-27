@@ -469,6 +469,70 @@ function ExpandedSessionBox({
   );
 }
 
+function SwipeToDiscard({ onConfirm }: { onConfirm: () => void }) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const x = useMotionValue(0);
+  const [maxX, setMaxX] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    const measure = () => {
+      const el = trackRef.current;
+      if (!el) return;
+      // track inner width - handle size (40) - side paddings (4*2)
+      const w = el.clientWidth - 40 - 8;
+      setMaxX(Math.max(0, w));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // Fade out the label as the handle moves to the right.
+  const labelOpacity = useTransform(x, [0, Math.max(1, maxX * 0.7)], [1, 0]);
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative h-11 w-full sm:w-72 rounded-full bg-red-500 overflow-hidden select-none"
+    >
+      <motion.span
+        style={{ opacity: labelOpacity }}
+        className="absolute inset-0 grid place-items-center text-white text-xs font-medium px-12 text-center pointer-events-none"
+      >
+        Drag the circle to the trash to confirm
+      </motion.span>
+
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none">
+        <Trash2 className="size-5" />
+      </span>
+
+      <motion.button
+        type="button"
+        aria-label="Drag to confirm discard"
+        drag={confirmed ? false : "x"}
+        dragConstraints={{ left: 0, right: maxX }}
+        dragElastic={0}
+        dragMomentum={false}
+        style={{ x }}
+        onDragEnd={() => {
+          if (x.get() >= maxX - 4) {
+            setConfirmed(true);
+            animate(x, maxX, { duration: 0.15 });
+            setTimeout(onConfirm, 150);
+          } else {
+            animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
+          }
+        }}
+        className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-10 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="size-4" />
+      </motion.button>
+    </div>
+  );
+}
+
+
 function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
   return (
     <motion.div layout className="flex items-center gap-2 pb-1.5 pr-1">
