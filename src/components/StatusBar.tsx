@@ -180,7 +180,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         </div>
       </div>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
-        <DialogContent className="sm:max-w-sm border-2 border-red-500 rounded-xl m-4">
+        <DialogContent className="max-w-xs border-2 border-red-500 rounded-xl m-4">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-red-600">Warning!</DialogTitle>
             <DialogDescription className="text-left">
