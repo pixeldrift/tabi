@@ -131,18 +131,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
 
-  // Autosave loop: every ~10s if dirty, perform a save
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setSaveStatus((s) => {
-        if (s === "dirty") {
-          window.setTimeout(() => performSave(), 0);
-        }
-        return s;
-      });
-    }, 10000);
-    return () => window.clearInterval(id);
-  }, [performSave]);
+  // Manual save only — no autosave. Dirty stays dirty until the user clicks the cloud.
+
 
 
 
