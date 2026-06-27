@@ -502,20 +502,26 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
   const [maxX, setMaxX] = useState(0);
 
   const handleSize = 36; // size-9
-  const sidePad = 8;
+  const sidePad = 4; // left-1 = 4px
 
   useEffect(() => {
     const measure = () => {
       const el = trackRef.current;
       if (!el) return;
-      setMaxX(Math.max(0, el.clientWidth - handleSize - sidePad));
+      setMaxX(Math.max(0, el.clientWidth - handleSize - sidePad * 2));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [armed]);
 
-  const labelOpacity = useTransform(x, [0, Math.max(1, maxX * 0.7)], [1, 0]);
+  const tapOpacity = useTransform(x, [0, Math.max(1, maxX * 0.3)], [1, 0]);
+  const dragOpacity = useTransform(x, [0, Math.max(1, maxX * 0.6)], [1, 0]);
+
+  const revert = () => {
+    animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
+    setArmed(false);
+  };
 
   return (
     <div
@@ -526,75 +532,69 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
         !armed && "cursor-pointer hover:bg-red-600",
       )}
     >
-      {/* Label + trash crossfade between tap and drag states */}
-      <AnimatePresence mode="wait" initial={false}>
-        {!armed ? (
+      {/* Tap-state label (only when not armed) */}
+      {!armed && (
+        <motion.span
+          style={{ opacity: tapOpacity }}
+          className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-medium pointer-events-none"
+        >
+          <span>End &amp; Discard Session!</span>
+          <motion.span layoutId="discard-trash">
+            <Trash2 className="size-4" />
+          </motion.span>
+        </motion.span>
+      )}
+
+      {/* Drag-state label + trash anchored right */}
+      {armed && (
+        <>
           <motion.span
-            key="tap-label"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-medium pointer-events-none"
+            transition={{ duration: 0.2, delay: 0.05 }}
+            style={{ opacity: dragOpacity }}
+            className="absolute inset-0 grid place-items-center px-14 text-white text-xs font-medium text-center pointer-events-none"
           >
-            <span>End &amp; Discard Session!</span>
-            <motion.span layoutId="discard-trash">
-              <Trash2 className="size-4" />
-            </motion.span>
+            Drag to trash to confirm
           </motion.span>
-        ) : (
-          <>
-            <motion.span
-              key="drag-label"
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, delay: 0.05 }}
-              style={{ opacity: labelOpacity }}
-              className="absolute inset-0 grid place-items-center px-14 text-white text-xs font-medium text-center pointer-events-none"
-            >
-              Drag to trash to confirm
-            </motion.span>
-            <motion.span
-              layoutId="discard-trash"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
-            >
-              <Trash2 className="size-4" />
-            </motion.span>
-          </>
-        )}
-      </AnimatePresence>
+          <motion.span
+            layoutId="discard-trash"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
+          >
+            <Trash2 className="size-4" />
+          </motion.span>
+        </>
+      )}
 
-
-      {/* Drag handle: scales up from 0 when armed */}
+      {/* Drag handle */}
       <motion.button
         type="button"
         aria-label="Drag to confirm discard"
         initial={false}
         animate={{ scale: armed ? 1 : 0, opacity: armed ? 1 : 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 22, delay: armed ? 0.05 : 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22 }}
         drag={armed && !confirmed ? "x" : false}
         dragConstraints={{ left: 0, right: maxX }}
         dragElastic={0}
         dragMomentum={false}
         style={{ x }}
         onDragEnd={() => {
-          if (x.get() >= maxX - 4) {
+          if (x.get() >= maxX - 6) {
             setConfirmed(true);
             animate(x, maxX, { duration: 0.15 });
             setTimeout(onConfirm, 150);
           } else {
-            animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
-            setTimeout(() => setArmed(false), 250);
+            revert();
           }
         }}
-        className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing"
+        className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing touch-none"
       >
         <ArrowRight className="size-4" strokeWidth={2.75} />
       </motion.button>
     </div>
   );
 }
+
 
 
 function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
