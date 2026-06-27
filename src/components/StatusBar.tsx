@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useRef, useState } from "react";
+import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import {
   Play,
   Pause,
@@ -13,10 +13,12 @@ import {
   ArrowUp,
   RefreshCw,
   User,
+  CornerDownLeft,
 } from "lucide-react";
-import { useSession, type SaveStatus } from "./SessionContext";
+import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications";
 
@@ -50,85 +52,110 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
+  // Random previous session length between 1-5 hours, generated once on the client.
+  const previousSessionMsRef = useRef<number | null>(null);
+  if (previousSessionMsRef.current === null && typeof window !== "undefined") {
+    previousSessionMsRef.current = Math.floor((1 + Math.random() * 4) * 3600 * 1000);
+  }
+  const previousSessionMs = previousSessionMsRef.current ?? 2 * 3600 * 1000;
+
+  const isRunning = status === "running";
+
   return (
     <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
       <div className="max-w-5xl mx-auto px-4 pt-2">
-        {/* Top row: title + save status | session box */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <h1 className="font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
-            <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
-          </div>
-
-          <div className="flex items-start gap-2">
-            <div className="hidden sm:flex items-center gap-1 pt-1">
-              <AnimatePresence>
-                {durationTimers.map((t) => (
-                  <motion.button
-                    key={t.id}
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.6 }}
-                    onClick={t.scrollTo}
-                    aria-label={`Jump to running timer: ${t.label}`}
-                    title={`Running: ${t.label}`}
-                    className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
-                  >
-                    <Timer className="size-4" />
-                    <motion.span
-                      animate={{ opacity: [1, 0.3, 1] }}
-                      transition={{ duration: 1.2, repeat: Infinity }}
-                      className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
-                      aria-hidden
-                    />
-                  </motion.button>
-                ))}
-              </AnimatePresence>
+        <LayoutGroup id="session-bar">
+          {/* Top row: title + save status | (expanded session box when not running) */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
+              <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
             </div>
 
-            <SessionBox
-              status={status}
-              elapsedMs={elapsedMs}
-              onStart={start}
-              onPause={pause}
-              onResume={resume}
-              onEnd={endAndSubmit}
-              onDiscard={clearAndDiscard}
-            />
-          </div>
-        </div>
+            <div className="flex items-start gap-2">
+              <div className="hidden sm:flex items-center gap-1 pt-1">
+                <AnimatePresence>
+                  {durationTimers.map((t) => (
+                    <motion.button
+                      key={t.id}
+                      initial={{ opacity: 0, scale: 0.6 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.6 }}
+                      onClick={t.scrollTo}
+                      aria-label={`Jump to running timer: ${t.label}`}
+                      title={`Running: ${t.label}`}
+                      className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+                    >
+                      <Timer className="size-4" />
+                      <motion.span
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
+                        aria-hidden
+                      />
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
+              </div>
 
-        {/* Tabs row — connected directly to the pane below */}
-        <nav className="flex items-end gap-1 mt-2 -mb-px" role="tablist" aria-label="Session sections">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = t.id === activeTab;
-            return (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => onTabChange(t.id)}
-                className={cn(
-                  "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
-                  isActive
-                    ? "bg-background text-foreground border-stone-200 font-medium"
-                    : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
-                )}
-              >
-                <Icon className="size-4" />
-                <span className="hidden sm:inline">{t.label}</span>
-                {isActive && (
-                  <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+              {!isRunning && (
+                <ExpandedSessionBox
+                  status={status}
+                  elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
+                  onResumePrevious={() => start(previousSessionMs)}
+                  onStartNew={() => start(0)}
+                  onResume={resume}
+                  onPause={pause}
+                  onEnd={endAndSubmit}
+                  onDiscard={clearAndDiscard}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Tabs row + mini session (when running) */}
+          <nav
+            className="flex items-end justify-between gap-2 mt-2 -mb-px"
+            role="tablist"
+            aria-label="Session sections"
+          >
+            <div className="flex items-end gap-1">
+              {TABS.map((t) => {
+                const Icon = t.icon;
+                const isActive = t.id === activeTab;
+                return (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => onTabChange(t.id)}
+                    className={cn(
+                      "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
+                      isActive
+                        ? "bg-background text-foreground border-stone-200 font-medium"
+                        : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    <span className="hidden sm:inline">{t.label}</span>
+                    {isActive && (
+                      <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {isRunning && (
+              <MiniSession elapsedMs={elapsedMs} onPause={pause} />
+            )}
+          </nav>
+        </LayoutGroup>
       </div>
     </div>
   );
 }
+
 
 function SaveIndicator({
   status,
@@ -289,126 +316,155 @@ function formatFullTime(d: Date | null) {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
 }
 
-function SessionBox({
+function ExpandedSessionBox({
   status,
   elapsedMs,
-  onStart,
-  onPause,
+  onResumePrevious,
+  onStartNew,
   onResume,
+  onPause: _onPause,
   onEnd,
   onDiscard,
 }: {
-  status: "idle" | "running" | "paused";
+  status: SessionStatus;
   elapsedMs: number;
-  onStart: () => void;
-  onPause: () => void;
+  onResumePrevious: () => void;
+  onStartNew: () => void;
   onResume: () => void;
+  onPause: () => void;
   onEnd: () => void;
   onDiscard: () => void;
 }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const isPaused = status === "paused";
+  const label = isPaused ? "Paused Session" : "Previous Session";
 
   return (
-    <div
+    <motion.div
+      layout
       className={cn(
-        "shrink-0 rounded-xl border-2 px-3 py-1.5 min-w-[180px] flex flex-col items-stretch gap-1 transition-colors",
-        status === "running"
-          ? "border-blue-500 bg-blue-50/40"
-          : status === "paused"
-            ? "border-stone-300 bg-stone-50/60"
-            : "border-stone-300 bg-white",
+        "shrink-0 rounded-xl border-2 px-3 py-1.5 min-w-[200px] flex flex-col items-stretch gap-1",
+        isPaused ? "border-stone-300 bg-stone-50/60" : "border-stone-300 bg-white",
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Session
-        </span>
-        <span
-          className={cn(
-            "text-lg tabular-nums leading-none",
-            status === "idle" && "text-stone-400",
-          )}
+      <motion.div layout className="flex items-center justify-between gap-2">
+        <motion.span
+          layout
+          className="text-[10px] uppercase tracking-wider text-muted-foreground"
+        >
+          {label}
+        </motion.span>
+        <motion.span
+          layoutId="session-timer"
+          className="text-lg tabular-nums leading-none text-stone-700"
         >
           {formatTime(elapsedMs)}
-        </span>
-      </div>
+        </motion.span>
+      </motion.div>
 
-      {status === "idle" && (
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={onStart}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
-          >
-            <Play className="size-3" fill="currentColor" />
-            Start New Session
-          </button>
-          <button
-            onClick={onStart}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-white hover:bg-stone-50 border border-stone-300 text-foreground text-[11px] px-2 py-1 transition-colors"
-          >
-            Resume Paused Session
-          </button>
-        </div>
-      )}
-
-      {status === "running" && (
-        <button
-          onClick={onPause}
-          className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
+      <motion.div layout className="flex flex-col gap-1">
+        <motion.button
+          layoutId="session-toggle"
+          onClick={isPaused ? onResume : onResumePrevious}
+          className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5"
         >
-          <Pause className="size-3" fill="currentColor" />
-          Pause Session
-        </button>
-      )}
-
-      {status === "paused" && (
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={onResume}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
-          >
+          <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
             <Play className="size-3" fill="currentColor" />
-            Resume
-          </button>
-          <button
-            onClick={onEnd}
-            className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5 transition-colors"
+          </motion.span>
+          <motion.span
+            layoutId="session-toggle-label"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            <Check className="size-3" strokeWidth={3} />
-            End & Submit Data
-          </button>
-          {confirmDiscard ? (
-            <div className="flex gap-1">
-              <button
-                onClick={() => {
-                  onDiscard();
-                  setConfirmDiscard(false);
-                }}
-                className="flex-1 rounded-md bg-red-500 hover:bg-red-600 text-white text-[10px] font-medium px-1.5 py-1 transition-colors"
-              >
-                Discard
-              </button>
-              <button
-                onClick={() => setConfirmDiscard(false)}
-                className="flex-1 rounded-md bg-stone-100 hover:bg-stone-200 text-foreground text-[10px] px-1.5 py-1 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDiscard(true)}
-              className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
+            {isPaused ? "Resume Session" : "Resume Session"}
+          </motion.span>
+        </motion.button>
+
+        {!isPaused && (
+          <motion.button
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            onClick={onStartNew}
+            className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5"
+          >
+            <CornerDownLeft className="size-3" strokeWidth={2.5} />
+            Start New Session
+          </motion.button>
+        )}
+
+        {isPaused && (
+          <>
+            <motion.button
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              onClick={onEnd}
+              className="flex items-center justify-center gap-1.5 rounded-md bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-2 py-1.5"
             >
-              <Trash2 className="size-3" />
-              Clear & Discard
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+              <Check className="size-3" strokeWidth={3} />
+              End & Submit Data
+            </motion.button>
+            {confirmDiscard ? (
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    onDiscard();
+                    setConfirmDiscard(false);
+                  }}
+                  className="flex-1 rounded-md bg-red-500 hover:bg-red-600 text-white text-[10px] font-medium px-1.5 py-1 transition-colors"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={() => setConfirmDiscard(false)}
+                  className="flex-1 rounded-md bg-stone-100 hover:bg-stone-200 text-foreground text-[10px] px-1.5 py-1 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDiscard(true)}
+                className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
+              >
+                <Trash2 className="size-3" />
+                Clear & Discard
+              </button>
+            )}
+          </>
+        )}
+      </motion.div>
+    </motion.div>
   );
 }
+
+function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
+  return (
+    <motion.div layout className="flex items-center gap-2 pb-1.5 pr-1">
+      <motion.span
+        layoutId="session-timer"
+        className="text-base sm:text-lg tabular-nums leading-none text-blue-700 font-medium"
+      >
+        {formatTime(elapsedMs)}
+      </motion.span>
+      <motion.button
+        layoutId="session-toggle"
+        onClick={onPause}
+        aria-label="Pause session"
+        title="Pause session"
+        className="grid place-items-center size-7 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+      >
+        <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
+          <Pause className="size-3" fill="currentColor" />
+        </motion.span>
+      </motion.button>
+    </motion.div>
+  );
+}
+
+
 
 function formatTime(ms: number) {
   const total = Math.floor(ms / 1000);

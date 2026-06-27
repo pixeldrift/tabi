@@ -15,7 +15,7 @@ interface SessionContextValue {
   status: SessionStatus;
   elapsedMs: number;
   lastUpdated: Date | null;
-  start: () => void;
+  start: (initialMs?: number) => void;
   pause: () => void;
   resume: () => void;
   endAndSubmit: () => void;
@@ -86,9 +86,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, [performSave]);
 
-  const start = useCallback(() => {
-    baseRef.current = 0;
-    setElapsedMs(0);
+  const start = useCallback((initialMs = 0) => {
+    baseRef.current = initialMs;
+    setElapsedMs(initialMs);
     setStatus("running");
     const now = new Date();
     setLastUpdated(now);
@@ -96,6 +96,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setLastSavedAt(now);
     setSaveStatus("clean");
   }, []);
+
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
     setStatus("paused");
