@@ -708,12 +708,12 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
 function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
   const ease = [0.4, 0, 0.2, 1] as const;
   return (
-    <div className="flex items-center pb-1.5 pr-1">
-      <div className="flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white">
+    <div className="flex items-stretch self-stretch pr-1">
+      <div className="flex items-stretch self-start rounded-full overflow-hidden border-2 border-blue-500 bg-white">
         <motion.span
           layoutId="session-timer"
           transition={{ duration: 0.7, ease }}
-          className="flex items-center px-2.5 text-base sm:text-lg tabular-nums leading-none text-blue-700 font-medium"
+          className="flex items-center px-2 text-xs sm:text-sm tabular-nums leading-none text-blue-700 font-medium"
         >
           {formatTime(elapsedMs)}
         </motion.span>
@@ -725,13 +725,14 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
           style={{ backgroundColor: "#3b82f6" }}
           aria-label="Pause session"
           title="Pause session"
-          className="grid place-items-center w-9 h-7 text-white hover:bg-blue-600 transition-colors"
+          className="grid place-items-center w-7 text-white hover:bg-blue-600 transition-colors"
         >
           <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
             <Pause className="size-3" fill="currentColor" />
           </motion.span>
         </motion.button>
       </div>
+
     </div>
   );
 }
