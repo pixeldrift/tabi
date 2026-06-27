@@ -126,7 +126,7 @@ export function RateCard({
           onClick={dec}
           disabled={count === 0}
           aria-label="Decrement"
-          className="size-12 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
+          className="size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
         >
           <Minus className="size-5" strokeWidth={2.5} />
         </button>
@@ -237,7 +237,7 @@ export function RateCard({
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "size-16 rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
+            "size-16 shrink-0 aspect-square rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >
