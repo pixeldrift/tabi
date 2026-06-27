@@ -58,7 +58,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [status]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => new Date());
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  useEffect(() => {
+    // Set on the client only to avoid SSR hydration mismatches on time formatting.
+    setLastSavedAt((d) => d ?? new Date());
+  }, []);
+
 
   const markDirty = useCallback(() => {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
@@ -126,18 +131,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
 
-  // Autosave loop: every ~10s if dirty, perform a save
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setSaveStatus((s) => {
-        if (s === "dirty") {
-          window.setTimeout(() => performSave(), 0);
-        }
-        return s;
-      });
-    }, 10000);
-    return () => window.clearInterval(id);
-  }, [performSave]);
+  // Manual save only — no autosave. Dirty stays dirty until the user clicks the cloud.
+
 
 
 

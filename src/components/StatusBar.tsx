@@ -149,22 +149,22 @@ function SaveIndicator({
     : false;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <button
         type="button"
         onClick={isDirty ? onSync : undefined}
         aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
         title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
         className={cn(
-          "relative grid place-items-center size-10 transition-colors",
+          "relative grid place-items-center size-8 transition-colors",
           isDirty ? "cursor-pointer" : "cursor-default",
         )}
       >
-        <CloudShape className={cn("absolute inset-0 size-10", cloudColorClass, isDirty && "hover:text-blue-600")} />
+        <CloudShape className={cn("absolute inset-0 size-8", cloudColorClass, isDirty && "hover:text-blue-600")} />
         <SymbolIcon
-          className="relative size-3.5 text-white"
+          className="relative size-3 text-white"
           strokeWidth={3.5}
-          style={{ transform: "translateY(2px)" }}
+          style={{ transform: "translateY(1.5px)" }}
         />
       </button>
 
@@ -199,17 +199,18 @@ function SaveIndicator({
         </PopoverTrigger>
         <PopoverContent
           side="bottom"
-          align="start"
+          align="center"
           sideOffset={10}
-          className="relative w-72 rounded-xl border-2 border-stone-300 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          collisionPadding={16}
+          className="relative w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          {/* Arrow */}
+          {/* Arrow — inset past the corner radius */}
           <span
             aria-hidden
-            className="absolute -top-[9px] left-4 size-3 rotate-45 border-l-2 border-t-2 border-stone-300 bg-white"
+            className="absolute -top-[9px] left-6 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
           />
           <div className="relative px-5 pt-4 pb-2 border-b border-stone-200 bg-white rounded-t-xl">
-            <h3 className="font-display text-lg leading-tight">Data Last Saved</h3>
+            <h3 className="font-display text-lg leading-tight">Session Data Status</h3>
           </div>
 
           <div className="px-5 py-4 space-y-3 text-sm">
@@ -241,6 +242,7 @@ function SaveIndicator({
     </div>
   );
 }
+
 
 function CloudShape({ className }: { className?: string }) {
   // Filled cloud silhouette so the badge reads as a "cloud" with a symbol on top.
