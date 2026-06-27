@@ -417,6 +417,20 @@ function formatRelativeDay(d: Date | null) {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function formatSavedLabel(status: SaveStatus, d: Date | null) {
+  if (status === "dirty") return "Unsaved";
+  if (!d) return "Never saved";
+  const now = new Date();
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((b.getTime() - a.getTime()) / 86400000);
+  if (diffDays === 0) return "Data Saved";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+
 function formatTimeOfDay(d: Date | null) {
   if (!d) return "—";
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
