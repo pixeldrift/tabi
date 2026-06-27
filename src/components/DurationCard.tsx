@@ -33,22 +33,17 @@ export function DurationCard({
   const [viewIdx, setViewIdx] = useState(0);
   const [liveMs, setLiveMs] = useState(0);
   const [running, setRunning] = useState(false);
-  const startRef = useRef<number | null>(null);
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
-  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running, elementRef: cardRef, source: "duration" });
+  const { sessionRunning, subscribeTick, markDirty } = useSession();
+  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration" });
 
 
+  // Tick in unison with the master session timer.
   useEffect(() => {
-    if (!running) return;
-    startRef.current = performance.now();
-    const id = window.setInterval(() => {
-      if (startRef.current !== null) {
-        setLiveMs(performance.now() - startRef.current);
-      }
-    }, 100);
-    return () => window.clearInterval(id);
-  }, [running]);
+    if (!running || !sessionRunning) return;
+    return subscribeTick((d) => setLiveMs((ms) => ms + d));
+  }, [running, sessionRunning, subscribeTick]);
 
   const instanceMs = (idx: number) => {
     if (idx < 0 || idx >= instances.length) return 0;
@@ -73,10 +68,20 @@ export function DurationCard({
       });
     }
     setLiveMs(0);
-    startRef.current = null;
   };
 
+  // When the session pauses, pause the current instance too.
+  useEffect(() => {
+    if (!sessionRunning && running) {
+      flushLive();
+      setRunning(false);
+      runningIdxRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionRunning]);
+
   const togglePause = () => {
+    markDirty();
     if (running && runningIdxRef.current === viewIdx) {
       const wasLast = viewIdx === instances.length - 1;
       flushLive();
@@ -94,6 +99,7 @@ export function DurationCard({
   };
 
   const setInstanceMs = (idx: number, ms: number) => {
+    markDirty();
     if (running && runningIdxRef.current === idx) {
       flushLive();
       setRunning(false);
