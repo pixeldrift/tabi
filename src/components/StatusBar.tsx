@@ -139,7 +139,8 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-                  className="flex justify-center overflow-hidden"
+                  className="flex justify-center"
+                  style={{ overflow: "visible" }}
                 >
                   <ExpandedSessionBox
                     status={status}
