@@ -152,7 +152,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Autosave: if dirty for 20s, automatically perform a save.
   useEffect(() => {
     if (saveStatus !== "dirty") return;
-    const id = window.setTimeout(() => performSave(), 20000);
+    const id = window.setTimeout(() => performSave(), 10000);
     return () => window.clearTimeout(id);
   }, [saveStatus, performSave]);
 
