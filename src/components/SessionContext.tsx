@@ -20,6 +20,9 @@ interface SessionContextValue {
   resume: () => void;
   endAndSubmit: () => void;
   clearAndDiscard: () => void;
+  // shared tick (so all timers stay in unison with the session timer)
+  sessionRunning: boolean;
+  subscribeTick: (cb: (deltaMs: number) => void) => () => void;
   // active timer registry
   activeTimers: ActiveTimer[];
   registerActiveTimer: (t: ActiveTimer) => void;
