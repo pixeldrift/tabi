@@ -189,8 +189,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastSavedAt,
       markDirty,
       forceSync,
+      startFresh,
+      resetSignal,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync],
+    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync, startFresh, resetSignal],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
