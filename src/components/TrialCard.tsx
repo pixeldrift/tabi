@@ -70,7 +70,15 @@ export function TrialCard({
   const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
   const remaining = Math.max(0, minTrials - completedCount);
 
-  const { markDirty } = useSession();
+  const { markDirty, resetSignal } = useSession();
+
+  useEffect(() => {
+    if (resetSignal === 0) return;
+    setTrials(Array.from({ length: initial }, () => null));
+    setCurrent(0);
+    setDirection(1);
+    setLastAction({ id: 0, value: null });
+  }, [resetSignal, initial]);
 
   const setResult = (value: Exclude<TrialResult, null>) => {
     markDirty();
