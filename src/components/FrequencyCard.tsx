@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberKeypad } from "./NumberKeypad";
+import { useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
 export interface FrequencyCardProps {
