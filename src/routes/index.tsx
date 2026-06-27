@@ -105,6 +105,8 @@ function Index() {
 function IndexInner() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [tab, setTab] = useState<StatusTab>("data");
+  const { status } = useSession();
+  const sessionActive = status === "running";
 
   return (
     <main className="min-h-screen bg-background">
@@ -112,7 +114,13 @@ function IndexInner() {
 
       <section className="px-5 pt-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px">
         {tab === "data" && (
-          <div className="flex flex-col items-center gap-5">
+          <div
+            className={cn(
+              "flex flex-col items-center gap-5 transition-opacity duration-300",
+              !sessionActive && "opacity-50 pointer-events-none select-none",
+            )}
+            aria-disabled={!sessionActive}
+          >
             {cards.map((card, i) => {
               const common = {
                 isActive: i === activeIndex,
