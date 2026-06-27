@@ -730,7 +730,7 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
 }
 
 
-function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
+function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: number; onPause: () => void; disabled?: boolean }) {
   const ease = [0.4, 0, 0.2, 1] as const;
   return (
     <motion.div
@@ -747,7 +747,8 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
       </motion.span>
       <motion.button
         layoutId="session-pill-toggle"
-        onClick={onPause}
+        onClick={disabled ? undefined : onPause}
+
         whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
         transition={{ duration: 0.7, ease, layout: { duration: 0.7, ease } }}
         aria-label="Pause session"
