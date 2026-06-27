@@ -58,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [status]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => new Date());
 
   const markDirty = useCallback(() => {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
@@ -69,7 +69,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => {
       setSaveStatus("clean");
       setLastSavedAt(new Date());
-    }, 1800);
+    }, 2200);
   }, []);
 
   const forceSync = useCallback(() => {
