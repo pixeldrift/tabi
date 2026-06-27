@@ -151,7 +151,7 @@ export function DurationCard({
           <Row label="Phase" value={phase} />
           <Row label="Data type" value="Frequency / Duration" />
           <Row label="Minimum" value={`${minDurationSec}s`} />
-          <Row label="Instances" value={String(instances.length)} />
+          <Row label="Times" value={String(instances.length)} />
           <Row label="Total" value={formatTime(totalMs)} />
         </dl>
       }
