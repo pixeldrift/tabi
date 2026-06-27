@@ -52,6 +52,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     status,
     elapsedMs,
     start,
+    startFresh,
     pause,
     resume,
     endAndSubmit,
