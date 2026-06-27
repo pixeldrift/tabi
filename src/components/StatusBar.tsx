@@ -128,17 +128,25 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           </div>
 
           <LayoutGroup id="session-bar">
-            {/* Session box area — only this collapses/expands smoothly */}
+            {/* Session box area — height animates smoothly between expanded and 0 */}
             <motion.div
-              layout
-              className="flex justify-center overflow-hidden"
-              transition={{ layout: { duration: 0.7, ease: [0.4, 0, 0.2, 1] } }}
+              initial={false}
+              animate={{
+                height: isRunning ? 0 : "auto",
+                opacity: isRunning ? 0 : 1,
+              }}
+              transition={{
+                height: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
+                opacity: { duration: isRunning ? 0.35 : 0.5, ease: [0.4, 0, 0.2, 1] },
+              }}
+              className="overflow-hidden"
             >
-              {!isRunning && (
+              <div className="flex justify-center">
                 <ExpandedSessionBox
                   status={status}
                   elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
                   contextTime={status === "paused" ? null : previousSessionEndedAt}
+                  showPill={!isRunning}
                   onResumePrevious={() => start(previousSessionMs)}
                   onStartNew={() => start(0)}
                   onResume={resume}
@@ -147,7 +155,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   onDiscard={clearAndDiscard}
                   onRequestDiscard={() => setDiscardOpen(true)}
                 />
-              )}
+              </div>
             </motion.div>
 
             {/* Tabs row + mini session (when running) */}
@@ -160,6 +168,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const isActive = t.id === activeTab;
+                  const dim = !sessionActive && t.id === "data";
                   return (
                     <button
                       key={t.id}
@@ -171,6 +180,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                         isActive
                           ? "bg-background text-foreground border-stone-200 font-medium"
                           : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
+                        dim && "opacity-50",
                       )}
                     >
                       <Icon className="size-4" />
@@ -188,6 +198,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               )}
             </nav>
           </LayoutGroup>
+
         </div>
       </div>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
