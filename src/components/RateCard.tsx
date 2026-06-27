@@ -4,7 +4,7 @@ import { Lock, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
-import { useRegisterActiveTimer } from "./SessionContext";
+import { useRegisterActiveTimer, useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
 export interface RateCardProps {
