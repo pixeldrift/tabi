@@ -10,13 +10,11 @@ import {
   Bell,
   Check,
   Trash2,
-  CloudUpload,
-  CloudCheck,
-  Cloud,
-  Loader2,
+  ArrowUp,
+  RefreshCw,
 } from "lucide-react";
 import { useSession, type SaveStatus } from "./SessionContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications";
