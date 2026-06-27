@@ -27,7 +27,7 @@ export interface TrialCardProps {
 }
 
 const BUBBLE = 18; // small bubble diameter
-const BUBBLE_CENTER = 48; // center bubble diameter
+const BUBBLE_CENTER = 64; // center bubble diameter
 const GAP = 6; // tighter spacing
 
 export function TrialCard({
