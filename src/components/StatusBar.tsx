@@ -203,7 +203,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 setDiscardOpen(false);
               }}
             />
-            <span className="text-xs text-muted-foreground text-center">Or:</span>
+            <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => setDiscardOpen(false)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
