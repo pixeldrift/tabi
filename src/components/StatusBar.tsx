@@ -224,14 +224,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
             <button
-              onClick={() => setEndOpen(false)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
-            >
-              Return & Continue Session
-              <Play className="size-4" fill="currentColor" />
-            </button>
-            <span className="text-xs text-muted-foreground text-center">Or:</span>
-            <button
               onClick={() => {
                 endAndSubmit();
                 setEndOpen(false);
@@ -240,6 +232,14 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             >
               End & Submit Data
               <LineChart className="size-4" strokeWidth={2.5} />
+            </button>
+            <span className="text-xs text-muted-foreground text-center">Or</span>
+            <button
+              onClick={() => setEndOpen(false)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+            >
+              Return to Session
+              <Play className="size-4" fill="currentColor" />
             </button>
           </DialogFooter>
         </DialogContent>
