@@ -15,7 +15,7 @@ interface SessionContextValue {
   status: SessionStatus;
   elapsedMs: number;
   lastUpdated: Date | null;
-  start: () => void;
+  start: (initialMs?: number) => void;
   pause: () => void;
   resume: () => void;
   endAndSubmit: () => void;
