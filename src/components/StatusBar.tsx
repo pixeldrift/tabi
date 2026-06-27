@@ -76,7 +76,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         <div className="max-w-5xl mx-auto px-4 pt-2">
           <LayoutGroup id="session-bar">
             {/* Top row: back + title | save status + session box */}
-            <motion.div layout className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0 pt-1">
                   <button
@@ -122,8 +122,8 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 </div>
               </div>
 
-              {!isRunning && (
-                <div className="flex justify-center">
+              <motion.div layout className="flex justify-center">
+                {!isRunning && (
                   <ExpandedSessionBox
                     status={status}
                     elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
@@ -135,9 +135,9 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                     onDiscard={clearAndDiscard}
                     onRequestDiscard={() => setDiscardOpen(true)}
                   />
-                </div>
-              )}
-            </motion.div>
+                )}
+              </motion.div>
+            </div>
 
 
             {/* Tabs row + mini session (when running) */}
