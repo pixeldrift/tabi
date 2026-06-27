@@ -145,7 +145,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   />
                 )}
               </motion.div>
-            </div>
+            </motion.div>
 
 
             {/* Tabs row + mini session (when running) */}
