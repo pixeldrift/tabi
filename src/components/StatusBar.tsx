@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "motion/react";
+import { motion, AnimatePresence, LayoutGroup, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
   Pause,
@@ -11,8 +11,10 @@ import {
   Check,
   Trash2,
   ArrowUp,
+  ArrowLeft,
   RefreshCw,
   User,
+  GripVertical,
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
