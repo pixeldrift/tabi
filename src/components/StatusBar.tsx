@@ -135,12 +135,11 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               {!isRunning && (
                 <motion.div
                   key="expanded-session"
-                  initial={{ height: 0 }}
-                  animate={{ height: "auto" }}
-                  exit={{ height: 0 }}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-                  className="flex justify-center relative"
-                  style={{ overflow: "visible" }}
+                  className="flex justify-center overflow-hidden"
                 >
                   <ExpandedSessionBox
                     status={status}
