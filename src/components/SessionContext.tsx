@@ -137,29 +137,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     baseRef.current = 0;
   }, []);
 
-  // Active timer registry
+  // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
   const registerActiveTimer = useCallback((t: ActiveTimer) => {
     setActiveTimers((arr) => {
       if (arr.some((x) => x.id === t.id)) return arr.map((x) => (x.id === t.id ? t : x));
       return [...arr, t];
     });
-    setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
   const unregisterActiveTimer = useCallback((id: string) => {
     setActiveTimers((arr) => arr.filter((x) => x.id !== id));
-    setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
 
-  // Autosave: if dirty for 15s, automatically perform a save.
+  // Autosave: if dirty for 20s, automatically perform a save.
   useEffect(() => {
     if (saveStatus !== "dirty") return;
-    const id = window.setTimeout(() => performSave(), 15000);
+    const id = window.setTimeout(() => performSave(), 20000);
     return () => window.clearTimeout(id);
   }, [saveStatus, performSave]);
 
-
-
+  const sessionRunning = status === "running";
 
   const value = useMemo(
     () => ({
@@ -171,6 +168,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       resume,
       endAndSubmit,
       clearAndDiscard,
+      sessionRunning,
+      subscribeTick,
       activeTimers,
       registerActiveTimer,
       unregisterActiveTimer,
@@ -179,7 +178,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       markDirty,
       forceSync,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync],
+    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
