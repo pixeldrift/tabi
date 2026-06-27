@@ -548,9 +548,9 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2, delay: 0.05 }}
               style={{ opacity: labelOpacity }}
-              className="absolute inset-0 grid place-items-center px-14 text-white text-sm font-medium text-center pointer-events-none"
+              className="absolute inset-0 grid place-items-center px-14 text-white text-xs font-medium text-center pointer-events-none"
             >
-              Drag the circle to the trash to confirm
+              Drag to trash to confirm
             </motion.span>
             <motion.span
               layoutId="discard-trash"
