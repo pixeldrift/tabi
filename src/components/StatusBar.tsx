@@ -106,7 +106,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     if (pendingStart) return;
     setPendingStart("new");
     window.setTimeout(() => {
-      start(0);
+      startFresh();
       setPendingStart(null);
     }, TRANSITION_MS);
   };
