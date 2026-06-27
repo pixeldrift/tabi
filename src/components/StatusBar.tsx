@@ -456,6 +456,8 @@ function ExpandedSessionBox({
   onEnd,
   onDiscard: _onDiscard,
   onRequestDiscard,
+  showPill = true,
+
 }: {
   status: SessionStatus;
   elapsedMs: number;
