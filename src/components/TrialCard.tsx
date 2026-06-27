@@ -293,7 +293,7 @@ export function TrialCard({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.25 }}
-                            className={cn("font-display text-5xl leading-none tabular-nums", centerTextColor)}
+                            className={cn("font-display text-4xl leading-none tabular-nums", centerTextColor)}
                           >
                             {i + 1}
                           </motion.span>
