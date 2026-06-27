@@ -214,6 +214,36 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={endOpen} onOpenChange={setEndOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-green-500 rounded-xl">
+          <DialogHeader className="text-left sm:text-left">
+            <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
+            <DialogDescription className="text-left">
+              Are you sure? This will end the current session and submit collected data for graphing? Targets that have not met their minimums will not be graphed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+            <button
+              onClick={() => setEndOpen(false)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+            >
+              Return & Continue Session
+              <Play className="size-4" fill="currentColor" />
+            </button>
+            <span className="text-xs text-muted-foreground text-center">Or:</span>
+            <button
+              onClick={() => {
+                endAndSubmit();
+                setEndOpen(false);
+              }}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 transition-colors w-full"
+            >
+              End & Submit Data
+              <LineChart className="size-4" strokeWidth={2.5} />
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
