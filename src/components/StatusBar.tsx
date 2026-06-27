@@ -129,7 +129,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 </div>
               </div>
 
-              <motion.div layout className="flex justify-center">
+              <motion.div layout className="flex justify-center" transition={{ layout: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } }}>
                 {!isRunning && (
                   <ExpandedSessionBox
                     status={status}
