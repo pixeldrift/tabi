@@ -64,8 +64,13 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   // Random previous session length between 1-5 hours, generated once on the client.
   const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
+  const [previousSessionEndedAt, setPreviousSessionEndedAt] = useState<Date | null>(null);
   useEffect(() => {
     setPreviousSessionMs(Math.floor((1 + Math.random() * 4) * 3600 * 1000));
+    // Random end time: somewhere between 1 minute and 3 days ago.
+    const minMs = 60 * 1000;
+    const maxMs = 3 * 24 * 3600 * 1000;
+    setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
   }, []);
 
   const isRunning = status === "running";
