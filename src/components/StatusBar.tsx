@@ -12,6 +12,7 @@ import {
   Trash2,
   ArrowUp,
   RefreshCw,
+  User,
 } from "lucide-react";
 import { useSession, type SaveStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -187,7 +188,7 @@ function SaveIndicator({
                 </span>
                 <span
                   className={cn(
-                    "text-[11px] font-mono tabular-nums transition-colors",
+                    "text-[11px] tabular-nums transition-colors",
                     justSaved ? "text-blue-600" : "text-stone-500",
                   )}
                 >
@@ -204,10 +205,10 @@ function SaveIndicator({
           collisionPadding={16}
           className="relative w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          {/* Arrow — inset past the corner radius */}
+          {/* Arrow — centered, offset so its outer border aligns with the popover's top border */}
           <span
             aria-hidden
-            className="absolute -top-[9px] left-6 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
+            className="absolute -top-[7px] left-1/2 -translate-x-1/2 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
           />
           <div className="relative px-5 pt-4 pb-2 border-b border-stone-200 bg-white rounded-t-xl">
             <h3 className="font-display text-lg leading-tight">Session Data Status</h3>
@@ -226,15 +227,19 @@ function SaveIndicator({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last Saved</div>
-              <div className="font-mono tabular-nums">
+              <div className="tabular-nums">
                 {formatFullDate(lastSavedAt)} · {formatFullTime(lastSavedAt)}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
-              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm">
-                Perry Plat
-              </div>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 hover:bg-blue-100 hover:text-blue-700 transition-colors text-sm"
+              >
+                <User className="size-3" fill="currentColor" strokeWidth={0} />
+                <span>Perry Plat</span>
+              </button>
             </div>
           </div>
         </PopoverContent>
@@ -320,7 +325,7 @@ function SessionBox({
         </span>
         <span
           className={cn(
-            "font-mono text-lg tabular-nums leading-none",
+            "text-lg tabular-nums leading-none",
             status === "idle" && "text-stone-400",
           )}
         >

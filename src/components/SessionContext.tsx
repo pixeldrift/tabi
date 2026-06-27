@@ -90,26 +90,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     baseRef.current = 0;
     setElapsedMs(0);
     setStatus("running");
-    setLastUpdated(new Date());
-    setSaveStatus("dirty");
+    const now = new Date();
+    setLastUpdated(now);
+    // Starting a session resets the saved baseline — no unsaved data yet.
+    setLastSavedAt(now);
+    setSaveStatus("clean");
   }, []);
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
     setStatus("paused");
     setLastUpdated(new Date());
-    setSaveStatus("dirty");
   }, [elapsedMs]);
   const resume = useCallback(() => {
     setStatus("running");
     setLastUpdated(new Date());
-    setSaveStatus("dirty");
   }, []);
   const endAndSubmit = useCallback(() => {
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
     setLastUpdated(new Date());
-    setSaveStatus("dirty");
   }, []);
   const clearAndDiscard = useCallback(() => {
     setStatus("idle");
@@ -131,7 +131,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
 
-  // Manual save only — no autosave. Dirty stays dirty until the user clicks the cloud.
+  // Autosave: if dirty for 15s, automatically perform a save.
+  useEffect(() => {
+    if (saveStatus !== "dirty") return;
+    const id = window.setTimeout(() => performSave(), 15000);
+    return () => window.clearTimeout(id);
+  }, [saveStatus, performSave]);
 
 
 

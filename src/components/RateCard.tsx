@@ -171,7 +171,7 @@ export function RateCard({
                     <>
                       <span
                         aria-label="Elapsed time (linked to session)"
-                        className="inline-flex items-center border border-stone-300 bg-stone-100 pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full text-muted-foreground"
+                        className="inline-flex items-center border border-stone-300 bg-stone-100 pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full text-muted-foreground"
                       >
                         {formatTime(elapsed)}
                       </span>
@@ -198,7 +198,7 @@ export function RateCard({
                             }}
                             aria-label="Edit elapsed time"
                             className={cn(
-                              "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 font-mono text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors",
+                              "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors",
                               running ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
