@@ -15,10 +15,17 @@ import {
   RefreshCw,
   User,
   ArrowRight,
-  X,
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 
@@ -61,12 +68,9 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   }, []);
 
   const isRunning = status === "running";
-  const isPaused = status === "paused";
-  const [discardOpen, setDiscardOpen] = useState(false);
 
   return (
-    <>
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
       <div className="max-w-5xl mx-auto px-4 pt-2">
         <LayoutGroup id="session-bar">
           {/* Top row: back + title | save status + session box */}
@@ -125,7 +129,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   onResume={resume}
                   onPause={pause}
                   onEnd={endAndSubmit}
-                  onDiscardOpen={() => setDiscardOpen(true)}
+                  onDiscard={clearAndDiscard}
                 />
               )}
             </div>
@@ -172,62 +176,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         </LayoutGroup>
       </div>
     </div>
-
-    <AnimatePresence>
-      {discardOpen && isPaused && (
-        <motion.div
-          key="discard-modal"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80"
-          onClick={() => setDiscardOpen(false)}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ type: "spring", stiffness: 500, damping: 28 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-sm mx-4 my-4 border-2 border-red-500 rounded-xl bg-background p-6 shadow-lg"
-          >
-            <div className="flex flex-col space-y-2 text-left">
-              <h2 className="text-lg font-semibold text-red-600">Warning!</h2>
-              <p className="text-sm text-muted-foreground text-left">
-                Are you sure? This will end the current session and discard any data collected during the session so far!
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 mt-6 items-stretch">
-              <DiscardAction
-                onConfirm={() => {
-                  clearAndDiscard();
-                  setDiscardOpen(false);
-                }}
-              />
-              <span className="text-xs text-muted-foreground text-center">Or:</span>
-              <button
-                onClick={() => setDiscardOpen(false)}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
-              >
-                Continue Session Safely
-                <Play className="size-4" fill="currentColor" />
-              </button>
-            </div>
-            <button
-              onClick={() => setDiscardOpen(false)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-    </>
   );
 }
 
@@ -399,7 +347,7 @@ function ExpandedSessionBox({
   onResume,
   onPause: _onPause,
   onEnd,
-  onDiscardOpen,
+  onDiscard,
 }: {
   status: SessionStatus;
   elapsedMs: number;
@@ -408,8 +356,9 @@ function ExpandedSessionBox({
   onResume: () => void;
   onPause: () => void;
   onEnd: () => void;
-  onDiscardOpen: () => void;
+  onDiscard: () => void;
 }) {
+  const [discardOpen, setDiscardOpen] = useState(false);
   const isPaused = status === "paused";
   const label = isPaused ? "Paused Session" : "Previous Session";
 
@@ -480,13 +429,40 @@ function ExpandedSessionBox({
               End & Submit Data
               <Check className="size-3" strokeWidth={3} />
             </motion.button>
-            <button
-              onClick={onDiscardOpen}
-              className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
-            >
-              End & Discard Session!
-              <Trash2 className="size-3" />
-            </button>
+            <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
+              <button
+                onClick={() => setDiscardOpen(true)}
+                className="flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors"
+              >
+                End & Discard Session!
+                <Trash2 className="size-3" />
+              </button>
+              <DialogContent className="sm:max-w-sm border-2 border-red-500 rounded-xl">
+                <DialogHeader className="text-left sm:text-left">
+                  <DialogTitle className="text-red-600">Warning!</DialogTitle>
+                  <DialogDescription className="text-left">
+                    Are you sure? This will end the current session and discard any data collected during the session so far!
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+                  <button
+                    onClick={() => setDiscardOpen(false)}
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+                  >
+                    Continue Session Safely
+                    <Play className="size-4" fill="currentColor" />
+                  </button>
+                  <span className="text-xs text-muted-foreground text-center">Or:</span>
+                  <DiscardAction
+                    onConfirm={() => {
+                      onDiscard();
+                      setDiscardOpen(false);
+                    }}
+                  />
+                </DialogFooter>
+              </DialogContent>
+
+            </Dialog>
           </>
         )}
       </motion.div>
@@ -497,33 +473,25 @@ function ExpandedSessionBox({
 function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-
   const trackRef = useRef<HTMLDivElement | null>(null);
   const x = useMotionValue(0);
   const [maxX, setMaxX] = useState(0);
 
   const handleSize = 36; // size-9
-  const sidePad = 4; // left-1 = 4px
+  const sidePad = 8;
 
   useEffect(() => {
     const measure = () => {
       const el = trackRef.current;
       if (!el) return;
-      setMaxX(Math.max(0, el.clientWidth - handleSize - sidePad * 2));
+      setMaxX(Math.max(0, el.clientWidth - handleSize - sidePad));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [armed]);
 
-  const tapOpacity = useTransform(x, [0, Math.max(1, maxX * 0.3)], [1, 0]);
-  const dragOpacity = useTransform(x, [0, Math.max(1, maxX * 0.6)], [1, 0]);
-
-  const revert = () => {
-    animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
-    setArmed(false);
-  };
-
+  const labelOpacity = useTransform(x, [0, Math.max(1, maxX * 0.7)], [1, 0]);
 
   return (
     <div
@@ -534,70 +502,75 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
         !armed && "cursor-pointer hover:bg-red-600",
       )}
     >
-      {/* Tap-state label (only when not armed) */}
-      {!armed && (
-        <motion.span
-          style={{ opacity: tapOpacity }}
-          className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-medium pointer-events-none"
-        >
-          <span>End &amp; Discard Session!</span>
-          <motion.span layoutId="discard-trash">
-            <Trash2 className="size-4" />
-          </motion.span>
-        </motion.span>
-      )}
-
-      {/* Drag-state label + trash anchored right */}
-      {armed && (
-        <>
+      {/* Label + trash crossfade between tap and drag states */}
+      <AnimatePresence mode="wait" initial={false}>
+        {!armed ? (
           <motion.span
+            key="tap-label"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.2, delay: 0.05 }}
-            style={{ opacity: dragOpacity }}
-            className="absolute inset-0 grid place-items-center px-14 text-white text-xs font-medium text-center pointer-events-none"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 flex items-center justify-center gap-2 text-white text-sm font-medium pointer-events-none"
           >
-            Drag to trash to confirm
+            <span>End &amp; Discard Session!</span>
+            <motion.span layoutId="discard-trash">
+              <Trash2 className="size-4" />
+            </motion.span>
           </motion.span>
-          <motion.span
-            layoutId="discard-trash"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
-          >
-            <Trash2 className="size-4" />
-          </motion.span>
-        </>
-      )}
-
-      {/* Drag handle */}
-      {armed && (
-        <motion.button
-          type="button"
-          aria-label="Drag to confirm discard"
-          drag={!confirmed ? "x" : false}
-          dragConstraints={{ left: 0, right: maxX }}
-          dragElastic={0}
-          dragMomentum={false}
-          style={{ x }}
-          onDragEnd={() => {
-            if (x.get() >= maxX - 6) {
-              setConfirmed(true);
-              animate(x, maxX, { duration: 0.15 });
-              setTimeout(onConfirm, 150);
-            } else {
-              revert();
-            }
-          }}
-          className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing touch-none"
-        >
-          <ArrowRight className="size-4" strokeWidth={2.75} />
-        </motion.button>
-      )}
+        ) : (
+          <>
+            <motion.span
+              key="drag-label"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, delay: 0.05 }}
+              style={{ opacity: labelOpacity }}
+              className="absolute inset-0 grid place-items-center px-14 text-white text-sm font-medium text-center pointer-events-none"
+            >
+              Drag the circle to the trash to confirm
+            </motion.span>
+            <motion.span
+              layoutId="discard-trash"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
+            >
+              <Trash2 className="size-4" />
+            </motion.span>
+          </>
+        )}
+      </AnimatePresence>
 
 
+      {/* Drag handle: scales up from 0 when armed */}
+      <motion.button
+        type="button"
+        aria-label="Drag to confirm discard"
+        initial={false}
+        animate={{ scale: armed ? 1 : 0, opacity: armed ? 1 : 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22, delay: armed ? 0.05 : 0 }}
+        drag={armed && !confirmed ? "x" : false}
+        dragConstraints={{ left: 0, right: maxX }}
+        dragElastic={0}
+        dragMomentum={false}
+        style={{ x }}
+        onDragEnd={() => {
+          if (x.get() >= maxX - 4) {
+            setConfirmed(true);
+            animate(x, maxX, { duration: 0.15 });
+            setTimeout(onConfirm, 150);
+          } else {
+            animate(x, 0, { type: "spring", stiffness: 400, damping: 30 });
+            setTimeout(() => setArmed(false), 250);
+          }
+        }}
+        className="absolute left-1 top-1/2 -translate-y-1/2 grid place-items-center size-9 rounded-full bg-white text-red-600 shadow-md cursor-grab active:cursor-grabbing"
+      >
+        <ArrowRight className="size-4" strokeWidth={2.75} />
+      </motion.button>
     </div>
   );
 }
-
 
 
 function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
