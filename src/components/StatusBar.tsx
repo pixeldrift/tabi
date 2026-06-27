@@ -529,13 +529,7 @@ function ExpandedSessionBox({
   }, [contextTime]);
 
 
-  // Re-render to refresh "x ago" string.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!contextTime) return;
-    const i = setInterval(() => setTick((n) => n + 1), 30000);
-    return () => clearInterval(i);
-  }, [contextTime]);
+
 
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
