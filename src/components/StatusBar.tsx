@@ -439,31 +439,28 @@ function ExpandedSessionBox({
               </button>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-red-600">Severe Warning</DialogTitle>
+                  <DialogTitle className="text-red-600">Warning!</DialogTitle>
                   <DialogDescription>
-                    Warning! End the current session and disregard any data collected during this session?
+                    Are you sure? This will end the current session and discard any data collected during the session so far!
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
                   <button
-                    onClick={() => {
-                      onDiscard();
-                      setDiscardOpen(false);
-                    }}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-2 transition-colors"
-                  >
-                    <Trash2 className="size-3" />
-                    End & Discard Session!
-                  </button>
-                  <button
                     onClick={() => setDiscardOpen(false)}
                     className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 py-2 transition-colors"
                   >
-                    <Play className="size-3" fill="currentColor" />
                     Continue Session Safely
+                    <Play className="size-3" fill="currentColor" />
                   </button>
+                  <SwipeToDiscard
+                    onConfirm={() => {
+                      onDiscard();
+                      setDiscardOpen(false);
+                    }}
+                  />
                 </DialogFooter>
               </DialogContent>
+
             </Dialog>
           </>
         )}
