@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type SessionStatus = "idle" | "running" | "paused";
+export type SaveStatus = "clean" | "dirty" | "saving";
 
 export interface ActiveTimer {
   id: string;
@@ -23,6 +24,11 @@ interface SessionContextValue {
   activeTimers: ActiveTimer[];
   registerActiveTimer: (t: ActiveTimer) => void;
   unregisterActiveTimer: (id: string) => void;
+  // save status
+  saveStatus: SaveStatus;
+  lastSavedAt: Date | null;
+  markDirty: () => void;
+  forceSync: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -51,26 +57,54 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id);
   }, [status]);
 
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  const markDirty = useCallback(() => {
+    setSaveStatus((s) => (s === "saving" ? s : "dirty"));
+  }, []);
+
+  const performSave = useCallback(() => {
+    setSaveStatus("saving");
+    window.setTimeout(() => {
+      setSaveStatus("clean");
+      setLastSavedAt(new Date());
+    }, 800);
+  }, []);
+
+  const forceSync = useCallback(() => {
+    setSaveStatus((s) => {
+      if (s === "saving") return s;
+      // trigger save
+      window.setTimeout(() => performSave(), 0);
+      return s;
+    });
+  }, [performSave]);
+
   const start = useCallback(() => {
     baseRef.current = 0;
     setElapsedMs(0);
     setStatus("running");
     setLastUpdated(new Date());
+    setSaveStatus("dirty");
   }, []);
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
     setStatus("paused");
     setLastUpdated(new Date());
+    setSaveStatus("dirty");
   }, [elapsedMs]);
   const resume = useCallback(() => {
     setStatus("running");
     setLastUpdated(new Date());
+    setSaveStatus("dirty");
   }, []);
   const endAndSubmit = useCallback(() => {
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
     setLastUpdated(new Date());
+    setSaveStatus("dirty");
   }, []);
   const clearAndDiscard = useCallback(() => {
     setStatus("idle");
@@ -85,10 +119,34 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (arr.some((x) => x.id === t.id)) return arr.map((x) => (x.id === t.id ? t : x));
       return [...arr, t];
     });
+    setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
   const unregisterActiveTimer = useCallback((id: string) => {
     setActiveTimers((arr) => arr.filter((x) => x.id !== id));
+    setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
+
+  // Simulate ongoing data changes while a session is running
+  useEffect(() => {
+    if (status !== "running") return;
+    const id = window.setInterval(() => {
+      setSaveStatus((s) => (s === "saving" ? s : "dirty"));
+    }, 3500);
+    return () => window.clearInterval(id);
+  }, [status]);
+
+  // Autosave loop: every ~10s if dirty, perform a save
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setSaveStatus((s) => {
+        if (s === "dirty") {
+          window.setTimeout(() => performSave(), 0);
+        }
+        return s;
+      });
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [performSave]);
 
   const value = useMemo(
     () => ({
@@ -103,8 +161,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       activeTimers,
       registerActiveTimer,
       unregisterActiveTimer,
+      saveStatus,
+      lastSavedAt,
+      markDirty,
+      forceSync,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers, registerActiveTimer, unregisterActiveTimer],
+    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

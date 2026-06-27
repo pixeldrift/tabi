@@ -110,7 +110,7 @@ function IndexInner() {
     <main className="min-h-screen bg-background">
       <StatusBar activeTab={tab} onTabChange={setTab} />
 
-      <section className="px-5 pt-6 pb-16 max-w-5xl mx-auto">
+      <section className="px-5 pt-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px">
         {tab === "data" && (
           <div className="flex flex-col items-center gap-5">
             {cards.map((card, i) => {
@@ -193,9 +193,8 @@ function IndexInner() {
 function InfoPane() {
   const { lastUpdated } = useSession();
   return (
-    <div className="max-w-2xl mx-auto mt-10 px-4">
-      <h2 className="font-display text-2xl sm:text-3xl">Phineas Flynn&apos;s Data Sheet</h2>
-      <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+    <div className="max-w-2xl mx-auto mt-6 px-4">
+      <div className="space-y-2 text-sm text-muted-foreground">
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
           <span>For</span>
           <UserLink name="Phineas Flynn" />
@@ -219,13 +218,14 @@ function UserLink({ name }: { name: string }) {
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors text-sm"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 hover:bg-blue-100 hover:text-blue-700 transition-colors text-sm"
     >
-      <User className="size-3" />
+      <User className="size-3" fill="currentColor" strokeWidth={0} />
       <span>{name}</span>
     </button>
   );
 }
+
 
 function formatUpdated(d: Date | null) {
   if (!d) return "—";

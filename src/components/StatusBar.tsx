@@ -10,8 +10,10 @@ import {
   Bell,
   Check,
   Trash2,
+  Cloud,
+  RotateCw,
 } from "lucide-react";
-import { useSession } from "./SessionContext";
+import { useSession, type SaveStatus } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications";
@@ -19,6 +21,7 @@ export type StatusTab = "info" | "data" | "schedule" | "notifications";
 interface StatusBarProps {
   activeTab: StatusTab;
   onTabChange: (t: StatusTab) => void;
+  title?: string;
 }
 
 const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
@@ -28,17 +31,73 @@ const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
   { id: "notifications", label: "Alerts", icon: Bell },
 ];
 
-export function StatusBar({ activeTab, onTabChange }: StatusBarProps) {
-  const { status, elapsedMs, start, pause, resume, endAndSubmit, clearAndDiscard, activeTimers } =
-    useSession();
+export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
+  const {
+    status,
+    elapsedMs,
+    start,
+    pause,
+    resume,
+    endAndSubmit,
+    clearAndDiscard,
+    activeTimers,
+    saveStatus,
+    lastSavedAt,
+    forceSync,
+  } = useSession();
 
   const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
   return (
-    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
-      <div className="max-w-5xl mx-auto px-4 flex items-end justify-between gap-3 py-2">
-        {/* Tabs */}
-        <nav className="flex items-end gap-1" role="tablist" aria-label="Session sections">
+    <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+      <div className="max-w-5xl mx-auto px-4 pt-2">
+        {/* Top row: title + save status | session box */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
+            <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
+          </div>
+
+          <div className="flex items-start gap-2">
+            <div className="hidden sm:flex items-center gap-1 pt-1">
+              <AnimatePresence>
+                {durationTimers.map((t) => (
+                  <motion.button
+                    key={t.id}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    onClick={t.scrollTo}
+                    aria-label={`Jump to running timer: ${t.label}`}
+                    title={`Running: ${t.label}`}
+                    className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+                  >
+                    <Timer className="size-4" />
+                    <motion.span
+                      animate={{ opacity: [1, 0.3, 1] }}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                      className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
+                      aria-hidden
+                    />
+                  </motion.button>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            <SessionBox
+              status={status}
+              elapsedMs={elapsedMs}
+              onStart={start}
+              onPause={pause}
+              onResume={resume}
+              onEnd={endAndSubmit}
+              onDiscard={clearAndDiscard}
+            />
+          </div>
+        </div>
+
+        {/* Tabs row — connected directly to the pane below */}
+        <nav className="flex items-end gap-1 mt-2 -mb-px" role="tablist" aria-label="Session sections">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = t.id === activeTab;
@@ -49,7 +108,7 @@ export function StatusBar({ activeTab, onTabChange }: StatusBarProps) {
                 aria-selected={isActive}
                 onClick={() => onTabChange(t.id)}
                 className={cn(
-                  "relative -mb-px flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
+                  "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
                   isActive
                     ? "bg-background text-foreground border-stone-200 font-medium"
                     : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
@@ -64,47 +123,75 @@ export function StatusBar({ activeTab, onTabChange }: StatusBarProps) {
             );
           })}
         </nav>
-
-        {/* Right side: duration timer alerts + session box */}
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1">
-            <AnimatePresence>
-              {durationTimers.map((t) => (
-                <motion.button
-                  key={t.id}
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  onClick={t.scrollTo}
-                  aria-label={`Jump to running timer: ${t.label}`}
-                  title={`Running: ${t.label}`}
-                  className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
-                >
-                  <Timer className="size-4" />
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
-                    aria-hidden
-                  />
-                </motion.button>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          <SessionBox
-            status={status}
-            elapsedMs={elapsedMs}
-            onStart={start}
-            onPause={pause}
-            onResume={resume}
-            onEnd={endAndSubmit}
-            onDiscard={clearAndDiscard}
-          />
-        </div>
       </div>
     </div>
   );
+}
+
+function SaveIndicator({
+  status,
+  lastSavedAt,
+  onSync,
+}: {
+  status: SaveStatus;
+  lastSavedAt: Date | null;
+  onSync: () => void;
+}) {
+  const isDirty = status === "dirty";
+  const isSaving = status === "saving";
+  const iconColorClass = isDirty
+    ? "text-blue-600 hover:bg-blue-50"
+    : isSaving
+      ? "text-blue-600"
+      : "text-stone-400 hover:bg-stone-100";
+
+  const justSaved = status === "clean" && lastSavedAt
+    ? Date.now() - lastSavedAt.getTime() < 2500
+    : false;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={onSync}
+        disabled={!isDirty}
+        aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
+        title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
+        className={cn(
+          "relative grid place-items-center size-7 rounded-md transition-colors disabled:cursor-default",
+          iconColorClass,
+        )}
+      >
+        <Cloud className="size-5" strokeWidth={2} />
+        {isSaving && (
+          <RotateCw
+            className="absolute size-2.5 animate-spin"
+            style={{ top: "calc(50% + 1px)", left: "50%", transform: "translate(-50%, -50%)" }}
+            strokeWidth={2.5}
+          />
+        )}
+      </button>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {isSaving ? "Saving..." : "Last Saved"}
+        </span>
+        <span
+          className={cn(
+            "text-[11px] font-mono tabular-nums transition-colors",
+            justSaved ? "text-blue-600" : "text-stone-500",
+            isSaving && "text-blue-600",
+          )}
+        >
+          {isSaving ? "…" : formatSaved(lastSavedAt)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function formatSaved(d: Date | null) {
+  if (!d) return "never";
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
 }
 
 function SessionBox({
