@@ -69,7 +69,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => {
       setSaveStatus("clean");
       setLastSavedAt(new Date());
-    }, 800);
+    }, 1800);
   }, []);
 
   const forceSync = useCallback(() => {
