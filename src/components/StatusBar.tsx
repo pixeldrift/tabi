@@ -159,7 +159,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                         "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-colors",
                         isActive
                           ? "bg-background text-foreground border-stone-200 font-medium"
-                          : "bg-stone-100/60 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-100",
+                          : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
                       )}
                     >
                       <Icon className="size-4" />
