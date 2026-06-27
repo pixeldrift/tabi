@@ -15,6 +15,7 @@ import {
   RefreshCw,
   User,
   ArrowRight,
+  LineChart,
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
