@@ -74,8 +74,10 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   }, []);
 
   const isRunning = status === "running";
+  const sessionActive = isRunning;
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+
 
   return (
     <>
@@ -128,17 +130,25 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           </div>
 
           <LayoutGroup id="session-bar">
-            {/* Session box area — only this collapses/expands smoothly */}
+            {/* Session box area — height animates smoothly between expanded and 0 */}
             <motion.div
-              layout
-              className="flex justify-center overflow-hidden"
-              transition={{ layout: { duration: 0.7, ease: [0.4, 0, 0.2, 1] } }}
+              initial={false}
+              animate={{
+                height: isRunning ? 0 : "auto",
+                opacity: isRunning ? 0 : 1,
+              }}
+              transition={{
+                height: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
+                opacity: { duration: isRunning ? 0.35 : 0.5, ease: [0.4, 0, 0.2, 1] },
+              }}
+              className="overflow-hidden"
             >
-              {!isRunning && (
+              <div className="flex justify-center">
                 <ExpandedSessionBox
                   status={status}
                   elapsedMs={status === "paused" ? elapsedMs : previousSessionMs}
                   contextTime={status === "paused" ? null : previousSessionEndedAt}
+                  showPill={!isRunning}
                   onResumePrevious={() => start(previousSessionMs)}
                   onStartNew={() => start(0)}
                   onResume={resume}
@@ -147,7 +157,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   onDiscard={clearAndDiscard}
                   onRequestDiscard={() => setDiscardOpen(true)}
                 />
-              )}
+              </div>
             </motion.div>
 
             {/* Tabs row + mini session (when running) */}
@@ -160,6 +170,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const isActive = t.id === activeTab;
+                  const dim = !sessionActive && t.id === "data";
                   return (
                     <button
                       key={t.id}
@@ -171,6 +182,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                         isActive
                           ? "bg-background text-foreground border-stone-200 font-medium"
                           : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
+                        dim && "opacity-50",
                       )}
                     >
                       <Icon className="size-4" />
@@ -188,6 +200,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               )}
             </nav>
           </LayoutGroup>
+
         </div>
       </div>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
@@ -443,6 +456,8 @@ function ExpandedSessionBox({
   onEnd,
   onDiscard: _onDiscard,
   onRequestDiscard,
+  showPill = true,
+
 }: {
   status: SessionStatus;
   elapsedMs: number;
@@ -454,10 +469,12 @@ function ExpandedSessionBox({
   onEnd: () => void;
   onDiscard: () => void;
   onRequestDiscard: () => void;
+  showPill?: boolean;
 }) {
   const isPaused = status === "paused";
   const label = isPaused ? "Session Paused" : "Previous Session";
   const [picked, setPicked] = useState<"resume" | "new" | null>(null);
+
 
   const handlePick = (which: "resume" | "new") => {
     if (picked) return;
@@ -496,7 +513,7 @@ function ExpandedSessionBox({
           {label}
         </motion.span>
         <motion.span
-          layoutId="session-timer"
+          layoutId={showPill ? "session-timer" : undefined}
           initial={false}
           animate={{ scale: 1 }}
           transition={{ duration: 0.6, ease }}
@@ -504,6 +521,7 @@ function ExpandedSessionBox({
         >
           {formatTime(elapsedMs)}
         </motion.span>
+
         {contextTime && (
           <span className="text-[10px] text-muted-foreground">
             {formatRelativeFromNow(contextTime)}
@@ -690,12 +708,12 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
 function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () => void }) {
   const ease = [0.4, 0, 0.2, 1] as const;
   return (
-    <div className="flex items-center pb-1.5 pr-1">
-      <div className="flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white">
+    <div className="flex items-stretch self-stretch pr-1">
+      <div className="flex items-stretch self-start rounded-full overflow-hidden border-2 border-blue-500 bg-white">
         <motion.span
           layoutId="session-timer"
           transition={{ duration: 0.7, ease }}
-          className="flex items-center px-2.5 text-base sm:text-lg tabular-nums leading-none text-blue-700 font-medium"
+          className="flex items-center px-2 text-xs sm:text-sm tabular-nums leading-none text-blue-700 font-medium"
         >
           {formatTime(elapsedMs)}
         </motion.span>
@@ -707,13 +725,14 @@ function MiniSession({ elapsedMs, onPause }: { elapsedMs: number; onPause: () =>
           style={{ backgroundColor: "#3b82f6" }}
           aria-label="Pause session"
           title="Pause session"
-          className="grid place-items-center w-9 h-7 text-white hover:bg-blue-600 transition-colors"
+          className="grid place-items-center w-7 text-white hover:bg-blue-600 transition-colors"
         >
           <motion.span layoutId="session-toggle-icon" className="grid place-items-center">
             <Pause className="size-3" fill="currentColor" />
           </motion.span>
         </motion.button>
       </div>
+
     </div>
   );
 }
