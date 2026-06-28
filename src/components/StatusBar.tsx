@@ -293,6 +293,53 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 }
 
 
+function ActiveDurationIndicator({ timers }: { timers: { id: string; label: string; scrollTo: () => void }[] }) {
+  const [index, setIndex] = useState(0);
+  const count = timers.length;
+  const visible = count > 0;
+
+  useEffect(() => {
+    if (index >= count && count > 0) setIndex(0);
+  }, [count, index]);
+
+  const handleClick = () => {
+    if (count === 0) return;
+    const next = index % count;
+    timers[next]?.scrollTo();
+    setIndex((i) => (count > 0 ? (i + 1) % count : 0));
+  };
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          key="duration-indicator"
+          type="button"
+          onClick={handleClick}
+          aria-label={count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`}
+          title={count > 1 ? `${count} timers running — tap to cycle` : timers[0]?.label}
+          initial={{ opacity: 0, scale: 0.6, y: 0 }}
+          animate={{ opacity: 1, scale: [1, 1.08, 1], y: 0 }}
+          exit={{ opacity: 0, scale: 0.6, y: [-6, 0], transition: { duration: 0.35, ease: "easeOut" } }}
+          transition={{
+            opacity: { duration: 0.2 },
+            scale: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+        >
+          <Timer className="size-4" />
+          {count > 1 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-semibold leading-4 text-center">
+              {count}
+            </span>
+          )}
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
+
 function SaveIndicator({
   status,
   lastSavedAt,
