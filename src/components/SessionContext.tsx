@@ -7,6 +7,7 @@ export interface ActiveTimer {
   id: string;
   label: string;
   scrollTo: () => void;
+  activate?: () => void;
   source?: string;
 }
 
