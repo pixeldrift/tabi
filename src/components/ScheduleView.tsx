@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -1358,5 +1358,3 @@ function AppointmentDialog({
   );
 }
 
-// Switch import retained for future toggles
-void Switch;
