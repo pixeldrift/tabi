@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Pencil,
@@ -7,15 +7,15 @@ import {
   Bell,
   BellOff,
   BellRing,
-  ChevronDown,
-  Stethoscope,
+  CalendarDays,
+  HandHelping,
   Copy,
   Type,
   Clock,
   Check,
   X,
   FilePlus,
-  Repeat,
+  Lock,
 } from "lucide-react";
 import {
   Select,
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -56,12 +56,16 @@ const ACTIVITIES = [
   "Imaginative Play",
   "Social Group",
   "Arts and Crafts",
-  "Gym Time",
+  "Gross Motor Play",
   "Peer Play",
   "Client Choice",
   "Discreet Trials",
   "Potty Time",
+  "Cooking",
+  "Cleanup",
+  "Reading",
   "Pack Up/Dismissal",
+  "Custom",
 ] as const;
 
 const ACTIVITY_ICONS: Record<string, string> = {
@@ -70,26 +74,41 @@ const ACTIVITY_ICONS: Record<string, string> = {
   "Snack": "🍎",
   "Lunch": "🥪",
   "Imaginative Play": "🦄",
-  "Social Group": "🎵",
+  "Social Group": "🙋",
   "Arts and Crafts": "🎨",
-  "Gym Time": "🛝",
+  "Gross Motor Play": "🏃",
   "Peer Play": "🧩",
   "Client Choice": "⭐",
   "Discreet Trials": "📋",
-  "Potty Time": "🚼",
+  "Potty Time": "💩",
+  "Cooking": "🍳",
+  "Cleanup": "🧹",
+  "Reading": "📖",
   "Pack Up/Dismissal": "🎒",
+  "Custom": "✨",
 };
 
 const LOCATION_ICONS: Record<string, string> = {
   "Treatment Room": "🚪",
   "Kitchen": "🍽️",
   "Classroom": "📚",
-  "Big Gym": "🛝",
-  "Small Gym": "🛏️",
+  "Big Gym": "🏀",
+  "Small Gym": "⛺️",
   "Classroom Bathroom": "🚽",
   "Learner Bathroom": "🚽",
   "Solo Bathroom": "🚽",
 };
+
+const APPOINTMENT_TYPES = [
+  "Speech Therapy",
+  "Occupational Therapy",
+  "Physical Therapy",
+  "Behavioral Consult",
+  "Parent Meeting",
+] as const;
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
+type Day = (typeof DAYS)[number];
 
 type AlertMode = "off" | "visual" | "audio";
 
@@ -98,33 +117,36 @@ type ScheduleItem = {
   start: string; // "HH:MM" 24h
   end: string;
   activity: string;
+  customName?: string;
+  customIcon?: string;
   location: string;
   alert: AlertMode;
+};
+
+type Appointment = {
+  id: string;
+  start: string;
+  end: string;
+  days: Day[];
+  type: string;
+  provider: string;
 };
 
 type Schedule = {
   name: string;
   items: ScheduleItem[];
+  appointments: Appointment[];
   baseScheduleName?: string | null;
-};
-
-type TreatmentOverlay = {
-  id: string;
-  label: string;
-  start: string;
-  end: string;
-  color: string;
-  enabled: boolean;
+  locked?: boolean;
 };
 
 const DAY_START = "08:00";
 const DAY_END = "18:00";
 
-// Group schedules: 8am – 6pm, no clinical appointments by default.
 const GROUP_A: ScheduleItem[] = [
   { id: "a1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
   { id: "a2", start: "08:30", end: "09:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "a3", start: "09:15", end: "10:00", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "a3", start: "09:15", end: "10:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "a4", start: "10:00", end: "10:30", activity: "Snack", location: "Kitchen", alert: "visual" },
   { id: "a5", start: "10:30", end: "11:30", activity: "Social Group", location: "Classroom", alert: "audio" },
   { id: "a6", start: "11:30", end: "12:15", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
@@ -142,7 +164,7 @@ const GROUP_B: ScheduleItem[] = [
   { id: "b2", start: "08:30", end: "09:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
   { id: "b3", start: "09:30", end: "10:30", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
   { id: "b4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "b5", start: "11:00", end: "12:00", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "b5", start: "11:00", end: "12:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "b6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
   { id: "b7", start: "12:45", end: "13:45", activity: "Client Choice", location: "Small Gym", alert: "off" },
   { id: "b8", start: "13:45", end: "14:45", activity: "Social Group", location: "Classroom", alert: "audio" },
@@ -159,7 +181,7 @@ const GROUP_C: ScheduleItem[] = [
   { id: "c4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
   { id: "c5", start: "11:00", end: "12:00", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
   { id: "c6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "c7", start: "12:45", end: "13:45", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "c7", start: "12:45", end: "13:45", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "c8", start: "13:45", end: "14:45", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
   { id: "c9", start: "14:45", end: "15:15", activity: "Snack", location: "Kitchen", alert: "visual" },
   { id: "c10", start: "15:15", end: "16:15", activity: "Imaginative Play", location: "Classroom", alert: "off" },
@@ -167,7 +189,6 @@ const GROUP_C: ScheduleItem[] = [
   { id: "c12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
-// Custom schedule for Phineas — arrives 10, leaves 2, includes bathroom breaks.
 const PHINEAS: ScheduleItem[] = [
   { id: "p1", start: "10:00", end: "10:20", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
   { id: "p2", start: "10:20", end: "10:30", activity: "Potty Time", location: "Solo Bathroom", alert: "off" },
@@ -175,22 +196,21 @@ const PHINEAS: ScheduleItem[] = [
   { id: "p4", start: "11:15", end: "11:45", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
   { id: "p5", start: "11:45", end: "12:00", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
   { id: "p6", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "p7", start: "12:30", end: "13:15", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "p7", start: "12:30", end: "13:15", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
   { id: "p9", start: "13:30", end: "14:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
-const PRESETS: Schedule[] = [
-  { name: "Group A", items: GROUP_A },
-  { name: "Group B", items: GROUP_B },
-  { name: "Group C", items: GROUP_C },
-  { name: "Phineas' Schedule", items: PHINEAS },
+const PHINEAS_APPTS: Appointment[] = [
+  { id: "ap1", start: "11:00", end: "11:30", days: ["Mon", "Wed"], type: "Speech Therapy", provider: "Dr. Lopez" },
+  { id: "ap2", start: "13:00", end: "13:30", days: ["Tue", "Thu"], type: "Occupational Therapy", provider: "Sam Patel" },
 ];
 
-const DEFAULT_OVERLAYS: TreatmentOverlay[] = [
-  { id: "speech", label: "Speech Therapy", start: "11:00", end: "11:30", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
-  { id: "ot", label: "Occupational Therapy", start: "13:00", end: "13:45", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
-  { id: "pt", label: "Physical Therapy", start: "14:30", end: "15:00", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
+const PRESETS: Schedule[] = [
+  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS },
+  { name: "Group A", items: GROUP_A, appointments: [], locked: true },
+  { name: "Group B", items: GROUP_B, appointments: [], locked: true },
+  { name: "Group C", items: GROUP_C, appointments: [], locked: true },
 ];
 
 function toMin(t: string) {
@@ -204,7 +224,6 @@ function fmt12(t: string) {
   return `${hh}:${m.toString().padStart(2, "0")}${period}`;
 }
 
-// Demo clock — initialized to a random time inside the schedule window.
 function randomDemoTime(): Date {
   const d = new Date();
   const startMin = toMin(DAY_START);
@@ -231,9 +250,14 @@ function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): Mer
   return result;
 }
 
-// Shared blue-highlight class for select items.
+function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
+  return toMin(aStart) < toMin(bEnd) && toMin(aEnd) > toMin(bStart);
+}
+
 const SELECT_ITEM_CLS =
   "focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900";
+
+const INPUT_BLUE_CLS = "border-2 border-blue-300 focus-visible:ring-blue-300";
 
 export function ScheduleView() {
   const [now, setNow] = useState<Date>(() => randomDemoTime());
@@ -246,24 +270,29 @@ export function ScheduleView() {
   };
 
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
-  const [activeName, setActiveName] = useState<string>("Group A");
+  const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const base = active.baseScheduleName
     ? schedules.find((s) => s.name === active.baseScheduleName) ?? null
     : null;
+  const isLocked = !!active.locked;
 
   const [editMode, setEditMode] = useState(false);
   const [showThumbs, setShowThumbs] = useState(true);
   const [showFullDay, setShowFullDay] = useState(true);
-  const [overlays, setOverlays] = useState(DEFAULT_OVERLAYS);
-  const [overlaysOpen, setOverlaysOpen] = useState(false);
+  const [showAppts, setShowAppts] = useState(true);
 
   const [editing, setEditing] = useState<ScheduleItem | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+  const [creatingAppt, setCreatingAppt] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [newSchedOpen, setNewSchedOpen] = useState(false);
   const [newSchedName, setNewSchedName] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmItemDelete, setConfirmItemDelete] = useState<ScheduleItem | null>(null);
+  const [confirmApptDelete, setConfirmApptDelete] = useState<Appointment | null>(null);
 
   const dayStart = toMin(DAY_START);
   const dayEnd = toMin(DAY_END);
@@ -282,6 +311,12 @@ export function ScheduleView() {
     );
   };
 
+  const updateActiveAppts = (mut: (a: Appointment[]) => Appointment[]) => {
+    setSchedules((prev) =>
+      prev.map((s) => (s.name === activeName ? { ...s, appointments: mut(s.appointments) } : s)),
+    );
+  };
+
   const setBaseSchedule = (name: string | null) => {
     setSchedules((prev) =>
       prev.map((s) => (s.name === activeName ? { ...s, baseScheduleName: name } : s)),
@@ -295,14 +330,21 @@ export function ScheduleView() {
     while (schedules.some((s) => s.name === name)) {
       name = `Custom (${baseName}) ${n++}`;
     }
-    setSchedules((p) => [...p, { name, items: active.items.map((x) => ({ ...x })) }]);
+    setSchedules((p) => [
+      ...p,
+      {
+        name,
+        items: active.items.map((x) => ({ ...x, id: `${x.id}_${Date.now()}` })),
+        appointments: active.appointments.map((x) => ({ ...x, id: `${x.id}_${Date.now()}` })),
+      },
+    ]);
     setActiveName(name);
   };
 
   const createNewSchedule = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed || schedules.some((s) => s.name === trimmed)) return;
-    setSchedules((p) => [...p, { name: trimmed, items: [] }]);
+    setSchedules((p) => [...p, { name: trimmed, items: [], appointments: [] }]);
     setActiveName(trimmed);
   };
 
@@ -310,6 +352,15 @@ export function ScheduleView() {
     if (!newName.trim() || schedules.some((s) => s.name === newName)) return;
     setSchedules((p) => p.map((s) => (s.name === activeName ? { ...s, name: newName } : s)));
     setActiveName(newName);
+  };
+
+  const deleteActive = () => {
+    if (isLocked) return;
+    const remaining = schedules.filter((s) => s.name !== activeName);
+    if (remaining.length === 0) return;
+    setSchedules(remaining);
+    setActiveName(remaining[0].name);
+    setEditMode(false);
   };
 
   const dateStr = now.toLocaleDateString(undefined, {
@@ -332,6 +383,10 @@ export function ScheduleView() {
   const [arrowTop, setArrowTop] = useState<number | null>(null);
 
   useEffect(() => {
+    if (editMode) {
+      setArrowTop(null);
+      return;
+    }
     const update = () => {
       const list = listRef.current;
       if (!list) return setArrowTop(null);
@@ -360,41 +415,71 @@ export function ScheduleView() {
     const ro = new ResizeObserver(update);
     if (listRef.current) ro.observe(listRef.current);
     return () => ro.disconnect();
-  }, [merged, nowMin, inDay, dayStart, dayEnd]);
+  }, [merged, nowMin, inDay, dayStart, dayEnd, editMode]);
+
+  const scrollToNow = () => {
+    if (currentItem) {
+      const el = rowRefs.current.get(currentItem.id);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   const otherSchedules = schedules.filter((s) => s.name !== activeName);
 
+  // Build appointments visible for activity rows: appointments are shown next to
+  // any activity rows they overlap (regardless of day-of-week, for display demo).
+  const visibleAppts = useMemo(
+    () => (showAppts ? active.appointments : []),
+    [showAppts, active.appointments],
+  );
+
   return (
-    <div className="max-w-3xl mx-auto pt-1 pb-12">
+    <div className="max-w-3xl mx-auto pt-0 pb-12">
       {/* Header */}
       <div className="flex items-start justify-between px-1">
         <div>
           <h1 className="font-display text-2xl leading-tight">{dateStr}</h1>
           <div className="text-xs text-muted-foreground tabular-nums">{numericDate}</div>
         </div>
-        <button
-          type="button"
-          onClick={bumpTime}
-          className="text-right rounded-md px-1 -mr-1 active:bg-stone-100"
-          title="Tap to advance 10 minutes (demo)"
-        >
-          <div className="font-display text-xl tabular-nums">{timeStr}</div>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            {inDay ? "Live" : nowMin < dayStart ? "Before day" : "After day"}
-          </div>
-        </button>
+        <div className="flex flex-col items-end">
+          <button
+            type="button"
+            onClick={bumpTime}
+            className="text-right rounded-md px-1 -mr-1 active:bg-stone-100"
+            title="Tap to advance 10 minutes (demo)"
+          >
+            <div className="font-display text-xl tabular-nums">{timeStr}</div>
+          </button>
+          {inDay && !editMode && (
+            <button
+              type="button"
+              onClick={scrollToNow}
+              className="mt-0.5 text-[10px] uppercase tracking-wide bg-blue-600 hover:bg-blue-700 text-white rounded-full px-2 py-0.5"
+            >
+              Now
+            </button>
+          )}
+          {!inDay && (
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {nowMin < dayStart ? "Before day" : "After day"}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Schedule selector */}
       <div className="mt-4 flex items-center gap-2 px-1">
-        <Select value={activeName} onValueChange={setActiveName}>
+        <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }}>
           <SelectTrigger className="flex-1 h-11 text-base rounded-full bg-white border-2 border-blue-500 text-blue-700 px-4 focus:ring-blue-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="rounded-2xl">
             {schedules.map((s) => (
               <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                {s.name}
+                <span className="inline-flex items-center gap-1.5">
+                  {s.locked && <Lock className="size-3 text-blue-500" />}
+                  {s.name}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -422,47 +507,63 @@ export function ScheduleView() {
         ) : (
           <button
             type="button"
-            onClick={() => setEditMode(true)}
-            className="h-11 w-11 grid place-content-center rounded-full text-blue-600 hover:bg-blue-50"
-            aria-label="Edit schedule"
+            onClick={() => {
+              if (isLocked) return;
+              setEditMode(true);
+            }}
+            disabled={isLocked}
+            className={cn(
+              "h-11 w-11 grid place-content-center rounded-full",
+              isLocked
+                ? "text-stone-300 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50",
+            )}
+            aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
+            title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
           >
-            <Pencil className="size-5" />
+            {isLocked ? <Lock className="size-5" /> : <Pencil className="size-5" />}
           </button>
         )}
       </div>
 
       {editMode && (
         <div className="mt-2 space-y-2 px-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
-              variant="outline"
               size="sm"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
               onClick={() => {
                 setRenameValue(active.name);
                 setRenameOpen(true);
               }}
             >
-              <Type className="size-3.5 mr-1.5" /> Rename
+              <Type className="mr-1" /> Rename
             </Button>
             <Button
-              variant="outline"
               size="sm"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
               onClick={duplicateActive}
             >
-              <Copy className="size-3.5 mr-1.5" /> Duplicate
+              <Copy className="mr-1" /> Duplicate
             </Button>
             <Button
-              variant="outline"
               size="sm"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
               onClick={() => {
                 setNewSchedName("");
                 setNewSchedOpen(true);
               }}
             >
-              <FilePlus className="size-3.5 mr-1.5" /> New schedule
+              <FilePlus className="mr-1" /> New
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-2 [&_svg]:size-3.5 ml-auto"
+              onClick={() => setDeleteOpen(true)}
+              aria-label="Delete schedule"
+            >
+              <Trash2 />
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -498,7 +599,7 @@ export function ScheduleView() {
           )}
         >
           <Eye className="size-3.5" />
-          Thumbnails
+          Icons
         </button>
         <button
           type="button"
@@ -507,51 +608,26 @@ export function ScheduleView() {
             "flex items-center gap-1.5",
             showFullDay ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
           )}
-          title="Show base (clinic rotation) schedule behind custom"
+          title="Show base (clinic) schedule behind custom"
         >
-          <Repeat className="size-3.5" />
-          Clinic Rotation
+          <CalendarDays className="size-3.5" />
+          Clinic
         </button>
         <button
           type="button"
-          onClick={() => setOverlaysOpen((v) => !v)}
+          onClick={() => setShowAppts((v) => !v)}
           className={cn(
-            "flex items-center gap-1.5 ml-auto",
-            overlays.some((o) => o.enabled) ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+            "flex items-center gap-1.5",
+            showAppts ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
           )}
         >
-          <Stethoscope className="size-3.5" />
-          Appointments ({overlays.filter((o) => o.enabled).length})
-          <ChevronDown className={cn("size-3 transition-transform", overlaysOpen && "rotate-180")} />
+          <HandHelping className="size-3.5" />
+          Appointments
         </button>
       </div>
 
-      {overlaysOpen && (
-        <div className="mt-2 mx-1 rounded-lg border border-stone-200 bg-white p-3 space-y-2">
-          {overlays.map((o) => (
-            <div key={o.id} className="flex items-center gap-3">
-              <div className={cn("size-3 rounded-full border", o.color)} />
-              <div className="flex-1 text-sm">
-                <div className="font-medium">{o.label}</div>
-                <div className="text-xs text-muted-foreground">
-                  {`${fmt12(o.start)} – ${fmt12(o.end)}`}
-                </div>
-              </div>
-              <Switch
-                checked={o.enabled}
-                onCheckedChange={(v) =>
-                  setOverlays((p) => p.map((x) => (x.id === o.id ? { ...x, enabled: v } : x)))
-                }
-                className="data-[state=checked]:bg-blue-600 data-[state=unchecked]:bg-white border-2 border-blue-500 [&>span]:data-[state=checked]:bg-white [&>span]:data-[state=unchecked]:bg-blue-500"
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Schedule grid */}
       <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-visible">
-        {/* header */}
         <div className="grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50 rounded-t-xl">
           <div>Time</div>
           <div>Activity</div>
@@ -560,13 +636,12 @@ export function ScheduleView() {
         </div>
 
         <div ref={listRef} className="relative">
-          {arrowTop !== null && (
+          {arrowTop !== null && !editMode && (
             <div
               className="absolute z-20 pointer-events-none -translate-y-1/2"
               style={{ top: arrowTop, left: -6 }}
               aria-hidden
             >
-              {/* Stubby rounded chevron — matches navigation arrow shape */}
               <svg
                 width="16"
                 height="20"
@@ -582,13 +657,13 @@ export function ScheduleView() {
           )}
 
           {merged.map((it, idx) => {
-            const isCurrent = currentItem?.id === it.id;
-            const overlapOverlay = overlays.find(
-              (o) =>
-                o.enabled &&
-                toMin(o.start) < toMin(it.end) &&
-                toMin(o.end) > toMin(it.start),
-            );
+            const isCurrent = !editMode && currentItem?.id === it.id;
+            const apptOverlap = visibleAppts.find((a) => overlaps(a.start, a.end, it.start, it.end));
+            const displayName = it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
+            const displayIcon =
+              it.activity === "Custom"
+                ? it.customIcon ?? "✨"
+                : ACTIVITY_ICONS[it.activity] ?? "•";
             return (
               <div
                 key={it.id}
@@ -601,10 +676,7 @@ export function ScheduleView() {
                   idx !== merged.length - 1 && "border-b border-stone-300",
                   it.fromBase && "opacity-50 pl-5",
                   isCurrent && "border border-blue-500 rounded-md bg-blue-50",
-                  overlapOverlay && !isCurrent && cn(
-                    "border-l-4",
-                    overlapOverlay.color.split(" ").find((c) => c.startsWith("border-")),
-                  ),
+                  apptOverlap && !isCurrent && "border-l-4 border-blue-400",
                 )}
               >
                 <div className="text-[11px] tabular-nums leading-tight pl-0.5">
@@ -612,13 +684,13 @@ export function ScheduleView() {
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                   {showThumbs && (
-                    <span className="text-base shrink-0">{ACTIVITY_ICONS[it.activity] ?? "•"}</span>
+                    <span className="text-base shrink-0">{displayIcon}</span>
                   )}
                   <div className="min-w-0">
-                    <div className="text-xs font-medium truncate">{it.activity}</div>
-                    {overlapOverlay && (
-                      <div className={cn("text-[10px] truncate", overlapOverlay.color.split(" ").find((c) => c.startsWith("text-")))}>
-                        {overlapOverlay.label}
+                    <div className="text-xs font-medium truncate">{displayName}</div>
+                    {apptOverlap && (
+                      <div className="text-[10px] truncate text-blue-700">
+                        🤝 {apptOverlap.type} · {apptOverlap.provider}
                       </div>
                     )}
                   </div>
@@ -629,19 +701,24 @@ export function ScheduleView() {
                   )}
                   <span className="text-xs truncate">{it.location}</span>
                 </div>
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex items-center justify-center gap-0.5">
                   {editMode && !it.fromBase ? (
                     <>
-                      <Button size="icon" variant="ghost" className="size-7 text-blue-600" onClick={() => setEditing(it)}>
-                        <Pencil className="size-3.5" />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 text-blue-600 hover:bg-blue-50 [&_svg]:size-3"
+                        onClick={() => setEditing(it)}
+                      >
+                        <Pencil />
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="size-7 text-red-600 hover:text-red-700"
-                        onClick={() => updateActive((items) => items.filter((x) => x.id !== it.id))}
+                        className="size-6 text-blue-600 hover:bg-blue-50 [&_svg]:size-3"
+                        onClick={() => setConfirmItemDelete(it)}
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 />
                       </Button>
                     </>
                   ) : (
@@ -662,22 +739,70 @@ export function ScheduleView() {
       </div>
 
       {editMode && (
-        <div className="mt-3 px-1">
+        <div className="mt-3 px-1 space-y-3">
           <Button
             className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => setCreatingNew(true)}
           >
             Add activity <Plus className="size-4 ml-1.5" />
           </Button>
-          <p className="mt-3 text-[11px] text-muted-foreground">
-            Future: global chimes every 15 minutes.
-          </p>
+
+          {/* Appointments editor */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                <HandHelping className="size-4" /> Appointments
+              </div>
+              <Button
+                size="sm"
+                className="h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+                onClick={() => setCreatingAppt(true)}
+              >
+                Add <Plus className="ml-1" />
+              </Button>
+            </div>
+            {active.appointments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No appointments yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {active.appointments.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2 text-xs">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {a.type} <span className="text-stone-500">· {a.provider}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
+                      </div>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-blue-600 [&_svg]:size-3"
+                      onClick={() => setEditingAppt(a)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-blue-600 [&_svg]:size-3"
+                      onClick={() => setConfirmApptDelete(a)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       <ItemDialog
         open={!!editing || creatingNew}
         item={editing}
+        existing={active.items}
         onClose={() => {
           setEditing(null);
           setCreatingNew(false);
@@ -695,63 +820,89 @@ export function ScheduleView() {
         }}
       />
 
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="max-w-sm rounded-2xl border-stone-200">
-          <DialogHeader>
-            <DialogTitle>Rename schedule</DialogTitle>
-          </DialogHeader>
-          <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
-              onClick={() => setRenameOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="rounded-full bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                renameActive(renameValue.trim());
-                setRenameOpen(false);
-              }}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AppointmentDialog
+        open={!!editingAppt || creatingAppt}
+        appt={editingAppt}
+        existing={active.appointments}
+        onClose={() => {
+          setEditingAppt(null);
+          setCreatingAppt(false);
+        }}
+        onSave={(a) => {
+          if (editingAppt) {
+            updateActiveAppts((list) => list.map((x) => (x.id === editingAppt.id ? a : x)));
+          } else {
+            updateActiveAppts((list) =>
+              [...list, a].sort((x, y) => toMin(x.start) - toMin(y.start)),
+            );
+          }
+          setEditingAppt(null);
+          setCreatingAppt(false);
+        }}
+      />
 
-      <Dialog open={newSchedOpen} onOpenChange={setNewSchedOpen}>
-        <DialogContent className="max-w-sm rounded-2xl border-stone-200">
-          <DialogHeader>
-            <DialogTitle>New schedule</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Schedule name"
-            value={newSchedName}
-            onChange={(e) => setNewSchedName(e.target.value)}
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
-              onClick={() => setNewSchedOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="rounded-full bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                createNewSchedule(newSchedName);
-                setNewSchedOpen(false);
-              }}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PromptDialog
+        open={renameOpen}
+        title="Rename schedule"
+        value={renameValue}
+        onChange={setRenameValue}
+        onCancel={() => setRenameOpen(false)}
+        onSave={() => {
+          renameActive(renameValue.trim());
+          setRenameOpen(false);
+        }}
+      />
+
+      <PromptDialog
+        open={newSchedOpen}
+        title="New schedule"
+        placeholder="Schedule name"
+        value={newSchedName}
+        onChange={setNewSchedName}
+        onCancel={() => setNewSchedOpen(false)}
+        onSave={() => {
+          createNewSchedule(newSchedName);
+          setNewSchedOpen(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete schedule?"
+        body={`“${active.name}” will be removed.`}
+        confirmLabel="Delete"
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          deleteActive();
+          setDeleteOpen(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmItemDelete}
+        title="Delete activity?"
+        body={confirmItemDelete ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start)} will be removed.` : ""}
+        confirmLabel="Delete"
+        onCancel={() => setConfirmItemDelete(null)}
+        onConfirm={() => {
+          if (confirmItemDelete)
+            updateActive((items) => items.filter((x) => x.id !== confirmItemDelete.id));
+          setConfirmItemDelete(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmApptDelete}
+        title="Delete appointment?"
+        body={confirmApptDelete ? `${confirmApptDelete.type} · ${confirmApptDelete.provider}` : ""}
+        confirmLabel="Delete"
+        onCancel={() => setConfirmApptDelete(null)}
+        onConfirm={() => {
+          if (confirmApptDelete)
+            updateActiveAppts((list) => list.filter((x) => x.id !== confirmApptDelete.id));
+          setConfirmApptDelete(null);
+        }}
+      />
     </div>
   );
 }
@@ -775,34 +926,165 @@ function AlertCycle({ mode, onChange }: { mode: AlertMode; onChange: (m: AlertMo
   );
 }
 
+function PromptDialog({
+  open,
+  title,
+  value,
+  placeholder,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  open: boolean;
+  title: string;
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center gap-2">
+          <Input
+            autoFocus
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSave();
+            }}
+            className={cn("flex-1 rounded-full px-4", INPUT_BLUE_CLS)}
+          />
+          <Button
+            size="icon"
+            className="h-9 w-9 rounded-full bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+            onClick={onSave}
+            aria-label="Save"
+          >
+            <Check className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 rounded-full border-2 border-stone-200 text-stone-500 hover:bg-stone-100 shrink-0"
+            onClick={onCancel}
+            aria-label="Cancel"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">{body}</p>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className={cn("rounded-full text-blue-700 hover:bg-blue-50", "border-2 border-blue-300")}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ItemDialog({
   open,
   item,
+  existing,
   onClose,
   onSave,
 }: {
   open: boolean;
   item: ScheduleItem | null;
+  existing: ScheduleItem[];
   onClose: () => void;
   onSave: (i: ScheduleItem) => void;
 }) {
   const [start, setStart] = useState("10:00");
   const [end, setEnd] = useState("10:30");
   const [activity, setActivity] = useState<string>(ACTIVITIES[0]);
+  const [customName, setCustomName] = useState("");
+  const [customIcon, setCustomIcon] = useState("✨");
   const [location, setLocation] = useState<string>(LOCATIONS[0]);
   const [alert, setAlert] = useState<AlertMode>("visual");
   const [timeOpen, setTimeOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setStart(item?.start ?? "10:00");
       setEnd(item?.end ?? "10:30");
       setActivity(item?.activity ?? ACTIVITIES[0]);
+      setCustomName(item?.customName ?? "");
+      setCustomIcon(item?.customIcon ?? "✨");
       setLocation(item?.location ?? LOCATIONS[0]);
       setAlert(item?.alert ?? "visual");
       setTimeOpen(false);
+      setError(null);
     }
   }, [open, item]);
+
+  const handleSave = () => {
+    if (toMin(end) <= toMin(start)) {
+      setError("End time must be after start time.");
+      return;
+    }
+    const conflict = existing.some(
+      (x) => x.id !== item?.id && overlaps(start, end, x.start, x.end),
+    );
+    if (conflict) {
+      setError("Activities cannot overlap. Adjust the time.");
+      return;
+    }
+    onSave({
+      id: item?.id ?? `c${Date.now()}`,
+      start,
+      end,
+      activity,
+      customName: activity === "Custom" ? customName.trim() || "Custom" : undefined,
+      customIcon: activity === "Custom" ? customIcon || "✨" : undefined,
+      location,
+      alert,
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -825,8 +1107,8 @@ function ItemDialog({
               </button>
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-1">
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
+                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
               </div>
             )}
           </div>
@@ -843,6 +1125,28 @@ function ItemDialog({
               </SelectContent>
             </Select>
           </div>
+          {activity === "Custom" && (
+            <div className="grid grid-cols-[64px_1fr] gap-2">
+              <div>
+                <Label className="text-xs">Icon</Label>
+                <Input
+                  value={customIcon}
+                  onChange={(e) => setCustomIcon(e.target.value)}
+                  maxLength={3}
+                  className={cn("text-center text-lg", INPUT_BLUE_CLS)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Name</Label>
+                <Input
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="Activity name"
+                  className={INPUT_BLUE_CLS}
+                />
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Location</Label>
             <Select value={location} onValueChange={setLocation}>
@@ -876,27 +1180,19 @@ function ItemDialog({
               ))}
             </div>
           </div>
+          {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
         <DialogFooter>
           <Button
             variant="outline"
-            className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
             onClick={onClose}
           >
             Cancel
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700"
-            onClick={() =>
-              onSave({
-                id: item?.id ?? `c${Date.now()}`,
-                start,
-                end,
-                activity,
-                location,
-                alert,
-              })
-            }
+            onClick={handleSave}
           >
             Save
           </Button>
@@ -905,3 +1201,160 @@ function ItemDialog({
     </Dialog>
   );
 }
+
+function AppointmentDialog({
+  open,
+  appt,
+  existing,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  appt: Appointment | null;
+  existing: Appointment[];
+  onClose: () => void;
+  onSave: (a: Appointment) => void;
+}) {
+  const [start, setStart] = useState("11:00");
+  const [end, setEnd] = useState("11:30");
+  const [days, setDays] = useState<Day[]>(["Mon"]);
+  const [type, setType] = useState<string>(APPOINTMENT_TYPES[0]);
+  const [provider, setProvider] = useState("");
+  const [timeOpen, setTimeOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setStart(appt?.start ?? "11:00");
+      setEnd(appt?.end ?? "11:30");
+      setDays(appt?.days ?? ["Mon"]);
+      setType(appt?.type ?? APPOINTMENT_TYPES[0]);
+      setProvider(appt?.provider ?? "");
+      setTimeOpen(false);
+      setError(null);
+    }
+  }, [open, appt]);
+
+  const toggleDay = (d: Day) =>
+    setDays((p) => (p.includes(d) ? p.filter((x) => x !== d) : [...p, d]));
+
+  const handleSave = () => {
+    if (toMin(end) <= toMin(start)) {
+      setError("End time must be after start time.");
+      return;
+    }
+    if (days.length === 0) {
+      setError("Pick at least one day.");
+      return;
+    }
+    const conflict = existing.some(
+      (x) =>
+        x.id !== appt?.id &&
+        x.days.some((d) => days.includes(d)) &&
+        overlaps(start, end, x.start, x.end),
+    );
+    if (conflict) {
+      setError("Appointments on the same day cannot overlap.");
+      return;
+    }
+    onSave({
+      id: appt?.id ?? `ap${Date.now()}`,
+      start,
+      end,
+      days,
+      type,
+      provider: provider.trim() || "—",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+        <DialogHeader>
+          <DialogTitle>{appt ? "Edit appointment" : "Add appointment"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Time</Label>
+            {!timeOpen ? (
+              <button
+                type="button"
+                onClick={() => setTimeOpen(true)}
+                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
+              >
+                <Clock className="size-4" />
+                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
+                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
+              </button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
+                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
+              </div>
+            )}
+          </div>
+          <div>
+            <Label className="text-xs">Days</Label>
+            <div className="mt-1 flex gap-1">
+              {DAYS.map((d) => {
+                const on = days.includes(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDay(d)}
+                    className={cn(
+                      "flex-1 h-9 rounded-full border-2 text-xs",
+                      on
+                        ? "bg-blue-600 border-blue-600 text-white"
+                        : "bg-white border-blue-300 text-blue-700",
+                    )}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                {APPOINTMENT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t} className={SELECT_ITEM_CLS}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Provider</Label>
+            <Input
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              placeholder="Provider name"
+              className={cn("mt-1", INPUT_BLUE_CLS)}
+            />
+          </div>
+          {error && <p className="text-xs text-blue-700">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            onClick={handleSave}
+          >
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
