@@ -288,7 +288,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 }
 
 
-function ActiveDurationIndicator({ timers }: { timers: { id: string; label: string; scrollTo: () => void }[] }) {
+function ActiveDurationIndicator({ timers }: { timers: { id: string; label: string; scrollTo: () => void; activate?: () => void }[] }) {
   const [index, setIndex] = useState(0);
   const count = timers.length;
   const visible = count > 0;
@@ -301,6 +301,7 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
     if (count === 0) return;
     const next = index % count;
     timers[next]?.scrollTo();
+    timers[next]?.activate?.();
     setIndex((i) => (count > 0 ? (i + 1) % count : 0));
   };
 
@@ -314,7 +315,7 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           title={count > 1 ? `${count} timers running — tap to cycle` : timers[0]?.label}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0, scale: [1, 1.12, 1] }}
-          exit={{ opacity: 0, y: [0, -5, 10] }}
+          exit={{ opacity: 0, y: -8 }}
           transition={{
             y: { type: "spring", stiffness: 400, damping: 12 },
             opacity: { duration: 0.25 },
