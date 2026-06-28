@@ -8,11 +8,14 @@ import {
   BellOff,
   BellRing,
   ChevronDown,
-  Sun,
   Stethoscope,
   Copy,
   Type,
   Clock,
+  Check,
+  X,
+  FilePlus,
+  Repeat,
 } from "lucide-react";
 import {
   Select,
@@ -40,6 +43,9 @@ const LOCATIONS = [
   "Classroom",
   "Big Gym",
   "Small Gym",
+  "Classroom Bathroom",
+  "Learner Bathroom",
+  "Solo Bathroom",
 ] as const;
 
 const ACTIVITIES = [
@@ -54,30 +60,35 @@ const ACTIVITIES = [
   "Peer Play",
   "Client Choice",
   "Discreet Trials",
+  "Potty Time",
   "Pack Up/Dismissal",
 ] as const;
 
 const ACTIVITY_ICONS: Record<string, string> = {
   "Arrive/Pairing": "👋",
-  "Sensory Play": "🪀",
+  "Sensory Play": "🫘",
   "Snack": "🍎",
   "Lunch": "🥪",
   "Imaginative Play": "🦄",
-  "Social Group": "👥",
+  "Social Group": "🎵",
   "Arts and Crafts": "🎨",
-  "Gym Time": "🤸",
+  "Gym Time": "🛝",
   "Peer Play": "🧩",
   "Client Choice": "⭐",
   "Discreet Trials": "📋",
+  "Potty Time": "🚼",
   "Pack Up/Dismissal": "🎒",
 };
 
 const LOCATION_ICONS: Record<string, string> = {
-  "Treatment Room": "🛋️",
+  "Treatment Room": "🚪",
   "Kitchen": "🍽️",
-  "Classroom": "🏫",
-  "Big Gym": "🏟️",
-  "Small Gym": "🤾",
+  "Classroom": "📚",
+  "Big Gym": "🛝",
+  "Small Gym": "🛏️",
+  "Classroom Bathroom": "🚽",
+  "Learner Bathroom": "🚽",
+  "Solo Bathroom": "🚽",
 };
 
 type AlertMode = "off" | "visual" | "audio";
@@ -106,37 +117,74 @@ type TreatmentOverlay = {
   enabled: boolean;
 };
 
-const DAY_START = "10:00";
-const DAY_END = "16:00";
+const DAY_START = "08:00";
+const DAY_END = "18:00";
 
+// Group schedules: 8am – 6pm, no clinical appointments by default.
 const GROUP_A: ScheduleItem[] = [
-  { id: "a1", start: "10:00", end: "10:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
-  { id: "a2", start: "10:30", end: "11:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "a3", start: "11:15", end: "11:45", activity: "Gym Time", location: "Big Gym", alert: "audio" },
-  { id: "a4", start: "11:45", end: "12:15", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "a5", start: "12:15", end: "13:00", activity: "Social Group", location: "Classroom", alert: "audio" },
-  { id: "a6", start: "13:00", end: "13:30", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
-  { id: "a7", start: "13:30", end: "14:15", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
-  { id: "a8", start: "14:15", end: "14:45", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "a9", start: "14:45", end: "15:30", activity: "Peer Play", location: "Small Gym", alert: "audio" },
-  { id: "a10", start: "15:30", end: "16:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  { id: "a1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "a2", start: "08:30", end: "09:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
+  { id: "a3", start: "09:15", end: "10:00", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "a4", start: "10:00", end: "10:30", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "a5", start: "10:30", end: "11:30", activity: "Social Group", location: "Classroom", alert: "audio" },
+  { id: "a6", start: "11:30", end: "12:15", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
+  { id: "a7", start: "12:15", end: "13:00", activity: "Lunch", location: "Kitchen", alert: "visual" },
+  { id: "a8", start: "13:00", end: "14:00", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
+  { id: "a9", start: "14:00", end: "15:00", activity: "Peer Play", location: "Small Gym", alert: "audio" },
+  { id: "a10", start: "15:00", end: "15:30", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "a11", start: "15:30", end: "16:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
+  { id: "a12", start: "16:30", end: "17:30", activity: "Client Choice", location: "Small Gym", alert: "off" },
+  { id: "a13", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
 const GROUP_B: ScheduleItem[] = [
-  { id: "b1", start: "10:00", end: "10:30", activity: "Arrive/Pairing", location: "Classroom", alert: "visual" },
-  { id: "b2", start: "10:30", end: "11:15", activity: "Imaginative Play", location: "Classroom", alert: "off" },
-  { id: "b3", start: "11:15", end: "12:00", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "b4", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "b5", start: "12:30", end: "13:15", activity: "Gym Time", location: "Big Gym", alert: "audio" },
-  { id: "b6", start: "13:15", end: "14:00", activity: "Client Choice", location: "Small Gym", alert: "off" },
-  { id: "b7", start: "14:00", end: "14:30", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "b8", start: "14:30", end: "15:30", activity: "Social Group", location: "Classroom", alert: "audio" },
-  { id: "b9", start: "15:30", end: "16:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  { id: "b1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Classroom", alert: "visual" },
+  { id: "b2", start: "08:30", end: "09:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
+  { id: "b3", start: "09:30", end: "10:30", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
+  { id: "b4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "b5", start: "11:00", end: "12:00", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "b6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
+  { id: "b7", start: "12:45", end: "13:45", activity: "Client Choice", location: "Small Gym", alert: "off" },
+  { id: "b8", start: "13:45", end: "14:45", activity: "Social Group", location: "Classroom", alert: "audio" },
+  { id: "b9", start: "14:45", end: "15:15", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "b10", start: "15:15", end: "16:15", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
+  { id: "b11", start: "16:15", end: "17:15", activity: "Peer Play", location: "Small Gym", alert: "audio" },
+  { id: "b12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+];
+
+const GROUP_C: ScheduleItem[] = [
+  { id: "c1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "c2", start: "08:30", end: "09:30", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
+  { id: "c3", start: "09:30", end: "10:30", activity: "Social Group", location: "Classroom", alert: "audio" },
+  { id: "c4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "c5", start: "11:00", end: "12:00", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
+  { id: "c6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
+  { id: "c7", start: "12:45", end: "13:45", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "c8", start: "13:45", end: "14:45", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
+  { id: "c9", start: "14:45", end: "15:15", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "c10", start: "15:15", end: "16:15", activity: "Imaginative Play", location: "Classroom", alert: "off" },
+  { id: "c11", start: "16:15", end: "17:15", activity: "Peer Play", location: "Small Gym", alert: "audio" },
+  { id: "c12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+];
+
+// Custom schedule for Phineas — arrives 10, leaves 2, includes bathroom breaks.
+const PHINEAS: ScheduleItem[] = [
+  { id: "p1", start: "10:00", end: "10:20", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "p2", start: "10:20", end: "10:30", activity: "Potty Time", location: "Solo Bathroom", alert: "off" },
+  { id: "p3", start: "10:30", end: "11:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
+  { id: "p4", start: "11:15", end: "11:45", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
+  { id: "p5", start: "11:45", end: "12:00", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
+  { id: "p6", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
+  { id: "p7", start: "12:30", end: "13:15", activity: "Gym Time", location: "Big Gym", alert: "audio" },
+  { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
+  { id: "p9", start: "13:30", end: "14:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
 const PRESETS: Schedule[] = [
   { name: "Group A", items: GROUP_A },
   { name: "Group B", items: GROUP_B },
+  { name: "Group C", items: GROUP_C },
+  { name: "Phineas' Schedule", items: PHINEAS },
 ];
 
 const DEFAULT_OVERLAYS: TreatmentOverlay[] = [
@@ -183,6 +231,10 @@ function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): Mer
   return result;
 }
 
+// Shared blue-highlight class for select items.
+const SELECT_ITEM_CLS =
+  "focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900";
+
 export function ScheduleView() {
   const [now, setNow] = useState<Date>(() => randomDemoTime());
   const bumpTime = () => {
@@ -210,6 +262,8 @@ export function ScheduleView() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [newSchedOpen, setNewSchedOpen] = useState(false);
+  const [newSchedName, setNewSchedName] = useState("");
 
   const dayStart = toMin(DAY_START);
   const dayEnd = toMin(DAY_END);
@@ -234,7 +288,7 @@ export function ScheduleView() {
     );
   };
 
-  const saveAsCopy = () => {
+  const duplicateActive = () => {
     const baseName = active.name.replace(/^Custom \(|\)$/g, "");
     let name = `Custom (${baseName})`;
     let n = 2;
@@ -243,6 +297,13 @@ export function ScheduleView() {
     }
     setSchedules((p) => [...p, { name, items: active.items.map((x) => ({ ...x })) }]);
     setActiveName(name);
+  };
+
+  const createNewSchedule = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || schedules.some((s) => s.name === trimmed)) return;
+    setSchedules((p) => [...p, { name: trimmed, items: [] }]);
+    setActiveName(trimmed);
   };
 
   const renameActive = (newName: string) => {
@@ -332,39 +393,47 @@ export function ScheduleView() {
           </SelectTrigger>
           <SelectContent className="rounded-2xl">
             {schedules.map((s) => (
-              <SelectItem key={s.name} value={s.name}>
+              <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
                 {s.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button
-          variant={editMode ? "default" : "outline"}
-          size="icon"
-          className={cn(
-            "h-11 w-11 rounded-full border-2",
-            editMode
-              ? "bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
-              : "bg-white border-blue-500 text-blue-600 hover:bg-blue-50",
-          )}
-          onClick={() => setEditMode((v) => !v)}
-          aria-label="Edit schedule"
-        >
-          <Pencil className="size-4" />
-        </Button>
+        {editMode ? (
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              className="h-11 w-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setEditMode(false)}
+              aria-label="Save"
+            >
+              <Check className="size-5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-11 w-11 rounded-full text-stone-500 hover:bg-stone-100"
+              onClick={() => setEditMode(false)}
+              aria-label="Cancel"
+            >
+              <X className="size-5" />
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditMode(true)}
+            className="h-11 w-11 grid place-content-center rounded-full text-blue-600 hover:bg-blue-50"
+            aria-label="Edit schedule"
+          >
+            <Pencil className="size-5" />
+          </button>
+        )}
       </div>
 
       {editMode && (
         <div className="mt-2 space-y-2 px-1">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
-              onClick={saveAsCopy}
-            >
-              <Copy className="size-3.5 mr-1.5" /> Save copy
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -375,6 +444,25 @@ export function ScheduleView() {
               }}
             >
               <Type className="size-3.5 mr-1.5" /> Rename
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={duplicateActive}
+            >
+              <Copy className="size-3.5 mr-1.5" /> Duplicate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={() => {
+                setNewSchedName("");
+                setNewSchedOpen(true);
+              }}
+            >
+              <FilePlus className="size-3.5 mr-1.5" /> New schedule
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -387,9 +475,9 @@ export function ScheduleView() {
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
-                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>None</SelectItem>
                 {otherSchedules.map((s) => (
-                  <SelectItem key={s.name} value={s.name}>
+                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
                     {s.name}
                   </SelectItem>
                 ))}
@@ -419,10 +507,10 @@ export function ScheduleView() {
             "flex items-center gap-1.5",
             showFullDay ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
           )}
-          title="Show base (full day) schedule behind custom"
+          title="Show base (clinic rotation) schedule behind custom"
         >
-          <Sun className="size-3.5" />
-          Full Day
+          <Repeat className="size-3.5" />
+          Clinic Rotation
         </button>
         <button
           type="button"
@@ -475,17 +563,18 @@ export function ScheduleView() {
           {arrowTop !== null && (
             <div
               className="absolute z-20 pointer-events-none -translate-y-1/2"
-              style={{ top: arrowTop, left: -8 }}
+              style={{ top: arrowTop, left: -6 }}
               aria-hidden
             >
+              {/* Stubby rounded chevron — matches navigation arrow shape */}
               <svg
-                width="20"
-                height="18"
-                viewBox="0 0 20 18"
+                width="16"
+                height="20"
+                viewBox="0 0 16 20"
                 style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}
               >
                 <path
-                  d="M2 3 Q2 1 4 2 L17 8 Q19 9 17 10 L4 16 Q2 17 2 15 Z"
+                  d="M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
                   fill="#2563eb"
                 />
               </svg>
@@ -510,9 +599,9 @@ export function ScheduleView() {
                 className={cn(
                   "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors",
                   idx !== merged.length - 1 && "border-b border-stone-300",
-                  isCurrent && "bg-blue-50",
-                  it.fromBase && "opacity-50",
-                  overlapOverlay && cn(
+                  it.fromBase && "opacity-50 pl-5",
+                  isCurrent && "border border-blue-500 rounded-md bg-blue-50",
+                  overlapOverlay && !isCurrent && cn(
                     "border-l-4",
                     overlapOverlay.color.split(" ").find((c) => c.startsWith("border-")),
                   ),
@@ -543,7 +632,7 @@ export function ScheduleView() {
                 <div className="flex items-center justify-center gap-1">
                   {editMode && !it.fromBase ? (
                     <>
-                      <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(it)}>
+                      <Button size="icon" variant="ghost" className="size-7 text-blue-600" onClick={() => setEditing(it)}>
                         <Pencil className="size-3.5" />
                       </Button>
                       <Button
@@ -575,11 +664,10 @@ export function ScheduleView() {
       {editMode && (
         <div className="mt-3 px-1">
           <Button
-            variant="outline"
-            className="w-full rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => setCreatingNew(true)}
           >
-            <Plus className="size-4 mr-1" /> Add item
+            Add activity <Plus className="size-4 ml-1.5" />
           </Button>
           <p className="mt-3 text-[11px] text-muted-foreground">
             Future: global chimes every 15 minutes.
@@ -629,6 +717,37 @@ export function ScheduleView() {
               }}
             >
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={newSchedOpen} onOpenChange={setNewSchedOpen}>
+        <DialogContent className="max-w-sm rounded-2xl border-stone-200">
+          <DialogHeader>
+            <DialogTitle>New schedule</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Schedule name"
+            value={newSchedName}
+            onChange={(e) => setNewSchedName(e.target.value)}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={() => setNewSchedOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                createNewSchedule(newSchedName);
+                setNewSchedOpen(false);
+              }}
+            >
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -689,7 +808,7 @@ function ItemDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
         <DialogHeader>
-          <DialogTitle>{item ? "Edit item" : "Add item"}</DialogTitle>
+          <DialogTitle>{item ? "Edit activity" : "Add activity"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -717,7 +836,7 @@ function ItemDialog({
               <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
               <SelectContent className="rounded-2xl">
                 {ACTIVITIES.map((a) => (
-                  <SelectItem key={a} value={a}>
+                  <SelectItem key={a} value={a} className={SELECT_ITEM_CLS}>
                     {(ACTIVITY_ICONS[a] ?? "•") + " " + a}
                   </SelectItem>
                 ))}
@@ -730,7 +849,7 @@ function ItemDialog({
               <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
               <SelectContent className="rounded-2xl">
                 {LOCATIONS.map((l) => (
-                  <SelectItem key={l} value={l}>
+                  <SelectItem key={l} value={l} className={SELECT_ITEM_CLS}>
                     {(LOCATION_ICONS[l] ?? "📍") + " " + l}
                   </SelectItem>
                 ))}
