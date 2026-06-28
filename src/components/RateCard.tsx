@@ -55,6 +55,7 @@ export function RateCard({
     active: ticking && !locked,
     elementRef: cardRef,
     source: "rate",
+    onActivate,
   });
 
   useEffect(() => {
@@ -62,11 +63,13 @@ export function RateCard({
     return subscribeTick((d) => setElapsed((e) => e + d));
   }, [ticking, subscribeTick]);
 
-  // When the session pauses, pause the (unlocked) card timer too so the user
-  // must explicitly resume it. Locked timers ignore `running` entirely.
+  // Rate-card mini timers start automatically with the session timer and
+  // resume automatically when the session resumes after a pause. Users can
+  // still explicitly pause an individual rate timer via its play/pause button.
   useEffect(() => {
-    if (!sessionRunning && running) setRunning(false);
-  }, [sessionRunning, running]);
+    if (sessionRunning && !running) setRunning(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionRunning]);
 
   const toggle = () => {
     setRunning((r) => !r);
