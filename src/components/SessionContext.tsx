@@ -205,9 +205,15 @@ export function useRegisterActiveTimer(args: {
   active: boolean;
   elementRef: React.RefObject<HTMLElement | null>;
   source?: string;
+  onActivate?: () => void;
 }) {
   const { registerActiveTimer, unregisterActiveTimer } = useSession();
-  const { id, label, active, elementRef, source } = args;
+  const { id, label, active, elementRef, source, onActivate } = args;
+  // Keep latest onActivate in a ref so we don't re-register on every render.
+  const activateRef = useRef(onActivate);
+  useEffect(() => {
+    activateRef.current = onActivate;
+  }, [onActivate]);
   useEffect(() => {
     if (!active) {
       unregisterActiveTimer(id);
@@ -219,6 +225,7 @@ export function useRegisterActiveTimer(args: {
       scrollTo: () => {
         elementRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       },
+      activate: () => activateRef.current?.(),
       source,
     });
     return () => unregisterActiveTimer(id);
