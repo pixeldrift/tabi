@@ -314,20 +314,25 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           aria-label={count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`}
           title={count > 1 ? `${count} timers running — tap to cycle` : timers[0]?.label}
           initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0, scale: [1, 1.12, 1] }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{
             y: { type: "spring", stiffness: 400, damping: 12 },
             opacity: { duration: 0.25 },
-            scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
           }}
           className="relative flex items-center justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
         >
-          <Timer className="size-4" />
+          <motion.span
+            animate={{ scale: [1, 1.12, 1] }}
+            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+            className="inline-block"
+          >
+            <Timer className="size-4" />
+          </motion.span>
           {count > 1 && (
-            <span className="absolute top-0.5 right-0 min-w-[14px] h-[14px] px-0.5 rounded-full bg-blue-600 text-white text-[9px] font-semibold leading-[14px] text-center">
+            <sup className="text-[9px] font-medium leading-none ml-0.5 -mt-1.5">
               {count}
-            </span>
+            </sup>
           )}
         </motion.div>
       )}
