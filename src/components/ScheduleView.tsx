@@ -4,15 +4,15 @@ import {
   Pencil,
   Trash2,
   Eye,
-  EyeOff,
   Bell,
   BellOff,
   BellRing,
   ChevronDown,
-  Layers,
-  Activity,
+  Sun,
+  Stethoscope,
   Copy,
   Type,
+  Clock,
 } from "lucide-react";
 import {
   Select,
@@ -85,7 +85,7 @@ type AlertMode = "off" | "visual" | "audio";
 type ScheduleItem = {
   id: string;
   start: string; // "HH:MM" 24h
-  end: string;   // kept as metadata, not displayed
+  end: string;
   activity: string;
   location: string;
   alert: AlertMode;
@@ -94,6 +94,7 @@ type ScheduleItem = {
 type Schedule = {
   name: string;
   items: ScheduleItem[];
+  baseScheduleName?: string | null;
 };
 
 type TreatmentOverlay = {
@@ -139,10 +140,9 @@ const PRESETS: Schedule[] = [
 ];
 
 const DEFAULT_OVERLAYS: TreatmentOverlay[] = [
-  { id: "full", label: "Full Day", start: DAY_START, end: DAY_END, color: "bg-stone-100 border-stone-400 text-stone-700", enabled: false },
-  { id: "speech", label: "Speech Therapy", start: "11:00", end: "11:30", color: "bg-violet-100 border-violet-400 text-violet-800", enabled: false },
-  { id: "ot", label: "Occupational Therapy", start: "13:00", end: "13:45", color: "bg-amber-100 border-amber-400 text-amber-800", enabled: false },
-  { id: "pt", label: "Physical Therapy", start: "14:30", end: "15:00", color: "bg-emerald-100 border-emerald-400 text-emerald-800", enabled: false },
+  { id: "speech", label: "Speech Therapy", start: "11:00", end: "11:30", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
+  { id: "ot", label: "Occupational Therapy", start: "13:00", end: "13:45", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
+  { id: "pt", label: "Physical Therapy", start: "14:30", end: "15:00", color: "bg-blue-100 border-blue-400 text-blue-800", enabled: false },
 ];
 
 function toMin(t: string) {
@@ -166,9 +166,25 @@ function randomDemoTime(): Date {
   return d;
 }
 
+type MergedRow = ScheduleItem & { fromBase?: boolean };
+
+function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): MergedRow[] {
+  if (!base) return custom.map((i) => ({ ...i }));
+  const result: MergedRow[] = custom.map((i) => ({ ...i }));
+  for (const b of base) {
+    const bs = toMin(b.start);
+    const be = toMin(b.end);
+    const conflict = custom.some(
+      (c) => toMin(c.start) < be && toMin(c.end) > bs,
+    );
+    if (!conflict) result.push({ ...b, fromBase: true });
+  }
+  result.sort((a, b) => toMin(a.start) - toMin(b.start));
+  return result;
+}
+
 export function ScheduleView() {
   const [now, setNow] = useState<Date>(() => randomDemoTime());
-  // Tap on time advances 10 minutes for debugging.
   const bumpTime = () => {
     setNow((prev) => {
       const d = new Date(prev);
@@ -180,14 +196,13 @@ export function ScheduleView() {
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
   const [activeName, setActiveName] = useState<string>("Group A");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
-  const masterName = active.name.startsWith("Custom (")
-    ? active.name.slice(8, -1)
+  const base = active.baseScheduleName
+    ? schedules.find((s) => s.name === active.baseScheduleName) ?? null
     : null;
-  const master = masterName ? schedules.find((s) => s.name === masterName) : null;
 
   const [editMode, setEditMode] = useState(false);
   const [showThumbs, setShowThumbs] = useState(true);
-  const [showMaster, setShowMaster] = useState(false);
+  const [showFullDay, setShowFullDay] = useState(true);
   const [overlays, setOverlays] = useState(DEFAULT_OVERLAYS);
   const [overlaysOpen, setOverlaysOpen] = useState(false);
 
@@ -201,13 +216,21 @@ export function ScheduleView() {
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   const inDay = nowMin >= dayStart && nowMin <= dayEnd;
 
-  const currentItem = active.items.find(
+  const merged = mergeWithBase(active.items, showFullDay ? base?.items ?? null : null);
+
+  const currentItem = merged.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
 
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
       prev.map((s) => (s.name === activeName ? { ...s, items: mut(s.items) } : s)),
+    );
+  };
+
+  const setBaseSchedule = (name: string | null) => {
+    setSchedules((prev) =>
+      prev.map((s) => (s.name === activeName ? { ...s, baseScheduleName: name } : s)),
     );
   };
 
@@ -256,9 +279,8 @@ export function ScheduleView() {
         return;
       }
       const listTop = list.getBoundingClientRect().top;
-      const items = active.items;
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i];
+      for (let i = 0; i < merged.length; i++) {
+        const it = merged[i];
         const s = toMin(it.start);
         const e = toMin(it.end);
         const el = rowRefs.current.get(it.id);
@@ -277,7 +299,9 @@ export function ScheduleView() {
     const ro = new ResizeObserver(update);
     if (listRef.current) ro.observe(listRef.current);
     return () => ro.disconnect();
-  }, [active, nowMin, inDay, dayStart, dayEnd]);
+  }, [merged, nowMin, inDay, dayStart, dayEnd]);
+
+  const otherSchedules = schedules.filter((s) => s.name !== activeName);
 
   return (
     <div className="max-w-3xl mx-auto pt-1 pb-12">
@@ -331,26 +355,47 @@ export function ScheduleView() {
       </div>
 
       {editMode && (
-        <div className="mt-2 flex items-center gap-2 px-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
-            onClick={saveAsCopy}
-          >
-            <Copy className="size-3.5 mr-1.5" /> Save copy
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
-            onClick={() => {
-              setRenameValue(active.name);
-              setRenameOpen(true);
-            }}
-          >
-            <Type className="size-3.5 mr-1.5" /> Rename
-          </Button>
+        <div className="mt-2 space-y-2 px-1">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={saveAsCopy}
+            >
+              <Copy className="size-3.5 mr-1.5" /> Save copy
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={() => {
+                setRenameValue(active.name);
+                setRenameOpen(true);
+              }}
+            >
+              <Type className="size-3.5 mr-1.5" /> Rename
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-stone-600 shrink-0">Base schedule</Label>
+            <Select
+              value={active.baseScheduleName ?? "__none__"}
+              onValueChange={(v) => setBaseSchedule(v === "__none__" ? null : v)}
+            >
+              <SelectTrigger className="h-9 rounded-full bg-white border-2 border-blue-500 text-blue-700 px-3 text-sm focus:ring-blue-300">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                <SelectItem value="__none__">None</SelectItem>
+                {otherSchedules.map((s) => (
+                  <SelectItem key={s.name} value={s.name}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
@@ -369,15 +414,15 @@ export function ScheduleView() {
         </button>
         <button
           type="button"
-          onClick={() => setShowMaster((v) => !v)}
+          onClick={() => setShowFullDay((v) => !v)}
           className={cn(
             "flex items-center gap-1.5",
-            showMaster ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+            showFullDay ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
           )}
-          title="Show master schedule behind custom"
+          title="Show base (full day) schedule behind custom"
         >
-          <Layers className="size-3.5" />
-          Master behind
+          <Sun className="size-3.5" />
+          Full Day
         </button>
         <button
           type="button"
@@ -387,8 +432,8 @@ export function ScheduleView() {
             overlays.some((o) => o.enabled) ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
           )}
         >
-          <Activity className="size-3.5" />
-          Clinical ({overlays.filter((o) => o.enabled).length})
+          <Stethoscope className="size-3.5" />
+          Appointments ({overlays.filter((o) => o.enabled).length})
           <ChevronDown className={cn("size-3 transition-transform", overlaysOpen && "rotate-180")} />
         </button>
       </div>
@@ -401,9 +446,7 @@ export function ScheduleView() {
               <div className="flex-1 text-sm">
                 <div className="font-medium">{o.label}</div>
                 <div className="text-xs text-muted-foreground">
-                  {o.id === "full"
-                    ? "Entire scheduled day"
-                    : `${fmt12(o.start)} – ${fmt12(o.end)}`}
+                  {`${fmt12(o.start)} – ${fmt12(o.end)}`}
                 </div>
               </div>
               <Switch
@@ -419,9 +462,9 @@ export function ScheduleView() {
       )}
 
       {/* Schedule grid */}
-      <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-hidden">
+      <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-visible">
         {/* header */}
-        <div className="grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50">
+        <div className="grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50 rounded-t-xl">
           <div>Time</div>
           <div>Activity</div>
           <div>Location</div>
@@ -431,21 +474,26 @@ export function ScheduleView() {
         <div ref={listRef} className="relative">
           {arrowTop !== null && (
             <div
-              className="absolute left-0 z-10 pointer-events-none -translate-y-1/2"
-              style={{ top: arrowTop }}
+              className="absolute z-20 pointer-events-none -translate-y-1/2"
+              style={{ top: arrowTop, left: -8 }}
+              aria-hidden
             >
-              <div className="flex items-center">
-                <div className="size-0 border-y-[5px] border-y-transparent border-l-[6px] border-l-blue-600" />
-                <div className="h-px w-1.5 bg-blue-600/70" />
-              </div>
+              <svg
+                width="20"
+                height="18"
+                viewBox="0 0 20 18"
+                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}
+              >
+                <path
+                  d="M2 3 Q2 1 4 2 L17 8 Q19 9 17 10 L4 16 Q2 17 2 15 Z"
+                  fill="#2563eb"
+                />
+              </svg>
             </div>
           )}
 
-          {active.items.map((it, idx) => {
+          {merged.map((it, idx) => {
             const isCurrent = currentItem?.id === it.id;
-            const masterMatch = showMaster && master
-              ? master.items.find((m) => m.start === it.start)
-              : null;
             const overlapOverlay = overlays.find(
               (o) =>
                 o.enabled &&
@@ -461,8 +509,9 @@ export function ScheduleView() {
                 }}
                 className={cn(
                   "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors",
-                  idx !== active.items.length - 1 && "border-b border-stone-300",
+                  idx !== merged.length - 1 && "border-b border-stone-300",
                   isCurrent && "bg-blue-50",
+                  it.fromBase && "opacity-50",
                   overlapOverlay && cn(
                     "border-l-4",
                     overlapOverlay.color.split(" ").find((c) => c.startsWith("border-")),
@@ -478,11 +527,6 @@ export function ScheduleView() {
                   )}
                   <div className="min-w-0">
                     <div className="text-xs font-medium truncate">{it.activity}</div>
-                    {masterMatch && masterMatch.activity !== it.activity && (
-                      <div className="text-[10px] text-stone-400 truncate">
-                        master: {masterMatch.activity}
-                      </div>
-                    )}
                     {overlapOverlay && (
                       <div className={cn("text-[10px] truncate", overlapOverlay.color.split(" ").find((c) => c.startsWith("text-")))}>
                         {overlapOverlay.label}
@@ -497,7 +541,7 @@ export function ScheduleView() {
                   <span className="text-xs truncate">{it.location}</span>
                 </div>
                 <div className="flex items-center justify-center gap-1">
-                  {editMode ? (
+                  {editMode && !it.fromBase ? (
                     <>
                       <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditing(it)}>
                         <Pencil className="size-3.5" />
@@ -564,14 +608,21 @@ export function ScheduleView() {
       />
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm rounded-2xl border-stone-200">
           <DialogHeader>
             <DialogTitle>Rename schedule</DialogTitle>
           </DialogHeader>
           <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
             <Button
+              variant="outline"
+              className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={() => setRenameOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-full bg-blue-600 hover:bg-blue-700"
               onClick={() => {
                 renameActive(renameValue.trim());
                 setRenameOpen(false);
@@ -621,6 +672,7 @@ function ItemDialog({
   const [activity, setActivity] = useState<string>(ACTIVITIES[0]);
   const [location, setLocation] = useState<string>(LOCATIONS[0]);
   const [alert, setAlert] = useState<AlertMode>("visual");
+  const [timeOpen, setTimeOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -629,31 +681,41 @@ function ItemDialog({
       setActivity(item?.activity ?? ACTIVITIES[0]);
       setLocation(item?.location ?? LOCATIONS[0]);
       setAlert(item?.alert ?? "visual");
+      setTimeOpen(false);
     }
   }, [open, item]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
         <DialogHeader>
           <DialogTitle>{item ? "Edit item" : "Add item"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Start</Label>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">End</Label>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
-            </div>
+          <div>
+            <Label className="text-xs">Time</Label>
+            {!timeOpen ? (
+              <button
+                type="button"
+                onClick={() => setTimeOpen(true)}
+                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
+              >
+                <Clock className="size-4" />
+                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
+                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
+              </button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+              </div>
+            )}
           </div>
           <div>
             <Label className="text-xs">Activity</Label>
             <Select value={activity} onValueChange={setActivity}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-2xl">
                 {ACTIVITIES.map((a) => (
                   <SelectItem key={a} value={a}>
                     {(ACTIVITY_ICONS[a] ?? "•") + " " + a}
@@ -665,8 +727,8 @@ function ItemDialog({
           <div>
             <Label className="text-xs">Location</Label>
             <Select value={location} onValueChange={setLocation}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-2xl">
                 {LOCATIONS.map((l) => (
                   <SelectItem key={l} value={l}>
                     {(LOCATION_ICONS[l] ?? "📍") + " " + l}
@@ -697,8 +759,15 @@ function ItemDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
+            variant="outline"
+            className="rounded-full border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full bg-blue-600 hover:bg-blue-700"
             onClick={() =>
               onSave({
                 id: item?.id ?? `c${Date.now()}`,
