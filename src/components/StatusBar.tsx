@@ -145,29 +145,8 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
               </div>
 
-              <div className="hidden sm:flex items-center gap-1 pt-1">
-                <AnimatePresence>
-                  {durationTimers.map((t) => (
-                    <motion.button
-                      key={t.id}
-                      initial={{ opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.6 }}
-                      onClick={t.scrollTo}
-                      aria-label={`Jump to running timer: ${t.label}`}
-                      title={`Running: ${t.label}`}
-                      className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
-                    >
-                      <Timer className="size-4" />
-                      <motion.span
-                        animate={{ opacity: [1, 0.3, 1] }}
-                        transition={{ duration: 1.2, repeat: Infinity }}
-                        className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-blue-500"
-                        aria-hidden
-                      />
-                    </motion.button>
-                  ))}
-                </AnimatePresence>
+              <div className="flex items-center pt-1">
+                <ActiveDurationIndicator timers={durationTimers} />
               </div>
             </div>
           </div>
