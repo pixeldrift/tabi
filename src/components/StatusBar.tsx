@@ -307,28 +307,27 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
   return (
     <AnimatePresence>
       {visible && (
-        <motion.button
+        <motion.div
           key="duration-indicator"
-          type="button"
           onClick={handleClick}
           aria-label={count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`}
           title={count > 1 ? `${count} timers running — tap to cycle` : timers[0]?.label}
-          initial={{ opacity: 0, scale: 0.6, y: 0 }}
-          animate={{ opacity: 1, scale: [1, 1.08, 1], y: 0 }}
-          exit={{ opacity: 0, scale: 0.6, y: [-6, 0], transition: { duration: 0.35, ease: "easeOut" } }}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: [1, 1.12, 1] }}
+          exit={{ opacity: 0, scale: 0.6, y: [-4, 0], transition: { duration: 0.3, ease: "easeOut" } }}
           transition={{
-            opacity: { duration: 0.2 },
-            scale: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 0.25 },
+            scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
           }}
-          className="relative grid place-items-center size-8 rounded-full bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+          className="relative flex items-center justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-sky-400 hover:text-sky-500 transition-colors"
         >
           <Timer className="size-4" />
           {count > 1 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-semibold leading-4 text-center">
+            <span className="absolute top-0.5 right-0 min-w-[14px] h-[14px] px-0.5 rounded-full bg-sky-400 text-white text-[9px] font-semibold leading-[14px] text-center">
               {count}
             </span>
           )}
-        </motion.button>
+        </motion.div>
       )}
     </AnimatePresence>
   );
