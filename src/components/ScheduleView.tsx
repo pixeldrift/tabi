@@ -424,52 +424,59 @@ export function ScheduleView() {
     minute: "2-digit",
   });
 
+  const totalHeight = (dayEnd - dayStart) * PX_PER_MIN;
+  const arrowTop = editMode
+    ? null
+    : inDay
+      ? (nowMin - dayStart) * PX_PER_MIN
+      : nowMin < dayStart
+        ? 0
+        : totalHeight;
+
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [arrowTop, setArrowTop] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (editMode) {
-      setArrowTop(null);
-      return;
-    }
-    const update = () => {
-      const list = listRef.current;
-      if (!list) return setArrowTop(null);
-      if (!inDay) {
-        setArrowTop(nowMin < dayStart ? 0 : list.clientHeight);
-        return;
-      }
-      const listTop = list.getBoundingClientRect().top;
-      for (let i = 0; i < merged.length; i++) {
-        const it = merged[i];
-        const s = toMin(it.start);
-        const e = toMin(it.end);
-        const el = rowRefs.current.get(it.id);
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        if (nowMin >= s && nowMin <= e) {
-          const ratio = (nowMin - s) / Math.max(1, e - s);
-          setArrowTop(r.top - listTop + r.height * ratio);
-          return;
-        }
-      }
-      const ratio = (nowMin - dayStart) / Math.max(1, dayEnd - dayStart);
-      setArrowTop(list.clientHeight * ratio);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    if (listRef.current) ro.observe(listRef.current);
-    return () => ro.disconnect();
-  }, [merged, nowMin, inDay, dayStart, dayEnd, editMode]);
 
   const scrollToNow = () => {
     if (currentItem) {
       const el = rowRefs.current.get(currentItem.id);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Force-replay row flash even when same row stays current.
+      if (el) {
+        el.classList.remove("animate-row-flash");
+        // reflow
+        void el.offsetWidth;
+        el.classList.add("animate-row-flash");
+      }
       setNowAnim((n) => n + 1);
     }
   };
+
+  const setAlertFor = (it: MergedRow, m: AlertMode) => {
+    if (it.fromBase) {
+      const baseId = it.id.split("__")[0];
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.name === activeName
+            ? {
+                ...s,
+                baseAlertOverrides: { ...(s.baseAlertOverrides ?? {}), [baseId]: m },
+              }
+            : s,
+        ),
+      );
+    } else {
+      updateActive((items) => items.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
+    }
+  };
+
+  const effectiveAlert = (it: MergedRow): AlertMode => {
+    if (it.fromBase) {
+      const baseId = it.id.split("__")[0];
+      return active.baseAlertOverrides?.[baseId] ?? it.alert;
+    }
+    return it.alert;
+  };
+
 
 
   const otherSchedules = schedules.filter((s) => s.name !== activeName);
