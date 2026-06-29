@@ -300,16 +300,14 @@ export function ScheduleView() {
   const [confirmApptDelete, setConfirmApptDelete] = useState<Appointment | null>(null);
   const [nowAnim, setNowAnim] = useState(0); // bump to retrigger bounce/flash
 
-
-  const dayStart = toMin(DAY_START);
-  const dayEnd = toMin(DAY_END);
-  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const inDay = nowMin >= dayStart && nowMin <= dayEnd;
-
   const items = active.items;
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const dayStart = items.length ? toMin(items[0].start) : toMin(DAY_START);
+  const dayEnd = items.length ? toMin(items[items.length - 1].end) : toMin(DAY_END);
   const currentItem = items.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
+  const outsideSchedule = !currentItem;
 
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
