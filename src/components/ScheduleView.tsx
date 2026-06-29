@@ -623,7 +623,7 @@ export function ScheduleView() {
           ) : (
             <Rows3 className="size-3.5" />
           )}
-          {layoutMode === "proportional" ? "Proportional" : "Collapsed"}
+          {layoutMode === "proportional" ? "Show Collapsed" : "Show Proportional"}
         </button>
         <button
           type="button"
@@ -687,6 +687,11 @@ export function ScheduleView() {
                 ? it.customIcon ?? "✨"
                 : ACTIVITY_ICONS[it.activity] ?? "•";
             const alertMode = it.alert;
+            const actualDurMin = toMin(it.end) - toMin(it.start);
+            const gridLines =
+              layoutMode === "proportional"
+                ? Math.max(0, Math.floor((actualDurMin - 1) / 5))
+                : 0;
             return (
               <div
                 key={it.id}
@@ -704,6 +709,13 @@ export function ScheduleView() {
                     isCurrent && nowAnim > 0 && "animate-row-flash",
                   )}
                 />
+                {Array.from({ length: gridLines }, (_, i) => (
+                  <div
+                    key={`g-${i}`}
+                    className="absolute left-1 right-1 border-t border-stone-100"
+                    style={{ top: (i + 1) * 5 * PX_PER_MIN }}
+                  />
+                ))}
                 <div className="relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 items-start pt-1.5 px-2">
                   <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
