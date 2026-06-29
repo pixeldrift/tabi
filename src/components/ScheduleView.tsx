@@ -17,7 +17,7 @@ import {
   Star,
   Rows3,
   AlignVerticalJustifyStart,
-  ChevronRight,
+  
 } from "lucide-react";
 import {
   Select,
