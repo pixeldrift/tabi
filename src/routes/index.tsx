@@ -125,6 +125,8 @@ function IndexInner() {
   return (
     <main className="min-h-screen bg-background">
       <StatusBar activeTab={tab} onTabChange={setTab} />
+      <NotificationBar />
+
 
       <section className="px-5 pt-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px">
         {tab === "data" && (
