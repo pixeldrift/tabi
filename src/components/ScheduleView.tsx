@@ -623,7 +623,7 @@ export function ScheduleView() {
           ) : (
             <Rows3 className="size-3.5" />
           )}
-          {layoutMode === "proportional" ? "Proportional" : "Collapsed"}
+          {layoutMode === "proportional" ? "Show Collapsed" : "Show Proportional"}
         </button>
         <button
           type="button"
