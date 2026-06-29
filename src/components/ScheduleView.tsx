@@ -511,7 +511,12 @@ export function ScheduleView() {
       {/* Schedule selector */}
       <div className="mt-4 flex items-center gap-2 px-1">
         <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }} disabled={editMode}>
-          <SelectTrigger className="flex-1 h-11 text-base rounded-full bg-white border-2 border-blue-500 text-blue-700 px-4 focus:ring-blue-300">
+          <SelectTrigger className={cn(
+            "flex-1 h-11 text-base rounded-full px-4",
+            editMode
+              ? "bg-transparent border-0 shadow-none text-stone-800 font-medium disabled:opacity-100 [&>svg]:hidden"
+              : "bg-white border-2 border-blue-500 text-blue-700 focus:ring-blue-300",
+          )}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="rounded-2xl">
