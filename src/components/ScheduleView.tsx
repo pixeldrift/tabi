@@ -674,44 +674,75 @@ export function ScheduleView() {
       )}
 
 
-      {/* Toggles row */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs">
-        <button
-          type="button"
-          onClick={() =>
-            setLayoutMode((m) => (m === "proportional" ? "collapsed" : "proportional"))
-          }
-          className="flex items-center gap-1.5 text-blue-600"
-          title={
-            layoutMode === "proportional"
-              ? "Switch to collapsed (uniform) rows"
-              : "Switch to proportional (time-scaled) rows"
-          }
-        >
-          {layoutMode === "proportional" ? (
-            <Rows3 className="size-3.5" />
-          ) : (
-            <AlignVerticalJustifyStart className="size-3.5" />
-          )}
-          {layoutMode === "proportional" ? "Show Collapsed" : "Show Proportional"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowAppts((v) => !v);
-            setAllApptsCollapsed(false);
-            setCollapsedAppts({});
-          }}
+      {/* Toggles row — sticky under StatusBar */}
+      <div ref={togglesSentinelRef} className="h-0" aria-hidden />
+      <div
+        className={cn(
+          "sticky z-30 -mx-1 px-1 transition-all duration-300",
+          stickyCompact
+            ? "bg-background/85 backdrop-blur border-b border-stone-200/70 shadow-sm py-1.5"
+            : "bg-transparent py-2 mt-3",
+        )}
+        style={{ top: stickyTop }}
+      >
+        <div
           className={cn(
-            "flex items-center gap-1.5",
-            showAppts ? "text-green-700" : "text-stone-400 hover:text-stone-600",
+            "flex items-center text-xs transition-all duration-300",
+            stickyCompact ? "gap-2" : "gap-x-4 gap-y-2 flex-wrap",
           )}
-          title="Show or hide appointment overlays"
         >
-          <HandHelping className="size-3.5" />
-          {showAppts ? "Hide Appointments" : "Show Appointments"}
-        </button>
+          <button
+            type="button"
+            onClick={() =>
+              setLayoutMode((m) => (m === "proportional" ? "collapsed" : "proportional"))
+            }
+            className="flex items-center gap-1.5 text-blue-600"
+            title={
+              layoutMode === "proportional"
+                ? "Switch to collapsed (uniform) rows"
+                : "Switch to proportional (time-scaled) rows"
+            }
+          >
+            {layoutMode === "proportional" ? (
+              <Rows3 className="size-3.5 shrink-0" />
+            ) : (
+              <AlignVerticalJustifyStart className="size-3.5 shrink-0" />
+            )}
+            <span
+              className={cn(
+                "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
+                stickyCompact ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100",
+              )}
+            >
+              {layoutMode === "proportional" ? "Show Collapsed" : "Show Proportional"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAppts((v) => !v);
+              setAllApptsCollapsed(false);
+              setCollapsedAppts({});
+            }}
+            className={cn(
+              "flex items-center gap-1.5",
+              showAppts ? "text-green-700" : "text-stone-400 hover:text-stone-600",
+            )}
+            title="Show or hide appointment overlays"
+          >
+            <HandHelping className="size-3.5 shrink-0" />
+            <span
+              className={cn(
+                "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
+                stickyCompact ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100",
+              )}
+            >
+              {showAppts ? "Hide Appointments" : "Show Appointments"}
+            </span>
+          </button>
+        </div>
       </div>
+
 
 
       {editMode && (
