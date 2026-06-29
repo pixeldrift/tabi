@@ -207,7 +207,7 @@ const PHINEAS_APPTS: Appointment[] = [
 ];
 
 const PRESETS: Schedule[] = [
-  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS },
+  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS, baseScheduleName: "Group A" },
   { name: "Group A", items: GROUP_A, appointments: [], locked: true },
   { name: "Group B", items: GROUP_B, appointments: [], locked: true },
   { name: "Group C", items: GROUP_C, appointments: [], locked: true },
