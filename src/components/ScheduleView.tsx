@@ -1161,8 +1161,8 @@ function ItemDialog({
   const [customName, setCustomName] = useState("");
   const [customIcon, setCustomIcon] = useState("✨");
   const [location, setLocation] = useState<string>(LOCATIONS[0]);
-  const [alert, setAlert] = useState<AlertMode>("visual");
-  const [timeOpen, setTimeOpen] = useState(false);
+  const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
+  const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1173,8 +1173,8 @@ function ItemDialog({
       setCustomName(item?.customName ?? "");
       setCustomIcon(item?.customIcon ?? "✨");
       setLocation(item?.location ?? LOCATIONS[0]);
-      setAlert(item?.alert ?? "visual");
-      setTimeOpen(false);
+      setAlertCfg(item?.alertCfg ?? { ...DEFAULT_ALERT, mode: item?.alert ?? DEFAULT_ALERT.mode });
+      setPriming(item?.priming ?? DEFAULT_PRIMING);
       setError(null);
     }
   }, [open, item]);
@@ -1199,7 +1199,9 @@ function ItemDialog({
       customName: activity === "Custom" ? customName.trim() || "Custom" : undefined,
       customIcon: activity === "Custom" ? customIcon || "✨" : undefined,
       location,
-      alert,
+      alert: alertCfg.mode,
+      alertCfg,
+      priming,
     });
   };
 
@@ -1210,24 +1212,15 @@ function ItemDialog({
           <DialogTitle>{item ? "Edit activity" : "Add activity"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Time</Label>
-            {!timeOpen ? (
-              <button
-                type="button"
-                onClick={() => setTimeOpen(true)}
-                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
-              >
-                <Clock className="size-4" />
-                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
-                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Start</Label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
+            <div>
+              <Label className="text-xs">End</Label>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Activity</Label>
@@ -1277,29 +1270,10 @@ function ItemDialog({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Alert</Label>
-            <div className="flex gap-2 mt-1">
-              {(["off", "visual", "audio"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setAlert(m)}
-                  className={cn(
-                    "flex-1 h-9 rounded-full border-2 text-xs capitalize",
-                    alert === m
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "bg-white border-blue-300 text-blue-700",
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
             className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1337,7 +1311,8 @@ function AppointmentDialog({
   const [days, setDays] = useState<Day[]>(["Mon"]);
   const [type, setType] = useState<string>(APPOINTMENT_TYPES[0]);
   const [provider, setProvider] = useState("");
-  const [timeOpen, setTimeOpen] = useState(false);
+  const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
+  const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1347,7 +1322,8 @@ function AppointmentDialog({
       setDays(appt?.days ?? ["Mon"]);
       setType(appt?.type ?? APPOINTMENT_TYPES[0]);
       setProvider(appt?.provider ?? "");
-      setTimeOpen(false);
+      setAlertCfg(appt?.alertCfg ?? DEFAULT_ALERT);
+      setPriming(appt?.priming ?? DEFAULT_PRIMING);
       setError(null);
     }
   }, [open, appt]);
@@ -1381,6 +1357,8 @@ function AppointmentDialog({
       days,
       type,
       provider: provider.trim() || "—",
+      alertCfg,
+      priming,
     });
   };
 
@@ -1391,24 +1369,15 @@ function AppointmentDialog({
           <DialogTitle>{appt ? "Edit appointment" : "Add appointment"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Time</Label>
-            {!timeOpen ? (
-              <button
-                type="button"
-                onClick={() => setTimeOpen(true)}
-                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
-              >
-                <Clock className="size-4" />
-                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
-                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Start</Label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
+            <div>
+              <Label className="text-xs">End</Label>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Days</Label>
@@ -1421,12 +1390,13 @@ function AppointmentDialog({
                     type="button"
                     onClick={() => toggleDay(d)}
                     className={cn(
-                      "flex-1 h-9 rounded-full border-2 text-xs",
+                      "flex-1 h-9 rounded-full border-2 text-xs inline-flex items-center justify-center gap-1",
                       on
                         ? "bg-blue-600 border-blue-600 text-white"
                         : "bg-white border-blue-300 text-blue-700",
                     )}
                   >
+                    {on && <Check className="size-3" strokeWidth={3} />}
                     {d}
                   </button>
                 );
@@ -1453,9 +1423,10 @@ function AppointmentDialog({
               className={cn("mt-1", INPUT_BLUE_CLS)}
             />
           </div>
+          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
             className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1474,6 +1445,125 @@ function AppointmentDialog({
     </Dialog>
   );
 }
+
+const ALERT_MODE_OPTIONS: { value: AlertMode; label: string; Icon: typeof Bell }[] = [
+  { value: "visual", label: "Notify", Icon: Bell },
+  { value: "audio", label: "Notify and Chime", Icon: BellRing },
+  { value: "off", label: "No Alert", Icon: BellOff },
+];
+
+function AlertModeRow({
+  mode,
+  onMode,
+}: {
+  mode: AlertMode;
+  onMode: (m: AlertMode) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => {
+        const active = mode === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onMode(value)}
+            className={cn(
+              "w-full h-9 px-3 rounded-full border-2 inline-flex items-center gap-2 text-xs transition-colors",
+              active
+                ? "bg-blue-50 border-blue-500 text-blue-700"
+                : "bg-white border-stone-200 text-stone-500 hover:border-blue-200",
+            )}
+          >
+            <Icon className="size-4" />
+            <span className="font-medium">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AlertsBlock({
+  alert,
+  setAlert,
+  priming,
+  setPriming,
+}: {
+  alert: AlertSettings;
+  setAlert: (a: AlertSettings) => void;
+  priming: PrimingSettings;
+  setPriming: (p: PrimingSettings) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs">Default Alert</Label>
+        <div className="mt-1 space-y-2">
+          <AlertModeRow mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
+          <ToggleRow
+            label="Allow Snooze"
+            checked={alert.allowSnooze}
+            onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
+          />
+          <ToggleRow
+            label="Autofade"
+            checked={alert.autofade}
+            onChange={(v) => setAlert({ ...alert, autofade: v })}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Priming Alert</Label>
+        <div className="mt-1 space-y-2">
+          <AlertModeRow mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
+          <div className="flex items-center justify-between gap-2 pl-1 pr-1">
+            <span className="text-xs text-stone-600">Minutes prior</span>
+            <Input
+              type="number"
+              min={1}
+              max={60}
+              value={priming.minutesPrior}
+              onChange={(e) =>
+                setPriming({ ...priming, minutesPrior: Math.max(1, Number(e.target.value) || 1) })
+              }
+              className={cn("h-8 w-16 text-center", INPUT_BLUE_CLS)}
+            />
+          </div>
+          <ToggleRow
+            label="Allow Snooze"
+            checked={priming.allowSnooze}
+            onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
+          />
+          <ToggleRow
+            label="Autofade"
+            checked={priming.autofade}
+            onChange={(v) => setPriming({ ...priming, autofade: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between pl-1 pr-1">
+      <span className="text-xs text-stone-600">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+
 
 function NewScheduleDialog({
   open,
