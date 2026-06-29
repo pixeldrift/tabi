@@ -124,7 +124,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   return (
     <>
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+      <div data-status-bar className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
