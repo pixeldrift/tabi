@@ -835,68 +835,6 @@ export function ScheduleView() {
       </div>
 
 
-
-      {editMode && (
-        <div className="mt-3 px-1 space-y-3">
-          <Button
-            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setCreatingNew(true)}
-          >
-            Add activity <Plus className="size-4 ml-1.5" />
-          </Button>
-
-          {/* Appointments editor */}
-          <div className="rounded-xl border border-stone-200 bg-white p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
-                <HandHelping className="size-4" /> Appointments
-              </div>
-              <Button
-                size="sm"
-                className="h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
-                onClick={() => setCreatingAppt(true)}
-              >
-                Add <Plus className="ml-1" />
-              </Button>
-            </div>
-            {active.appointments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No appointments yet.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {active.appointments.map((a) => (
-                  <div key={a.id} className="flex items-center gap-2 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {a.type} <span className="text-stone-500">· {a.provider}</span>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
-                      </div>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setEditingAppt(a)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setConfirmApptDelete(a)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <ItemDialog
         open={!!editing || creatingNew}
         item={editing}
