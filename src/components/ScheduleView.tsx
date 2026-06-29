@@ -614,9 +614,6 @@ export function ScheduleView() {
               <Trash2 /> Delete
             </Button>
           </div>
-          <div className="text-xs text-stone-600">
-            <span className="font-medium text-blue-700">{active.name}</span>
-          </div>
         </div>
       )}
 
