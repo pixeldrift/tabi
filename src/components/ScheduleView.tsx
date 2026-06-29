@@ -637,7 +637,11 @@ export function ScheduleView() {
         <div ref={listRef} className="relative">
           {arrowTop !== null && !editMode && (
             <div
-              className="absolute z-20 pointer-events-none -translate-y-1/2"
+              key={`arrow-${nowAnim}`}
+              className={cn(
+                "absolute z-20 pointer-events-none -translate-y-1/2",
+                nowAnim > 0 && "animate-bounce-x",
+              )}
               style={{ top: arrowTop, left: -6 }}
               aria-hidden
             >
@@ -671,11 +675,12 @@ export function ScheduleView() {
                   else rowRefs.current.delete(it.id);
                 }}
                 className={cn(
-                  "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors",
-                  idx !== merged.length - 1 && "border-b border-stone-300",
-                  it.fromBase && "opacity-50 pl-5",
-                  isCurrent && "border border-blue-500 rounded-md bg-blue-50",
-                  apptOverlap && !isCurrent && "border-l-4 border-blue-400",
+                  "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors border-2 border-transparent",
+                  idx !== merged.length - 1 && "border-b-stone-300",
+                  it.fromBase && "opacity-50 pl-5 pr-3",
+                  isCurrent && "border-blue-500 rounded-lg bg-blue-50 shadow-[0_2px_8px_rgba(37,99,235,0.18)]",
+                  isCurrent && nowAnim > 0 && "animate-row-flash",
+                  apptOverlap && !isCurrent && "border-l-blue-400",
                 )}
               >
                 <div className="text-[11px] tabular-nums leading-tight pl-0.5">
@@ -685,12 +690,13 @@ export function ScheduleView() {
                   {showThumbs && (
                     <span className="text-base shrink-0">{displayIcon}</span>
                   )}
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium truncate">{displayName}</div>
+                  <div className="min-w-0 flex-1">
+                    <ScrubText text={displayName} className="text-xs font-medium" />
                     {apptOverlap && (
-                      <div className="text-[10px] truncate text-blue-700">
-                        🤝 {apptOverlap.type} · {apptOverlap.provider}
-                      </div>
+                      <ScrubText
+                        text={`🤝 ${apptOverlap.type} · ${apptOverlap.provider}`}
+                        className="text-[10px] text-blue-700"
+                      />
                     )}
                   </div>
                 </div>
@@ -698,8 +704,9 @@ export function ScheduleView() {
                   {showThumbs && (
                     <span className="text-sm shrink-0">{LOCATION_ICONS[it.location] ?? "📍"}</span>
                   )}
-                  <span className="text-xs truncate">{it.location}</span>
+                  <ScrubText text={it.location} className="text-xs flex-1" />
                 </div>
+
                 <div className="flex items-center justify-center gap-0.5">
                   {editMode && !it.fromBase ? (
                     <>
