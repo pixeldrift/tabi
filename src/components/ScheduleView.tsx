@@ -408,16 +408,16 @@ export function ScheduleView() {
   const arrowTop = (() => {
     if (editMode) return null;
     if (layoutMode === "proportional") {
-      if (inDay) return (nowMin - dayStart) * PX_PER_MIN;
-      return nowMin < dayStart ? 0 : totalHeight;
+      if (!outsideSchedule) return (nowMin - dayStart) * PX_PER_MIN;
+      return nowMin < dayStart ? -2 : totalHeight + 2;
     }
-    // collapsed: anchor at current row center, or top/bottom if outside
     if (currentItem) {
       const row = rowLayout.find((r) => r.item.id === currentItem.id);
       if (row) return row.top + row.height / 2;
     }
-    return nowMin < dayStart ? 0 : totalHeight;
+    return nowMin < dayStart ? -2 : totalHeight + 2;
   })();
+  const arrowGray = outsideSchedule;
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
