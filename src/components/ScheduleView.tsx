@@ -144,7 +144,7 @@ const DAY_START = "08:00";
 const DAY_END = "18:00";
 
 const GROUP_A: ScheduleItem[] = [
-  { id: "a1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "a1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
   { id: "a2", start: "08:30", end: "09:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
   { id: "a3", start: "09:15", end: "10:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "a4", start: "10:00", end: "10:30", activity: "Snack", location: "Kitchen", alert: "visual" },
