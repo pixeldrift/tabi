@@ -519,13 +519,18 @@ export function ScheduleView() {
             onClick={scrollToNow}
             disabled={!currentItem || editMode}
             className={cn(
-              "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1 [&_svg]:size-3",
+              "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1",
               !currentItem || editMode
                 ? "bg-stone-300 hover:bg-stone-300"
                 : "bg-blue-600 hover:bg-blue-700",
             )}
           >
-            <ChevronRight strokeWidth={3} />
+            <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden>
+              <path
+                d="M1.6 1 Q0.6 1 0.6 2 V9 Q0.6 10 1.6 10 L7.6 6.3 Q8.6 5.5 7.6 4.7 Z"
+                fill="white"
+              />
+            </svg>
             Now
           </Button>
         </div>
