@@ -148,6 +148,8 @@ type Schedule = {
 const DAY_START = "08:00";
 const DAY_END = "18:00";
 const PX_PER_MIN = 1.6;
+const MIN_ROW_MIN = 10; // visual minimum row height in "minutes"
+
 
 
 const GROUP_A: ScheduleItem[] = [
@@ -580,41 +582,39 @@ export function ScheduleView() {
 
       {editMode && (
         <div className="mt-2 space-y-2 px-1">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1 flex-nowrap">
             <Button
               size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
               onClick={() => {
                 setRenameValue(active.name);
                 setRenameOpen(true);
               }}
             >
-              <Type className="mr-1" /> Rename
+              <Type /> Rename
             </Button>
             <Button
               size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
               onClick={duplicateActive}
             >
-              <Copy className="mr-1" /> Duplicate
+              <Copy /> Duplicate
             </Button>
             <Button
               size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
               onClick={() => setNewSchedOpen(true)}
             >
-              <FilePlus className="mr-1" /> New
+              <FilePlus /> New
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-3 [&_svg]:size-3 ml-auto"
+              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-2.5 text-xs gap-1 [&_svg]:size-3 ml-auto"
               onClick={() => setDeleteOpen(true)}
-              aria-label="Delete schedule"
             >
-              <Trash2 className="mr-1" /> Delete
+              <Trash2 /> Delete
             </Button>
-
           </div>
           <div className="flex items-center gap-2 text-xs text-stone-600">
             <span>Based on:</span>
@@ -622,9 +622,9 @@ export function ScheduleView() {
               {active.baseScheduleName ?? "None (blank)"}
             </span>
           </div>
-
         </div>
       )}
+
 
       {/* Toggles row */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs">
@@ -706,7 +706,8 @@ export function ScheduleView() {
           {merged.map((it) => {
             const isCurrent = !editMode && currentItem?.id === it.id;
             const top = (toMin(it.start) - dayStart) * PX_PER_MIN;
-            const height = (toMin(it.end) - toMin(it.start)) * PX_PER_MIN;
+            const durMin = Math.max(toMin(it.end) - toMin(it.start), MIN_ROW_MIN);
+            const height = durMin * PX_PER_MIN;
             const displayName = it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
             const displayIcon =
               it.activity === "Custom"
@@ -731,33 +732,35 @@ export function ScheduleView() {
                   className={cn(
                     "absolute inset-y-0 rounded-md border-2 border-transparent transition-colors",
                     it.fromBase
-                      ? "left-[10px] right-[10px] bg-stone-50/80"
+                      ? "left-[10px] right-[10px]"
                       : "left-0 right-0 bg-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.18)]",
                     isCurrent && "!border-blue-500 !bg-blue-50 shadow-[0_2px_8px_rgba(37,99,235,0.25)]",
                     isCurrent && nowAnim > 0 && "animate-row-flash",
                   )}
                 />
-                {/* Content grid — columns aligned with header regardless of base/custom */}
+                {/* Content grid — columns aligned with header; inset for base rows so the
+                    cream background peeks through the gutter. */}
                 <div
                   className={cn(
-                    "relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 items-center",
-                    it.fromBase && !isCurrent && "opacity-55",
+                    "relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 items-start pt-1.5",
+                    it.fromBase ? "px-3 opacity-55" : "px-2",
+                    it.fromBase && isCurrent && "opacity-100",
                   )}
                 >
-                  <div className="text-[11px] tabular-nums leading-tight pl-0.5">
+                  <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
                   </div>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {showThumbs && <span className="text-base shrink-0">{displayIcon}</span>}
-                    <ScrubText text={displayName} className="text-xs font-medium flex-1" />
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    {showThumbs && <span className="text-base leading-none shrink-0">{displayIcon}</span>}
+                    <ScrubText text={displayName} className="text-xs font-medium flex-1 leading-tight" />
                   </div>
-                  <div className="flex items-center gap-1 min-w-0">
+                  <div className="flex items-start gap-1 min-w-0">
                     {showThumbs && (
-                      <span className="text-sm shrink-0">{LOCATION_ICONS[it.location] ?? "📍"}</span>
+                      <span className="text-sm leading-none shrink-0">{LOCATION_ICONS[it.location] ?? "📍"}</span>
                     )}
-                    <ScrubText text={it.location} className="text-xs flex-1" />
+                    <ScrubText text={it.location} className="text-xs flex-1 leading-tight" />
                   </div>
-                  <div className="flex items-center justify-center gap-0.5">
+                  <div className="flex items-start justify-center gap-0.5 -mt-1">
                     {editMode && !it.fromBase ? (
                       <>
                         <Button
@@ -785,6 +788,7 @@ export function ScheduleView() {
               </div>
             );
           })}
+
 
           {/* Appointment overlays — top layer, on top of activity rows */}
           {visibleAppts.map((a) => {
