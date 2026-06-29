@@ -1368,3 +1368,90 @@ function AppointmentDialog({
   );
 }
 
+function NewScheduleDialog({
+  open,
+  schedules,
+  defaultBase,
+  onCancel,
+  onCreate,
+}: {
+  open: boolean;
+  schedules: Schedule[];
+  defaultBase: string;
+  onCancel: () => void;
+  onCreate: (name: string, base: string | null) => void;
+}) {
+  const [name, setName] = useState("New Schedule");
+  const [base, setBase] = useState<string>(defaultBase);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName("New Schedule");
+      setBase(defaultBase);
+      // Defer focus so the dialog has mounted, then select all text.
+      window.setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [open, defaultBase]);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+        <DialogHeader>
+          <DialogTitle>New schedule</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Name</Label>
+            <Input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onCreate(name, base === "__none__" ? null : base);
+              }}
+              className={cn("mt-1 rounded-full px-4", INPUT_BLUE_CLS)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Based on</Label>
+            <Select value={base} onValueChange={setBase}>
+              <SelectTrigger className="mt-1 rounded-full border-2 border-blue-300 text-blue-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>
+                  None (blank schedule)
+                </SelectItem>
+                {schedules.map((s) => (
+                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            onClick={() => onCreate(name, base === "__none__" ? null : base)}
+          >
+            <Plus className="size-4" /> Create New Schedule
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
