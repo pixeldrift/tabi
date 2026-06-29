@@ -862,18 +862,17 @@ export function ScheduleView() {
         }}
       />
 
-      <PromptDialog
+      <NewScheduleDialog
         open={newSchedOpen}
-        title="New schedule"
-        placeholder="Schedule name"
-        value={newSchedName}
-        onChange={setNewSchedName}
+        schedules={schedules}
+        defaultBase={active.name}
         onCancel={() => setNewSchedOpen(false)}
-        onSave={() => {
-          createNewSchedule(newSchedName);
+        onCreate={(name, base) => {
+          createNewSchedule(name, base);
           setNewSchedOpen(false);
         }}
       />
+
 
       <ConfirmDialog
         open={deleteOpen}
