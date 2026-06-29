@@ -246,48 +246,10 @@ function randomDemoTime(): Date {
   return d;
 }
 
-type MergedRow = ScheduleItem & { fromBase?: boolean };
-
 function fromMin(m: number) {
   const h = Math.floor(m / 60);
   const mm = m % 60;
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
-
-function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): MergedRow[] {
-  const result: MergedRow[] = custom.map((i) => ({ ...i }));
-  if (base) {
-    const customSpans = custom
-      .map((c) => [toMin(c.start), toMin(c.end)] as [number, number])
-      .sort((a, z) => a[0] - z[0]);
-    for (const b of base) {
-      const bs = toMin(b.start);
-      const be = toMin(b.end);
-      // Compute base segments NOT covered by any custom row → peek-out pieces.
-      let cursor = bs;
-      const segments: [number, number][] = [];
-      for (const [cs, ce] of customSpans) {
-        if (ce <= cursor) continue;
-        if (cs >= be) break;
-        if (cs > cursor) segments.push([cursor, Math.min(cs, be)]);
-        cursor = Math.max(cursor, ce);
-        if (cursor >= be) break;
-      }
-      if (cursor < be) segments.push([cursor, be]);
-      for (const [s, e] of segments) {
-        if (e - s < 1) continue;
-        result.push({
-          ...b,
-          id: `${b.id}__${s}`,
-          start: fromMin(s),
-          end: fromMin(e),
-          fromBase: true,
-        });
-      }
-    }
-  }
-  result.sort((a, b) => toMin(a.start) - toMin(b.start));
-  return result;
 }
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
