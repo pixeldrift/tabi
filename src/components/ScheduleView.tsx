@@ -3,12 +3,10 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   EyeOff,
   Bell,
   BellOff,
   BellRing,
-  CalendarDays,
   HandHelping,
   Copy,
   Type,
@@ -17,6 +15,9 @@ import {
   X,
   FilePlus,
   PencilOff,
+  Star,
+  Rows3,
+  AlignVerticalJustifyStart,
 } from "lucide-react";
 import {
   Select,
