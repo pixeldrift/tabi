@@ -675,22 +675,13 @@ export function ScheduleView() {
 
 
       {/* Toggles row — sticky under StatusBar */}
+      <div className="mt-3" />
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
-        className={cn(
-          "sticky z-30 -mx-1 px-1 transition-all duration-300",
-          stickyCompact
-            ? "bg-background border-b border-stone-200/70 shadow-sm py-1.5"
-            : "bg-transparent py-2 mt-3",
-        )}
+        className="sticky z-30 -mx-1 px-1 bg-background border-b border-stone-200/70 shadow-sm py-1.5"
         style={{ top: stickyTop }}
       >
-        <div
-          className={cn(
-            "flex items-center text-xs transition-all duration-300",
-            stickyCompact ? "gap-2" : "gap-x-4 gap-y-2 flex-wrap",
-          )}
-        >
+        <div className="relative flex items-center text-xs gap-2">
           <button
             type="button"
             onClick={() =>
@@ -741,23 +732,45 @@ export function ScheduleView() {
             </span>
           </button>
 
-          {/* Right-side info — fades in when compact/pinned */}
+          {/* Centered time button — fades in when pinned */}
+          <button
+            type="button"
+            onClick={scrollToNow}
+            disabled={!currentItem || editMode}
+            aria-hidden={!stickyCompact}
+            tabIndex={stickyCompact ? 0 : -1}
+            className={cn(
+              "absolute left-1/2 -translate-x-1/2 inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
+              stickyCompact ? "opacity-100" : "opacity-0 pointer-events-none",
+              !currentItem || editMode
+                ? "bg-stone-300"
+                : "bg-blue-600 hover:bg-blue-700",
+            )}
+          >
+            <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden>
+              <path
+                d="M1.6 1 Q0.6 1 0.6 2 V9 Q0.6 10 1.6 10 L7.6 6.3 Q8.6 5.5 7.6 4.7 Z"
+                fill="white"
+              />
+            </svg>
+            {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+          </button>
+
+          {/* Schedule name — fades in when pinned */}
           <div
             className={cn(
-              "ml-auto flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-300 ease-out",
-              stickyCompact ? "max-w-[70%] opacity-100" : "max-w-0 opacity-0",
+              "ml-auto flex items-center min-w-0 overflow-hidden transition-all duration-300 ease-out",
+              stickyCompact ? "max-w-[40%] opacity-100" : "max-w-0 opacity-0",
             )}
             aria-hidden={!stickyCompact}
           >
-            <span className="text-[11px] text-stone-500 whitespace-nowrap tabular-nums shrink-0">
-              {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-            </span>
             <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">
               {active.name}
             </span>
           </div>
         </div>
       </div>
+
 
 
 
