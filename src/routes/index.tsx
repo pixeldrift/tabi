@@ -9,6 +9,8 @@ import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession } from "@/components/SessionContext";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
+import { NotificationProvider } from "@/components/NotificationContext";
+import { NotificationBar } from "@/components/NotificationBar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
