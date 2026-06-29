@@ -553,10 +553,14 @@ export function ScheduleView() {
                 : "bg-blue-600 hover:bg-blue-700",
             )}
           >
-            <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path
-                d="M1.6 1 Q0.6 1 0.6 2 V9 Q0.6 10 1.6 10 L7.6 6.3 Q8.6 5.5 7.6 4.7 Z"
-                fill="white"
+                d="M6 1.5v5.5M3.5 5.5L6 8 8.5 5.5M2.5 9.5h7"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
               />
             </svg>
             Now
@@ -747,10 +751,14 @@ export function ScheduleView() {
                 : "bg-blue-600 hover:bg-blue-700",
             )}
           >
-            <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path
-                d="M1.6 1 Q0.6 1 0.6 2 V9 Q0.6 10 1.6 10 L7.6 6.3 Q8.6 5.5 7.6 4.7 Z"
-                fill="white"
+                d="M6 1.5v5.5M3.5 5.5L6 8 8.5 5.5M2.5 9.5h7"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
               />
             </svg>
             {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
