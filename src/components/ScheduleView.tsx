@@ -274,14 +274,10 @@ export function ScheduleView() {
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
-  const base = active.baseScheduleName
-    ? schedules.find((s) => s.name === active.baseScheduleName) ?? null
-    : null;
   const isLocked = !!active.locked;
 
   const [editMode, setEditMode] = useState(false);
-  const [showThumbs, setShowThumbs] = useState(true);
-  const [showFullDay, setShowFullDay] = useState(true);
+  const [layoutMode, setLayoutMode] = useState<"proportional" | "collapsed">("proportional");
   const [showAppts, setShowAppts] = useState(true);
   const [collapsedAppts, setCollapsedAppts] = useState<Record<string, boolean>>({});
   const [allApptsCollapsed, setAllApptsCollapsed] = useState(false);
