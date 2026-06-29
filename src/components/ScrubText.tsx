@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
  * Tap-and-drag horizontally to scrub through truncated text.
- * Drag distance is clamped 0..-(scrollWidth - clientWidth). After release,
- * the text eases back to start after 3s of idle.
+ * Shows a right-edge fade mask only when text actually overflows.
+ * After release, eases back to start after 3s idle.
  */
 export function ScrubText({
   text,
@@ -17,6 +17,7 @@ export function ScrubText({
   const innerRef = useRef<HTMLSpanElement>(null);
   const [x, setX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
   const startXRef = useRef(0);
   const startOffsetRef = useRef(0);
   const idleTimerRef = useRef<number | null>(null);
@@ -25,13 +26,27 @@ export function ScrubText({
     const wrap = wrapRef.current;
     const inner = innerRef.current;
     if (!wrap || !inner) return 0;
-    const max = 0;
     const min = Math.min(0, wrap.clientWidth - inner.scrollWidth);
-    return Math.max(min, Math.min(max, v));
+    return Math.max(min, Math.min(0, v));
   };
 
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    const inner = innerRef.current;
+    if (!wrap || !inner) return;
+    setOverflowing(inner.scrollWidth > wrap.clientWidth + 1);
+  }, [text]);
+
   useEffect(() => {
+    const onResize = () => {
+      const wrap = wrapRef.current;
+      const inner = innerRef.current;
+      if (!wrap || !inner) return;
+      setOverflowing(inner.scrollWidth > wrap.clientWidth + 1);
+    };
+    window.addEventListener("resize", onResize);
     return () => {
+      window.removeEventListener("resize", onResize);
       if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
     };
   }, []);
@@ -42,10 +57,7 @@ export function ScrubText({
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
-    const wrap = wrapRef.current;
-    const inner = innerRef.current;
-    if (!wrap || !inner) return;
-    if (inner.scrollWidth <= wrap.clientWidth) return; // not truncated
+    if (!overflowing) return;
     setDragging(true);
     startXRef.current = e.clientX;
     startOffsetRef.current = x;
@@ -63,6 +75,13 @@ export function ScrubText({
     scheduleReset();
   };
 
+  // Fade only the visible end(s) when overflowing.
+  const fadeRight = overflowing && x > -1; // not fully scrolled to the end
+  const fadeLeft = overflowing && x < -1; // user scrubbed in from the right
+  const mask = overflowing
+    ? `linear-gradient(to right, ${fadeLeft ? "transparent" : "black"} 0, black 8px, black calc(100% - 12px), ${fadeRight ? "transparent" : "black"} 100%)`
+    : undefined;
+
   return (
     <div
       ref={wrapRef}
@@ -71,6 +90,7 @@ export function ScrubText({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      style={mask ? { WebkitMaskImage: mask, maskImage: mask } : undefined}
     >
       <span
         ref={innerRef}

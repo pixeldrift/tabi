@@ -238,16 +238,43 @@ function randomDemoTime(): Date {
 
 type MergedRow = ScheduleItem & { fromBase?: boolean };
 
+function fromMin(m: number) {
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
 function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): MergedRow[] {
-  if (!base) return custom.map((i) => ({ ...i }));
   const result: MergedRow[] = custom.map((i) => ({ ...i }));
-  for (const b of base) {
-    const bs = toMin(b.start);
-    const be = toMin(b.end);
-    const conflict = custom.some(
-      (c) => toMin(c.start) < be && toMin(c.end) > bs,
-    );
-    if (!conflict) result.push({ ...b, fromBase: true });
+  if (base) {
+    const customSpans = custom
+      .map((c) => [toMin(c.start), toMin(c.end)] as [number, number])
+      .sort((a, z) => a[0] - z[0]);
+    for (const b of base) {
+      const bs = toMin(b.start);
+      const be = toMin(b.end);
+      // Compute base segments NOT covered by any custom row → peek-out pieces.
+      let cursor = bs;
+      const segments: [number, number][] = [];
+      for (const [cs, ce] of customSpans) {
+        if (ce <= cursor) continue;
+        if (cs >= be) break;
+        if (cs > cursor) segments.push([cursor, Math.min(cs, be)]);
+        cursor = Math.max(cursor, ce);
+        if (cursor >= be) break;
+      }
+      if (cursor < be) segments.push([cursor, be]);
+      for (const [s, e] of segments) {
+        if (e - s < 1) continue;
+        result.push({
+          ...b,
+          id: `${b.id}__${s}`,
+          start: fromMin(s),
+          end: fromMin(e),
+          fromBase: true,
+        });
+      }
+    }
   }
   result.sort((a, b) => toMin(a.start) - toMin(b.start));
   return result;
@@ -672,6 +699,7 @@ export function ScheduleView() {
               it.activity === "Custom"
                 ? it.customIcon ?? "✨"
                 : ACTIVITY_ICONS[it.activity] ?? "•";
+            const tickCount = Math.max(1, Math.round((toMin(it.end) - toMin(it.start)) / 5));
             return (
               <div
                 key={it.id}
@@ -680,14 +708,28 @@ export function ScheduleView() {
                   else rowRefs.current.delete(it.id);
                 }}
                 className={cn(
-                  "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors border-2 border-transparent",
+                  "relative grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors border-2 border-transparent",
                   idx !== merged.length - 1 && "border-b-stone-300",
-                  it.fromBase && "opacity-50 pl-5 pr-3",
+                  it.fromBase && "opacity-50 pl-[18px] pr-[18px]",
                   isCurrent && "border-blue-500 rounded-lg bg-blue-50 shadow-[0_2px_8px_rgba(37,99,235,0.18)]",
                   isCurrent && nowAnim > 0 && "animate-row-flash",
                   apptOverlap && !isCurrent && "border-l-green-500",
                 )}
               >
+                {/* 5-min tick ruler at left edge */}
+                <div
+                  aria-hidden
+                  className="absolute left-0 top-1 bottom-1 flex flex-col justify-between items-start pointer-events-none"
+                  style={{ width: 3 }}
+                >
+                  {Array.from({ length: tickCount }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="block bg-stone-300"
+                      style={{ width: i % 2 === 0 ? 3 : 2, height: 1 }}
+                    />
+                  ))}
+                </div>
                 <div className="text-[11px] tabular-nums leading-tight pl-0.5">
                   {fmt12(it.start)}
                 </div>
