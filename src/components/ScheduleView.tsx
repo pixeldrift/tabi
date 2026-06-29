@@ -15,7 +15,7 @@ import {
   Check,
   X,
   FilePlus,
-  Lock,
+  PencilOff,
 } from "lucide-react";
 import {
   Select,
@@ -144,7 +144,7 @@ const DAY_START = "08:00";
 const DAY_END = "18:00";
 
 const GROUP_A: ScheduleItem[] = [
-  { id: "a1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "a1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
   { id: "a2", start: "08:30", end: "09:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
   { id: "a3", start: "09:15", end: "10:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "a4", start: "10:00", end: "10:30", activity: "Snack", location: "Kitchen", alert: "visual" },
@@ -160,7 +160,7 @@ const GROUP_A: ScheduleItem[] = [
 ];
 
 const GROUP_B: ScheduleItem[] = [
-  { id: "b1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Classroom", alert: "visual" },
+  { id: "b1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
   { id: "b2", start: "08:30", end: "09:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
   { id: "b3", start: "09:30", end: "10:30", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
   { id: "b4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
@@ -175,7 +175,7 @@ const GROUP_B: ScheduleItem[] = [
 ];
 
 const GROUP_C: ScheduleItem[] = [
-  { id: "c1", start: "08:00", end: "08:30", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
+  { id: "c1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
   { id: "c2", start: "08:30", end: "09:30", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
   { id: "c3", start: "09:30", end: "10:30", activity: "Social Group", location: "Classroom", alert: "audio" },
   { id: "c4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
@@ -207,7 +207,7 @@ const PHINEAS_APPTS: Appointment[] = [
 ];
 
 const PRESETS: Schedule[] = [
-  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS },
+  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS, baseScheduleName: "Group A" },
   { name: "Group A", items: GROUP_A, appointments: [], locked: true },
   { name: "Group B", items: GROUP_B, appointments: [], locked: true },
   { name: "Group C", items: GROUP_C, appointments: [], locked: true },
@@ -476,10 +476,7 @@ export function ScheduleView() {
           <SelectContent className="rounded-2xl">
             {schedules.map((s) => (
               <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                <span className="inline-flex items-center gap-1.5">
-                  {s.locked && <Lock className="size-3 text-blue-500" />}
-                  {s.name}
-                </span>
+                {s.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -521,7 +518,7 @@ export function ScheduleView() {
             aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
             title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
           >
-            {isLocked ? <Lock className="size-5" /> : <Pencil className="size-5" />}
+            {isLocked ? <PencilOff className="size-5" /> : <Pencil className="size-5" />}
           </button>
         )}
       </div>

@@ -27,7 +27,7 @@ export interface TrialCardProps {
 }
 
 const BUBBLE = 18; // small bubble diameter
-const BUBBLE_CENTER = 64; // center bubble diameter
+const BUBBLE_CENTER = 60; // center bubble diameter
 const GAP = 6; // tighter spacing
 
 export function TrialCard({
@@ -497,7 +497,7 @@ function ActionButton({
       animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "flex-1 h-10 rounded-lg border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
+        "flex-1 h-10 rounded-full border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
         isCorrect
           ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
           : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
