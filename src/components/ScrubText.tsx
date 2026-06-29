@@ -61,9 +61,10 @@ export function ScrubText({
     setDragging(true);
     startXRef.current = e.clientX;
     startOffsetRef.current = x;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    wrapRef.current?.setPointerCapture?.(e.pointerId);
     if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
   };
+
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
     const delta = e.clientX - startXRef.current;
