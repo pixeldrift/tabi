@@ -490,20 +490,21 @@ export function ScheduleView() {
           >
             <div className="font-display text-xl tabular-nums">{timeStr}</div>
           </button>
-          {inDay && !editMode && (
-            <button
-              type="button"
-              onClick={scrollToNow}
-              className="mt-0.5 text-[10px] uppercase tracking-wide bg-blue-600 hover:bg-blue-700 text-white rounded-full px-2 py-0.5"
-            >
-              Now
-            </button>
-          )}
-          {!inDay && (
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {nowMin < dayStart ? "Before day" : "After day"}
-            </div>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={scrollToNow}
+            disabled={!currentItem || editMode}
+            className={cn(
+              "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1 [&_svg]:size-3",
+              !currentItem || editMode
+                ? "bg-stone-300 hover:bg-stone-300"
+                : "bg-blue-600 hover:bg-blue-700",
+            )}
+          >
+            <ChevronRight strokeWidth={3} />
+            Now
+          </Button>
         </div>
       </div>
 
