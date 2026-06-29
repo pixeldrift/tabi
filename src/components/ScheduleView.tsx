@@ -614,15 +614,20 @@ export function ScheduleView() {
         </button>
         <button
           type="button"
-          onClick={() => setShowAppts((v) => !v)}
+          onClick={() => {
+            setAllApptsCollapsed((v) => !v);
+            setCollapsedAppts({});
+          }}
           className={cn(
             "flex items-center gap-1.5",
-            showAppts ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+            !allApptsCollapsed ? "text-green-700" : "text-stone-400 hover:text-stone-600",
           )}
+          title="Toggle all appointments"
         >
           <HandHelping className="size-3.5" />
           Appointments
         </button>
+
       </div>
 
       {/* Schedule grid */}
