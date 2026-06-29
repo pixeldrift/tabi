@@ -948,23 +948,25 @@ export function ScheduleView() {
                 className="absolute left-[4px] right-[4px] z-20 rounded-md bg-green-50 border-2 border-green-500 shadow-[0_4px_14px_-2px_rgba(34,197,94,0.35)] overflow-hidden transition-all"
                 style={{ top, height }}
               >
-                <div className="relative h-full grid grid-cols-[44px_1fr_36px] gap-1.5 px-2 pt-1.5 items-start">
+                <div className="relative h-full grid grid-cols-[40px_1fr_30px] gap-1 px-1.5 pt-0.5 items-start">
                   <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
                     {fmt12(a.start)}
                   </div>
                   <div className="min-w-0">
-                    <ScrubText
-                      text={a.type}
-                      className="text-xs font-semibold text-green-800 leading-tight"
-                    />
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ScrubText
+                        text={a.type}
+                        className="text-xs font-semibold text-green-800 leading-tight truncate"
+                      />
+                      {a.tag && (
+                        <span className="shrink-0 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
+                          {a.tag}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] italic text-green-700/90 leading-tight truncate">
                       {a.provider}
                     </div>
-                    {a.tag && (
-                      <div className="mt-0.5 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
-                        {a.tag}
-                      </div>
-                    )}
                   </div>
                   <button
                     type="button"
