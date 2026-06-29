@@ -577,25 +577,13 @@ export function ScheduleView() {
             </Button>
 
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-stone-600 shrink-0">Base schedule</Label>
-            <Select
-              value={active.baseScheduleName ?? "__none__"}
-              onValueChange={(v) => setBaseSchedule(v === "__none__" ? null : v)}
-            >
-              <SelectTrigger className="h-9 rounded-full bg-white border-2 border-blue-500 text-blue-700 px-3 text-sm focus:ring-blue-300">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl">
-                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>None</SelectItem>
-                {otherSchedules.map((s) => (
-                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 text-xs text-stone-600">
+            <span>Based on:</span>
+            <span className="font-medium text-blue-700">
+              {active.baseScheduleName ?? "None (blank)"}
+            </span>
           </div>
+
         </div>
       )}
 
