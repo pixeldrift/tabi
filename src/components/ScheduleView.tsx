@@ -10,7 +10,6 @@ import {
   HandHelping,
   Copy,
   Type,
-  Clock,
   Check,
   X,
   FilePlus,
@@ -18,6 +17,7 @@ import {
   Star,
   Rows3,
   AlignVerticalJustifyStart,
+  ChevronRight,
 } from "lucide-react";
 import {
   Select,
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -116,6 +117,25 @@ type Day = (typeof DAYS)[number];
 
 type AlertMode = "off" | "visual" | "audio";
 
+type AlertSettings = {
+  mode: AlertMode;
+  allowSnooze: boolean;
+  autofade: boolean;
+};
+type PrimingSettings = AlertSettings & { minutesPrior: number };
+
+const DEFAULT_ALERT: AlertSettings = {
+  mode: "visual",
+  allowSnooze: true,
+  autofade: true,
+};
+const DEFAULT_PRIMING: PrimingSettings = {
+  mode: "off",
+  allowSnooze: true,
+  autofade: true,
+  minutesPrior: 5, // DEFAULT_PRIMING_MINUTES (declared below)
+};
+
 type ScheduleItem = {
   id: string;
   start: string; // "HH:MM" 24h
@@ -125,6 +145,8 @@ type ScheduleItem = {
   customIcon?: string;
   location: string;
   alert: AlertMode;
+  alertCfg?: AlertSettings;
+  priming?: PrimingSettings;
 };
 
 type ApptTag = "Co-Treat" | "Handoff Session";
@@ -137,6 +159,8 @@ type Appointment = {
   type: string;
   provider: string;
   tag?: ApptTag;
+  alertCfg?: AlertSettings;
+  priming?: PrimingSettings;
 };
 
 type Schedule = {
@@ -152,6 +176,11 @@ const PX_PER_MIN = 4.5;       // proportional: 5min smallest row ≈ 22px
 const MIN_ROW_MIN = 5;
 const COLLAPSED_ROW_PX = 40;  // uniform row height in collapsed mode
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
+
+// Defaults — TODO: surface in user settings.
+const DEFAULT_PRIMING_MINUTES = 5;
+const SNOOZE_MINUTES = 1;
+const AUTOFADE_SECONDS = 5;
 
 
 
@@ -294,16 +323,14 @@ export function ScheduleView() {
   const [confirmApptDelete, setConfirmApptDelete] = useState<Appointment | null>(null);
   const [nowAnim, setNowAnim] = useState(0); // bump to retrigger bounce/flash
 
-
-  const dayStart = toMin(DAY_START);
-  const dayEnd = toMin(DAY_END);
-  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const inDay = nowMin >= dayStart && nowMin <= dayEnd;
-
   const items = active.items;
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  const dayStart = items.length ? toMin(items[0].start) : toMin(DAY_START);
+  const dayEnd = items.length ? toMin(items[items.length - 1].end) : toMin(DAY_END);
   const currentItem = items.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
+  const outsideSchedule = !currentItem;
 
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
@@ -404,32 +431,39 @@ export function ScheduleView() {
   const arrowTop = (() => {
     if (editMode) return null;
     if (layoutMode === "proportional") {
-      if (inDay) return (nowMin - dayStart) * PX_PER_MIN;
-      return nowMin < dayStart ? 0 : totalHeight;
+      if (!outsideSchedule) return (nowMin - dayStart) * PX_PER_MIN;
+      return nowMin < dayStart ? -2 : totalHeight + 2;
     }
-    // collapsed: anchor at current row center, or top/bottom if outside
     if (currentItem) {
       const row = rowLayout.find((r) => r.item.id === currentItem.id);
       if (row) return row.top + row.height / 2;
     }
-    return nowMin < dayStart ? 0 : totalHeight;
+    return nowMin < dayStart ? -2 : totalHeight + 2;
   })();
+  const arrowGray = outsideSchedule;
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const scrollToNow = () => {
-    if (currentItem) {
-      const el = rowRefs.current.get(currentItem.id);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      if (el) {
-        el.classList.remove("animate-row-flash");
-        void el.offsetWidth;
-        el.classList.add("animate-row-flash");
-      }
-      setNowAnim((n) => n + 1);
+    if (!currentItem) return;
+    const el = rowRefs.current.get(currentItem.id);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (el) {
+      el.classList.remove("animate-row-flash");
+      void el.offsetWidth;
+      el.classList.add("animate-row-flash");
     }
+    setNowAnim((n) => n + 1);
   };
+
+  // Auto-scroll to current activity when it changes (or layout/schedule changes).
+  useEffect(() => {
+    if (!currentItem) return;
+    const el = rowRefs.current.get(currentItem.id);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentItem?.id, layoutMode, activeName]);
 
   const setAlertFor = (it: ScheduleItem, m: AlertMode) => {
     updateActive((list) => list.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
@@ -479,27 +513,33 @@ export function ScheduleView() {
           >
             <div className="font-display text-xl tabular-nums">{timeStr}</div>
           </button>
-          {inDay && !editMode && (
-            <button
-              type="button"
-              onClick={scrollToNow}
-              className="mt-0.5 text-[10px] uppercase tracking-wide bg-blue-600 hover:bg-blue-700 text-white rounded-full px-2 py-0.5"
-            >
-              Now
-            </button>
-          )}
-          {!inDay && (
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {nowMin < dayStart ? "Before day" : "After day"}
-            </div>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={scrollToNow}
+            disabled={!currentItem || editMode}
+            className={cn(
+              "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1 [&_svg]:size-3",
+              !currentItem || editMode
+                ? "bg-stone-300 hover:bg-stone-300"
+                : "bg-blue-600 hover:bg-blue-700",
+            )}
+          >
+            <ChevronRight strokeWidth={3} />
+            Now
+          </Button>
         </div>
       </div>
 
       {/* Schedule selector */}
       <div className="mt-4 flex items-center gap-2 px-1">
-        <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }}>
-          <SelectTrigger className="flex-1 h-11 text-base rounded-full bg-white border-2 border-blue-500 text-blue-700 px-4 focus:ring-blue-300">
+        <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }} disabled={editMode}>
+          <SelectTrigger className={cn(
+            "flex-1 h-11 text-base rounded-full px-4",
+            editMode
+              ? "bg-transparent border-0 shadow-none text-stone-800 font-medium disabled:opacity-100 [&>svg]:hidden"
+              : "bg-white border-2 border-blue-500 text-blue-700 focus:ring-blue-300",
+          )}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="rounded-2xl">
@@ -597,9 +637,6 @@ export function ScheduleView() {
               <Trash2 /> Delete
             </Button>
           </div>
-          <div className="text-xs text-stone-600">
-            <span className="font-medium text-blue-700">{active.name}</span>
-          </div>
         </div>
       )}
 
@@ -619,9 +656,9 @@ export function ScheduleView() {
           }
         >
           {layoutMode === "proportional" ? (
-            <AlignVerticalJustifyStart className="size-3.5" />
-          ) : (
             <Rows3 className="size-3.5" />
+          ) : (
+            <AlignVerticalJustifyStart className="size-3.5" />
           )}
           {layoutMode === "proportional" ? "Show Collapsed" : "Show Proportional"}
         </button>
@@ -644,10 +681,71 @@ export function ScheduleView() {
       </div>
 
 
+      {editMode && (
+        <div className="mt-3 px-1 space-y-3">
+          <Button
+            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => setCreatingNew(true)}
+          >
+            Add activity <Plus className="size-4 ml-1.5" />
+          </Button>
+
+          {/* Appointments editor */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                <HandHelping className="size-4" /> Appointments
+              </div>
+              <Button
+                size="sm"
+                className="h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+                onClick={() => setCreatingAppt(true)}
+              >
+                Add <Plus className="ml-1" />
+              </Button>
+            </div>
+            {active.appointments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No appointments yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {active.appointments.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2 text-xs">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {a.type} <span className="text-stone-500">· {a.provider}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
+                      </div>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-blue-600 [&_svg]:size-3"
+                      onClick={() => setEditingAppt(a)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-6 text-blue-600 [&_svg]:size-3"
+                      onClick={() => setConfirmApptDelete(a)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Schedule grid */}
-      <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-visible">
-        <div className="grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50 rounded-t-xl">
-          <div>Time</div>
+      <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-hidden">
+        <div className="grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50">
+          <div className="text-right">Time</div>
           <div>Activity</div>
           <div>Location</div>
           <div className="text-center">Alert</div>
@@ -672,7 +770,7 @@ export function ScheduleView() {
               >
                 <path
                   d="M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
-                  fill="#2563eb"
+                  fill={arrowGray ? "#a8a29e" : "#2563eb"}
                 />
               </svg>
             </div>
@@ -704,7 +802,7 @@ export function ScheduleView() {
               >
                 <div
                   className={cn(
-                    "absolute inset-0 rounded-md border border-stone-200 bg-white transition-colors",
+                    "absolute inset-0 rounded-md border border-stone-300 bg-white transition-colors",
                     isCurrent && "!border-2 !border-blue-500 !bg-blue-50",
                     isCurrent && nowAnim > 0 && "animate-row-flash",
                   )}
@@ -820,68 +918,6 @@ export function ScheduleView() {
         </div>
       </div>
 
-
-
-      {editMode && (
-        <div className="mt-3 px-1 space-y-3">
-          <Button
-            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setCreatingNew(true)}
-          >
-            Add activity <Plus className="size-4 ml-1.5" />
-          </Button>
-
-          {/* Appointments editor */}
-          <div className="rounded-xl border border-stone-200 bg-white p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
-                <HandHelping className="size-4" /> Appointments
-              </div>
-              <Button
-                size="sm"
-                className="h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
-                onClick={() => setCreatingAppt(true)}
-              >
-                Add <Plus className="ml-1" />
-              </Button>
-            </div>
-            {active.appointments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No appointments yet.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {active.appointments.map((a) => (
-                  <div key={a.id} className="flex items-center gap-2 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {a.type} <span className="text-stone-500">· {a.provider}</span>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
-                      </div>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setEditingAppt(a)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setConfirmApptDelete(a)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <ItemDialog
         open={!!editing || creatingNew}
@@ -1125,8 +1161,8 @@ function ItemDialog({
   const [customName, setCustomName] = useState("");
   const [customIcon, setCustomIcon] = useState("✨");
   const [location, setLocation] = useState<string>(LOCATIONS[0]);
-  const [alert, setAlert] = useState<AlertMode>("visual");
-  const [timeOpen, setTimeOpen] = useState(false);
+  const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
+  const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1137,8 +1173,8 @@ function ItemDialog({
       setCustomName(item?.customName ?? "");
       setCustomIcon(item?.customIcon ?? "✨");
       setLocation(item?.location ?? LOCATIONS[0]);
-      setAlert(item?.alert ?? "visual");
-      setTimeOpen(false);
+      setAlertCfg(item?.alertCfg ?? { ...DEFAULT_ALERT, mode: item?.alert ?? DEFAULT_ALERT.mode });
+      setPriming(item?.priming ?? DEFAULT_PRIMING);
       setError(null);
     }
   }, [open, item]);
@@ -1163,7 +1199,9 @@ function ItemDialog({
       customName: activity === "Custom" ? customName.trim() || "Custom" : undefined,
       customIcon: activity === "Custom" ? customIcon || "✨" : undefined,
       location,
-      alert,
+      alert: alertCfg.mode,
+      alertCfg,
+      priming,
     });
   };
 
@@ -1174,24 +1212,15 @@ function ItemDialog({
           <DialogTitle>{item ? "Edit activity" : "Add activity"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Time</Label>
-            {!timeOpen ? (
-              <button
-                type="button"
-                onClick={() => setTimeOpen(true)}
-                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
-              >
-                <Clock className="size-4" />
-                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
-                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Start</Label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
+            <div>
+              <Label className="text-xs">End</Label>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Activity</Label>
@@ -1241,29 +1270,10 @@ function ItemDialog({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Alert</Label>
-            <div className="flex gap-2 mt-1">
-              {(["off", "visual", "audio"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setAlert(m)}
-                  className={cn(
-                    "flex-1 h-9 rounded-full border-2 text-xs capitalize",
-                    alert === m
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "bg-white border-blue-300 text-blue-700",
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
             className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1301,7 +1311,8 @@ function AppointmentDialog({
   const [days, setDays] = useState<Day[]>(["Mon"]);
   const [type, setType] = useState<string>(APPOINTMENT_TYPES[0]);
   const [provider, setProvider] = useState("");
-  const [timeOpen, setTimeOpen] = useState(false);
+  const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
+  const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1311,7 +1322,8 @@ function AppointmentDialog({
       setDays(appt?.days ?? ["Mon"]);
       setType(appt?.type ?? APPOINTMENT_TYPES[0]);
       setProvider(appt?.provider ?? "");
-      setTimeOpen(false);
+      setAlertCfg(appt?.alertCfg ?? DEFAULT_ALERT);
+      setPriming(appt?.priming ?? DEFAULT_PRIMING);
       setError(null);
     }
   }, [open, appt]);
@@ -1345,6 +1357,8 @@ function AppointmentDialog({
       days,
       type,
       provider: provider.trim() || "—",
+      alertCfg,
+      priming,
     });
   };
 
@@ -1355,24 +1369,15 @@ function AppointmentDialog({
           <DialogTitle>{appt ? "Edit appointment" : "Add appointment"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Time</Label>
-            {!timeOpen ? (
-              <button
-                type="button"
-                onClick={() => setTimeOpen(true)}
-                className="mt-1 w-full h-10 rounded-full border-2 border-blue-300 bg-white text-blue-700 px-4 text-sm flex items-center gap-2 hover:bg-blue-50"
-              >
-                <Clock className="size-4" />
-                <span className="tabular-nums">{fmt12(start)} – {fmt12(end)}</span>
-                <span className="ml-auto text-[10px] uppercase tracking-wide text-blue-500">Edit</span>
-              </button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={INPUT_BLUE_CLS} />
-                <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={INPUT_BLUE_CLS} />
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Start</Label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
+            <div>
+              <Label className="text-xs">End</Label>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+            </div>
           </div>
           <div>
             <Label className="text-xs">Days</Label>
@@ -1385,12 +1390,13 @@ function AppointmentDialog({
                     type="button"
                     onClick={() => toggleDay(d)}
                     className={cn(
-                      "flex-1 h-9 rounded-full border-2 text-xs",
+                      "flex-1 h-9 rounded-full border-2 text-xs inline-flex items-center justify-center gap-1",
                       on
                         ? "bg-blue-600 border-blue-600 text-white"
                         : "bg-white border-blue-300 text-blue-700",
                     )}
                   >
+                    {on && <Check className="size-3" strokeWidth={3} />}
                     {d}
                   </button>
                 );
@@ -1417,9 +1423,10 @@ function AppointmentDialog({
               className={cn("mt-1", INPUT_BLUE_CLS)}
             />
           </div>
+          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
             className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1438,6 +1445,125 @@ function AppointmentDialog({
     </Dialog>
   );
 }
+
+const ALERT_MODE_OPTIONS: { value: AlertMode; label: string; Icon: typeof Bell }[] = [
+  { value: "visual", label: "Notify", Icon: Bell },
+  { value: "audio", label: "Notify and Chime", Icon: BellRing },
+  { value: "off", label: "No Alert", Icon: BellOff },
+];
+
+function AlertModeRow({
+  mode,
+  onMode,
+}: {
+  mode: AlertMode;
+  onMode: (m: AlertMode) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => {
+        const active = mode === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onMode(value)}
+            className={cn(
+              "w-full h-9 px-3 rounded-full border-2 inline-flex items-center gap-2 text-xs transition-colors",
+              active
+                ? "bg-blue-50 border-blue-500 text-blue-700"
+                : "bg-white border-stone-200 text-stone-500 hover:border-blue-200",
+            )}
+          >
+            <Icon className="size-4" />
+            <span className="font-medium">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AlertsBlock({
+  alert,
+  setAlert,
+  priming,
+  setPriming,
+}: {
+  alert: AlertSettings;
+  setAlert: (a: AlertSettings) => void;
+  priming: PrimingSettings;
+  setPriming: (p: PrimingSettings) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs">Default Alert</Label>
+        <div className="mt-1 space-y-2">
+          <AlertModeRow mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
+          <ToggleRow
+            label="Allow Snooze"
+            checked={alert.allowSnooze}
+            onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
+          />
+          <ToggleRow
+            label="Autofade"
+            checked={alert.autofade}
+            onChange={(v) => setAlert({ ...alert, autofade: v })}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Priming Alert</Label>
+        <div className="mt-1 space-y-2">
+          <AlertModeRow mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
+          <div className="flex items-center justify-between gap-2 pl-1 pr-1">
+            <span className="text-xs text-stone-600">Minutes prior</span>
+            <Input
+              type="number"
+              min={1}
+              max={60}
+              value={priming.minutesPrior}
+              onChange={(e) =>
+                setPriming({ ...priming, minutesPrior: Math.max(1, Number(e.target.value) || 1) })
+              }
+              className={cn("h-8 w-16 text-center", INPUT_BLUE_CLS)}
+            />
+          </div>
+          <ToggleRow
+            label="Allow Snooze"
+            checked={priming.allowSnooze}
+            onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
+          />
+          <ToggleRow
+            label="Autofade"
+            checked={priming.autofade}
+            onChange={(v) => setPriming({ ...priming, autofade: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between pl-1 pr-1">
+      <span className="text-xs text-stone-600">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+
 
 function NewScheduleDialog({
   open,
