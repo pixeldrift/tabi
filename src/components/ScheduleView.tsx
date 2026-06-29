@@ -15,7 +15,7 @@ import {
   Check,
   X,
   FilePlus,
-  Lock,
+  PencilOff,
 } from "lucide-react";
 import {
   Select,
