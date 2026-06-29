@@ -148,6 +148,8 @@ type Schedule = {
 const DAY_START = "08:00";
 const DAY_END = "18:00";
 const PX_PER_MIN = 1.6;
+const MIN_ROW_MIN = 10; // visual minimum row height in "minutes"
+
 
 
 const GROUP_A: ScheduleItem[] = [
