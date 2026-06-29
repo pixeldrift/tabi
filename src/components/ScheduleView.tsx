@@ -117,6 +117,25 @@ type Day = (typeof DAYS)[number];
 
 type AlertMode = "off" | "visual" | "audio";
 
+type AlertSettings = {
+  mode: AlertMode;
+  allowSnooze: boolean;
+  autofade: boolean;
+};
+type PrimingSettings = AlertSettings & { minutesPrior: number };
+
+const DEFAULT_ALERT: AlertSettings = {
+  mode: "visual",
+  allowSnooze: true,
+  autofade: true,
+};
+const DEFAULT_PRIMING: PrimingSettings = {
+  mode: "off",
+  allowSnooze: true,
+  autofade: true,
+  minutesPrior: 5, // DEFAULT_PRIMING_MINUTES (declared below)
+};
+
 type ScheduleItem = {
   id: string;
   start: string; // "HH:MM" 24h
@@ -126,6 +145,8 @@ type ScheduleItem = {
   customIcon?: string;
   location: string;
   alert: AlertMode;
+  alertCfg?: AlertSettings;
+  priming?: PrimingSettings;
 };
 
 type ApptTag = "Co-Treat" | "Handoff Session";
@@ -138,6 +159,8 @@ type Appointment = {
   type: string;
   provider: string;
   tag?: ApptTag;
+  alertCfg?: AlertSettings;
+  priming?: PrimingSettings;
 };
 
 type Schedule = {
