@@ -322,13 +322,10 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           }}
           className="relative flex items-center justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
         >
-          <motion.span
-            animate={{ scale: [1, 1.12, 1] }}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-            className="inline-block"
-          >
+          <span className="inline-block animate-pulse-scale">
             <Timer className="size-4" />
-          </motion.span>
+          </span>
+
           {count > 1 && (
             <sup className="text-[9px] font-semibold leading-none -ml-px -mt-1.5">
               {count}
