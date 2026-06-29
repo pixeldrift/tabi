@@ -10,7 +10,6 @@ import {
   HandHelping,
   Copy,
   Type,
-  Clock,
   Check,
   X,
   FilePlus,
@@ -18,6 +17,7 @@ import {
   Star,
   Rows3,
   AlignVerticalJustifyStart,
+  ChevronRight,
 } from "lucide-react";
 import {
   Select,
