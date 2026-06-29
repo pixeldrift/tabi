@@ -127,6 +127,8 @@ type ScheduleItem = {
   alert: AlertMode;
 };
 
+type ApptTag = "Co-Treat" | "Handoff Session";
+
 type Appointment = {
   id: string;
   start: string;
@@ -134,22 +136,22 @@ type Appointment = {
   days: Day[];
   type: string;
   provider: string;
+  tag?: ApptTag;
 };
 
 type Schedule = {
   name: string;
   items: ScheduleItem[];
   appointments: Appointment[];
-  baseScheduleName?: string | null;
   locked?: boolean;
-  /** Per-base-item alert overrides; keyed by the base item's id. Personal. */
-  baseAlertOverrides?: Record<string, AlertMode>;
 };
 
 const DAY_START = "08:00";
 const DAY_END = "18:00";
-const PX_PER_MIN = 1.6;
-const MIN_ROW_MIN = 10; // visual minimum row height in "minutes"
+const PX_PER_MIN = 4.5;       // proportional: 5min smallest row ≈ 22px
+const MIN_ROW_MIN = 5;
+const COLLAPSED_ROW_PX = 40;  // uniform row height in collapsed mode
+const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
 
 
