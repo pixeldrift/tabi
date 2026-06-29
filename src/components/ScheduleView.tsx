@@ -518,7 +518,7 @@ export function ScheduleView() {
             aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
             title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
           >
-            {isLocked ? <Lock className="size-5" /> : <Pencil className="size-5" />}
+            {isLocked ? <PencilOff className="size-5" /> : <Pencil className="size-5" />}
           </button>
         )}
       </div>
