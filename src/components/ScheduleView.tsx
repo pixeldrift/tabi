@@ -3,12 +3,10 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   EyeOff,
   Bell,
   BellOff,
   BellRing,
-  CalendarDays,
   HandHelping,
   Copy,
   Type,
@@ -17,6 +15,9 @@ import {
   X,
   FilePlus,
   PencilOff,
+  Star,
+  Rows3,
+  AlignVerticalJustifyStart,
 } from "lucide-react";
 import {
   Select,
@@ -126,6 +127,8 @@ type ScheduleItem = {
   alert: AlertMode;
 };
 
+type ApptTag = "Co-Treat" | "Handoff Session";
+
 type Appointment = {
   id: string;
   start: string;
@@ -133,22 +136,22 @@ type Appointment = {
   days: Day[];
   type: string;
   provider: string;
+  tag?: ApptTag;
 };
 
 type Schedule = {
   name: string;
   items: ScheduleItem[];
   appointments: Appointment[];
-  baseScheduleName?: string | null;
   locked?: boolean;
-  /** Per-base-item alert overrides; keyed by the base item's id. Personal. */
-  baseAlertOverrides?: Record<string, AlertMode>;
 };
 
 const DAY_START = "08:00";
 const DAY_END = "18:00";
-const PX_PER_MIN = 1.6;
-const MIN_ROW_MIN = 10; // visual minimum row height in "minutes"
+const PX_PER_MIN = 4.5;       // proportional: 5min smallest row ≈ 22px
+const MIN_ROW_MIN = 5;
+const COLLAPSED_ROW_PX = 40;  // uniform row height in collapsed mode
+const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
 
 
@@ -211,12 +214,12 @@ const PHINEAS: ScheduleItem[] = [
 ];
 
 const PHINEAS_APPTS: Appointment[] = [
-  { id: "ap1", start: "11:00", end: "11:30", days: ["Mon", "Wed"], type: "Speech Therapy", provider: "Dr. Lopez" },
-  { id: "ap2", start: "13:00", end: "13:30", days: ["Tue", "Thu"], type: "Occupational Therapy", provider: "Sam Patel" },
+  { id: "ap1", start: "11:00", end: "11:30", days: ["Mon", "Wed"], type: "Speech Therapy", provider: "Dr. Lopez", tag: "Co-Treat" },
+  { id: "ap2", start: "13:00", end: "13:30", days: ["Tue", "Thu"], type: "Occupational Therapy", provider: "Sam Patel", tag: "Handoff Session" },
 ];
 
 const PRESETS: Schedule[] = [
-  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS, baseScheduleName: "Group A", baseAlertOverrides: {} },
+  { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS },
   { name: "Group A", items: GROUP_A, appointments: [], locked: true },
   { name: "Group B", items: GROUP_B, appointments: [], locked: true },
   { name: "Group C", items: GROUP_C, appointments: [], locked: true },
@@ -243,48 +246,10 @@ function randomDemoTime(): Date {
   return d;
 }
 
-type MergedRow = ScheduleItem & { fromBase?: boolean };
-
 function fromMin(m: number) {
   const h = Math.floor(m / 60);
   const mm = m % 60;
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
-
-function mergeWithBase(custom: ScheduleItem[], base: ScheduleItem[] | null): MergedRow[] {
-  const result: MergedRow[] = custom.map((i) => ({ ...i }));
-  if (base) {
-    const customSpans = custom
-      .map((c) => [toMin(c.start), toMin(c.end)] as [number, number])
-      .sort((a, z) => a[0] - z[0]);
-    for (const b of base) {
-      const bs = toMin(b.start);
-      const be = toMin(b.end);
-      // Compute base segments NOT covered by any custom row → peek-out pieces.
-      let cursor = bs;
-      const segments: [number, number][] = [];
-      for (const [cs, ce] of customSpans) {
-        if (ce <= cursor) continue;
-        if (cs >= be) break;
-        if (cs > cursor) segments.push([cursor, Math.min(cs, be)]);
-        cursor = Math.max(cursor, ce);
-        if (cursor >= be) break;
-      }
-      if (cursor < be) segments.push([cursor, be]);
-      for (const [s, e] of segments) {
-        if (e - s < 1) continue;
-        result.push({
-          ...b,
-          id: `${b.id}__${s}`,
-          start: fromMin(s),
-          end: fromMin(e),
-          fromBase: true,
-        });
-      }
-    }
-  }
-  result.sort((a, b) => toMin(a.start) - toMin(b.start));
-  return result;
 }
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
@@ -309,14 +274,10 @@ export function ScheduleView() {
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
-  const base = active.baseScheduleName
-    ? schedules.find((s) => s.name === active.baseScheduleName) ?? null
-    : null;
   const isLocked = !!active.locked;
 
   const [editMode, setEditMode] = useState(false);
-  const [showThumbs, setShowThumbs] = useState(true);
-  const [showFullDay, setShowFullDay] = useState(true);
+  const [layoutMode, setLayoutMode] = useState<"proportional" | "collapsed">("proportional");
   const [showAppts, setShowAppts] = useState(true);
   const [collapsedAppts, setCollapsedAppts] = useState<Record<string, boolean>>({});
   const [allApptsCollapsed, setAllApptsCollapsed] = useState(false);
@@ -339,9 +300,8 @@ export function ScheduleView() {
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   const inDay = nowMin >= dayStart && nowMin <= dayEnd;
 
-  const merged = mergeWithBase(active.items, showFullDay ? base?.items ?? null : null);
-
-  const currentItem = merged.find(
+  const items = active.items;
+  const currentItem = items.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
 
@@ -354,12 +314,6 @@ export function ScheduleView() {
   const updateActiveAppts = (mut: (a: Appointment[]) => Appointment[]) => {
     setSchedules((prev) =>
       prev.map((s) => (s.name === activeName ? { ...s, appointments: mut(s.appointments) } : s)),
-    );
-  };
-
-  const setBaseSchedule = (name: string | null) => {
-    setSchedules((prev) =>
-      prev.map((s) => (s.name === activeName ? { ...s, baseScheduleName: name } : s)),
     );
   };
 
@@ -381,7 +335,7 @@ export function ScheduleView() {
     setActiveName(name);
   };
 
-  const createNewSchedule = (name: string, baseName: string | null) => {
+  const createNewSchedule = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     let final = trimmed;
@@ -389,7 +343,7 @@ export function ScheduleView() {
     while (schedules.some((s) => s.name === final)) final = `${trimmed} ${n++}`;
     setSchedules((p) => [
       ...p,
-      { name: final, items: [], appointments: [], baseScheduleName: baseName },
+      { name: final, items: [], appointments: [] },
     ]);
     setActiveName(final);
     setEditMode(true);
@@ -426,14 +380,40 @@ export function ScheduleView() {
     minute: "2-digit",
   });
 
-  const totalHeight = (dayEnd - dayStart) * PX_PER_MIN;
-  const arrowTop = editMode
-    ? null
-    : inDay
-      ? (nowMin - dayStart) * PX_PER_MIN
-      : nowMin < dayStart
-        ? 0
-        : totalHeight;
+  // Compute each row's top and height based on layoutMode.
+  const rowLayout = useMemo(() => {
+    if (layoutMode === "collapsed") {
+      return items.map((it, idx) => ({
+        item: it,
+        top: idx * COLLAPSED_ROW_PX,
+        height: COLLAPSED_ROW_PX,
+      }));
+    }
+    return items.map((it) => {
+      const top = (toMin(it.start) - dayStart) * PX_PER_MIN;
+      const durMin = Math.max(toMin(it.end) - toMin(it.start), MIN_ROW_MIN);
+      return { item: it, top, height: durMin * PX_PER_MIN };
+    });
+  }, [items, layoutMode, dayStart]);
+
+  const totalHeight =
+    layoutMode === "collapsed"
+      ? Math.max(items.length * COLLAPSED_ROW_PX, COLLAPSED_ROW_PX)
+      : (dayEnd - dayStart) * PX_PER_MIN;
+
+  const arrowTop = (() => {
+    if (editMode) return null;
+    if (layoutMode === "proportional") {
+      if (inDay) return (nowMin - dayStart) * PX_PER_MIN;
+      return nowMin < dayStart ? 0 : totalHeight;
+    }
+    // collapsed: anchor at current row center, or top/bottom if outside
+    if (currentItem) {
+      const row = rowLayout.find((r) => r.item.id === currentItem.id);
+      if (row) return row.top + row.height / 2;
+    }
+    return nowMin < dayStart ? 0 : totalHeight;
+  })();
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -442,10 +422,8 @@ export function ScheduleView() {
     if (currentItem) {
       const el = rowRefs.current.get(currentItem.id);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Force-replay row flash even when same row stays current.
       if (el) {
         el.classList.remove("animate-row-flash");
-        // reflow
         void el.offsetWidth;
         el.classList.add("animate-row-flash");
       }
@@ -453,42 +431,36 @@ export function ScheduleView() {
     }
   };
 
-  const setAlertFor = (it: MergedRow, m: AlertMode) => {
-    if (it.fromBase) {
-      const baseId = it.id.split("__")[0];
-      setSchedules((prev) =>
-        prev.map((s) =>
-          s.name === activeName
-            ? {
-                ...s,
-                baseAlertOverrides: { ...(s.baseAlertOverrides ?? {}), [baseId]: m },
-              }
-            : s,
-        ),
-      );
-    } else {
-      updateActive((items) => items.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
-    }
-  };
-
-  const effectiveAlert = (it: MergedRow): AlertMode => {
-    if (it.fromBase) {
-      const baseId = it.id.split("__")[0];
-      return active.baseAlertOverrides?.[baseId] ?? it.alert;
-    }
-    return it.alert;
+  const setAlertFor = (it: ScheduleItem, m: AlertMode) => {
+    updateActive((list) => list.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
   };
 
 
+  // Appointment overlays, positioned via rowLayout so collapsed mode also lines up.
+  const visibleAppts = useMemo(() => {
+    if (!showAppts) return [];
+    return active.appointments.map((a) => {
+      if (layoutMode === "proportional") {
+        const top = (toMin(a.start) - dayStart) * PX_PER_MIN;
+        const height = Math.max(toMin(a.end) - toMin(a.start), MIN_ROW_MIN) * PX_PER_MIN;
+        return { appt: a, top, height };
+      }
+      // collapsed: pin to row containing the appt start
+      const aStart = toMin(a.start);
+      const aEnd = toMin(a.end);
+      const startRow =
+        rowLayout.find((r) => aStart >= toMin(r.item.start) && aStart < toMin(r.item.end)) ??
+        rowLayout.find((r) => toMin(r.item.start) >= aStart) ??
+        rowLayout[rowLayout.length - 1];
+      const endRow =
+        rowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
+        startRow;
+      const top = startRow ? startRow.top : 0;
+      const bottom = endRow ? endRow.top + endRow.height : top + COLLAPSED_ROW_PX;
+      return { appt: a, top, height: Math.max(bottom - top, COLLAPSED_ROW_PX) };
+    });
+  }, [showAppts, active.appointments, layoutMode, dayStart, rowLayout]);
 
-  const otherSchedules = schedules.filter((s) => s.name !== activeName);
-
-  // Build appointments visible for activity rows: appointments are shown next to
-  // any activity rows they overlap (regardless of day-of-week, for display demo).
-  const visibleAppts = useMemo(
-    () => (showAppts ? active.appointments : []),
-    [showAppts, active.appointments],
-  );
 
   return (
     <div className="max-w-3xl mx-auto pt-0 pb-12">
@@ -533,7 +505,17 @@ export function ScheduleView() {
           <SelectContent className="rounded-2xl">
             {schedules.map((s) => (
               <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                {s.name}
+                <span className="inline-flex items-center gap-1.5">
+                  {s.name}
+                  {s.name === CLIENT_GROUP && (
+                    <Star
+                      className="size-3.5 text-blue-600"
+                      fill="currentColor"
+                      strokeWidth={0}
+                      aria-label="Client's group"
+                    />
+                  )}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -609,18 +591,14 @@ export function ScheduleView() {
             </Button>
             <Button
               size="sm"
-              variant="ghost"
-              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-2.5 text-xs gap-1 [&_svg]:size-3 ml-auto"
+              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3 ml-auto"
               onClick={() => setDeleteOpen(true)}
             >
               <Trash2 /> Delete
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-xs text-stone-600">
-            <span>Based on:</span>
-            <span className="font-medium text-blue-700">
-              {active.baseScheduleName ?? "None (blank)"}
-            </span>
+          <div className="text-xs text-stone-600">
+            <span className="font-medium text-blue-700">{active.name}</span>
           </div>
         </div>
       )}
@@ -630,44 +608,41 @@ export function ScheduleView() {
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs">
         <button
           type="button"
-          onClick={() => setShowThumbs((v) => !v)}
-          className={cn(
-            "flex items-center gap-1.5",
-            showThumbs ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
-          )}
+          onClick={() =>
+            setLayoutMode((m) => (m === "proportional" ? "collapsed" : "proportional"))
+          }
+          className="flex items-center gap-1.5 text-blue-600"
+          title={
+            layoutMode === "proportional"
+              ? "Switch to collapsed (uniform) rows"
+              : "Switch to proportional (time-scaled) rows"
+          }
         >
-          <Eye className="size-3.5" />
-          Icons
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowFullDay((v) => !v)}
-          className={cn(
-            "flex items-center gap-1.5",
-            showFullDay ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+          {layoutMode === "proportional" ? (
+            <AlignVerticalJustifyStart className="size-3.5" />
+          ) : (
+            <Rows3 className="size-3.5" />
           )}
-          title="Show base (clinic) schedule behind custom"
-        >
-          <CalendarDays className="size-3.5" />
-          Clinic
+          {layoutMode === "proportional" ? "Proportional" : "Collapsed"}
         </button>
         <button
           type="button"
           onClick={() => {
-            setAllApptsCollapsed((v) => !v);
+            setShowAppts((v) => !v);
+            setAllApptsCollapsed(false);
             setCollapsedAppts({});
           }}
           className={cn(
             "flex items-center gap-1.5",
-            !allApptsCollapsed ? "text-green-700" : "text-stone-400 hover:text-stone-600",
+            showAppts ? "text-green-700" : "text-stone-400 hover:text-stone-600",
           )}
-          title="Toggle all appointments"
+          title="Show or hide appointment overlays"
         >
           <HandHelping className="size-3.5" />
-          Appointments
+          {showAppts ? "Hide Appointments" : "Show Appointments"}
         </button>
-
       </div>
+
 
       {/* Schedule grid */}
       <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 overflow-visible">
@@ -703,17 +678,15 @@ export function ScheduleView() {
             </div>
           )}
 
-          {merged.map((it) => {
+          {rowLayout.map(({ item: it, top, height }) => {
             const isCurrent = !editMode && currentItem?.id === it.id;
-            const top = (toMin(it.start) - dayStart) * PX_PER_MIN;
-            const durMin = Math.max(toMin(it.end) - toMin(it.start), MIN_ROW_MIN);
-            const height = durMin * PX_PER_MIN;
-            const displayName = it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
+            const displayName =
+              it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
             const displayIcon =
               it.activity === "Custom"
                 ? it.customIcon ?? "✨"
                 : ACTIVITY_ICONS[it.activity] ?? "•";
-            const alertMode = effectiveAlert(it);
+            const alertMode = it.alert;
             return (
               <div
                 key={it.id}
@@ -721,47 +694,32 @@ export function ScheduleView() {
                   if (el) rowRefs.current.set(it.id, el);
                   else rowRefs.current.delete(it.id);
                 }}
-                className={cn(
-                  "absolute left-0 right-0",
-                  it.fromBase ? "z-0" : "z-10",
-                )}
+                className="absolute left-0 right-0 z-10"
                 style={{ top, height }}
               >
-                {/* Visual frame — inset for base rows, full width + shadow for custom rows */}
                 <div
                   className={cn(
-                    "absolute inset-y-0 rounded-md border-2 border-transparent transition-colors",
-                    it.fromBase
-                      ? "left-[10px] right-[10px]"
-                      : "left-0 right-0 bg-white shadow-[0_2px_10px_-2px_rgba(0,0,0,0.18)]",
-                    isCurrent && "!border-blue-500 !bg-blue-50 shadow-[0_2px_8px_rgba(37,99,235,0.25)]",
+                    "absolute inset-0 rounded-md border border-stone-200 bg-white transition-colors",
+                    isCurrent && "!border-2 !border-blue-500 !bg-blue-50",
                     isCurrent && nowAnim > 0 && "animate-row-flash",
                   )}
                 />
-                {/* Content grid — columns aligned with header; inset for base rows so the
-                    cream background peeks through the gutter. */}
-                <div
-                  className={cn(
-                    "relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 items-start pt-1.5",
-                    it.fromBase ? "px-3 opacity-55" : "px-2",
-                    it.fromBase && isCurrent && "opacity-100",
-                  )}
-                >
+                <div className="relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 items-start pt-1.5 px-2">
                   <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
                   </div>
                   <div className="flex items-start gap-1.5 min-w-0">
-                    {showThumbs && <span className="text-base leading-none shrink-0">{displayIcon}</span>}
+                    <span className="text-base leading-none shrink-0">{displayIcon}</span>
                     <ScrubText text={displayName} className="text-xs font-medium flex-1 leading-tight" />
                   </div>
                   <div className="flex items-start gap-1 min-w-0">
-                    {showThumbs && (
-                      <span className="text-sm leading-none shrink-0">{LOCATION_ICONS[it.location] ?? "📍"}</span>
-                    )}
+                    <span className="text-sm leading-none shrink-0">
+                      {LOCATION_ICONS[it.location] ?? "📍"}
+                    </span>
                     <ScrubText text={it.location} className="text-xs flex-1 leading-tight" />
                   </div>
                   <div className="flex items-start justify-center gap-0.5 -mt-1">
-                    {editMode && !it.fromBase ? (
+                    {editMode ? (
                       <>
                         <Button
                           size="icon"
@@ -791,9 +749,7 @@ export function ScheduleView() {
 
 
           {/* Appointment overlays — top layer, on top of activity rows */}
-          {visibleAppts.map((a) => {
-            const top = (toMin(a.start) - dayStart) * PX_PER_MIN;
-            const height = (toMin(a.end) - toMin(a.start)) * PX_PER_MIN;
+          {visibleAppts.map(({ appt: a, top, height }) => {
             const collapsed = allApptsCollapsed || collapsedAppts[a.id];
             if (collapsed) {
               return (
@@ -804,8 +760,8 @@ export function ScheduleView() {
                     setCollapsedAppts((p) => ({ ...p, [a.id]: false }));
                     setAllApptsCollapsed(false);
                   }}
-                  className="absolute left-[6px] right-[6px] z-20 h-1 rounded-full bg-green-500 hover:bg-green-600 shadow-sm"
-                  style={{ top: top + height / 2 - 2 }}
+                  className="absolute left-[4px] right-[4px] z-20 h-1.5 rounded-full bg-green-500 hover:bg-green-600 shadow-[0_2px_6px_-1px_rgba(34,197,94,0.45)] transition-all"
+                  style={{ top }}
                   aria-label={`Expand ${a.type}`}
                   title={`${a.type} · ${a.provider}`}
                 />
@@ -814,16 +770,26 @@ export function ScheduleView() {
             return (
               <div
                 key={a.id}
-                className="absolute left-[4px] right-[4px] z-20 rounded-md bg-green-50 border-2 border-green-500 shadow-[0_4px_14px_-2px_rgba(34,197,94,0.35)] overflow-hidden"
+                className="absolute left-[4px] right-[4px] z-20 rounded-md bg-green-50 border-2 border-green-500 shadow-[0_4px_14px_-2px_rgba(34,197,94,0.35)] overflow-hidden transition-all"
                 style={{ top, height }}
               >
-                <div className="relative h-full grid grid-cols-[44px_1fr_36px] gap-1.5 px-2 items-center">
-                  <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5">
+                <div className="relative h-full grid grid-cols-[44px_1fr_36px] gap-1.5 px-2 pt-1.5 items-start">
+                  <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
                     {fmt12(a.start)}
                   </div>
                   <div className="min-w-0">
-                    <ScrubText text={`🤝 ${a.type}`} className="text-xs font-medium text-green-800" />
-                    <ScrubText text={a.provider} className="text-[10px] text-green-700" />
+                    <ScrubText
+                      text={a.type}
+                      className="text-xs font-semibold text-green-800 leading-tight"
+                    />
+                    <div className="text-[10px] italic text-green-700/90 leading-tight truncate">
+                      {a.provider}
+                    </div>
+                    {a.tag && (
+                      <div className="mt-0.5 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
+                        {a.tag}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -841,6 +807,7 @@ export function ScheduleView() {
           })}
         </div>
       </div>
+
 
 
       {editMode && (
@@ -960,11 +927,9 @@ export function ScheduleView() {
 
       <NewScheduleDialog
         open={newSchedOpen}
-        schedules={schedules}
-        defaultBase={active.name}
         onCancel={() => setNewSchedOpen(false)}
-        onCreate={(name, base) => {
-          createNewSchedule(name, base);
+        onCreate={(name) => {
+          createNewSchedule(name);
           setNewSchedOpen(false);
         }}
       />
@@ -1464,32 +1429,25 @@ function AppointmentDialog({
 
 function NewScheduleDialog({
   open,
-  schedules,
-  defaultBase,
   onCancel,
   onCreate,
 }: {
   open: boolean;
-  schedules: Schedule[];
-  defaultBase: string;
   onCancel: () => void;
-  onCreate: (name: string, base: string | null) => void;
+  onCreate: (name: string) => void;
 }) {
   const [name, setName] = useState("New Schedule");
-  const [base, setBase] = useState<string>(defaultBase);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setName("New Schedule");
-      setBase(defaultBase);
-      // Defer focus so the dialog has mounted, then select all text.
       window.setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       }, 0);
     }
-  }, [open, defaultBase]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
@@ -1505,28 +1463,10 @@ function NewScheduleDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") onCreate(name, base === "__none__" ? null : base);
+                if (e.key === "Enter") onCreate(name);
               }}
               className={cn("mt-1 rounded-full px-4", INPUT_BLUE_CLS)}
             />
-          </div>
-          <div>
-            <Label className="text-xs">Based on</Label>
-            <Select value={base} onValueChange={setBase}>
-              <SelectTrigger className="mt-1 rounded-full border-2 border-blue-300 text-blue-700">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl">
-                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>
-                  None (blank schedule)
-                </SelectItem>
-                {schedules.map((s) => (
-                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
         <DialogFooter>
@@ -1539,7 +1479,7 @@ function NewScheduleDialog({
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700"
-            onClick={() => onCreate(name, base === "__none__" ? null : base)}
+            onClick={() => onCreate(name)}
           >
             <Plus className="size-4" /> Create New Schedule
           </Button>
@@ -1548,4 +1488,5 @@ function NewScheduleDialog({
     </Dialog>
   );
 }
+
 
