@@ -878,7 +878,7 @@ export function ScheduleView() {
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}
-                <div className="relative h-full grid grid-cols-[44px_1fr_88px_36px] gap-1.5 items-start pt-1.5 px-2">
+                <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-0.5 px-1.5">
                   <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
                   </div>
