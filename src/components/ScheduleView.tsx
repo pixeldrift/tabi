@@ -4,6 +4,7 @@ import {
   Pencil,
   Trash2,
   Eye,
+  EyeOff,
   Bell,
   BellOff,
   BellRing,
@@ -36,6 +37,8 @@ import { Button } from "@/components/ui/button";
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { ScrubText } from "@/components/ScrubText";
+
 
 const LOCATIONS = [
   "Treatment Room",
@@ -281,6 +284,8 @@ export function ScheduleView() {
   const [showThumbs, setShowThumbs] = useState(true);
   const [showFullDay, setShowFullDay] = useState(true);
   const [showAppts, setShowAppts] = useState(true);
+  const [collapsedAppts, setCollapsedAppts] = useState<Record<string, boolean>>({});
+  const [allApptsCollapsed, setAllApptsCollapsed] = useState(false);
 
   const [editing, setEditing] = useState<ScheduleItem | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -289,10 +294,11 @@ export function ScheduleView() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [newSchedOpen, setNewSchedOpen] = useState(false);
-  const [newSchedName, setNewSchedName] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmItemDelete, setConfirmItemDelete] = useState<ScheduleItem | null>(null);
   const [confirmApptDelete, setConfirmApptDelete] = useState<Appointment | null>(null);
+  const [nowAnim, setNowAnim] = useState(0); // bump to retrigger bounce/flash
+
 
   const dayStart = toMin(DAY_START);
   const dayEnd = toMin(DAY_END);
@@ -341,12 +347,20 @@ export function ScheduleView() {
     setActiveName(name);
   };
 
-  const createNewSchedule = (name: string) => {
+  const createNewSchedule = (name: string, baseName: string | null) => {
     const trimmed = name.trim();
-    if (!trimmed || schedules.some((s) => s.name === trimmed)) return;
-    setSchedules((p) => [...p, { name: trimmed, items: [], appointments: [] }]);
-    setActiveName(trimmed);
+    if (!trimmed) return;
+    let final = trimmed;
+    let n = 2;
+    while (schedules.some((s) => s.name === final)) final = `${trimmed} ${n++}`;
+    setSchedules((p) => [
+      ...p,
+      { name: final, items: [], appointments: [], baseScheduleName: baseName },
+    ]);
+    setActiveName(final);
+    setEditMode(true);
   };
+
 
   const renameActive = (newName: string) => {
     if (!newName.trim() || schedules.some((s) => s.name === newName)) return;
@@ -421,8 +435,10 @@ export function ScheduleView() {
     if (currentItem) {
       const el = rowRefs.current.get(currentItem.id);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setNowAnim((n) => n + 1);
     }
   };
+
 
   const otherSchedules = schedules.filter((s) => s.name !== activeName);
 
@@ -546,42 +562,28 @@ export function ScheduleView() {
             <Button
               size="sm"
               className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
-              onClick={() => {
-                setNewSchedName("");
-                setNewSchedOpen(true);
-              }}
+              onClick={() => setNewSchedOpen(true)}
             >
               <FilePlus className="mr-1" /> New
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-2 [&_svg]:size-3.5 ml-auto"
+              className="h-8 rounded-full text-blue-600 hover:bg-blue-50 px-3 [&_svg]:size-3 ml-auto"
               onClick={() => setDeleteOpen(true)}
               aria-label="Delete schedule"
             >
-              <Trash2 />
+              <Trash2 className="mr-1" /> Delete
             </Button>
+
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-stone-600 shrink-0">Base schedule</Label>
-            <Select
-              value={active.baseScheduleName ?? "__none__"}
-              onValueChange={(v) => setBaseSchedule(v === "__none__" ? null : v)}
-            >
-              <SelectTrigger className="h-9 rounded-full bg-white border-2 border-blue-500 text-blue-700 px-3 text-sm focus:ring-blue-300">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent className="rounded-2xl">
-                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>None</SelectItem>
-                {otherSchedules.map((s) => (
-                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 text-xs text-stone-600">
+            <span>Based on:</span>
+            <span className="font-medium text-blue-700">
+              {active.baseScheduleName ?? "None (blank)"}
+            </span>
           </div>
+
         </div>
       )}
 
@@ -612,15 +614,20 @@ export function ScheduleView() {
         </button>
         <button
           type="button"
-          onClick={() => setShowAppts((v) => !v)}
+          onClick={() => {
+            setAllApptsCollapsed((v) => !v);
+            setCollapsedAppts({});
+          }}
           className={cn(
             "flex items-center gap-1.5",
-            showAppts ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+            !allApptsCollapsed ? "text-green-700" : "text-stone-400 hover:text-stone-600",
           )}
+          title="Toggle all appointments"
         >
           <HandHelping className="size-3.5" />
           Appointments
         </button>
+
       </div>
 
       {/* Schedule grid */}
@@ -635,7 +642,11 @@ export function ScheduleView() {
         <div ref={listRef} className="relative">
           {arrowTop !== null && !editMode && (
             <div
-              className="absolute z-20 pointer-events-none -translate-y-1/2"
+              key={`arrow-${nowAnim}`}
+              className={cn(
+                "absolute z-20 pointer-events-none -translate-y-1/2",
+                nowAnim > 0 && "animate-bounce-x",
+              )}
               style={{ top: arrowTop, left: -6 }}
               aria-hidden
             >
@@ -669,11 +680,12 @@ export function ScheduleView() {
                   else rowRefs.current.delete(it.id);
                 }}
                 className={cn(
-                  "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors",
-                  idx !== merged.length - 1 && "border-b border-stone-300",
-                  it.fromBase && "opacity-50 pl-5",
-                  isCurrent && "border border-blue-500 rounded-md bg-blue-50",
-                  apptOverlap && !isCurrent && "border-l-4 border-blue-400",
+                  "grid grid-cols-[44px_1fr_88px_36px] gap-1.5 px-2 py-1.5 items-center transition-colors border-2 border-transparent",
+                  idx !== merged.length - 1 && "border-b-stone-300",
+                  it.fromBase && "opacity-50 pl-5 pr-3",
+                  isCurrent && "border-blue-500 rounded-lg bg-blue-50 shadow-[0_2px_8px_rgba(37,99,235,0.18)]",
+                  isCurrent && nowAnim > 0 && "animate-row-flash",
+                  apptOverlap && !isCurrent && "border-l-green-500",
                 )}
               >
                 <div className="text-[11px] tabular-nums leading-tight pl-0.5">
@@ -683,21 +695,49 @@ export function ScheduleView() {
                   {showThumbs && (
                     <span className="text-base shrink-0">{displayIcon}</span>
                   )}
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium truncate">{displayName}</div>
-                    {apptOverlap && (
-                      <div className="text-[10px] truncate text-blue-700">
-                        🤝 {apptOverlap.type} · {apptOverlap.provider}
+                  <div className="min-w-0 flex-1">
+                    <ScrubText text={displayName} className="text-xs font-medium" />
+                    {apptOverlap && !(allApptsCollapsed || collapsedAppts[apptOverlap.id]) && (
+                      <div className="flex items-center gap-1">
+                        <ScrubText
+                          text={`🤝 ${apptOverlap.type} · ${apptOverlap.provider}`}
+                          className="text-[10px] text-green-700 flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCollapsedAppts((p) => ({ ...p, [apptOverlap.id]: true }));
+                          }}
+                          className="shrink-0 text-green-600 hover:text-green-700"
+                          aria-label="Collapse appointment"
+                        >
+                          <EyeOff className="size-3" />
+                        </button>
                       </div>
                     )}
+                    {apptOverlap && (allApptsCollapsed || collapsedAppts[apptOverlap.id]) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCollapsedAppts((p) => ({ ...p, [apptOverlap.id]: false }));
+                          setAllApptsCollapsed(false);
+                        }}
+                        className="mt-0.5 h-1 w-full rounded-full bg-green-500 hover:bg-green-600"
+                        aria-label="Expand appointment"
+                      />
+                    )}
+
                   </div>
                 </div>
                 <div className="flex items-center gap-1 min-w-0">
                   {showThumbs && (
                     <span className="text-sm shrink-0">{LOCATION_ICONS[it.location] ?? "📍"}</span>
                   )}
-                  <span className="text-xs truncate">{it.location}</span>
+                  <ScrubText text={it.location} className="text-xs flex-1" />
                 </div>
+
                 <div className="flex items-center justify-center gap-0.5">
                   {editMode && !it.fromBase ? (
                     <>
@@ -850,18 +890,17 @@ export function ScheduleView() {
         }}
       />
 
-      <PromptDialog
+      <NewScheduleDialog
         open={newSchedOpen}
-        title="New schedule"
-        placeholder="Schedule name"
-        value={newSchedName}
-        onChange={setNewSchedName}
+        schedules={schedules}
+        defaultBase={active.name}
         onCancel={() => setNewSchedOpen(false)}
-        onSave={() => {
-          createNewSchedule(newSchedName);
+        onCreate={(name, base) => {
+          createNewSchedule(name, base);
           setNewSchedOpen(false);
         }}
       />
+
 
       <ConfirmDialog
         open={deleteOpen}
@@ -1348,6 +1387,93 @@ function AppointmentDialog({
             onClick={handleSave}
           >
             Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NewScheduleDialog({
+  open,
+  schedules,
+  defaultBase,
+  onCancel,
+  onCreate,
+}: {
+  open: boolean;
+  schedules: Schedule[];
+  defaultBase: string;
+  onCancel: () => void;
+  onCreate: (name: string, base: string | null) => void;
+}) {
+  const [name, setName] = useState("New Schedule");
+  const [base, setBase] = useState<string>(defaultBase);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setName("New Schedule");
+      setBase(defaultBase);
+      // Defer focus so the dialog has mounted, then select all text.
+      window.setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [open, defaultBase]);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+        <DialogHeader>
+          <DialogTitle>New schedule</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Name</Label>
+            <Input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onCreate(name, base === "__none__" ? null : base);
+              }}
+              className={cn("mt-1 rounded-full px-4", INPUT_BLUE_CLS)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Based on</Label>
+            <Select value={base} onValueChange={setBase}>
+              <SelectTrigger className="mt-1 rounded-full border-2 border-blue-300 text-blue-700">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl">
+                <SelectItem value="__none__" className={SELECT_ITEM_CLS}>
+                  None (blank schedule)
+                </SelectItem>
+                {schedules.map((s) => (
+                  <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            onClick={() => onCreate(name, base === "__none__" ? null : base)}
+          >
+            <Plus className="size-4" /> Create New Schedule
           </Button>
         </DialogFooter>
       </DialogContent>

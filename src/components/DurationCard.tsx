@@ -274,20 +274,16 @@ function CenterPill({
       )}
     >
       <div className="flex-1 flex items-center gap-2 pl-2 pr-2">
-        <motion.span
-          animate={running ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-          transition={
-            running
-              ? { duration: 1, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.2 }
-          }
+        <span
           className={cn(
             "grid size-7 shrink-0 place-items-center rounded-full text-white text-xs font-semibold tabular-nums transition-colors",
             accent ? "bg-blue-500" : "bg-stone-300",
+            running && "animate-pulse-scale",
           )}
         >
           {index + 1}
-        </motion.span>
+        </span>
+
         <div className="flex-1 grid place-items-center leading-none">
           <TimeKeypad
             valueMs={ms}
@@ -372,13 +368,12 @@ function SideBubble({
         {index + 1}
       </span>
       {running && (
-        <motion.span
-          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
-          transition={{ duration: 1.2, repeat: Infinity }}
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-blue-500"
+        <span
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-blue-500 animate-pulse-dot"
           aria-hidden
         />
       )}
+
     </button>
   );
 }
