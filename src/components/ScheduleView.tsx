@@ -191,7 +191,7 @@ const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 // Defaults — TODO: surface in user settings.
 const DEFAULT_PRIMING_MINUTES = 5;
 const SNOOZE_MINUTES = 1;
-const AUTOFADE_SECONDS = 5;
+const AUTOFADE_SECONDS = 7;
 
 
 
