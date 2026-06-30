@@ -1383,6 +1383,7 @@ function ItemDialog({
           <div>
             <Label className="text-xs">Time</Label>
             <div className="mt-1 flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">From</span>
               <TimeField value={start} onChange={setStart} />
               <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
@@ -1538,6 +1539,7 @@ function AppointmentDialog({
           <div>
             <Label className="text-xs">Time</Label>
             <div className="mt-1 flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">From</span>
               <TimeField value={start} onChange={setStart} />
               <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
