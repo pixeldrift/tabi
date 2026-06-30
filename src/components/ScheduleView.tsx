@@ -14,10 +14,11 @@ import {
   X,
   FilePlus,
   PencilOff,
+  Pin,
   Star,
   Rows3,
   AlignVerticalJustifyStart,
-  
+
 } from "lucide-react";
 import {
   Select,
@@ -35,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -1379,13 +1380,10 @@ function ItemDialog({
           <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Start</Label>
+          <div>
+            <Label className="text-xs">Time</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
               <TimeField value={start} onChange={setStart} />
-            </div>
-            <div>
-              <Label className="text-xs">End</Label>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
@@ -1536,19 +1534,15 @@ function AppointmentDialog({
           <DialogTitle className="capitalize">{appt ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Start</Label>
+          <div>
+            <Label className="text-xs">Time</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
               <TimeField value={start} onChange={setStart} />
-            </div>
-            <div>
-              <Label className="text-xs">End</Label>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
           <div>
-            <Label className="text-xs">Days</Label>
-            <div className="mt-1 flex gap-1">
+            <div className="flex gap-1">
               {DAYS.map((d) => {
                 const on = days.includes(d);
                 return (
@@ -1621,8 +1615,23 @@ const ALERT_MODE_OPTIONS: { value: AlertMode; label: string; Icon: typeof Bell }
   { value: "off", label: "No Alert", Icon: BellOff },
 ];
 
+const ZzIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M13 5h7l-7 9h7" />
+    <path d="M3 13h6l-6 6h6" />
+  </svg>
+);
 
-function AlertModeRow({
+function AlertModeSelect({
   mode,
   onMode,
 }: {
@@ -1630,27 +1639,58 @@ function AlertModeRow({
   onMode: (m: AlertMode) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => {
-        const active = mode === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onMode(value)}
-            className={cn(
-              "flex-1 min-w-0 h-9 px-2 rounded-full border-2 inline-flex items-center justify-center gap-1 text-[11px] transition-colors",
-              active
-                ? "bg-blue-50 border-blue-500 text-blue-700"
-                : "bg-white border-stone-200 text-stone-500 hover:border-blue-200",
-            )}
-          >
-            <Icon className="size-3.5 shrink-0" />
-            <span className="font-medium truncate">{label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <Select value={mode} onValueChange={(v) => onMode(v as AlertMode)}>
+      <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700 h-9 px-3 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="rounded-2xl">
+        {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => (
+          <SelectItem key={value} value={value} className={SELECT_ITEM_CLS}>
+            <span className="inline-flex items-center gap-2">
+              <Icon className="size-3.5" />
+              {label}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function TapToggle({
+  label,
+  icon,
+  checked,
+  onChange,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      aria-pressed={checked}
+      className={cn(
+        "flex-1 min-w-0 h-9 px-2 rounded-full border-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors",
+        checked
+          ? "bg-blue-50 border-blue-500 text-blue-700"
+          : "bg-white border-stone-200 text-stone-400 hover:border-blue-200",
+      )}
+    >
+      <span className="relative inline-flex items-center justify-center size-3.5 shrink-0">
+        {icon}
+        {!checked && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[1.5px] w-[120%] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-current rounded-full"
+          />
+        )}
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
@@ -1666,21 +1706,23 @@ function AlertsBlock({
   setPriming: (p: PrimingSettings) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-3">
       <div>
         <Label className="text-xs">Notification</Label>
         <div className="mt-1 space-y-2">
-          <AlertModeRow mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
-          <div className="flex items-center justify-between gap-4 pl-1 pr-1">
-            <ToggleRow
-              label="Allow Snooze"
+          <AlertModeSelect mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
+          <div className="flex items-center gap-1">
+            <TapToggle
+              label="Till Dismissed"
+              icon={<Pin className="size-3.5" />}
+              checked={!alert.autofade}
+              onChange={(v) => setAlert({ ...alert, autofade: !v })}
+            />
+            <TapToggle
+              label="Snooze"
+              icon={<ZzIcon className="size-3.5" />}
               checked={alert.allowSnooze}
               onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
-            />
-            <ToggleRow
-              label="Auto-Dismiss"
-              checked={alert.autofade}
-              onChange={(v) => setAlert({ ...alert, autofade: v })}
             />
           </div>
         </div>
@@ -1688,43 +1730,23 @@ function AlertsBlock({
       <div>
         <Label className="text-xs">5min Warning</Label>
         <div className="mt-1 space-y-2">
-          <AlertModeRow mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
-          <div className="flex items-center justify-between gap-4 pl-1 pr-1">
-            <ToggleRow
-              label="Allow Snooze"
+          <AlertModeSelect mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
+          <div className="flex items-center gap-1">
+            <TapToggle
+              label="Till Dismissed"
+              icon={<Pin className="size-3.5" />}
+              checked={!priming.autofade}
+              onChange={(v) => setPriming({ ...priming, autofade: !v })}
+            />
+            <TapToggle
+              label="Snooze"
+              icon={<ZzIcon className="size-3.5" />}
               checked={priming.allowSnooze}
               onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
-            />
-            <ToggleRow
-              label="Auto-Dismiss"
-              checked={priming.autofade}
-              onChange={(v) => setPriming({ ...priming, autofade: v })}
             />
           </div>
         </div>
       </div>
-    </div>
-  );
-
-}
-
-function ToggleRow({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-        className="data-[state=checked]:bg-blue-600"
-      />
-      <span className="text-xs text-stone-600">{label}</span>
     </div>
   );
 }
