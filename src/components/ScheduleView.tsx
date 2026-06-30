@@ -1373,19 +1373,19 @@ function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
-        <DialogHeader>
-          <DialogTitle>{item ? "Edit activity" : "Add activity"}</DialogTitle>
+      <DialogContent className="max-w-sm mx-4 rounded-2xl border-2 border-blue-400 shadow-xl">
+        <DialogHeader className="text-left">
+          <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Start</Label>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+              <TimeField value={start} onChange={setStart} />
             </div>
             <div>
               <Label className="text-xs">End</Label>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={cn("mt-1", INPUT_BLUE_CLS)} />
+              <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
           <div>
