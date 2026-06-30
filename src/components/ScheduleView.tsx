@@ -1669,16 +1669,18 @@ function AlertsBlock({
         <Label className="text-xs">Default Alert</Label>
         <div className="mt-1 space-y-2">
           <AlertModeRow mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
-          <ToggleRow
-            label="Allow Snooze"
-            checked={alert.allowSnooze}
-            onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
-          />
-          <ToggleRow
-            label="Autofade"
-            checked={alert.autofade}
-            onChange={(v) => setAlert({ ...alert, autofade: v })}
-          />
+          <div className="flex items-center justify-between gap-4 pl-1 pr-1">
+            <ToggleRow
+              label="Allow Snooze"
+              checked={alert.allowSnooze}
+              onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
+            />
+            <ToggleRow
+              label="Auto-Dismiss"
+              checked={alert.autofade}
+              onChange={(v) => setAlert({ ...alert, autofade: v })}
+            />
+          </div>
         </div>
       </div>
       <div>
@@ -1698,16 +1700,18 @@ function AlertsBlock({
               className={cn("h-8 w-16 text-center", INPUT_BLUE_CLS)}
             />
           </div>
-          <ToggleRow
-            label="Allow Snooze"
-            checked={priming.allowSnooze}
-            onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
-          />
-          <ToggleRow
-            label="Autofade"
-            checked={priming.autofade}
-            onChange={(v) => setPriming({ ...priming, autofade: v })}
-          />
+          <div className="flex items-center justify-between gap-4 pl-1 pr-1">
+            <ToggleRow
+              label="Allow Snooze"
+              checked={priming.allowSnooze}
+              onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
+            />
+            <ToggleRow
+              label="Auto-Dismiss"
+              checked={priming.autofade}
+              onChange={(v) => setPriming({ ...priming, autofade: v })}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1724,10 +1728,33 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between pl-1 pr-1">
+    <div className="flex items-center gap-2">
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        className="data-[state=checked]:bg-blue-600"
+      />
       <span className="text-xs text-stone-600">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
+  );
+}
+
+function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <TimeOfDayKeypad value={value} onChange={onChange}>
+      {({ isEditing, open }) => (
+        <button
+          type="button"
+          onClick={open}
+          className={cn(
+            "mt-1 flex h-9 w-full items-center justify-center rounded-full border-2 bg-white px-4 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
+            isEditing ? "border-blue-500 text-blue-700" : "border-blue-300 text-blue-700",
+          )}
+        >
+          {formatTimeOfDay(value)}
+        </button>
+      )}
+    </TimeOfDayKeypad>
   );
 }
 
