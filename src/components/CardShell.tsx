@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Check, Info, Sparkles } from "lucide-react";
+import { Info, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -105,11 +105,6 @@ export function CardShell({
             <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
               {helperText}
             </div>
-            {isComplete && (
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Check className="size-3.5 text-green-700" strokeWidth={3} />
-              </div>
-            )}
           </div>
           {isComplete && (
             <div className="absolute inset-0 grid place-items-center pointer-events-none">
