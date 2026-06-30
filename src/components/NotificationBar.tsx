@@ -1,8 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, Moon, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { cn } from "@/lib/utils";
+
+const ZzIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M13 5h7l-7 9h7" />
+    <path d="M3 13h6l-6 6h6" />
+  </svg>
+);
 
 const ICON_MAP: Record<NotificationIcon, typeof Bell> = {
   bell: Bell,
@@ -84,7 +100,8 @@ function vibrate(pattern: number | number[]) {
 }
 
 export function NotificationBar() {
-  const { live, dismiss, snooze, silence, prefs } = useNotifications();
+  const { live, dismiss, snooze, silence, activate } = useNotifications();
+  const { prefs } = useNotifications();
 
   // Newest on top — show up to maxStackVisible.
   const ordered = [...live].sort((a, b) => b.createdAt - a.createdAt);
@@ -99,6 +116,7 @@ export function NotificationBar() {
             <NotificationRow
               key={n.id}
               n={n}
+              onActivate={() => activate(n)}
               onDismiss={() => dismiss(n.id)}
               onSnooze={() => snooze(n.id)}
               onSilence={() => silence(n.id)}
@@ -123,11 +141,13 @@ export function NotificationBar() {
 
 function NotificationRow({
   n,
+  onActivate,
   onDismiss,
   onSnooze,
   onSilence,
 }: {
   n: Notification;
+  onActivate: () => void;
   onDismiss: () => void;
   onSnooze: () => void;
   onSilence: () => void;
@@ -138,15 +158,16 @@ function NotificationRow({
   const showSnooze = alert && n.allowSnooze;
   const hasChime = n.icon === "bell-chime";
 
-  // Fire chime + vibrate once when an alert with chime appears.
-  const firedRef = useRef(false);
+  // Chime + vibrate every 2s while an alert with chime is visible.
   useEffect(() => {
-    if (firedRef.current) return;
-    firedRef.current = true;
-    if (alert && hasChime) {
+    if (!alert || !hasChime) return;
+    playChime();
+    vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
+    const id = window.setInterval(() => {
       playChime();
       vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
-    }
+    }, 2000);
+    return () => window.clearInterval(id);
   }, [alert, hasChime, n.kind]);
 
 
@@ -162,7 +183,13 @@ function NotificationRow({
         styles.ring,
       )}
     >
-      <div className="flex items-center gap-3 pl-3 pr-2 py-1.5">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onActivate}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+        className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
+      >
         <div
           className={cn(
             "flex items-center justify-center size-7 shrink-0",
@@ -179,7 +206,10 @@ function NotificationRow({
             <div className="text-xs text-stone-600 truncate">{n.body}</div>
           )}
         </div>
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div
+          className="flex items-center gap-0.5 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           {alert ? (
             <>
               <RowButton label="Silence" onClick={onSilence}>
@@ -187,12 +217,12 @@ function NotificationRow({
               </RowButton>
               {showSnooze && (
                 <RowButton label="Snooze" onClick={onSnooze}>
-                  <Moon className="size-4" />
+                  <ZzIcon className="size-4" />
                 </RowButton>
               )}
             </>
           ) : (
-            <RowButton label="Open" onClick={onDismiss}>
+            <RowButton label="Open" onClick={onActivate}>
               <ArrowRight className="size-4" />
             </RowButton>
           )}

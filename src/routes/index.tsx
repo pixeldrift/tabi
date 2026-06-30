@@ -108,9 +108,7 @@ const cards: CardConfig[] = [
 function Index() {
   return (
     <SessionProvider>
-      <NotificationProvider>
-        <IndexInner />
-      </NotificationProvider>
+      <IndexInner />
     </SessionProvider>
   );
 }
@@ -118,10 +116,21 @@ function Index() {
 function IndexInner() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [tab, setTab] = useState<StatusTab>("data");
+  const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const { status } = useSession();
   const sessionActive = status === "running";
 
+  const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
+    if (n.sourceRef?.type === "activity") {
+      setTab("schedule");
+      setScheduleScrollId(n.sourceRef.id);
+    } else {
+      setTab("notifications");
+    }
+  };
+
   return (
+    <NotificationProvider onActivate={handleNotificationActivate}>
     <main className="min-h-screen bg-background">
       <StatusBar activeTab={tab} onTabChange={setTab} />
 
@@ -215,10 +224,16 @@ function IndexInner() {
         )}
 
         {tab === "info" && <InfoPane />}
-        {tab === "schedule" && <ScheduleView />}
+        {tab === "schedule" && (
+          <ScheduleView
+            scrollTargetId={scheduleScrollId}
+            onScrolledToTarget={() => setScheduleScrollId(null)}
+          />
+        )}
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
       </section>
     </main>
+    </NotificationProvider>
   );
 }
 

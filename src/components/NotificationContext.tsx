@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+
+
 export type NotificationKind =
   | "alert-now"
   | "alert-priming"
@@ -54,6 +56,7 @@ interface NotificationContextValue {
   snooze: (id: string, ms?: number) => void;
   silence: (id: string) => void;
   archive: (id: string) => void;
+  activate: (n: Notification) => void;
   prefs: UserPrefs;
 }
 
@@ -86,10 +89,18 @@ export function useNotifications() {
 
 const MAX_RETAINED = 50;
 
-export function NotificationProvider({ children }: { children: ReactNode }) {
+export function NotificationProvider({ children, onActivate }: { children: ReactNode; onActivate?: (n: Notification) => void }) {
   const prefs = useUserPrefs();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const dedupeRef = useRef<Map<string, string>>(new Map()); // dedupeKey -> id
+  const onActivateRef = useRef(onActivate);
+  useEffect(() => { onActivateRef.current = onActivate; }, [onActivate]);
+
+  const activate = useCallback((n: Notification) => {
+    onActivateRef.current?.(n);
+    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, state: "archived" } : x)));
+  }, []);
+
 
   const archive = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, state: "archived" } : n)));
@@ -181,9 +192,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<NotificationContextValue>(
-    () => ({ notifications, live, push, dismiss, snooze, silence, archive, prefs }),
-    [notifications, live, push, dismiss, snooze, silence, archive, prefs],
+    () => ({ notifications, live, push, dismiss, snooze, silence, archive, activate, prefs }),
+    [notifications, live, push, dismiss, snooze, silence, archive, activate, prefs],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
+
 }

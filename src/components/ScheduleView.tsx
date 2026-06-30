@@ -191,7 +191,7 @@ const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 // Defaults — TODO: surface in user settings.
 const DEFAULT_PRIMING_MINUTES = 5;
 const SNOOZE_MINUTES = 1;
-const AUTOFADE_SECONDS = 5;
+const AUTOFADE_SECONDS = 7;
 
 
 
@@ -301,7 +301,13 @@ const SELECT_ITEM_CLS =
 
 const INPUT_BLUE_CLS = "border-2 border-blue-300 focus-visible:ring-blue-300";
 
-export function ScheduleView() {
+export function ScheduleView({
+  scrollTargetId,
+  onScrolledToTarget,
+}: {
+  scrollTargetId?: string | null;
+  onScrolledToTarget?: () => void;
+} = {}) {
   const [now, setNow] = useState<Date>(() => randomDemoTime());
   const bumpTime = () => {
     setNow((prev) => {
@@ -311,7 +317,21 @@ export function ScheduleView() {
     });
   };
 
-  const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
+  // Randomly pin ~half of every schedule's activities (autofade off) on first mount.
+  const [schedules, setSchedules] = useState<Schedule[]>(() =>
+    PRESETS.map((s) => ({
+      ...s,
+      items: s.items.map((it) => {
+        if (Math.random() >= 0.5) return it;
+        const mode: AlertMode = it.alert === "off" ? "visual" : it.alert;
+        return {
+          ...it,
+          alert: mode,
+          alertCfg: { mode, allowSnooze: true, autofade: false },
+        };
+      }),
+    })),
+  );
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const isLocked = !!active.locked;
@@ -543,13 +563,32 @@ export function ScheduleView() {
     setNowAnim((n) => n + 1);
   };
 
-  // Auto-scroll to current activity when it changes (or layout/schedule changes).
+  // Auto-scroll only when the current activity actually changes after mount —
+  // do NOT scroll on initial mount / tab switch.
+  const didInitScrollRef = useRef(false);
   useEffect(() => {
+    if (!didInitScrollRef.current) {
+      didInitScrollRef.current = true;
+      return;
+    }
     if (!currentItem) return;
     const el = rowRefs.current.get(currentItem.id);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentItem?.id, layoutMode, activeName]);
+
+  // Scroll to a notification's source activity when requested from outside.
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    const el = rowRefs.current.get(scrollTargetId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.remove("animate-row-flash");
+      void el.offsetWidth;
+      el.classList.add("animate-row-flash");
+    }
+    onScrolledToTarget?.();
+  }, [scrollTargetId, onScrolledToTarget]);
 
   const setAlertFor = (it: ScheduleItem, m: AlertMode) => {
     updateActive((list) => list.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
