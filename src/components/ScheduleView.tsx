@@ -1129,7 +1129,7 @@ export function ScheduleView() {
 
       <PromptDialog
         open={renameOpen}
-        title="Rename schedule"
+        title="Rename Schedule"
         value={renameValue}
         onChange={setRenameValue}
         onCancel={() => setRenameOpen(false)}
@@ -1151,7 +1151,7 @@ export function ScheduleView() {
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete schedule?"
+        title="Delete Schedule?"
         body={`“${active.name}” will be removed.`}
         confirmLabel="Delete"
         onCancel={() => setDeleteOpen(false)}
@@ -1163,7 +1163,7 @@ export function ScheduleView() {
 
       <ConfirmDialog
         open={!!confirmItemDelete}
-        title="Delete activity?"
+        title="Delete Activity?"
         body={confirmItemDelete ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start)} will be removed.` : ""}
         confirmLabel="Delete"
         onCancel={() => setConfirmItemDelete(null)}
@@ -1176,7 +1176,7 @@ export function ScheduleView() {
 
       <ConfirmDialog
         open={!!confirmApptDelete}
-        title="Delete appointment?"
+        title="Delete Appointment?"
         body={confirmApptDelete ? `${confirmApptDelete.type} · ${confirmApptDelete.provider}` : ""}
         confirmLabel="Delete"
         onCancel={() => setConfirmApptDelete(null)}
@@ -1786,7 +1786,7 @@ function NewScheduleDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
         <DialogHeader>
-          <DialogTitle>New schedule</DialogTitle>
+          <DialogTitle>New Schedule</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
