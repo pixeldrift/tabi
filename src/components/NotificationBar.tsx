@@ -183,10 +183,12 @@ function NotificationRow({
         styles.ring,
       )}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onActivate}
-        className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+        className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
       >
         <div
           className={cn(
