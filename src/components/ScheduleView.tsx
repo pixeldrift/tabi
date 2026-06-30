@@ -301,7 +301,13 @@ const SELECT_ITEM_CLS =
 
 const INPUT_BLUE_CLS = "border-2 border-blue-300 focus-visible:ring-blue-300";
 
-export function ScheduleView() {
+export function ScheduleView({
+  scrollTargetId,
+  onScrolledToTarget,
+}: {
+  scrollTargetId?: string | null;
+  onScrolledToTarget?: () => void;
+} = {}) {
   const [now, setNow] = useState<Date>(() => randomDemoTime());
   const bumpTime = () => {
     setNow((prev) => {
@@ -311,7 +317,21 @@ export function ScheduleView() {
     });
   };
 
-  const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
+  // Randomly pin ~half of every schedule's activities (autofade off) on first mount.
+  const [schedules, setSchedules] = useState<Schedule[]>(() =>
+    PRESETS.map((s) => ({
+      ...s,
+      items: s.items.map((it) => {
+        if (Math.random() >= 0.5) return it;
+        const mode: AlertMode = it.alert === "off" ? "visual" : it.alert;
+        return {
+          ...it,
+          alert: mode,
+          alertCfg: { mode, allowSnooze: true, autofade: false },
+        };
+      }),
+    })),
+  );
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const isLocked = !!active.locked;
