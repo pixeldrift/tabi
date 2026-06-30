@@ -845,13 +845,6 @@ export function ScheduleView() {
 
       {editMode && (
         <div className="mt-3 px-1 space-y-3">
-          <Button
-            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setCreatingNew(true)}
-          >
-            Add activity <Plus className="size-4 ml-1.5" />
-          </Button>
-
           {/* Appointments editor */}
           <div className="rounded-xl border border-stone-200 bg-white p-3">
             <div className="flex items-center justify-between mb-2">
@@ -874,6 +867,7 @@ export function ScheduleView() {
                   <div key={a.id} className="flex items-center gap-2 text-xs">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">
+                        <span className="mr-1">{APPOINTMENT_TYPE_ICONS[a.type] ?? ""}</span>
                         {a.type} <span className="text-stone-500">· {a.provider}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">
@@ -901,6 +895,13 @@ export function ScheduleView() {
               </div>
             )}
           </div>
+
+          <Button
+            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => setCreatingNew(true)}
+          >
+            Add Activity <Plus className="size-4 ml-1.5" />
+          </Button>
         </div>
       )}
 
