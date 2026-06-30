@@ -1373,7 +1373,8 @@ function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm mx-4 rounded-2xl border-2 border-blue-400 shadow-xl">
+      <DialogContent className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl">
+
         <DialogHeader className="text-left">
           <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
         </DialogHeader>
@@ -1530,7 +1531,7 @@ function AppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm mx-4 rounded-2xl border-2 border-blue-400 shadow-xl">
+      <DialogContent className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl">
         <DialogHeader className="text-left">
           <DialogTitle className="capitalize">{appt ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
         </DialogHeader>
@@ -1616,9 +1617,10 @@ function AppointmentDialog({
 
 const ALERT_MODE_OPTIONS: { value: AlertMode; label: string; Icon: typeof Bell }[] = [
   { value: "visual", label: "Notify", Icon: Bell },
-  { value: "audio", label: "Notify and Chime", Icon: BellRing },
+  { value: "audio", label: "Chime", Icon: BellRing },
   { value: "off", label: "No Alert", Icon: BellOff },
 ];
+
 
 function AlertModeRow({
   mode,
@@ -1666,7 +1668,7 @@ function AlertsBlock({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs">Default Alert</Label>
+        <Label className="text-xs">Notification</Label>
         <div className="mt-1 space-y-2">
           <AlertModeRow mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
           <div className="flex items-center justify-between gap-4 pl-1 pr-1">
@@ -1684,22 +1686,9 @@ function AlertsBlock({
         </div>
       </div>
       <div>
-        <Label className="text-xs">Priming Alert</Label>
+        <Label className="text-xs">5min Warning</Label>
         <div className="mt-1 space-y-2">
           <AlertModeRow mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
-          <div className="flex items-center justify-between gap-2 pl-1 pr-1">
-            <span className="text-xs text-stone-600">Minutes prior</span>
-            <Input
-              type="number"
-              min={1}
-              max={60}
-              value={priming.minutesPrior}
-              onChange={(e) =>
-                setPriming({ ...priming, minutesPrior: Math.max(1, Number(e.target.value) || 1) })
-              }
-              className={cn("h-8 w-16 text-center", INPUT_BLUE_CLS)}
-            />
-          </div>
           <div className="flex items-center justify-between gap-4 pl-1 pr-1">
             <ToggleRow
               label="Allow Snooze"
@@ -1716,6 +1705,7 @@ function AlertsBlock({
       </div>
     </div>
   );
+
 }
 
 function ToggleRow({
