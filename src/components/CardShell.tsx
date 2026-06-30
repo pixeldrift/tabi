@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Info, Sparkles } from "lucide-react";
+import { Check, Info, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -43,6 +43,11 @@ export function CardShell({
 }: CardShellProps) {
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
+  const barBg = isComplete
+    ? "bg-green-500/30"
+    : pct >= 50
+      ? "bg-yellow-400/30"
+      : "bg-blue-400/30";
 
   return (
     <article
@@ -92,10 +97,7 @@ export function CardShell({
           <div className="relative h-5 overflow-hidden rounded-b-xl">
             <div className="absolute inset-0 bg-stone-200">
               <motion.div
-                className={cn(
-                  "absolute inset-y-0 left-0",
-                  isComplete ? "bg-green-500/30" : "bg-blue-400/30",
-                )}
+                className={cn("absolute inset-y-0 left-0", barBg)}
                 animate={{ width: `${pct}%` }}
                 transition={{ type: "spring", stiffness: 180, damping: 26 }}
               />
@@ -103,6 +105,11 @@ export function CardShell({
             <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
               {helperText}
             </div>
+            {isComplete && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <Check className="size-3.5 text-green-700" strokeWidth={3} />
+              </div>
+            )}
           </div>
           {isComplete && (
             <div className="absolute inset-0 grid place-items-center pointer-events-none">
