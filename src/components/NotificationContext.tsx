@@ -69,7 +69,7 @@ export interface UserPrefs {
 export function useUserPrefs(): UserPrefs {
   return {
     snoozeMs: 60_000,
-    autofadeAlertMs: 5_000,
+    autofadeAlertMs: 10_000,
     autofadeInfoMs: 6_000,
     maxStackVisible: 3,
     notificationSounds: { chime: true },

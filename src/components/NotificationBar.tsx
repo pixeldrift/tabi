@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, Moon, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
@@ -149,20 +149,6 @@ function NotificationRow({
     }
   }, [alert, hasChime, n.kind]);
 
-  // Autofade progress underline.
-  const [progress, setProgress] = useState(1);
-  const startRef = useRef<number>(n.createdAt);
-  useEffect(() => {
-    if (!n.autofadeMs) return;
-    startRef.current = n.createdAt;
-    const id = window.setInterval(() => {
-      const elapsed = Date.now() - startRef.current;
-      const p = Math.max(0, 1 - elapsed / n.autofadeMs!);
-      setProgress(p);
-      if (p <= 0) window.clearInterval(id);
-    }, 100);
-    return () => window.clearInterval(id);
-  }, [n.autofadeMs, n.createdAt]);
 
   return (
     <motion.div
@@ -215,14 +201,6 @@ function NotificationRow({
           </RowButton>
         </div>
       </div>
-      {n.autofadeMs && (
-        <div className="absolute bottom-0 left-0 h-0.5 w-full bg-black/5">
-          <div
-            className={cn("h-full origin-left", styles.accent)}
-            style={{ transform: `scaleX(${progress})`, transition: "transform 100ms linear" }}
-          />
-        </div>
-      )}
     </motion.div>
   );
 }
