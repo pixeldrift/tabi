@@ -215,14 +215,6 @@ function NotificationRow({
           </RowButton>
         </div>
       </div>
-      {n.autofadeMs && (
-        <div className="absolute bottom-0 left-0 h-0.5 w-full bg-black/5">
-          <div
-            className={cn("h-full origin-left", styles.accent)}
-            style={{ transform: `scaleX(${progress})`, transition: "transform 100ms linear" }}
-          />
-        </div>
-      )}
     </motion.div>
   );
 }

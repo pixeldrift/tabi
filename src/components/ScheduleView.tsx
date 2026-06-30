@@ -379,7 +379,7 @@ export function ScheduleView() {
         pushNotification({
           dedupeKey: `alert-now:${it.id}:${dayKey}`,
           kind: "alert-now",
-          title: `Time for ${it.customName ?? it.activity}`,
+          title: `${it.customName ?? it.activity}`,
           body: it.location,
           icon: alertCfg.mode === "audio" ? "bell-chime" : "bell",
           autofadeMs: alertCfg.autofade ? AUTOFADE_SECONDS * 1000 : undefined,
