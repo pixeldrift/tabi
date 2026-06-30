@@ -192,9 +192,10 @@ export function NotificationProvider({ children, onActivate }: { children: React
   );
 
   const value = useMemo<NotificationContextValue>(
-    () => ({ notifications, live, push, dismiss, snooze, silence, archive, prefs }),
-    [notifications, live, push, dismiss, snooze, silence, archive, prefs],
+    () => ({ notifications, live, push, dismiss, snooze, silence, archive, activate, prefs }),
+    [notifications, live, push, dismiss, snooze, silence, archive, activate, prefs],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
+
 }
