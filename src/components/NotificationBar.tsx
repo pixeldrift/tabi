@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, BellMinus, Clock, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, Moon, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { cn } from "@/lib/utils";
 
@@ -14,34 +14,29 @@ const ICON_MAP: Record<NotificationIcon, typeof Bell> = {
 };
 
 // Tint per kind — semantic-ish colors using existing palette.
-const KIND_STYLES: Record<NotificationKind, { ring: string; iconBg: string; iconFg: string; accent: string }> = {
+const KIND_STYLES: Record<NotificationKind, { ring: string; iconFg: string; accent: string }> = {
   "alert-now": {
     ring: "border-red-300 bg-red-50",
-    iconBg: "bg-red-100",
     iconFg: "text-red-700",
     accent: "bg-red-500",
   },
   "alert-priming": {
     ring: "border-amber-300 bg-amber-50",
-    iconBg: "bg-amber-100",
     iconFg: "text-amber-700",
     accent: "bg-amber-500",
   },
   "goal-change": {
     ring: "border-blue-300 bg-blue-50",
-    iconBg: "bg-blue-100",
     iconFg: "text-blue-700",
     accent: "bg-blue-500",
   },
   message: {
     ring: "border-emerald-300 bg-emerald-50",
-    iconBg: "bg-emerald-100",
     iconFg: "text-emerald-700",
     accent: "bg-emerald-500",
   },
   announcement: {
     ring: "border-violet-300 bg-violet-50",
-    iconBg: "bg-violet-100",
     iconFg: "text-violet-700",
     accent: "bg-violet-500",
   },
@@ -49,6 +44,43 @@ const KIND_STYLES: Record<NotificationKind, { ring: string; iconBg: string; icon
 
 function isAlert(k: NotificationKind) {
   return k === "alert-now" || k === "alert-priming";
+}
+
+// Play a short chime via WebAudio (no asset dependency).
+function playChime() {
+  try {
+    const AC = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    const tones = [880, 1318]; // A5, E6
+    tones.forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      const t0 = now + i * 0.18;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.18, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0);
+      o.stop(t0 + 0.4);
+    });
+    window.setTimeout(() => ctx.close().catch(() => {}), 900);
+  } catch {
+    /* noop */
+  }
+}
+
+function vibrate(pattern: number | number[]) {
+  try {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(pattern);
+    }
+  } catch {
+    /* noop */
+  }
 }
 
 export function NotificationBar() {
@@ -104,6 +136,18 @@ function NotificationRow({
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
+  const hasChime = n.icon === "bell-chime";
+
+  // Fire chime + vibrate once when an alert with chime appears.
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    if (alert && hasChime) {
+      playChime();
+      vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
+    }
+  }, [alert, hasChime, n.kind]);
 
   // Autofade progress underline.
   const [progress, setProgress] = useState(1);
@@ -128,15 +172,14 @@ function NotificationRow({
       exit={{ opacity: 0, x: -40, transition: { duration: 0.18 } }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
       className={cn(
-        "pointer-events-auto relative overflow-hidden rounded-xl border shadow-sm",
+        "pointer-events-auto relative overflow-hidden rounded-full border shadow-sm",
         styles.ring,
       )}
     >
-      <div className="flex items-center gap-3 px-3 py-2">
+      <div className="flex items-center gap-3 pl-3 pr-2 py-1.5">
         <div
           className={cn(
-            "flex items-center justify-center size-9 rounded-lg shrink-0",
-            styles.iconBg,
+            "flex items-center justify-center size-7 shrink-0",
             styles.iconFg,
             n.kind === "alert-now" && "animate-bounce",
             n.kind === "alert-priming" && "animate-pulse",
@@ -150,16 +193,18 @@ function NotificationRow({
             <div className="text-xs text-stone-600 truncate">{n.body}</div>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {showSnooze && (
-            <RowButton label="Snooze" onClick={onSnooze}>
-              <Clock className="size-4" />
-            </RowButton>
-          )}
+        <div className="flex items-center gap-0.5 shrink-0">
           {alert ? (
-            <RowButton label="Silence" onClick={onSilence}>
-              <BellMinus className="size-4" />
-            </RowButton>
+            <>
+              <RowButton label="Silence" onClick={onSilence}>
+                <VolumeX className="size-4" />
+              </RowButton>
+              {showSnooze && (
+                <RowButton label="Snooze" onClick={onSnooze}>
+                  <Moon className="size-4" />
+                </RowButton>
+              )}
+            </>
           ) : (
             <RowButton label="Open" onClick={onDismiss}>
               <ArrowRight className="size-4" />
@@ -197,7 +242,7 @@ function RowButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex items-center justify-center size-8 rounded-md text-stone-600 hover:text-stone-900 hover:bg-black/5 active:bg-black/10 transition-colors"
+      className="inline-flex items-center justify-center size-8 rounded-full text-stone-600 hover:text-stone-900 hover:bg-black/5 active:bg-black/10 transition-colors"
     >
       {children}
     </button>
