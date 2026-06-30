@@ -1617,9 +1617,10 @@ function AppointmentDialog({
 
 const ALERT_MODE_OPTIONS: { value: AlertMode; label: string; Icon: typeof Bell }[] = [
   { value: "visual", label: "Notify", Icon: Bell },
-  { value: "audio", label: "Notify and Chime", Icon: BellRing },
+  { value: "audio", label: "Chime", Icon: BellRing },
   { value: "off", label: "No Alert", Icon: BellOff },
 ];
+
 
 function AlertModeRow({
   mode,
