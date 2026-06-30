@@ -1628,7 +1628,7 @@ function AlertModeRow({
   onMode: (m: AlertMode) => void;
 }) {
   return (
-    <div className="space-y-1">
+    <div className="flex items-center gap-1">
       {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => {
         const active = mode === value;
         return (
@@ -1637,14 +1637,14 @@ function AlertModeRow({
             type="button"
             onClick={() => onMode(value)}
             className={cn(
-              "w-full h-9 px-3 rounded-full border-2 inline-flex items-center gap-2 text-xs transition-colors",
+              "flex-1 min-w-0 h-9 px-2 rounded-full border-2 inline-flex items-center justify-center gap-1 text-[11px] transition-colors",
               active
                 ? "bg-blue-50 border-blue-500 text-blue-700"
                 : "bg-white border-stone-200 text-stone-500 hover:border-blue-200",
             )}
           >
-            <Icon className="size-4" />
-            <span className="font-medium">{label}</span>
+            <Icon className="size-3.5 shrink-0" />
+            <span className="font-medium truncate">{label}</span>
           </button>
         );
       })}
