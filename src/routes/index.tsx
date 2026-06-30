@@ -224,10 +224,16 @@ function IndexInner() {
         )}
 
         {tab === "info" && <InfoPane />}
-        {tab === "schedule" && <ScheduleView />}
+        {tab === "schedule" && (
+          <ScheduleView
+            scrollTargetId={scheduleScrollId}
+            onScrolledToTarget={() => setScheduleScrollId(null)}
+          />
+        )}
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
       </section>
     </main>
+    </NotificationProvider>
   );
 }
 
