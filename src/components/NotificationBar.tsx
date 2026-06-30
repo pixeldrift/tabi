@@ -230,7 +230,7 @@ function NotificationRow({
             <X className="size-4" />
           </RowButton>
         </div>
-      </button>
+      </div>
     </motion.div>
   );
 }
