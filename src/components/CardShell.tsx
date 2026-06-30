@@ -105,6 +105,11 @@ export function CardShell({
             <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
               {helperText}
             </div>
+            {isComplete && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <Check className="size-3.5 text-green-700" strokeWidth={3} />
+              </div>
+            )}
           </div>
           {isComplete && (
             <div className="absolute inset-0 grid place-items-center pointer-events-none">
