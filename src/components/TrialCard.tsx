@@ -494,32 +494,3 @@ function ActionButton({
   );
 }
 
-function Starburst() {
-  const rays = Array.from({ length: 8 });
-  return (
-    <span className="absolute inset-0 pointer-events-none">
-      {rays.map((_, i) => {
-        const angle = (i / rays.length) * Math.PI * 2;
-        const x = Math.cos(angle) * 22;
-        const y = Math.sin(angle) * 22;
-        return (
-          <motion.span
-            key={i}
-            initial={{ x: 0, y: 0, opacity: 1, scale: 0.4 }}
-            animate={{ x, y, opacity: 0, scale: 1 }}
-            transition={{ duration: 0.9, delay: 0.1, ease: "easeOut" }}
-            className="absolute top-1/2 left-1/2 -ml-1 -mt-1 size-2 rounded-full bg-yellow-300"
-          />
-        );
-      })}
-      <motion.span
-        initial={{ scale: 0, opacity: 0.8 }}
-        animate={{ scale: 1.6, opacity: 0 }}
-        transition={{ duration: 0.7 }}
-        className="absolute inset-0 grid place-items-center text-yellow-400"
-      >
-        <Sparkles className="size-6" />
-      </motion.span>
-    </span>
-  );
-}
