@@ -1,8 +1,24 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, Moon, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { cn } from "@/lib/utils";
+
+const ZzIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M13 5h7l-7 9h7" />
+    <path d="M3 13h6l-6 6h6" />
+  </svg>
+);
 
 const ICON_MAP: Record<NotificationIcon, typeof Bell> = {
   bell: Bell,
