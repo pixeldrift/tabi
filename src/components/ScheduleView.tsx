@@ -114,6 +114,14 @@ const APPOINTMENT_TYPES = [
   "Parent Meeting",
 ] as const;
 
+const APPOINTMENT_TYPE_ICONS: Record<string, string> = {
+  "Speech Therapy": "🗣️",
+  "Occupational Therapy": "🍳",
+  "Physical Therapy": "💪🏼",
+  "Behavioral Consult": "🧠",
+  "Parent Meeting": "🤝",
+};
+
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 type Day = (typeof DAYS)[number];
 
