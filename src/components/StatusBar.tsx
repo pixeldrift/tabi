@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { NotificationBar } from "@/components/NotificationBar";
 
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications";
@@ -180,6 +181,8 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
 
 
+            <NotificationBar />
+
             {/* Tabs row + mini session (when running) */}
             <nav
               className={cn("flex items-end justify-between gap-2 -mb-px", collapsed ? "mt-1" : "mt-2")}
@@ -190,7 +193,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const isActive = t.id === activeTab;
-                  const isDataFaded = t.id === "data" && !isRunning;
                   return (
                     <button
                       key={t.id}
@@ -202,7 +204,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                         isActive
                           ? "bg-background text-foreground border-stone-200 font-medium"
                           : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
-                        isDataFaded && "opacity-50",
                       )}
                     >
                       <Icon className="size-4" />

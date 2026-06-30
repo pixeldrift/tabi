@@ -730,10 +730,10 @@ export function ScheduleView() {
       <div className="mt-3" />
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
-        className="sticky z-30 -mx-1 px-1 bg-background border-b border-stone-200/70 shadow-sm py-1.5"
+        className="sticky z-40 w-screen relative left-1/2 -translate-x-1/2 bg-background border-b border-stone-200/70 shadow-sm py-1.5 px-3"
         style={{ top: stickyTop }}
       >
-        <div className="relative flex items-center text-xs gap-2">
+        <div className="relative flex items-center text-xs gap-2 max-w-3xl mx-auto">
           <button
             type="button"
             onClick={() =>
@@ -784,7 +784,20 @@ export function ScheduleView() {
             </span>
           </button>
 
-          {/* Centered time button — fades in when pinned */}
+          {/* Centered schedule name — fades in when pinned */}
+          <div
+            className={cn(
+              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
+              stickyCompact ? "opacity-100" : "opacity-0",
+            )}
+            aria-hidden={!stickyCompact}
+          >
+            <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">
+              {active.name}
+            </span>
+          </div>
+
+          {/* Right-aligned time button — fades in when pinned */}
           <button
             type="button"
             onClick={scrollToNow}
@@ -792,7 +805,7 @@ export function ScheduleView() {
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
-              "absolute left-1/2 -translate-x-1/2 inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
+              "ml-auto inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
               stickyCompact ? "opacity-100" : "opacity-0 pointer-events-none",
               !currentItem || editMode
                 ? "bg-stone-300"
@@ -811,19 +824,6 @@ export function ScheduleView() {
             </svg>
             {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
           </button>
-
-          {/* Schedule name — fades in when pinned */}
-          <div
-            className={cn(
-              "ml-auto flex items-center min-w-0 overflow-hidden transition-all duration-300 ease-out",
-              stickyCompact ? "max-w-[40%] opacity-100" : "max-w-0 opacity-0",
-            )}
-            aria-hidden={!stickyCompact}
-          >
-            <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">
-              {active.name}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -965,16 +965,16 @@ export function ScheduleView() {
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}
-                <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-0.5 px-1.5">
+                <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
                   <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
                   </div>
                   <div className="flex items-start gap-1.5 min-w-0">
-                    <span className="text-base leading-none shrink-0">{displayIcon}</span>
+                    <span className="text-sm leading-none shrink-0">{displayIcon}</span>
                     <ScrubText text={displayName} className="text-xs font-medium flex-1 leading-tight" />
                   </div>
                   <div className="flex items-start gap-1 min-w-0">
-                    <span className="text-sm leading-none shrink-0">
+                    <span className="text-xs leading-none shrink-0">
                       {LOCATION_ICONS[it.location] ?? "📍"}
                     </span>
                     <ScrubText text={it.location} className="text-xs flex-1 leading-tight" />

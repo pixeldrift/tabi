@@ -10,7 +10,6 @@ import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession } from "@/components/SessionContext";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
-import { NotificationBar } from "@/components/NotificationBar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -125,18 +124,26 @@ function IndexInner() {
   return (
     <main className="min-h-screen bg-background">
       <StatusBar activeTab={tab} onTabChange={setTab} />
-      <NotificationBar />
 
 
       <section className="px-5 pt-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px">
         {tab === "data" && (
-          <div
-            className={cn(
-              "flex flex-col items-center gap-5 transition-opacity duration-300",
-              !sessionActive && "opacity-50 pointer-events-none select-none",
-            )}
-            aria-disabled={!sessionActive}
-          >
+          <div className="flex flex-col items-center gap-5">
+            <div
+              className={cn(
+                "text-sm text-muted-foreground text-center transition-opacity duration-500",
+                sessionActive ? "opacity-0 h-0 overflow-hidden" : "opacity-100",
+              )}
+              aria-hidden={sessionActive}
+            >
+              Start session to record data.
+            </div>
+            <div
+              className={cn(
+                "w-full flex flex-col items-center gap-5 transition-opacity duration-300",
+                !sessionActive && "opacity-50",
+              )}
+            >
             {cards.map((card, i) => {
               const common = {
                 isActive: i === activeIndex,
@@ -203,6 +210,7 @@ function IndexInner() {
                   );
               }
             })}
+            </div>
           </div>
         )}
 
