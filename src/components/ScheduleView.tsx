@@ -14,10 +14,11 @@ import {
   X,
   FilePlus,
   PencilOff,
+  Pin,
   Star,
   Rows3,
   AlignVerticalJustifyStart,
-  
+
 } from "lucide-react";
 import {
   Select,
