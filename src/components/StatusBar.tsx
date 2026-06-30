@@ -525,7 +525,10 @@ function formatRelativeFromNow(d: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const days = Math.round((today.getTime() - that.getTime()) / 86400000);
-  const timeStr = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  const timeStr = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    .toLowerCase()
+    .replace(" am", "a")
+    .replace(" pm", "p");
   if (days === 1) return `Yesterday at ${timeStr}`;
   if (days < 7) return `${d.toLocaleDateString(undefined, { weekday: "long" })} at ${timeStr}`;
   return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} at ${timeStr}`;
