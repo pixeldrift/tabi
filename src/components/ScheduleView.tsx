@@ -1373,7 +1373,8 @@ function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm mx-4 rounded-2xl border-2 border-blue-400 shadow-xl">
+      <DialogContent className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl">
+
         <DialogHeader className="text-left">
           <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
         </DialogHeader>
