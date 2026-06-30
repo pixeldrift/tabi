@@ -1537,8 +1537,9 @@ function AppointmentDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Time</Label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
+            <div className="mt-1 flex items-center justify-center gap-2">
               <TimeField value={start} onChange={setStart} />
+              <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
