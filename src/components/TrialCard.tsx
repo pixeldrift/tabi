@@ -399,11 +399,6 @@ export function TrialCard({
                 </span>
               )}
             </div>
-            {isComplete && (
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Check className="size-3.5 text-green-700" strokeWidth={3} />
-              </div>
-            )}
           </div>
         </div>
       )}

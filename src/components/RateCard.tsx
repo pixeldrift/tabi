@@ -250,11 +250,11 @@ export function RateCard({
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "size-16 shrink-0 aspect-square rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
+            "size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >
-          <Plus className="size-7" strokeWidth={3} />
+          <Plus className="size-6" strokeWidth={3} />
         </motion.button>
       </div>
     </CardShell>
