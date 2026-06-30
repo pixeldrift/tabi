@@ -1533,19 +1533,15 @@ function AppointmentDialog({
           <DialogTitle className="capitalize">{appt ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Start</Label>
+          <div>
+            <Label className="text-xs">Time</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
               <TimeField value={start} onChange={setStart} />
-            </div>
-            <div>
-              <Label className="text-xs">End</Label>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
           <div>
-            <Label className="text-xs">Days</Label>
-            <div className="mt-1 flex gap-1">
+            <div className="flex gap-1">
               {DAYS.map((d) => {
                 const on = days.includes(d);
                 return (
