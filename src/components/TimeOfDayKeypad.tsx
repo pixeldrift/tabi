@@ -5,7 +5,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { cn } from "@/lib/utils";
 
 export interface TimeOfDayKeypadProps {
-  /** Current committed value as 24h "HH:MM". */
+  /** Current committed value as 24h "HH:MM" (or "" if unset). */
   value: string;
   /** Called when user commits. Receives 24h "HH:MM". */
   onChange: (next: string) => void;
@@ -37,25 +37,23 @@ function autoPeriod(hh: number): boolean | null {
   return null;
 }
 
-export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadProps) {
+export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDayKeypadProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const [isPM, setIsPM] = useState(false);
   const [userPeriodOverride, setUserPeriodOverride] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
+  // Always start blank — do not prepopulate from existing value.
   useEffect(() => {
     if (open) {
-      const init = from24h(value);
-      setPending(
-        String(init.hour12).padStart(2, "0") + String(init.minute).padStart(2, "0"),
-      );
-      setIsPM(init.isPM);
-      setUserPeriodOverride(true); // honor existing value
+      setPending("");
+      setIsPM(false);
+      setUserPeriodOverride(false);
       const id = window.setTimeout(() => hiddenInputRef.current?.focus(), 30);
       return () => window.clearTimeout(id);
     }
-  }, [open, value]);
+  }, [open]);
 
   const applyDigit = useCallback((digit: string) => {
     setPending((prev) => (prev + digit).slice(-MAX_DIGITS));
@@ -72,24 +70,30 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
   const entered = pending.length;
   const hh = parseInt(padded.slice(0, 2), 10) || 0;
   const mm = parseInt(padded.slice(2, 4), 10) || 0;
-  const valid = entered > 0 && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+
+  // A valid time requires at least 3 digits (e.g. 318 → 3:18) with hh ≤ 23 and mm ≤ 59.
+  const valid = entered >= 3 && hh <= 23 && mm <= 59;
+
+  // Period selection is only shown/active once a valid hour can be inferred (≥3 digits).
+  const periodActive = entered >= 3;
 
   // Hour > 12 = explicit military time → forces PM on commit.
   const forcedPM = hh > 12 && hh <= 23;
 
-  // Auto-pick period so the time lands within business hours (unless user overrode).
+  // Re-evaluate AM/PM whenever the digit count crosses into 3 or 4 (or back down).
   useEffect(() => {
+    if (!periodActive) return;
     if (userPeriodOverride) return;
-    if (entered === 0) return;
     if (forcedPM) {
       setIsPM(true);
       return;
     }
     const auto = autoPeriod(hh);
     if (auto !== null) setIsPM(auto);
-  }, [hh, forcedPM, entered, userPeriodOverride]);
+  }, [hh, forcedPM, periodActive, userPeriodOverride]);
 
   const pickPeriod = (pm: boolean) => {
+    if (!periodActive) return;
     setIsPM(pm);
     setUserPeriodOverride(true);
   };
@@ -97,9 +101,9 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
   const commit = () => {
     if (!valid) return;
     let outH: number;
-    let outM = mm;
+    const outM = mm;
     if (forcedPM) {
-      outH = hh; // already 13-23
+      outH = hh;
     } else {
       const h12 = hh === 0 ? 12 : hh;
       outH = h12 % 12;
@@ -110,7 +114,7 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
     setOpen(false);
   };
 
-  // Digit nodes (right-aligned, faded slots).
+  // Digit nodes: when empty, render a fully grayed "00:00" placeholder.
   const charNodes: React.ReactNode[] = [];
   for (let i = 0; i < MAX_DIGITS; i++) {
     if (i === 2) {
@@ -118,7 +122,7 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
         <span key="sep" className="text-muted-foreground/40">:</span>,
       );
     }
-    const isReal = i >= MAX_DIGITS - entered;
+    const isReal = entered > 0 && i >= MAX_DIGITS - entered;
     charNodes.push(
       <span
         key={`d-${i}`}
@@ -138,6 +142,7 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
         side="top"
         sideOffset={8}
         align="center"
+        collisionPadding={8}
         className="w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -173,11 +178,14 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
               <button
                 type="button"
                 onClick={() => pickPeriod(false)}
+                disabled={!periodActive}
                 className={cn(
                   "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
-                  !isPM
-                    ? "bg-blue-500 text-white"
-                    : "text-stone-400 hover:text-stone-600",
+                  !periodActive
+                    ? "text-stone-300 cursor-default"
+                    : !isPM
+                      ? "bg-blue-500 text-white"
+                      : "text-stone-400 hover:text-stone-600",
                 )}
               >
                 AM
@@ -185,11 +193,14 @@ export function TimeOfDayKeypad({ value, onChange, children }: TimeOfDayKeypadPr
               <button
                 type="button"
                 onClick={() => pickPeriod(true)}
+                disabled={!periodActive}
                 className={cn(
                   "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
-                  isPM
-                    ? "bg-blue-500 text-white"
-                    : "text-stone-400 hover:text-stone-600",
+                  !periodActive
+                    ? "text-stone-300 cursor-default"
+                    : isPM
+                      ? "bg-blue-500 text-white"
+                      : "text-stone-400 hover:text-stone-600",
                 )}
               >
                 PM
@@ -261,6 +272,7 @@ function KeyButton({
 }
 
 export function formatTimeOfDay(value: string): string {
+  if (!value) return "";
   const { hour12, minute, isPM } = from24h(value);
   return `${hour12}:${String(minute).padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
 }

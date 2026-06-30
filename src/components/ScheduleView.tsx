@@ -1382,8 +1382,9 @@ function ItemDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Time</Label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
+            <div className="mt-1 flex items-center justify-center gap-2">
               <TimeField value={start} onChange={setStart} />
+              <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
@@ -1536,8 +1537,9 @@ function AppointmentDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Time</Label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
+            <div className="mt-1 flex items-center justify-center gap-2">
               <TimeField value={start} onChange={setStart} />
+              <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
             </div>
           </div>
@@ -1674,10 +1676,8 @@ function TapToggle({
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
       className={cn(
-        "flex-1 min-w-0 h-9 px-2 rounded-full border-2 inline-flex items-center justify-center gap-1.5 text-[11px] font-medium transition-colors",
-        checked
-          ? "bg-blue-50 border-blue-500 text-blue-700"
-          : "bg-white border-stone-200 text-stone-400 hover:border-blue-200",
+        "inline-flex items-center gap-1 text-[11px] font-medium transition-colors leading-none py-0.5",
+        checked ? "text-blue-700" : "text-stone-400 hover:text-stone-600",
       )}
     >
       <span className="relative inline-flex items-center justify-center size-3.5 shrink-0">
@@ -1711,7 +1711,7 @@ function AlertsBlock({
         <Label className="text-xs">Notification</Label>
         <div className="mt-1 space-y-2">
           <AlertModeSelect mode={alert.mode} onMode={(m) => setAlert({ ...alert, mode: m })} />
-          <div className="flex items-center gap-1">
+          <div className="flex flex-col items-start gap-1 pl-1">
             <TapToggle
               label="Till Dismissed"
               icon={<Pin className="size-3.5" />}
@@ -1719,7 +1719,7 @@ function AlertsBlock({
               onChange={(v) => setAlert({ ...alert, autofade: !v })}
             />
             <TapToggle
-              label="Snooze"
+              label="Allow Snooze"
               icon={<ZzIcon className="size-3.5" />}
               checked={alert.allowSnooze}
               onChange={(v) => setAlert({ ...alert, allowSnooze: v })}
@@ -1731,7 +1731,7 @@ function AlertsBlock({
         <Label className="text-xs">5min Warning</Label>
         <div className="mt-1 space-y-2">
           <AlertModeSelect mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
-          <div className="flex items-center gap-1">
+          <div className="flex flex-col items-start gap-1 pl-1">
             <TapToggle
               label="Till Dismissed"
               icon={<Pin className="size-3.5" />}
@@ -1739,7 +1739,7 @@ function AlertsBlock({
               onChange={(v) => setPriming({ ...priming, autofade: !v })}
             />
             <TapToggle
-              label="Snooze"
+              label="Allow Snooze"
               icon={<ZzIcon className="size-3.5" />}
               checked={priming.allowSnooze}
               onChange={(v) => setPriming({ ...priming, allowSnooze: v })}
@@ -1752,6 +1752,7 @@ function AlertsBlock({
 }
 
 function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const display = value ? formatTimeOfDay(value) : "";
   return (
     <TimeOfDayKeypad value={value} onChange={onChange}>
       {({ isEditing, open }) => (
@@ -1759,16 +1760,18 @@ function TimeField({ value, onChange }: { value: string; onChange: (v: string) =
           type="button"
           onClick={open}
           className={cn(
-            "mt-1 flex h-9 w-full items-center justify-center rounded-full border-2 bg-white px-4 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
-            isEditing ? "border-blue-500 text-blue-700" : "border-blue-300 text-blue-700",
+            "flex h-9 w-[96px] items-center justify-center rounded-full border-2 bg-white px-2 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
+            isEditing ? "border-blue-500" : "border-blue-300",
+            display ? "text-blue-700" : "text-stone-300",
           )}
         >
-          {formatTimeOfDay(value)}
+          {display || "00:00 AM"}
         </button>
       )}
     </TimeOfDayKeypad>
   );
 }
+
 
 
 
