@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
+import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
 import { useRegisterActiveTimer, useSession } from "./SessionContext";
@@ -118,6 +119,7 @@ export function RateCard({
       title={title}
       phase={phase}
       dataType="Rate / min"
+      dataTypeIcon={<RateIcon />}
       description={description}
       isActive={isActive}
       onActivate={onActivate}
@@ -177,6 +179,13 @@ export function RateCard({
                 {isEditing && (
                   <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
                 )}
+                <NumberPadIcon
+                  className={cn(
+                    "pointer-events-none absolute -right-3.5 -top-1 size-3 transition-colors",
+                    isEditing ? "text-blue-400" : "text-muted-foreground/50",
+                  )}
+                  aria-hidden
+                />
               </button>
               <div
                 className={cn(
@@ -184,7 +193,7 @@ export function RateCard({
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                <span>TIME</span>
+                <span>{count === 1 ? "Time in" : "Times in"}</span>
                 <span className="inline-flex items-center">
                   {locked ? (
                     <>

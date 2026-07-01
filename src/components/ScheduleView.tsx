@@ -726,7 +726,7 @@ export function ScheduleView({
               "h-11 w-11 grid place-content-center rounded-full",
               isLocked
                 ? "text-stone-300 cursor-not-allowed"
-                : "text-blue-600 hover:bg-blue-50",
+                : "text-blue-600 hover:text-blue-700",
             )}
             aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
             title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
@@ -780,7 +780,7 @@ export function ScheduleView({
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
-          "sticky z-40 w-full bg-background border-b border-stone-200/70 py-1.5 px-3",
+          "sticky z-40 w-full bg-background border-b border-stone-200/70 py-1.5 px-8 -mx-5",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
         style={{ top: stickyTop }}
@@ -857,7 +857,7 @@ export function ScheduleView({
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
-              "ml-auto inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
+              "ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
               stickyCompact ? "opacity-100" : "opacity-0 pointer-events-none",
               !currentItem || editMode
                 ? "bg-stone-300"
@@ -874,7 +874,7 @@ export function ScheduleView({
                 fill="none"
               />
             </svg>
-            {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+            {fmt12(`${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`)}
           </button>
         </div>
       </div>
@@ -947,10 +947,16 @@ export function ScheduleView({
 
       {/* Schedule grid */}
       <div className="mt-3 mx-1 rounded-xl bg-white border border-stone-200 relative">
-        <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50 rounded-t-xl">
-          <div className="text-right">INSTANCES&nbsp;IN</div>
-          <div>Activity</div>
-          <div>Location</div>
+        <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-50 rounded-xl">
+          <div className="text-right">Time</div>
+          <div className="flex items-center gap-1.5">
+            <span className="invisible text-sm leading-none shrink-0" aria-hidden>•</span>
+            <span>Activity</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="invisible text-xs leading-none shrink-0" aria-hidden>•</span>
+            <span>Location</span>
+          </div>
           <div className="text-center">Alert</div>
         </div>
 
@@ -1018,10 +1024,7 @@ export function ScheduleView({
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}
-                <div className={cn(
-                  "relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 px-2",
-                  layoutMode === "collapsed" ? "items-center py-0" : "items-start pt-1.5 pb-1",
-                )}>
+                <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
                   <div className="text-[11px] tabular-nums leading-tight pl-0.5 pt-0.5">
                     {fmt12(it.start)}
                   </div>

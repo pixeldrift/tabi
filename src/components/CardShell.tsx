@@ -15,6 +15,8 @@ export interface CardShellProps {
   title: string;
   phase?: string;
   dataType?: string;
+  /** Small outline icon shown to the left of the dataType label. */
+  dataTypeIcon?: ReactNode;
   description?: string;
   isActive?: boolean;
   onActivate?: () => void;
@@ -31,6 +33,7 @@ export function CardShell({
   title,
   phase = "Intervention",
   dataType,
+  dataTypeIcon,
   description,
   isActive = true,
   onActivate,
@@ -67,7 +70,12 @@ export function CardShell({
           <div className="text-right leading-tight">
             <div className="text-xs font-medium text-blue-400">{phase}</div>
             {dataType && (
-              <div className="text-[11px] text-muted-foreground">{dataType}</div>
+              <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
+                {dataTypeIcon && (
+                  <span className="shrink-0 [&>svg]:size-3">{dataTypeIcon}</span>
+                )}
+                <span>{dataType}</span>
+              </div>
             )}
           </div>
           <Sheet>

@@ -149,7 +149,7 @@ function IndexInner() {
             </div>
             <div
               className={cn(
-                "w-full flex flex-col items-center gap-5 transition-opacity duration-300",
+                "w-full flex flex-col items-center gap-3 transition-opacity duration-300",
                 !sessionActive && "opacity-50",
               )}
             >
@@ -165,7 +165,7 @@ function IndexInner() {
                       key={i}
                       title={card.title}
                       phase={card.phase}
-                      dataType="% correct"
+                      dataType="Percent Correct"
                       description={card.description}
                       minTrials={card.minTrials}
                       maxTrials={card.maxTrials}

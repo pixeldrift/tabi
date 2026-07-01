@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
+import { FrequencyIcon, NumberPadIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,7 @@ export function FrequencyCard({
       title={title}
       phase={phase}
       dataType="Frequency"
+      dataTypeIcon={<FrequencyIcon />}
       description={description}
       isActive={isActive}
       onActivate={onActivate}
@@ -144,6 +146,13 @@ export function FrequencyCard({
                 {isEditing && (
                   <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
                 )}
+                <NumberPadIcon
+                  className={cn(
+                    "pointer-events-none absolute -right-3.5 -top-1 size-3 transition-colors",
+                    isEditing ? "text-blue-400" : "text-muted-foreground/50",
+                  )}
+                  aria-hidden
+                />
               </div>
               <span
                 className={cn(

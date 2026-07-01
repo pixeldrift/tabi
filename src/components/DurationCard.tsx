@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause } from "lucide-react";
 import { CardShell } from "./CardShell";
+import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useRegisterActiveTimer, useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
@@ -142,6 +143,7 @@ export function DurationCard({
       title={title}
       phase={phase}
       dataType="Frequency / Duration"
+      dataTypeIcon={<DurationIcon />}
       description={description}
       isActive={isActive}
       onActivate={onActivate}
@@ -232,14 +234,16 @@ export function DurationCard({
           </div>
         </div>
 
-        <div className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground h-4">
-          <span>INSTANCE</span>
-          <span className="normal-case tracking-normal tabular-nums text-foreground">
-            {viewIdx + 1}
-          </span>
-          <span>OF</span>
-          <span className="normal-case tracking-normal tabular-nums text-foreground">
-            {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
+        <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
+          <span>
+            Time{" "}
+            <span className="normal-case tracking-normal tabular-nums text-foreground">
+              {viewIdx + 1}
+            </span>{" "}
+            of{" "}
+            <span className="normal-case tracking-normal tabular-nums text-foreground">
+              {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
+            </span>
           </span>
         </div>
       </div>
@@ -357,9 +361,9 @@ function SideBubble({
         className={cn(
           "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums",
           running
-            ? "bg-blue-100 border-blue-300 text-blue-600"
+            ? "bg-blue-100 border-blue-400 text-blue-700"
             : activated
-              ? "bg-stone-100 border-stone-200 text-stone-500"
+              ? "bg-blue-50 border-blue-200 text-blue-500"
               : "bg-stone-50 border-stone-200 text-stone-400",
         )}
       >

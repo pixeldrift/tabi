@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X, Info } from "lucide-react";
+import { PercentCorrectIcon } from "./icons/DataTypeIcons";
 import {
   Sheet,
   SheetContent,
@@ -33,7 +34,7 @@ const GAP = 6; // tighter spacing
 export function TrialCard({
   title,
   phase = "Intervention",
-  dataType = "% correct",
+  dataType = "Percent Correct",
   description = "Record whether the learner performed the target behavior independently during this trial.",
   minTrials = 10,
   maxTrials,
@@ -143,7 +144,10 @@ export function TrialCard({
         <div className="flex items-start gap-2">
           <div className="text-right leading-tight">
             <div className="text-xs font-medium text-blue-400">{phase}</div>
-            <div className="text-[11px] text-muted-foreground">{dataType}</div>
+            <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
+              <PercentCorrectIcon className="size-3 shrink-0" />
+              <span>{dataType}</span>
+            </div>
           </div>
           <Sheet>
             <SheetTrigger asChild>
@@ -332,8 +336,8 @@ export function TrialCard({
         </div>
 
         {/* Helper text under bubbles */}
-        <div className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          TRIAL&nbsp;{current + 1} OF {target}
+        <div className="text-center text-xs text-muted-foreground">
+          Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
         </div>
       </div>
 

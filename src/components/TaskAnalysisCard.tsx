@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell } from "./CardShell";
+import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
 import { useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +76,8 @@ export function TaskAnalysisCard({
     <CardShell
       title={title}
       phase={phase}
-      dataType="Task analysis"
+      dataType="Task Analysis"
+      dataTypeIcon={<TaskAnalysisIcon />}
       description={description}
       isActive={isActive}
       onActivate={onActivate}

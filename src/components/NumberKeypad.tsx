@@ -99,7 +99,7 @@ export function NumberKeypad({
         side="top"
         sideOffset={8}
         align="center"
-        className="w-auto border-none bg-transparent p-0 shadow-none"
+        className="group w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="relative w-[200px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
@@ -197,7 +197,20 @@ export function NumberKeypad({
           </div>
 
           {/* Arrow — part of the bordered card shape */}
-          <div className="absolute -bottom-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-r-2 border-b-2 border-blue-400/80 bg-card" />
+          <div
+            className={cn(
+              "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-card",
+              // Default (side="top"): popup is above the trigger, so the arrow
+              // sits on the bottom edge and points down at it.
+              "-bottom-[7px] border-r-2 border-b-2",
+              // When Radix flips to side="bottom" (not enough room above),
+              // the popup renders below the trigger, so the arrow needs to
+              // move to the top edge and point up at it instead.
+              "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
+              "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+              "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+            )}
+          />
         </div>
       </PopoverContent>
     </Popover>
