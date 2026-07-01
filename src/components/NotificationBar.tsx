@@ -110,7 +110,7 @@ export function NotificationBar() {
 
   return (
     <div className="px-3 pt-2 pointer-events-none">
-      <div className="max-w-2xl mx-auto flex flex-col gap-2">
+      <motion.div layout className="max-w-2xl mx-auto flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {visible.map((n) => (
             <NotificationRow
@@ -125,6 +125,7 @@ export function NotificationBar() {
           {overflow > 0 && (
             <motion.div
               key="overflow"
+              layout
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -134,7 +135,7 @@ export function NotificationBar() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 }

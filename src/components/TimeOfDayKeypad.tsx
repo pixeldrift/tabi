@@ -184,7 +184,7 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
                   !periodActive
                     ? "text-stone-300 cursor-default"
                     : !isPM
-                      ? "bg-blue-500 text-white"
+                      ? "btn-bevel bg-blue-500 text-white"
                       : "text-stone-400 hover:text-stone-600",
                 )}
               >
@@ -199,7 +199,7 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
                   !periodActive
                     ? "text-stone-300 cursor-default"
                     : isPM
-                      ? "bg-blue-500 text-white"
+                      ? "btn-bevel bg-blue-500 text-white"
                       : "text-stone-400 hover:text-stone-600",
                 )}
               >
@@ -236,7 +236,7 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
               whileTap={valid ? { scale: 0.92 } : undefined}
               aria-label="Set time"
               className={cn(
-                "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
+                "btn-bevel grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
                 "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700",
               )}
             >
@@ -273,7 +273,7 @@ function KeyButton({
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
       className={cn(
-        "h-9 select-none rounded-lg border text-lg font-semibold font-display transition-colors",
+        "btn-bevel h-9 select-none rounded-lg border text-lg font-semibold font-display transition-colors",
         variant === "default"
           ? "bg-stone-100 text-foreground border-stone-200 hover:bg-stone-200 active:bg-stone-300"
           : "bg-muted/70 text-muted-foreground border-stone-200 hover:bg-muted active:bg-stone-200",

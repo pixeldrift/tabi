@@ -138,7 +138,7 @@ export function TaskAnalysisCard({
                     className={cn(
                       "size-8 rounded-md border-2 grid place-items-center transition-colors",
                       opt.classes,
-                      selected && opt.selectedClasses,
+                      selected && cn("btn-bevel", opt.selectedClasses),
                     )}
                   >
                     <Icon className="size-3.5" strokeWidth={3} />

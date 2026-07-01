@@ -10,6 +10,7 @@ import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession } from "@/components/SessionContext";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
+import { useStickyTop } from "@/hooks/use-sticky-top";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -119,6 +120,7 @@ function IndexInner() {
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const { status } = useSession();
   const sessionActive = status === "running";
+  const stickyTop = useStickyTop();
 
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
@@ -135,17 +137,23 @@ function IndexInner() {
       <StatusBar activeTab={tab} onTabChange={setTab} />
 
 
-      <section className="px-5 pt-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px">
+      <section
+        className={cn(
+          "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px",
+          tab === "schedule" ? "pt-2" : "pt-5",
+        )}
+      >
         {tab === "data" && (
           <div className="flex flex-col items-center gap-5">
             <div
               className={cn(
-                "text-sm text-muted-foreground text-center transition-opacity duration-500",
-                sessionActive ? "opacity-0 h-0 overflow-hidden" : "opacity-100",
+                "sticky z-40 w-full bg-background border-b border-stone-200/70 py-1.5 px-8 -mx-5 text-center transition-[opacity,padding] duration-500",
+                sessionActive ? "opacity-0 h-0 overflow-hidden py-0 border-b-0" : "opacity-100",
               )}
+              style={{ top: stickyTop }}
               aria-hidden={sessionActive}
             >
-              Start session to record data.
+              <span className="text-sm text-muted-foreground">Start session to record data.</span>
             </div>
             <div
               className={cn(

@@ -140,7 +140,7 @@ export function RateCard({
           onClick={dec}
           disabled={count === 0}
           aria-label="Decrement"
-          className="size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
+          className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
         >
           <Minus className="size-5" strokeWidth={2.5} />
         </button>
@@ -241,7 +241,7 @@ export function RateCard({
                           toggle();
                         }}
                         aria-label={running ? "Pause timer" : "Resume timer"}
-                        className="grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
+                        className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
                       >
                         {running ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}
                       </button>

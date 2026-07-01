@@ -20,19 +20,19 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
 - [x] 🟢 Schedule sticky bar: full width, mini clock uses lowercase `a`/`p`
       (no space, matches activity times), tighten icon left margin
 - [x] 🟢 Remove blue hover circle on Schedule pencil (edit) button
-- [ ] 🟡 Schedule tab: reduce margin above date/time, shrink dropdown/input
+- [x] 🟡 Schedule tab: reduce margin above date/time, shrink dropdown/input
       padding; dropdown options: square top corners, flush/no-gap attachment,
       slide-down-from-behind animation, same blue border, bold selected option
-- [ ] 🟡 Global button bevel: light/dark border (top-left light source),
+- [x] 🟡 Global button bevel: light/dark border (top-left light source),
       drop shadow, subtle gradient overlay — audit all button variants
       (disabled/active/colored) for clashes
 
 ## 🎬 Animation
 
-- [ ] 🟡 Fix Schedule sticky-bar animation trigger timing (fires on wrong
+- [x] 🟡 Fix Schedule sticky-bar animation trigger timing (fires on wrong
       event, not exactly on stick/unstick)
-- [ ] 🟡 Smooth notification bar + top bar expand/collapse (no abrupt jump)
-- [ ] 🟢 "Outside of hours" gray label next to parked Time chevron
+- [x] 🟡 Smooth notification bar + top bar expand/collapse (no abrupt jump)
+- [x] 🟢 "Outside of hours" gray label next to parked Time chevron
 - [ ] 🔴 Session-start animation (odometer digit roll, blue flash, button
       fade/slide, timer pill shrink+reposition, header collapse) — single
       fluid tween, reversible for pause
@@ -51,10 +51,10 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
 
 ## ⚙️ Functionality / Features
 
-- [ ] 🟡 Co-treat toggle in appointment add/edit popup
-- [ ] 🟡 Data tab: "Start session to record data" → sticky bar (reuse
+- [x] 🟡 Co-treat toggle in appointment add/edit popup
+- [x] 🟡 Data tab: "Start session to record data" → sticky bar (reuse
       Schedule sticky bar style)
-- [ ] 🟡 Schedule sticky bar toggles: Collapse/Expand View, Hide/Show Icons,
+- [x] 🟡 Schedule sticky bar toggles: Collapse/Expand View, Hide/Show Icons,
       Hide/Show Appointments
 - [ ] 🔴 Settings tab (gear icon) + audit codebase to link existing static
       constants as options
@@ -82,4 +82,4 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
 
 ---
 
-*Last updated: 2026-06-30*
+*Last updated: 2026-07-01*

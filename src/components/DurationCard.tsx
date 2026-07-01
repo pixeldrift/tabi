@@ -328,7 +328,7 @@ function CenterPill({
           onToggle();
         }}
         aria-label={running ? "Pause this instance" : "Start this instance"}
-        className="grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
+        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
       >
         {running ? (
           <Pause className="size-5" fill="currentColor" strokeWidth={0} />

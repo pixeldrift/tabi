@@ -232,7 +232,7 @@ function KeyButton({
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
       className={cn(
-        "h-9 select-none rounded-lg border text-lg font-semibold font-display transition-colors",
+        "btn-bevel h-9 select-none rounded-lg border text-lg font-semibold font-display transition-colors",
         variant === "default"
           ? "bg-stone-100 text-foreground border-stone-200 hover:bg-stone-200 active:bg-stone-300"
           : "bg-muted/70 text-muted-foreground border-stone-200 hover:bg-muted active:bg-stone-200",
@@ -266,7 +266,7 @@ function ActionButton({
       className={cn(
         "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
         tone === "solid"
-          ? "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+          ? "btn-bevel bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
           : "border-2 border-blue-500 text-blue-600 hover:bg-blue-50 active:bg-blue-100",
       )}
     >

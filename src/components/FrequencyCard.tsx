@@ -107,7 +107,7 @@ export function FrequencyCard({
           onClick={dec}
           disabled={count === 0}
           aria-label="Decrement"
-          className="size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
+          className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
         >
           <Minus className="size-5" strokeWidth={2.5} />
         </button>

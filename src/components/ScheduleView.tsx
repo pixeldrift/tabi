@@ -18,6 +18,8 @@ import {
   Star,
   Rows3,
   AlignVerticalJustifyStart,
+  Image,
+  ImageOff,
 
 } from "lucide-react";
 import {
@@ -43,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
+import { useStickyTop } from "@/hooks/use-sticky-top";
 
 
 const LOCATIONS = [
@@ -297,7 +300,7 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
 }
 
 const SELECT_ITEM_CLS =
-  "focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900";
+  "focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900 data-[state=checked]:font-bold";
 
 const INPUT_BLUE_CLS = "border-2 border-blue-300 focus-visible:ring-blue-300";
 
@@ -339,6 +342,7 @@ export function ScheduleView({
   const [editMode, setEditMode] = useState(false);
   const [layoutMode, setLayoutMode] = useState<"proportional" | "collapsed">("proportional");
   const [showAppts, setShowAppts] = useState(true);
+  const [showIcons, setShowIcons] = useState(true);
   const [collapsedAppts, setCollapsedAppts] = useState<Record<string, boolean>>({});
   const [allApptsCollapsed, setAllApptsCollapsed] = useState(false);
 
@@ -353,33 +357,34 @@ export function ScheduleView({
   const [confirmItemDelete, setConfirmItemDelete] = useState<ScheduleItem | null>(null);
   const [confirmApptDelete, setConfirmApptDelete] = useState<Appointment | null>(null);
   const [nowAnim, setNowAnim] = useState(0); // bump to retrigger bounce/flash
-  const [stickyTop, setStickyTop] = useState(0);
+  const stickyTop = useStickyTop();
   const [stickyCompact, setStickyCompact] = useState(false);
   const togglesSentinelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const bar = document.querySelector("[data-status-bar]") as HTMLElement | null;
-    if (!bar) return;
-    const update = () => setStickyTop(bar.getBoundingClientRect().height);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(bar);
-    window.addEventListener("resize", update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
+  // Track compact state via direct geometry checks tied to scroll/resize,
+  // rather than IntersectionObserver: IO callbacks are batched and can fire a
+  // frame or more after the browser's own `position: sticky` snap, which was
+  // making the label crossfade visibly lag the actual stick/unstick moment.
   useEffect(() => {
     const el = togglesSentinelRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setStickyCompact(!entry.isIntersecting),
-      { rootMargin: `-${stickyTop}px 0px 0px 0px`, threshold: 0 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      setStickyCompact(el.getBoundingClientRect().top <= stickyTop);
+    };
+    const onScrollOrResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [stickyTop]);
 
   const items = active.items;
@@ -676,7 +681,7 @@ export function ScheduleView({
           )}>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="rounded-2xl">
+          <SelectContent>
             {schedules.map((s) => (
               <SelectItem key={s.name} value={s.name} className={SELECT_ITEM_CLS}>
                 <span className="inline-flex items-center gap-1.5">
@@ -835,6 +840,29 @@ export function ScheduleView({
               {showAppts ? "Hide Appointments" : "Show Appointments"}
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => setShowIcons((v) => !v)}
+            className={cn(
+              "flex items-center gap-1.5",
+              showIcons ? "text-blue-600" : "text-stone-400 hover:text-stone-600",
+            )}
+            title="Show or hide activity and location icons"
+          >
+            {showIcons ? (
+              <Image className="size-3.5 shrink-0" />
+            ) : (
+              <ImageOff className="size-3.5 shrink-0" />
+            )}
+            <span
+              className={cn(
+                "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
+                stickyCompact ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100",
+              )}
+            >
+              {showIcons ? "Hide Icons" : "Show Icons"}
+            </span>
+          </button>
 
           {/* Centered schedule name — fades in when pinned */}
           <div
@@ -857,7 +885,7 @@ export function ScheduleView({
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
-              "ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
+              "btn-bevel ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
               stickyCompact ? "opacity-100" : "opacity-0 pointer-events-none",
               !currentItem || editMode
                 ? "bg-stone-300"
@@ -965,7 +993,7 @@ export function ScheduleView({
             <div
               key={`arrow-${nowAnim}`}
               className={cn(
-                "absolute z-30 pointer-events-none -translate-y-1/2",
+                "absolute z-30 pointer-events-none flex items-center -translate-y-1/2",
                 nowAnim > 0 && "animate-bounce-x",
               )}
               style={{ top: arrowTop, left: -6 }}
@@ -982,6 +1010,11 @@ export function ScheduleView({
                   fill={arrowGray ? "#a8a29e" : "#2563eb"}
                 />
               </svg>
+              {arrowGray && (
+                <span className="ml-1 text-[10px] uppercase tracking-wide text-stone-400 whitespace-nowrap">
+                  Outside of hours
+                </span>
+              )}
             </div>
           )}
 
@@ -1029,13 +1062,17 @@ export function ScheduleView({
                     {fmt12(it.start)}
                   </div>
                   <div className="flex items-start gap-1.5 min-w-0">
-                    <span className="text-sm leading-none shrink-0">{displayIcon}</span>
+                    {showIcons && (
+                      <span className="text-sm leading-none shrink-0">{displayIcon}</span>
+                    )}
                     <ScrubText text={displayName} className="text-xs font-medium flex-1 leading-tight" />
                   </div>
                   <div className="flex items-start gap-1 min-w-0">
-                    <span className="text-xs leading-none shrink-0">
-                      {LOCATION_ICONS[it.location] ?? "📍"}
-                    </span>
+                    {showIcons && (
+                      <span className="text-xs leading-none shrink-0">
+                        {LOCATION_ICONS[it.location] ?? "📍"}
+                      </span>
+                    )}
                     <ScrubText text={it.location} className="text-xs flex-1 leading-tight" />
                   </div>
                   <div className="flex items-start justify-center gap-0.5 -mt-1">
@@ -1438,7 +1475,7 @@ function ItemDialog({
             <Label className="text-xs">Activity</Label>
             <Select value={activity} onValueChange={setActivity}>
               <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-2xl">
+              <SelectContent>
                 {ACTIVITIES.map((a) => (
                   <SelectItem key={a} value={a} className={SELECT_ITEM_CLS}>
                     {(ACTIVITY_ICONS[a] ?? "•") + " " + a}
@@ -1473,7 +1510,7 @@ function ItemDialog({
             <Label className="text-xs">Location</Label>
             <Select value={location} onValueChange={setLocation}>
               <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-2xl">
+              <SelectContent>
                 {LOCATIONS.map((l) => (
                   <SelectItem key={l} value={l} className={SELECT_ITEM_CLS}>
                     {(LOCATION_ICONS[l] ?? "📍") + " " + l}
@@ -1523,6 +1560,7 @@ function AppointmentDialog({
   const [days, setDays] = useState<Day[]>(["Mon"]);
   const [type, setType] = useState<string>(APPOINTMENT_TYPES[0]);
   const [provider, setProvider] = useState("");
+  const [coTreat, setCoTreat] = useState(false);
   const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
   const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
@@ -1534,6 +1572,7 @@ function AppointmentDialog({
       setDays(appt?.days ?? ["Mon"]);
       setType(appt?.type ?? APPOINTMENT_TYPES[0]);
       setProvider(appt?.provider ?? "");
+      setCoTreat(appt?.tag === "Co-Treat");
       setAlertCfg(appt?.alertCfg ?? DEFAULT_ALERT);
       setPriming(appt?.priming ?? DEFAULT_PRIMING);
       setError(null);
@@ -1569,6 +1608,7 @@ function AppointmentDialog({
       days,
       type,
       provider: provider.trim() || "—",
+      tag: coTreat ? "Co-Treat" : appt?.tag === "Handoff Session" ? "Handoff Session" : undefined,
       alertCfg,
       priming,
     });
@@ -1600,7 +1640,7 @@ function AppointmentDialog({
                     type="button"
                     onClick={() => toggleDay(d)}
                     className={cn(
-                      "flex-1 h-9 rounded-full border-2 text-xs inline-flex items-center justify-center gap-1",
+                      "btn-bevel flex-1 h-9 rounded-full border-2 text-xs inline-flex items-center justify-center gap-1",
                       on
                         ? "bg-blue-600 border-blue-600 text-white"
                         : "bg-white border-blue-300 text-blue-700",
@@ -1617,7 +1657,7 @@ function AppointmentDialog({
             <Label className="text-xs">Type</Label>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-2xl">
+              <SelectContent>
                 {APPOINTMENT_TYPES.map((t) => (
                   <SelectItem key={t} value={t} className={SELECT_ITEM_CLS}>
                     {(APPOINTMENT_TYPE_ICONS[t] ?? "•") + " " + t}
@@ -1635,6 +1675,12 @@ function AppointmentDialog({
               className={cn("mt-1", INPUT_BLUE_CLS)}
             />
           </div>
+          <TapToggle
+            label="Co-Treat"
+            icon={<HandHelping className="size-3.5" />}
+            checked={coTreat}
+            onChange={setCoTreat}
+          />
           <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
@@ -1692,7 +1738,7 @@ function AlertModeSelect({
       <SelectTrigger className="rounded-full border-2 border-blue-300 text-blue-700 h-9 px-3 text-xs">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="rounded-2xl">
+      <SelectContent>
         {ALERT_MODE_OPTIONS.map(({ value, label, Icon }) => (
           <SelectItem key={value} value={value} className={SELECT_ITEM_CLS}>
             <span className="inline-flex items-center gap-2">

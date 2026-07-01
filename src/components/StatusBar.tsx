@@ -170,7 +170,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 status={status}
                 elapsedMs={pillElapsed}
                 contextTime={status === "paused" ? null : previousSessionEndedAt}
-                showPill={!collapsed}
+                showPill={!isRunning}
                 dimmed={pendingStart !== null}
                 onPlay={requestPlay}
                 onStartNew={requestStartNew}
@@ -184,8 +184,9 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             <NotificationBar />
 
             {/* Tabs row + mini session (when running) */}
-            <nav
-              className={cn("flex items-end justify-between gap-2 -mb-px", collapsed ? "mt-1" : "mt-2")}
+            <motion.nav
+              layout
+              className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-2")}
               role="tablist"
               aria-label="Session sections"
             >
@@ -217,12 +218,12 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <ActiveDurationIndicator timers={durationTimers} />
               </div>
 
-              {collapsed && (
+              {isRunning && (
                 <div className="pb-1.5 sm:pb-2 pr-1">
                   <MiniSession elapsedMs={pillElapsed} onPause={pause} disabled={!isRunning} />
                 </div>
               )}
-            </nav>
+            </motion.nav>
 
 
           </LayoutGroup>
@@ -246,7 +247,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => setDiscardOpen(false)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               Continue Session Safely
               <Play className="size-4" fill="currentColor" />
@@ -268,7 +269,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 endAndSubmit();
                 setEndOpen(false);
               }}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               End & Submit Data
               <LineChart className="size-4" strokeWidth={2.5} />
@@ -276,7 +277,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => setEndOpen(false)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               Return to Session
               <Play className="size-4" fill="currentColor" />
@@ -618,7 +619,7 @@ function ExpandedSessionBox({
               whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
               transition={{ duration: 0.7, ease, layout: { duration: 0.7, ease } }}
               aria-label={isPaused ? "Resume session" : "Continue session"}
-              className="grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
+              className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
             >
               <motion.span layoutId="session-pill-icon" className="grid place-items-center">
                 <Play className="size-5" fill="currentColor" strokeWidth={0} />
@@ -641,7 +642,7 @@ function ExpandedSessionBox({
             {isPaused ? (
               <button
                 onClick={onEnd}
-                className="flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+                className="btn-bevel flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
               >
                 End & Submit Data
                 <LineChart className="size-3.5" strokeWidth={2.5} />
@@ -649,7 +650,7 @@ function ExpandedSessionBox({
             ) : (
               <button
                 onClick={onStartNew}
-                className="flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+                className="btn-bevel flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
               >
                 Start New Session
                 <RefreshCw className="size-3.5" strokeWidth={2.5} />
@@ -701,7 +702,7 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
       ref={trackRef}
       onClick={!armed ? () => setArmed(true) : undefined}
       className={cn(
-        "relative h-11 w-full rounded-full bg-red-500 overflow-hidden select-none transition-colors",
+        "btn-bevel relative h-11 w-full rounded-full bg-red-500 overflow-hidden select-none transition-colors",
         !armed && "cursor-pointer hover:bg-red-600",
       )}
     >
@@ -799,7 +800,7 @@ function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: numb
         transition={{ duration: 0.7, ease, layout: { duration: 0.7, ease } }}
         aria-label="Pause session"
         title="Pause session"
-        className="grid place-items-center w-8 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
+        className="btn-bevel grid place-items-center w-8 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
       >
         <motion.span layoutId="session-pill-icon" className="grid place-items-center">
           <Pause className="size-3" fill="currentColor" strokeWidth={0} />
