@@ -184,7 +184,7 @@ export function RateCard({
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                <span>{count === 1 ? "Time in" : "Times in"}</span>
+                <span>INSTANCES IN</span>
                 <span className="inline-flex items-center">
                   {locked ? (
                     <>
