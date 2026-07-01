@@ -332,8 +332,8 @@ export function TrialCard({
         </div>
 
         {/* Helper text under bubbles */}
-        <div className="text-center text-xs text-muted-foreground">
-          Trial {current + 1} of {target} {maxTrials ? "max" : "required"}
+        <div className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          TRIAL&nbsp;{current + 1} OF {target}
         </div>
       </div>
 
