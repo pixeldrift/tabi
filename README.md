@@ -1,12 +1,59 @@
-# Plan Checklist
+# ABA DaBa
 
-Running tracker for UI/UX polish requests. Grouped by type, tagged by
-complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they land.
-"Later" items are backlog features, not tweaks — not sized yet.
+A demo of consistent, animated data-collection cards for ABA-style session
+tracking — percent correct, frequency, rate, duration, and task-analysis
+targets, plus a schedule view with alerts and a live session timer. Built to
+explore UX/UI patterns; not a production data system.
 
----
+## Tech stack
 
-## 🎨 Visual Styling
+- [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) (React 19, SSR)
+- [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) (Radix primitives)
+- [Motion](https://motion.dev/) (formerly Framer Motion) for animation
+- [Nitro](https://nitro.build/) for the deployable server build — swappable across hosts, see [Deployment](#deployment)
+
+## Getting started
+
+```bash
+bun install
+bun run dev       # http://localhost:3000
+```
+
+Other scripts:
+
+```bash
+bun run build       # production build (dist/)
+bun run preview     # preview the build with Vite's server
+bun run preview:cf  # preview the build in a real Cloudflare Workers runtime
+bun run lint
+bun run format
+```
+
+## Deployment
+
+The production build targets [Cloudflare Pages](https://pages.cloudflare.com/)
+by default (free tier, no commercial-use restriction, GitHub-integrated
+preview deploys). Deploy target is a one-line swap — no code changes needed:
+
+```bash
+NITRO_PRESET=vercel bun run build     # or netlify, node-server, etc.
+```
+
+To connect this repo to Cloudflare Pages:
+
+1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git
+2. Build command: `bun install && bun run build`
+3. Build output directory: `dist`
+
+Every push gets a preview URL; your production branch gets the live one.
+
+## Roadmap
+
+Running tracker for UI/UX polish requests, grouped by type and tagged by
+complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). "Later" items are backlog
+features, not sized yet.
+
+### 🎨 Visual Styling
 
 - [x] 🟢 Number pad SVG icon for editable number fields
 - [x] 🟢 Data-type SVG icons (percent, tally/frequency, duration/timer, rate,
@@ -27,7 +74,7 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
       drop shadow, subtle gradient overlay — audit all button variants
       (disabled/active/colored) for clashes
 
-## 🎬 Animation
+### 🎬 Animation
 
 - [x] 🟡 Fix Schedule sticky-bar animation trigger timing (fires on wrong
       event, not exactly on stick/unstick)
@@ -49,7 +96,7 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
       highlighting incl. conditional silence icon, chime keeps playing until
       silenced/dismissed, circular buttons, conditional silence button)
 
-## ⚙️ Functionality / Features
+### ⚙️ Functionality / Features
 
 - [x] 🟡 Co-treat toggle in appointment add/edit popup
 - [x] 🟡 Data tab: "Start session to record data" → sticky bar (reuse
@@ -69,7 +116,7 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
 - [ ] 🔴 Left-side target/goal list/tree view mirroring Info Drawer — titles
       (+ data type?), click scrolls to card + shows pointer arrow
 
-## 🗄️ Later (backlog — not sized)
+### 🗄️ Later (backlog — not sized)
 
 - [ ] Revision mode for editing a paused, unsubmitted session
 - [ ] Multi-instance Task Analysis entry (step-by-step + trial navigation,
@@ -80,6 +127,4 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). Check items off as they l
 - [ ] Pinned favorites for frequently-used targets
 - [ ] Edit mode: reorder cards/targets, filter by behavior/goal/data type
 
----
-
-*Last updated: 2026-07-01*
+*Roadmap last updated: 2026-07-01*
