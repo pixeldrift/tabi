@@ -232,16 +232,14 @@ export function DurationCard({
           </div>
         </div>
 
-        <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
-          <span>
-            Time{" "}
-            <span className="normal-case tracking-normal tabular-nums text-foreground">
-              {viewIdx + 1}
-            </span>{" "}
-            of{" "}
-            <span className="normal-case tracking-normal tabular-nums text-foreground">
-              {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
-            </span>
+        <div className="mt-1 flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground h-4">
+          <span>INSTANCE</span>
+          <span className="normal-case tracking-normal tabular-nums text-foreground">
+            {viewIdx + 1}
+          </span>
+          <span>OF</span>
+          <span className="normal-case tracking-normal tabular-nums text-foreground">
+            {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
           </span>
         </div>
       </div>
