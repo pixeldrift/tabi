@@ -184,7 +184,7 @@ export function RateCard({
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                <span>INSTANCES IN</span>
+                <span>TIME</span>
                 <span className="inline-flex items-center">
                   {locked ? (
                     <>
