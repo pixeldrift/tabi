@@ -1,7 +1,8 @@
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef } from "react";
+import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "motion/react";
 import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
+import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
 
 const ZzIcon = ({ className }: { className?: string }) => (
@@ -153,11 +154,18 @@ function NotificationRow({
   onSnooze: () => void;
   onSilence: () => void;
 }) {
-  const Icon = ICON_MAP[n.icon];
+  const { values: settings } = useSettings();
+  const silenced = n.state === "silenced";
+  // Once silenced the row stays but reads as muted, regardless of the
+  // notification's own stored icon (which is what drives the chime).
+  const Icon = silenced ? BellOff : ICON_MAP[n.icon];
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
-  const hasChime = n.icon === "bell-chime";
+  const hasChime = n.icon === "bell-chime" && !silenced;
+  const showSilence = alert && hasChime;
+  const canSwipeRight = showSnooze || showSilence;
+  const rightAction = showSnooze ? onSnooze : showSilence ? onSilence : undefined;
 
   // Chime + vibrate every 2s while an alert with chime is visible.
   useEffect(() => {
@@ -171,6 +179,31 @@ function NotificationRow({
     return () => window.clearInterval(id);
   }, [alert, hasChime, n.kind]);
 
+  const threshold = settings.swipeThresholdPx;
+  const dragX = useMotionValue(0);
+  const wasDragging = useRef(false);
+  const leftOpacity = useTransform(dragX, [-threshold, 0], [1, 0]);
+  const leftScale = useTransform(dragX, [-threshold * 1.4, -threshold, 0], [1.15, 1, 0.6]);
+  const rightOpacity = useTransform(dragX, [0, threshold], [0, 1]);
+  const rightScale = useTransform(dragX, [0, threshold, threshold * 1.4], [0.6, 1, 1.15]);
+
+  const handleDragEnd = () => {
+    const val = dragX.get();
+    if (val <= -threshold) {
+      animate(dragX, -90, { duration: 0.15 });
+      window.setTimeout(onDismiss, 130);
+    } else if (val >= threshold && rightAction) {
+      animate(dragX, 90, { duration: 0.15 });
+      window.setTimeout(rightAction, 130);
+    } else {
+      animate(dragX, 0, {
+        type: "spring",
+        stiffness: settings.swipeSpringStiffness,
+        damping: settings.swipeSpringDamping,
+      });
+    }
+    window.setTimeout(() => { wasDragging.current = false; }, 80);
+  };
 
   return (
     <motion.div
@@ -179,59 +212,96 @@ function NotificationRow({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: -40, transition: { duration: 0.18 } }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className={cn(
-        "pointer-events-auto relative overflow-hidden rounded-full border shadow-sm",
-        styles.ring,
-      )}
+      className="pointer-events-auto relative overflow-hidden rounded-full"
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onActivate}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-        className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
+      {/* Swipe reveal layers — sit behind the draggable row. Sliding the row
+          left exposes the strip it just vacated on the RIGHT, and sliding it
+          right exposes the strip on the LEFT — so each icon sits on the side
+          that becomes visible, not the side the row is heading toward. */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-end pr-4 rounded-full bg-stone-700"
+        style={{ opacity: leftOpacity }}
+      >
+        <motion.div style={{ scale: leftScale }}>
+          <X className="size-5 text-white" />
+        </motion.div>
+      </motion.div>
+      {canSwipeRight && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-start pl-4 rounded-full bg-blue-600"
+          style={{ opacity: rightOpacity }}
+        >
+          <motion.div style={{ scale: rightScale }}>
+            {showSnooze ? (
+              <ZzIcon className="size-5 text-white" />
+            ) : (
+              <VolumeX className="size-5 text-white" />
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+
+      <motion.div
+        drag="x"
+        dragConstraints={canSwipeRight ? { left: -120, right: 120 } : { left: -120, right: 0 }}
+        dragElastic={0.15}
+        dragMomentum={false}
+        style={{ x: dragX }}
+        onDragStart={() => { wasDragging.current = true; }}
+        onDragEnd={handleDragEnd}
+        className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
         <div
-          className={cn(
-            "flex items-center justify-center size-7 shrink-0",
-            styles.iconFg,
-            n.kind === "alert-now" && "animate-bounce",
-            n.kind === "alert-priming" && "animate-pulse",
-          )}
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (!wasDragging.current) onActivate(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+          className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
         >
-          <Icon className="size-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-stone-900 truncate">{n.title}</div>
-          {n.body && (
-            <div className="text-xs text-stone-600 truncate">{n.body}</div>
-          )}
-        </div>
-        <div
-          className="flex items-center gap-0.5 shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {alert ? (
-            <>
-              <RowButton label="Silence" onClick={onSilence}>
-                <VolumeX className="size-4" />
+          <div
+            className={cn(
+              "flex items-center justify-center size-7 shrink-0",
+              styles.iconFg,
+              !silenced && n.kind === "alert-now" && "animate-bounce",
+              !silenced && n.kind === "alert-priming" && "animate-pulse",
+            )}
+          >
+            <Icon className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-stone-900 truncate">{n.title}</div>
+            {n.body && (
+              <div className="text-xs text-stone-600 truncate">{n.body}</div>
+            )}
+          </div>
+          <div
+            className="flex items-center gap-0.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {alert ? (
+              <>
+                {showSilence && (
+                  <RowButton label="Silence" onClick={onSilence}>
+                    <VolumeX className="size-4" />
+                  </RowButton>
+                )}
+                {showSnooze && (
+                  <RowButton label="Snooze" onClick={onSnooze}>
+                    <ZzIcon className="size-4" />
+                  </RowButton>
+                )}
+              </>
+            ) : (
+              <RowButton label="Open" onClick={onActivate}>
+                <ArrowRight className="size-4" />
               </RowButton>
-              {showSnooze && (
-                <RowButton label="Snooze" onClick={onSnooze}>
-                  <ZzIcon className="size-4" />
-                </RowButton>
-              )}
-            </>
-          ) : (
-            <RowButton label="Open" onClick={onActivate}>
-              <ArrowRight className="size-4" />
+            )}
+            <RowButton label="Dismiss" onClick={onDismiss}>
+              <X className="size-4" />
             </RowButton>
-          )}
-          <RowButton label="Dismiss" onClick={onDismiss}>
-            <X className="size-4" />
-          </RowButton>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

@@ -1,0 +1,88 @@
+import { RotateCcw } from "lucide-react";
+import { SETTINGS, useSettings } from "./SettingsContext";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export function SettingsPane() {
+  const { values, setValue, resetAll, resetOne } = useSettings();
+  const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
+
+  return (
+    <div className="max-w-2xl mx-auto mt-6 px-4 pb-16">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <h2 className="font-display text-lg leading-tight">Animation tuning</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Adjust timing for the newer animations while you feel them out — saved to this
+            browser, no rebuild needed.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={resetAll}
+          className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="size-3.5" />
+          Reset all
+        </Button>
+      </div>
+
+      <div className="mt-6 space-y-8">
+        {groups.map((group) => (
+          <section key={group}>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              {group}
+            </h3>
+            <div className="space-y-5">
+              {SETTINGS.filter((s) => s.group === group).map((setting) => {
+                const value = values[setting.key] ?? setting.default;
+                const isDefault = value === setting.default;
+                return (
+                  <div key={setting.key}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <label htmlFor={setting.key} className="text-sm font-medium">
+                        {setting.label}
+                      </label>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {value}
+                          {setting.unit}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => resetOne(setting.key)}
+                          disabled={isDefault}
+                          aria-label={`Reset ${setting.label} to default`}
+                          className={cn(
+                            "text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none",
+                          )}
+                        >
+                          <RotateCcw className="size-3" />
+                        </button>
+                      </div>
+                    </div>
+                    {setting.description && (
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">{setting.description}</p>
+                    )}
+                    <Slider
+                      id={setting.key}
+                      className="mt-2"
+                      min={setting.min}
+                      max={setting.max}
+                      step={setting.step}
+                      value={[value]}
+                      onValueChange={([v]) => setValue(setting.key, v)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}

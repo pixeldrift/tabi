@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { useSettings } from "@/components/SettingsContext";
 import {
   Plus,
   Pencil,
@@ -339,6 +341,7 @@ export function ScheduleView({
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const isLocked = !!active.locked;
 
+  const { values: settings } = useSettings();
   const [editMode, setEditMode] = useState(false);
   const [layoutMode, setLayoutMode] = useState<"proportional" | "collapsed">("proportional");
   const [showAppts, setShowAppts] = useState(true);
@@ -688,12 +691,18 @@ export function ScheduleView({
       {/* Schedule selector */}
       <div className="mt-4 flex items-center gap-2 px-1">
         <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }} disabled={editMode}>
-          <SelectTrigger className={cn(
-            "flex-1 h-11 text-base rounded-full px-4 font-bold",
-            editMode
-              ? "bg-transparent border-0 shadow-none text-stone-800 disabled:opacity-100 [&>svg]:hidden"
-              : "bg-white border-2 border-blue-500 text-blue-700 focus:ring-blue-300",
-          )}>
+          <SelectTrigger
+            className={cn(
+              // Border stays 2px in both states (only its color fades) so
+              // the box model — and the name text inside it — never jumps.
+              "flex-1 h-11 text-base rounded-full px-4 font-bold border-2 transition-colors",
+              "[&>svg]:transition-all [&>svg]:duration-300",
+              editMode
+                ? "bg-transparent border-transparent text-stone-800 disabled:opacity-100 [&>svg]:opacity-0 [&>svg]:translate-x-1 [&>svg]:pointer-events-none"
+                : "bg-white border-blue-500 text-blue-700 focus:ring-blue-300 [&>svg]:opacity-100 [&>svg]:translate-x-0",
+            )}
+            style={{ transitionDuration: `${settings.editModeDurationMs}ms` }}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -714,45 +723,64 @@ export function ScheduleView({
             ))}
           </SelectContent>
         </Select>
-        {editMode ? (
-          <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-11 w-11 rounded-full text-stone-500 hover:bg-stone-100"
-              onClick={() => setEditMode(false)}
-              aria-label="Cancel"
-            >
-              <X className="size-5" />
-            </Button>
-            <Button
-              className="h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 gap-1.5"
-              onClick={() => setEditMode(false)}
-              aria-label="Save"
-            >
-              Save <Check className="size-5" />
-            </Button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              if (isLocked) return;
-              setEditMode(true);
-            }}
-            disabled={isLocked}
-            className={cn(
-              "h-11 w-11 grid place-content-center rounded-full",
-              isLocked
-                ? "text-stone-300 cursor-not-allowed"
-                : "text-blue-600 hover:text-blue-700",
+        <motion.div layout className="flex items-center gap-1" transition={{ duration: settings.editModeDurationMs / 1000 }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {editMode ? (
+              <motion.div
+                key="edit-actions"
+                className="flex items-center gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: settings.editModeDurationMs / 1000,
+                  delay: settings.editModeStaggerMs / 1000,
+                }}
+              >
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-11 w-11 rounded-full text-stone-500 hover:bg-stone-100"
+                  onClick={() => setEditMode(false)}
+                  aria-label="Cancel"
+                >
+                  <X className="size-5" />
+                </Button>
+                <Button
+                  className="h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 gap-1.5"
+                  onClick={() => setEditMode(false)}
+                  aria-label="Save"
+                >
+                  Save <Check className="size-5" />
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.button
+                key="pencil-btn"
+                type="button"
+                onClick={() => {
+                  if (isLocked) return;
+                  setEditMode(true);
+                }}
+                disabled={isLocked}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: settings.editModeDurationMs / 1000 }}
+                className={cn(
+                  "h-11 w-11 grid place-content-center rounded-full",
+                  isLocked
+                    ? "text-stone-300 cursor-not-allowed"
+                    : "text-blue-600 hover:text-blue-700",
+                )}
+                aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
+                title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
+              >
+                {isLocked ? <PencilOff className="size-5" /> : <Pencil className="size-5" />}
+              </motion.button>
             )}
-            aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
-            title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
-          >
-            {isLocked ? <PencilOff className="size-5" /> : <Pencil className="size-5" />}
-          </button>
-        )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {editMode && (
@@ -1114,63 +1142,96 @@ export function ScheduleView({
           })}
 
 
-          {/* Appointment overlays — top layer, on top of activity rows */}
+          {/* Appointment overlays — top layer, on top of activity rows. A
+              single element rolls its height between the collapsed bar and
+              the full card (rather than swapping two unrelated elements),
+              with the inner content cross-fading over the same duration so
+              it reads as one continuous roll rather than a hard cut. */}
           {visibleAppts.map(({ appt: a, top, height }) => {
             const collapsed = allApptsCollapsed || collapsedAppts[a.id];
-            if (collapsed) {
-              return (
+            const collapsedPx = 6; // matches the prior h-1.5 collapsed bar height
+            const collapse = () => setCollapsedAppts((p) => ({ ...p, [a.id]: true }));
+            const expand = () => {
+              setCollapsedAppts((p) => ({ ...p, [a.id]: false }));
+              setAllApptsCollapsed(false);
+            };
+            return (
+              <motion.div
+                // Remounting on a layoutMode switch (rather than reusing the
+                // same instance) lets that transition read as a distinct
+                // "slide in from the right" moment, separate from the
+                // vertical roll used for an individual collapse/expand.
+                key={`${a.id}::${layoutMode}`}
+                className="absolute left-[4px] right-[4px] z-20 rounded-md overflow-hidden"
+                style={{ top }}
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ height: collapsed ? collapsedPx : height, opacity: 1, x: 0 }}
+                transition={{
+                  height: {
+                    type: "spring",
+                    stiffness: settings.apptCollapseStiffness,
+                    damping: settings.apptCollapseDamping,
+                  },
+                  opacity: { duration: settings.modeTransitionDurationMs / 1000 },
+                  x: { duration: settings.modeTransitionDurationMs / 1000, ease: "easeOut" },
+                }}
+              >
                 <button
-                  key={a.id}
                   type="button"
-                  onClick={() => {
-                    setCollapsedAppts((p) => ({ ...p, [a.id]: false }));
-                    setAllApptsCollapsed(false);
-                  }}
-                  className="absolute left-[4px] right-[4px] z-20 h-1.5 rounded-full bg-green-500 hover:bg-green-600 shadow-[0_2px_6px_-1px_rgba(34,197,94,0.45)] transition-all"
-                  style={{ top }}
+                  onClick={expand}
+                  className={cn(
+                    "absolute inset-0 bg-green-500 hover:bg-green-600 shadow-[0_2px_6px_-1px_rgba(34,197,94,0.45)] transition-opacity",
+                    collapsed ? "opacity-100" : "opacity-0 pointer-events-none",
+                  )}
+                  style={{ transitionDuration: `${settings.apptCollapseDurationMs}ms` }}
                   aria-label={`Expand ${a.type}`}
                   title={`${a.type} · ${a.provider}`}
                 />
-              );
-            }
-            return (
-              <div
-                key={a.id}
-                className="absolute left-[4px] right-[4px] z-20 rounded-md bg-green-50 border-2 border-green-500 shadow-[0_4px_14px_-2px_rgba(34,197,94,0.35)] overflow-hidden transition-all"
-                style={{ top, height }}
-              >
-                <div className="relative h-full grid grid-cols-[40px_1fr_30px] gap-1 px-1.5 pt-0.5 items-start">
-                  <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
-                    {fmt12(a.start)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <ScrubText
-                        text={a.type}
-                        className="text-xs font-semibold text-green-800 leading-tight truncate"
-                      />
-                      {a.tag && (
-                        <span className="shrink-0 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
-                          {a.tag}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] italic text-green-700/90 leading-tight truncate">
-                      {a.provider}
-                    </div>
-                  </div>
+
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-green-50 border-2 border-green-500 shadow-[0_4px_14px_-2px_rgba(34,197,94,0.35)] transition-opacity",
+                    collapsed ? "opacity-0 pointer-events-none" : "opacity-100",
+                  )}
+                  style={{ transitionDuration: `${settings.apptCollapseDurationMs}ms` }}
+                >
                   <button
                     type="button"
-                    onClick={() =>
-                      setCollapsedAppts((p) => ({ ...p, [a.id]: true }))
-                    }
-                    className="size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
-                    aria-label="Collapse appointment"
-                  >
-                    <EyeOff className="size-3.5" />
-                  </button>
+                    onClick={collapse}
+                    aria-label="Collapse appointment (drag handle)"
+                    className="absolute top-0 left-0 right-0 z-10 h-2 cursor-pointer"
+                  />
+                  <div className="relative h-full grid grid-cols-[40px_1fr_30px] gap-1 px-1.5 pt-0.5 items-start">
+                    <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
+                      {fmt12(a.start)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <ScrubText
+                          text={a.type}
+                          className="text-xs font-semibold text-green-800 leading-tight truncate"
+                        />
+                        {a.tag && (
+                          <span className="shrink-0 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
+                            {a.tag}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] italic text-green-700/90 leading-tight truncate">
+                        {a.provider}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={collapse}
+                      className="size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
+                      aria-label="Collapse appointment"
+                    >
+                      <EyeOff className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

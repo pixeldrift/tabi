@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
@@ -8,6 +9,8 @@ import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession } from "@/components/SessionContext";
+import { SettingsProvider, useSettings } from "@/components/SettingsContext";
+import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { useStickyTop } from "@/hooks/use-sticky-top";
@@ -108,9 +111,11 @@ const cards: CardConfig[] = [
 
 function Index() {
   return (
-    <SessionProvider>
-      <IndexInner />
-    </SessionProvider>
+    <SettingsProvider>
+      <SessionProvider>
+        <IndexInner />
+      </SessionProvider>
+    </SettingsProvider>
   );
 }
 
@@ -119,8 +124,23 @@ function IndexInner() {
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const { status } = useSession();
+  const { values: settings } = useSettings();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
+
+  // Bumps on submit (paused -> idle) and on a session going live (-> running),
+  // each remounting the card list so it plays the matching half of the
+  // transition: a staggered exit right on submit, a single unified slide in
+  // from the left on start/resume — the same choreography read backwards.
+  const [cardsGen, setCardsGen] = useState(0);
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+    const justSubmitted = prev === "paused" && status === "idle";
+    const justWentLive = status === "running" && prev !== "running";
+    if (justSubmitted || justWentLive) setCardsGen((n) => n + 1);
+  }, [status]);
 
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
@@ -161,16 +181,32 @@ function IndexInner() {
                 !sessionActive && "opacity-50",
               )}
             >
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={cardsGen}
+                className="w-full flex flex-col items-center gap-3"
+                initial="enter"
+                animate="center"
+                exit="exit"
+                variants={{
+                  // Entering cards all slide in from the left together, as
+                  // one sheet — no per-card delay.
+                  enter: {},
+                  center: { transition: { staggerChildren: 0 } },
+                  // Exiting cards stagger-out to the right, oldest/topmost first.
+                  exit: { transition: { staggerChildren: settings.dataSubmitStaggerMs / 1000 } },
+                }}
+              >
             {cards.map((card, i) => {
               const common = {
                 isActive: i === activeIndex,
                 onActivate: () => setActiveIndex(i),
               };
+              let el: React.ReactNode;
               switch (card.kind) {
                 case "trial":
-                  return (
+                  el = (
                     <TrialCard
-                      key={i}
                       title={card.title}
                       phase={card.phase}
                       dataType="Percent Correct"
@@ -180,10 +216,10 @@ function IndexInner() {
                       {...common}
                     />
                   );
+                  break;
                 case "frequency":
-                  return (
+                  el = (
                     <FrequencyCard
-                      key={i}
                       title={card.title}
                       phase={card.phase}
                       description={card.description}
@@ -191,10 +227,10 @@ function IndexInner() {
                       {...common}
                     />
                   );
+                  break;
                 case "rate":
-                  return (
+                  el = (
                     <RateCard
-                      key={i}
                       title={card.title}
                       phase={card.phase}
                       description={card.description}
@@ -203,10 +239,10 @@ function IndexInner() {
                       {...common}
                     />
                   );
+                  break;
                 case "duration":
-                  return (
+                  el = (
                     <DurationCard
-                      key={i}
                       title={card.title}
                       phase={card.phase}
                       description={card.description}
@@ -214,10 +250,10 @@ function IndexInner() {
                       {...common}
                     />
                   );
+                  break;
                 case "task-analysis":
-                  return (
+                  el = (
                     <TaskAnalysisCard
-                      key={i}
                       title={card.title}
                       phase={card.phase}
                       description={card.description}
@@ -225,8 +261,32 @@ function IndexInner() {
                       {...common}
                     />
                   );
+                  break;
               }
+              return (
+                <motion.div
+                  key={i}
+                  className="w-full flex justify-center"
+                  variants={{
+                    enter: { opacity: 0, x: -40 },
+                    center: {
+                      opacity: 1,
+                      x: 0,
+                      transition: { duration: settings.dataSubmitEnterDurationMs / 1000 },
+                    },
+                    exit: {
+                      opacity: 0,
+                      x: 80,
+                      transition: { duration: settings.dataSubmitExitDurationMs / 1000 },
+                    },
+                  }}
+                >
+                  {el}
+                </motion.div>
+              );
             })}
+              </motion.div>
+            </AnimatePresence>
             </div>
           </div>
         )}
@@ -239,6 +299,7 @@ function IndexInner() {
           />
         )}
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
+        {tab === "settings" && <SettingsPane />}
       </section>
     </main>
     </NotificationProvider>

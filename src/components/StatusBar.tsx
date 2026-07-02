@@ -15,9 +15,11 @@ import {
   User,
   ArrowRight,
   Upload,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
+import { useSettings } from "./SettingsContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { X } from "lucide-react";
@@ -33,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { NotificationBar } from "@/components/NotificationBar";
 
 
-export type StatusTab = "info" | "data" | "schedule" | "notifications";
+export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
 interface StatusBarProps {
   activeTab: StatusTab;
@@ -46,6 +48,7 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
   { id: "data", label: "Data", icon: ClipboardList },
   { id: "schedule", label: "Schedule", icon: CalendarDays },
   { id: "notifications", label: "Alerts", icon: Bell },
+  { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
@@ -63,6 +66,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     lastSavedAt,
     forceSync,
   } = useSession();
+  const { values: settings } = useSettings();
 
   const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
@@ -84,7 +88,26 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   // timer hasn't started yet — gives a smooth, jank-free transition.
   const [pendingStart, setPendingStart] = useState<null | "resume" | "previous" | "new">(null);
   const collapsed = isRunning || pendingStart !== null;
-  const TRANSITION_MS = 700;
+  const TRANSITION_MS = settings.sessionStartDurationMs;
+
+  // A brief blue flash the instant the session actually goes live (i.e. right
+  // as pendingStart resolves into isRunning), landing slightly after the
+  // collapse/morph so it reads as the sequence's punctuation, not its start.
+  const [justStarted, setJustStarted] = useState(false);
+  const wasRunningRef = useRef(isRunning);
+  useEffect(() => {
+    const wasRunning = wasRunningRef.current;
+    wasRunningRef.current = isRunning;
+    if (isRunning && !wasRunning) {
+      const id = window.setTimeout(() => setJustStarted(true), settings.sessionStartStaggerMs);
+      return () => window.clearTimeout(id);
+    }
+  }, [isRunning, settings.sessionStartStaggerMs]);
+  useEffect(() => {
+    if (!justStarted) return;
+    const id = window.setTimeout(() => setJustStarted(false), 450);
+    return () => window.clearTimeout(id);
+  }, [justStarted]);
 
   const requestPlay = () => {
     if (pendingStart) return;
@@ -125,7 +148,20 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   return (
     <>
-      <div data-status-bar className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+      <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+        <AnimatePresence>
+          {justStarted && (
+            <motion.div
+              key="session-start-flash"
+              initial={{ opacity: 0.55 }}
+              animate={{ opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-0 z-50 bg-blue-400"
+              aria-hidden
+            />
+          )}
+        </AnimatePresence>
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -609,9 +645,9 @@ function ExpandedSessionBox({
             <motion.span
               layoutId="session-pill-time"
               transition={{ duration: 0.7, ease }}
-              className="flex-1 flex items-center justify-center text-3xl tabular-nums leading-none text-stone-800 font-medium px-3"
+              className="flex-1 flex items-center justify-center text-3xl leading-none text-stone-800 font-medium px-3"
             >
-              {formatTime(elapsedMs)}
+              <OdometerDigits text={formatTime(elapsedMs)} />
             </motion.span>
             <motion.button
               layoutId="session-pill-toggle"
@@ -633,9 +669,9 @@ function ExpandedSessionBox({
         {!dimmed && (
           <motion.div
             key="actions"
-            initial={{ opacity: 1, scale: 1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 1, scale: 1, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 6 }}
             transition={{ duration: 0.25, ease }}
             className="flex flex-col gap-1"
           >
@@ -788,9 +824,9 @@ function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: numb
       <motion.span
         layoutId="session-pill-time"
         transition={{ duration: 0.7, ease }}
-        className="flex items-center px-2.5 text-sm tabular-nums leading-none text-blue-700 font-medium"
+        className="flex items-center px-2.5 text-sm leading-none text-blue-700 font-medium"
       >
-        {formatTime(elapsedMs)}
+        <OdometerDigits text={formatTime(elapsedMs)} />
       </motion.span>
       <motion.button
         layoutId="session-pill-toggle"
@@ -826,4 +862,30 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Renders a fixed-format time string as an odometer: each character sits in
+ * its own slot and rolls vertically only when that position's value changes
+ * (colons never do), rather than the whole string just replacing itself. */
+function OdometerDigits({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={cn("inline-flex tabular-nums", className)}>
+      {text.split("").map((ch, i) => (
+        <span key={i} className="relative inline-block overflow-hidden" style={{ height: "1em" }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={ch}
+              initial={{ y: "70%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-70%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              className="inline-block"
+            >
+              {ch}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+    </span>
+  );
 }

@@ -5,6 +5,7 @@ import { CardShell } from "./CardShell";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useRegisterActiveTimer, useSession } from "./SessionContext";
+import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
 
 export interface DurationCardProps {
@@ -36,8 +37,21 @@ export function DurationCard({
   const [running, setRunning] = useState(false);
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
-  const { sessionRunning, subscribeTick, markDirty, resetSignal } = useSession();
+  const { sessionRunning, getElapsedMsNow, subscribeTick, markDirty, resetSignal } = useSession();
+  const { values: settings } = useSettings();
   useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
+
+  // The pulse beat should read as one continuous heartbeat tied to the
+  // session clock, not a fresh cycle every time a bubble starts running. A
+  // negative delay equal to how far into the current beat we already are
+  // lands it exactly where it'd be if it had been animating since session
+  // elapsed = 0. Computed synchronously in the same state update that flips
+  // `running` on (see togglePause) rather than in an effect — setting it a
+  // render later would mean the very first paint uses a stale delay of 0,
+  // and correcting it after the CSS animation has already begun jumps its
+  // phase instead of cleanly establishing it.
+  const [pulseDelayMs, setPulseDelayMs] = useState(0);
+  const pulseStyle = { animationDuration: `${settings.pulseBeatMs}ms`, animationDelay: `${pulseDelayMs}ms` };
 
   useEffect(() => {
     if (resetSignal === 0) return;
@@ -105,6 +119,7 @@ export function DurationCard({
       if (running) flushLive();
       runningIdxRef.current = viewIdx;
       setRunning(true);
+      setPulseDelayMs(-(getElapsedMsNow() % settings.pulseBeatMs));
     }
   };
 
@@ -218,6 +233,7 @@ export function DurationCard({
                         activated={activated}
                         onToggle={togglePause}
                         onEditTime={(ms) => setInstanceMs(i, ms)}
+                        pulseStyle={pulseStyle}
                       />
                     ) : (
                       <SideBubble
@@ -225,6 +241,7 @@ export function DurationCard({
                         running={itemRunning}
                         activated={activated}
                         onClick={() => goTo(i)}
+                        pulseStyle={pulseStyle}
                       />
                     )}
                   </motion.div>
@@ -259,6 +276,7 @@ function CenterPill({
   activated,
   onToggle,
   onEditTime,
+  pulseStyle,
 }: {
   index: number;
   ms: number;
@@ -266,6 +284,7 @@ function CenterPill({
   activated: boolean;
   onToggle: () => void;
   onEditTime: (ms: number) => void;
+  pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   const accent = running || activated;
   return (
@@ -282,6 +301,7 @@ function CenterPill({
             accent ? "bg-blue-500" : "bg-stone-300",
             running && "animate-pulse-scale",
           )}
+          style={running ? pulseStyle : undefined}
         >
           {index + 1}
         </span>
@@ -345,11 +365,13 @@ function SideBubble({
   running,
   activated,
   onClick,
+  pulseStyle,
 }: {
   index: number;
   running: boolean;
   activated: boolean;
   onClick: () => void;
+  pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   return (
     <button
@@ -372,6 +394,7 @@ function SideBubble({
       {running && (
         <span
           className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-blue-500 animate-pulse-dot"
+          style={pulseStyle}
           aria-hidden
         />
       )}
