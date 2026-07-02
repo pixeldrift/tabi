@@ -7,16 +7,20 @@ import { nitro } from "nitro/vite";
 
 // Deploy target is a one-line swap — Nitro ships presets for every major
 // host (cloudflare, vercel, netlify, node-server for self-hosting, ...).
-// Override at build time with `NITRO_PRESET=vercel vite build` without
-// touching this file, or just change the default below.
+// Override at build time with `NITRO_PRESET=cloudflare-module vite build`
+// without touching this file, or just change the default below.
 //
-// Cloudflare's dashboard now provisions Git-connected Pages projects on its
-// unified Workers platform, whose fixed deploy step is `wrangler deploy`
-// (not `wrangler pages deploy`) — so we target the plain-Worker
-// `cloudflare-module` preset (Worker + static-assets binding) rather than
-// the legacy `cloudflare-pages` preset, which only `wrangler pages deploy`
-// understands.
-const preset = process.env.NITRO_PRESET ?? "cloudflare-module";
+// Notes on presets we've actually deployed with:
+// - `vercel`: outputs to `.vercel/output` (Vercel's Build Output API) —
+//   leave Nitro's default output dir alone, Vercel looks for that path
+//   specifically.
+// - `cloudflare-module`: Cloudflare's "Connect to Git" flow now provisions
+//   projects on its unified Workers platform, whose fixed deploy step is
+//   `wrangler deploy` (not `wrangler pages deploy`) — so this targets the
+//   plain-Worker preset (Worker + static-assets binding), pinned to `dist`
+//   to match a "Build output directory: dist" dashboard setting. The
+//   legacy `cloudflare-pages` preset fails on that flow.
+const preset = process.env.NITRO_PRESET ?? "vercel";
 
 export default defineConfig({
   resolve: {
@@ -32,7 +36,10 @@ export default defineConfig({
       // (our SSR error wrapper).
       server: { entry: "server" },
     }),
-    nitro({ preset, output: { dir: "dist" } }),
+    nitro({
+      preset,
+      ...(preset.startsWith("cloudflare") ? { output: { dir: "dist" } } : {}),
+    }),
     viteReact(),
   ],
 });
