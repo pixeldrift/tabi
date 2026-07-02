@@ -110,9 +110,11 @@ export function NotificationProvider({ children, onActivate }: { children: React
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, state: "archived" } : n)));
   }, []);
 
+  // Distinct from dismiss: the notification stays visible (so it's still
+  // there to reference or dismiss later), it just stops chiming/vibrating.
   const silence = useCallback((id: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, state: "archived" } : n)),
+      prev.map((n) => (n.id === id ? { ...n, state: "silenced" } : n)),
     );
   }, []);
 
@@ -187,7 +189,7 @@ export function NotificationProvider({ children, onActivate }: { children: React
   }, []);
 
   const live = useMemo(
-    () => notifications.filter((n) => n.state === "live"),
+    () => notifications.filter((n) => n.state === "live" || n.state === "silenced"),
     [notifications],
   );
 

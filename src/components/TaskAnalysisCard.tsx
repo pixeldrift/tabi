@@ -17,11 +17,12 @@ export interface TaskAnalysisCardProps {
   onActivate?: () => void;
 }
 
-const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof Check; classes: string; selectedClasses: string }[] = [
+const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof Check; strokeWidth: number; classes: string; selectedClasses: string }[] = [
   {
     value: "independent",
     label: "I",
     icon: Check,
+    strokeWidth: 3,
     classes: "border-green-300 text-green-700 hover:bg-green-50",
     selectedClasses: "bg-green-400 border-green-500 text-white",
   },
@@ -29,6 +30,9 @@ const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof C
     value: "prompted",
     label: "P",
     icon: HandHelping,
+    // HandHelping has much more path detail than Check/X, so the same
+    // strokeWidth reads noticeably heavier — thinned to match their weight.
+    strokeWidth: 1.75,
     classes: "border-amber-300 text-amber-700 hover:bg-amber-50",
     selectedClasses: "bg-amber-400 border-amber-500 text-white",
   },
@@ -36,6 +40,7 @@ const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof C
     value: "error",
     label: "E",
     icon: X,
+    strokeWidth: 3,
     classes: "border-red-300 text-red-700 hover:bg-red-50",
     selectedClasses: "bg-red-400 border-red-500 text-white",
   },
@@ -141,7 +146,7 @@ export function TaskAnalysisCard({
                       selected && cn("btn-bevel", opt.selectedClasses),
                     )}
                   >
-                    <Icon className="size-3.5" strokeWidth={3} />
+                    <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
                   </motion.button>
                 );
               })}

@@ -1,8 +1,13 @@
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef } from "react";
+import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "motion/react";
 import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { cn } from "@/lib/utils";
+
+// Swipe tuning — TODO: surface in user settings.
+const SWIPE_THRESHOLD_PX = 88;
+const SWIPE_SPRING_STIFFNESS = 400;
+const SWIPE_SPRING_DAMPING = 30;
 
 const ZzIcon = ({ className }: { className?: string }) => (
   <svg
@@ -109,7 +114,7 @@ export function NotificationBar() {
   const overflow = ordered.length - visible.length;
 
   return (
-    <div className="px-3 pt-2 pointer-events-none">
+    <div className="px-3 pt-2 overflow-x-hidden pointer-events-none">
       <motion.div layout className="max-w-2xl mx-auto flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {visible.map((n) => (
@@ -153,11 +158,17 @@ function NotificationRow({
   onSnooze: () => void;
   onSilence: () => void;
 }) {
-  const Icon = ICON_MAP[n.icon];
+  const silenced = n.state === "silenced";
+  // Once silenced the row stays but reads as muted, regardless of the
+  // notification's own stored icon (which is what drives the chime).
+  const Icon = silenced ? BellOff : ICON_MAP[n.icon];
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
-  const hasChime = n.icon === "bell-chime";
+  const hasChime = n.icon === "bell-chime" && !silenced;
+  const showSilence = alert && hasChime;
+  const canSwipeRight = showSnooze || showSilence;
+  const rightAction = showSnooze ? onSnooze : showSilence ? onSilence : undefined;
 
   // Chime + vibrate every 2s while an alert with chime is visible.
   useEffect(() => {
@@ -171,67 +182,149 @@ function NotificationRow({
     return () => window.clearInterval(id);
   }, [alert, hasChime, n.kind]);
 
+  const threshold = SWIPE_THRESHOLD_PX;
+  const dragX = useMotionValue(0);
+  const wasDragging = useRef(false);
+  const leftOpacity = useTransform(dragX, [-threshold, 0], [1, 0]);
+  const leftScale = useTransform(dragX, [-threshold * 1.4, -threshold, 0], [1.15, 1, 0.6]);
+  const rightOpacity = useTransform(dragX, [0, threshold], [0, 1]);
+  const rightScale = useTransform(dragX, [0, threshold, threshold * 1.4], [0.6, 1, 1.15]);
+  // The bubble itself fades out as it clears the threshold, so it's already
+  // invisible well before the (larger) offscreen travel finishes.
+  const bubbleOpacity = useTransform(dragX, [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5], [0, 1, 1, 1, 0]);
+
+  const handleDragEnd = (_e: unknown, info: { velocity: { x: number } }) => {
+    const val = dragX.get();
+    const vx = info.velocity.x;
+    const commitLeft = val <= -threshold;
+    const commitRight = val >= threshold && !!rightAction;
+    if (commitLeft || commitRight) {
+      // Continues from the drag's current position (and, loosely, its
+      // direction/speed) rather than restarting a fresh, disconnected
+      // slide — a fast, fixed-duration tween keeps this snappy regardless
+      // of exactly how fast the release was; an underdamped spring aimed
+      // at a point this far away can take over a second to actually settle.
+      const remaining = commitLeft ? -500 - val : 500 - val;
+      const fastFlick = Math.abs(vx) > 800;
+      animate(dragX, commitLeft ? -500 : 500, {
+        type: "tween",
+        ease: "easeIn",
+        duration: fastFlick ? 0.12 : Math.min(0.28, Math.max(0.16, Math.abs(remaining) / 1400)),
+      }).then(() => {
+        (commitLeft ? onDismiss : rightAction!)();
+      });
+    } else {
+      animate(dragX, 0, {
+        type: "spring",
+        velocity: vx,
+        stiffness: SWIPE_SPRING_STIFFNESS,
+        damping: SWIPE_SPRING_DAMPING,
+      });
+    }
+    window.setTimeout(() => { wasDragging.current = false; }, 80);
+  };
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: -10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: -40, transition: { duration: 0.18 } }}
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className={cn(
-        "pointer-events-auto relative overflow-hidden rounded-full border shadow-sm",
-        styles.ring,
-      )}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      className="pointer-events-auto relative"
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onActivate}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-        className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
+      {/* Swipe reveal layers — sit behind the draggable row. Sliding the row
+          left exposes the strip it just vacated on the RIGHT, and sliding it
+          right exposes the strip on the LEFT — so each icon sits on the side
+          that becomes visible, not the side the row is heading toward. */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-end pr-4 rounded-full bg-stone-700"
+        style={{ opacity: leftOpacity }}
+      >
+        <motion.div style={{ scale: leftScale }}>
+          <X className="size-5 text-white" />
+        </motion.div>
+      </motion.div>
+      {canSwipeRight && (
+        <motion.div
+          className="absolute inset-0 flex items-center justify-start pl-4 rounded-full bg-blue-600"
+          style={{ opacity: rightOpacity }}
+        >
+          <motion.div style={{ scale: rightScale }}>
+            {showSnooze ? (
+              <ZzIcon className="size-5 text-white" />
+            ) : (
+              <VolumeX className="size-5 text-white" />
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+
+      <motion.div
+        drag="x"
+        dragConstraints={
+          canSwipeRight
+            ? { left: -threshold * 1.4, right: threshold * 1.4 }
+            : { left: -threshold * 1.4, right: 0 }
+        }
+        dragElastic={0.15}
+        dragMomentum={false}
+        style={{ x: dragX, opacity: bubbleOpacity }}
+        onDragStart={() => { wasDragging.current = true; }}
+        onDragEnd={handleDragEnd}
+        className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
         <div
-          className={cn(
-            "flex items-center justify-center size-7 shrink-0",
-            styles.iconFg,
-            n.kind === "alert-now" && "animate-bounce",
-            n.kind === "alert-priming" && "animate-pulse",
-          )}
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (!wasDragging.current) onActivate(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+          className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
         >
-          <Icon className="size-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-stone-900 truncate">{n.title}</div>
-          {n.body && (
-            <div className="text-xs text-stone-600 truncate">{n.body}</div>
-          )}
-        </div>
-        <div
-          className="flex items-center gap-0.5 shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {alert ? (
-            <>
-              <RowButton label="Silence" onClick={onSilence}>
-                <VolumeX className="size-4" />
+          <div
+            className={cn(
+              "flex items-center justify-center size-7 shrink-0",
+              styles.iconFg,
+              !silenced && n.kind === "alert-now" && "animate-bounce",
+              !silenced && n.kind === "alert-priming" && "animate-pulse",
+            )}
+          >
+            <Icon className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-stone-900 truncate">{n.title}</div>
+            {n.body && (
+              <div className="text-xs text-stone-600 truncate">{n.body}</div>
+            )}
+          </div>
+          <div
+            className="flex items-center gap-0.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {alert ? (
+              <>
+                {showSilence && (
+                  <RowButton label="Silence" onClick={onSilence}>
+                    <VolumeX className="size-4" />
+                  </RowButton>
+                )}
+                {showSnooze && (
+                  <RowButton label="Snooze" onClick={onSnooze}>
+                    <ZzIcon className="size-4" />
+                  </RowButton>
+                )}
+              </>
+            ) : (
+              <RowButton label="Open" onClick={onActivate}>
+                <ArrowRight className="size-4" />
               </RowButton>
-              {showSnooze && (
-                <RowButton label="Snooze" onClick={onSnooze}>
-                  <ZzIcon className="size-4" />
-                </RowButton>
-              )}
-            </>
-          ) : (
-            <RowButton label="Open" onClick={onActivate}>
-              <ArrowRight className="size-4" />
+            )}
+            <RowButton label="Dismiss" onClick={onDismiss}>
+              <X className="size-4" />
             </RowButton>
-          )}
-          <RowButton label="Dismiss" onClick={onDismiss}>
-            <X className="size-4" />
-          </RowButton>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -251,7 +344,7 @@ function RowButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex items-center justify-center size-8 rounded-full text-stone-600 hover:text-stone-900 hover:bg-black/5 active:bg-black/10 transition-colors"
+      className="inline-flex items-center justify-center size-8 rounded-full border border-black/10 bg-white/70 text-stone-600 shadow-sm hover:text-stone-900 hover:bg-white active:bg-black/5 transition-colors"
     >
       {children}
     </button>

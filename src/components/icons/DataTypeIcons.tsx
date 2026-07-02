@@ -20,26 +20,25 @@ const base = {
   strokeLinejoin: "round" as const,
 };
 
-/** Percent Correct — the classic percent glyph. */
+/** Percent Correct — percent glyph with a checkmark and a tiny x in place of the two circles. */
 export function PercentCorrectIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
-      <circle cx="7" cy="7" r="2.5" />
-      <circle cx="17" cy="17" r="2.5" />
+      <path d="M4.7 7.2 6.4 9 9.3 4.8" />
+      <path d="M14.7 14.7 19.3 19.3 M19.3 14.7 14.7 19.3" />
       <line x1="18" y1="6" x2="6" y2="18" />
     </svg>
   );
 }
 
-/** Frequency / Tally / Count — four tally marks with a strike. */
+/** Frequency — an italicized (slanted) number sign. */
 export function FrequencyIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
-      <line x1="6" y1="5" x2="6" y2="19" />
-      <line x1="10" y1="5" x2="10" y2="19" />
-      <line x1="14" y1="5" x2="14" y2="19" />
-      <line x1="18" y1="5" x2="18" y2="19" />
-      <line x1="4.5" y1="17" x2="19.5" y2="7" />
+      <line x1="10" y1="4" x2="7" y2="20" />
+      <line x1="17" y1="4" x2="14" y2="20" />
+      <line x1="5" y1="9" x2="20" y2="9" />
+      <line x1="4" y1="15" x2="19" y2="15" />
     </svg>
   );
 }
@@ -57,14 +56,17 @@ export function DurationIcon(props: IconProps) {
   );
 }
 
-/** Rate ("how many times per") — dial with a needle. */
+/** Rate ("how many times per") — a number sign inside a stopwatch. */
 export function RateIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 16a8 8 0 0 1 16 0" />
-      <line x1="12" y1="16" x2="16" y2="10.5" />
-      <line x1="4" y1="16" x2="4" y2="18" />
-      <line x1="20" y1="16" x2="20" y2="18" />
+      <line x1="10" y1="2" x2="14" y2="2" />
+      <line x1="12" y1="2" x2="12" y2="4.5" />
+      <circle cx="12" cy="14" r="8" />
+      <line x1="9.5" y1="11" x2="9.5" y2="17" />
+      <line x1="14.5" y1="11" x2="14.5" y2="17" />
+      <line x1="8" y1="12.5" x2="16" y2="12.5" />
+      <line x1="8" y1="15.5" x2="16" y2="15.5" />
     </svg>
   );
 }
@@ -80,11 +82,11 @@ export function ScoreIcon(props: IconProps) {
   );
 }
 
-/** Task Analysis — ascending steps. */
+/** Task Analysis — three large ascending steps. */
 export function TaskAnalysisIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 19v-4h4v-4h4V7h4V3" />
+      <path d="M4 19v-5h5v-5h5v-5h5" />
     </svg>
   );
 }

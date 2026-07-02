@@ -25,6 +25,10 @@ interface SessionContextValue {
   // shared tick (so all timers stay in unison with the session timer)
   sessionRunning: boolean;
   subscribeTick: (cb: (deltaMs: number) => void) => () => void;
+  /** Precise elapsed time right now, not the last-tick snapshot (which is up
+   * to 250ms stale) — for one-time phase calculations like syncing a new
+   * animation to the exact current beat. */
+  getElapsedMsNow: () => number;
   // active timer registry
   activeTimers: ActiveTimer[];
   registerActiveTimer: (t: ActiveTimer) => void;
@@ -79,6 +83,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }, 250);
     return () => window.clearInterval(id);
   }, [status]);
+
+  const getElapsedMsNow = useCallback(() => {
+    if (status !== "running" || startRef.current === null) return elapsedMs;
+    return baseRef.current + (performance.now() - startRef.current);
+  }, [status, elapsedMs]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -183,6 +192,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       clearAndDiscard,
       sessionRunning,
       subscribeTick,
+      getElapsedMsNow,
       activeTimers,
       registerActiveTimer,
       unregisterActiveTimer,
@@ -193,7 +203,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       startFresh,
       resetSignal,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync, startFresh, resetSignal],
+    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync, startFresh, resetSignal],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

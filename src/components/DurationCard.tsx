@@ -7,6 +7,8 @@ import { TimeKeypad } from "./TimeKeypad";
 import { useRegisterActiveTimer, useSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
+const PULSE_BEAT_MS = 1000;
+
 export interface DurationCardProps {
   title: string;
   phase?: string;
@@ -36,8 +38,20 @@ export function DurationCard({
   const [running, setRunning] = useState(false);
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
-  const { sessionRunning, subscribeTick, markDirty, resetSignal } = useSession();
+  const { sessionRunning, getElapsedMsNow, subscribeTick, markDirty, resetSignal } = useSession();
   useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
+
+  // The pulse beat should read as one continuous heartbeat tied to the
+  // session clock, not a fresh cycle every time a bubble starts running. A
+  // negative delay equal to how far into the current beat we already are
+  // lands it exactly where it'd be if it had been animating since session
+  // elapsed = 0. Computed synchronously in the same state update that flips
+  // `running` on (see togglePause) rather than in an effect — setting it a
+  // render later would mean the very first paint uses a stale delay of 0,
+  // and correcting it after the CSS animation has already begun jumps its
+  // phase instead of cleanly establishing it.
+  const [pulseDelayMs, setPulseDelayMs] = useState(0);
+  const pulseStyle = { animationDuration: `${PULSE_BEAT_MS}ms`, animationDelay: `${pulseDelayMs}ms` };
 
   useEffect(() => {
     if (resetSignal === 0) return;
@@ -105,6 +119,7 @@ export function DurationCard({
       if (running) flushLive();
       runningIdxRef.current = viewIdx;
       setRunning(true);
+      setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
     }
   };
 
@@ -218,6 +233,7 @@ export function DurationCard({
                         activated={activated}
                         onToggle={togglePause}
                         onEditTime={(ms) => setInstanceMs(i, ms)}
+                        pulseStyle={pulseStyle}
                       />
                     ) : (
                       <SideBubble
@@ -225,6 +241,7 @@ export function DurationCard({
                         running={itemRunning}
                         activated={activated}
                         onClick={() => goTo(i)}
+                        pulseStyle={pulseStyle}
                       />
                     )}
                   </motion.div>
@@ -259,6 +276,7 @@ function CenterPill({
   activated,
   onToggle,
   onEditTime,
+  pulseStyle,
 }: {
   index: number;
   ms: number;
@@ -266,6 +284,7 @@ function CenterPill({
   activated: boolean;
   onToggle: () => void;
   onEditTime: (ms: number) => void;
+  pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   const accent = running || activated;
   return (
@@ -282,6 +301,7 @@ function CenterPill({
             accent ? "bg-blue-500" : "bg-stone-300",
             running && "animate-pulse-scale",
           )}
+          style={running ? pulseStyle : undefined}
         >
           {index + 1}
         </span>
@@ -331,9 +351,9 @@ function CenterPill({
         className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
       >
         {running ? (
-          <Pause className="size-5" fill="currentColor" strokeWidth={0} />
+          <Pause className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         ) : (
-          <Play className="size-5" fill="currentColor" strokeWidth={0} />
+          <Play className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         )}
       </button>
     </div>
@@ -345,11 +365,13 @@ function SideBubble({
   running,
   activated,
   onClick,
+  pulseStyle,
 }: {
   index: number;
   running: boolean;
   activated: boolean;
   onClick: () => void;
+  pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   return (
     <button
@@ -372,6 +394,7 @@ function SideBubble({
       {running && (
         <span
           className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1.5 rounded-full bg-blue-500 animate-pulse-dot"
+          style={pulseStyle}
           aria-hidden
         />
       )}
@@ -399,11 +422,16 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 active:bg-blue-500/10 transition-colors disabled:text-foreground/30 disabled:pointer-events-none",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
         isLeft ? "left-0" : "right-0",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
         {isLeft ? (
           <path d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z" />
         ) : (

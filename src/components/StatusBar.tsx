@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { motion, AnimatePresence, LayoutGroup, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
   Pause,
   Timer,
-  Info,
   ClipboardList,
   CalendarDays,
   Bell,
@@ -16,7 +15,9 @@ import {
   User,
   ArrowRight,
   Upload,
+  Settings as SettingsIcon,
 } from "lucide-react";
+import { InfoIcon } from "./icons/InfoIcon";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -33,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { NotificationBar } from "@/components/NotificationBar";
 
 
-export type StatusTab = "info" | "data" | "schedule" | "notifications";
+export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
 interface StatusBarProps {
   activeTab: StatusTab;
@@ -41,12 +42,17 @@ interface StatusBarProps {
   title?: string;
 }
 
-const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
-  { id: "info", label: "Info", icon: Info },
+const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { id: "info", label: "Info", icon: InfoIcon },
   { id: "data", label: "Data", icon: ClipboardList },
   { id: "schedule", label: "Schedule", icon: CalendarDays },
   { id: "notifications", label: "Alerts", icon: Bell },
+  { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
+
+// Session-start sequence timing — TODO: surface in user settings.
+const SESSION_START_DURATION_MS = 900;
+const SESSION_START_STAGGER_MS = 80;
 
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
   const {
@@ -84,7 +90,26 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   // timer hasn't started yet — gives a smooth, jank-free transition.
   const [pendingStart, setPendingStart] = useState<null | "resume" | "previous" | "new">(null);
   const collapsed = isRunning || pendingStart !== null;
-  const TRANSITION_MS = 700;
+  const TRANSITION_MS = SESSION_START_DURATION_MS;
+
+  // A brief blue flash the instant the session actually goes live (i.e. right
+  // as pendingStart resolves into isRunning), landing slightly after the
+  // collapse/morph so it reads as the sequence's punctuation, not its start.
+  const [justStarted, setJustStarted] = useState(false);
+  const wasRunningRef = useRef(isRunning);
+  useEffect(() => {
+    const wasRunning = wasRunningRef.current;
+    wasRunningRef.current = isRunning;
+    if (isRunning && !wasRunning) {
+      const id = window.setTimeout(() => setJustStarted(true), SESSION_START_STAGGER_MS);
+      return () => window.clearTimeout(id);
+    }
+  }, [isRunning]);
+  useEffect(() => {
+    if (!justStarted) return;
+    const id = window.setTimeout(() => setJustStarted(false), 450);
+    return () => window.clearTimeout(id);
+  }, [justStarted]);
 
   const requestPlay = () => {
     if (pendingStart) return;
@@ -125,7 +150,20 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   return (
     <>
-      <div data-status-bar className="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+      <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+        <AnimatePresence>
+          {justStarted && (
+            <motion.div
+              key="session-start-flash"
+              initial={{ opacity: 0.55 }}
+              animate={{ opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-0 z-50 bg-blue-400"
+              aria-hidden
+            />
+          )}
+        </AnimatePresence>
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -190,7 +228,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               role="tablist"
               aria-label="Session sections"
             >
-              <div className="flex items-end gap-1">
+              <div className="flex items-end gap-1 -ml-1">
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const isActive = t.id === activeTab;
@@ -219,7 +257,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               </div>
 
               {isRunning && (
-                <div className="pb-1.5 sm:pb-2 pr-1">
+                <div className="pb-1.5 sm:pb-2 -mr-1">
                   <MiniSession elapsedMs={pillElapsed} onPause={pause} disabled={!isRunning} />
                 </div>
               )}
@@ -609,9 +647,9 @@ function ExpandedSessionBox({
             <motion.span
               layoutId="session-pill-time"
               transition={{ duration: 0.7, ease }}
-              className="flex-1 flex items-center justify-center text-3xl tabular-nums leading-none text-stone-800 font-medium px-3"
+              className="flex-1 flex items-center justify-center text-3xl leading-none text-stone-800 font-medium px-3"
             >
-              {formatTime(elapsedMs)}
+              <OdometerDigits text={formatTime(elapsedMs)} />
             </motion.span>
             <motion.button
               layoutId="session-pill-toggle"
@@ -633,9 +671,9 @@ function ExpandedSessionBox({
         {!dimmed && (
           <motion.div
             key="actions"
-            initial={{ opacity: 1, scale: 1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 1, scale: 1, y: 0 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: 6 }}
             transition={{ duration: 0.25, ease }}
             className="flex flex-col gap-1"
           >
@@ -788,9 +826,9 @@ function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: numb
       <motion.span
         layoutId="session-pill-time"
         transition={{ duration: 0.7, ease }}
-        className="flex items-center px-2.5 text-sm tabular-nums leading-none text-blue-700 font-medium"
+        className="flex items-center px-2.5 text-sm leading-none text-blue-700 font-medium"
       >
-        {formatTime(elapsedMs)}
+        <OdometerDigits text={formatTime(elapsedMs)} />
       </motion.span>
       <motion.button
         layoutId="session-pill-toggle"
@@ -803,7 +841,7 @@ function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: numb
         className="btn-bevel grid place-items-center w-8 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
       >
         <motion.span layoutId="session-pill-icon" className="grid place-items-center">
-          <Pause className="size-3" fill="currentColor" strokeWidth={0} />
+          <Pause className="size-3 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         </motion.span>
       </motion.button>
     </motion.div>
@@ -826,4 +864,30 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Renders a fixed-format time string as an odometer: each character sits in
+ * its own slot and rolls vertically only when that position's value changes
+ * (colons never do), rather than the whole string just replacing itself. */
+function OdometerDigits({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={cn("inline-flex tabular-nums", className)}>
+      {text.split("").map((ch, i) => (
+        <span key={i} className="relative inline-block overflow-hidden" style={{ height: "1em" }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={ch}
+              initial={{ y: "70%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-70%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              className="inline-block"
+            >
+              {ch}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+    </span>
+  );
 }
