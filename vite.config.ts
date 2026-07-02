@@ -9,7 +9,14 @@ import { nitro } from "nitro/vite";
 // host (cloudflare, vercel, netlify, node-server for self-hosting, ...).
 // Override at build time with `NITRO_PRESET=vercel vite build` without
 // touching this file, or just change the default below.
-const preset = process.env.NITRO_PRESET ?? "cloudflare-pages";
+//
+// Cloudflare's dashboard now provisions Git-connected Pages projects on its
+// unified Workers platform, whose fixed deploy step is `wrangler deploy`
+// (not `wrangler pages deploy`) — so we target the plain-Worker
+// `cloudflare-module` preset (Worker + static-assets binding) rather than
+// the legacy `cloudflare-pages` preset, which only `wrangler pages deploy`
+// understands.
+const preset = process.env.NITRO_PRESET ?? "cloudflare-module";
 
 export default defineConfig({
   resolve: {
@@ -25,7 +32,7 @@ export default defineConfig({
       // (our SSR error wrapper).
       server: { entry: "server" },
     }),
-    nitro({ preset }),
+    nitro({ preset, output: { dir: "dist" } }),
     viteReact(),
   ],
 });

@@ -31,21 +31,30 @@ bun run format
 
 ## Deployment
 
-The production build targets [Cloudflare Pages](https://pages.cloudflare.com/)
-by default (free tier, no commercial-use restriction, GitHub-integrated
-preview deploys). Deploy target is a one-line swap — no code changes needed:
+The production build targets Cloudflare by default (free tier, no
+commercial-use restriction, GitHub-integrated preview deploys). Deploy target
+is a one-line swap — no code changes needed:
 
 ```bash
 NITRO_PRESET=vercel bun run build     # or netlify, node-server, etc.
 ```
 
-To connect this repo to Cloudflare Pages:
+Note: Cloudflare's "Workers & Pages → Pages → Connect to Git" flow now
+provisions projects on Cloudflare's unified Workers platform, whose deploy
+step always runs `wrangler deploy` (a plain-Worker deploy) rather than
+`wrangler pages deploy`. Because of that, this repo targets Nitro's
+`cloudflare-module` preset (Worker + static-assets binding) instead of the
+legacy `cloudflare-pages` preset — using `cloudflare-pages` here fails with
+`Missing entry-point to Worker script or to assets directory` on that flow.
+
+To connect this repo to Cloudflare:
 
 1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git
 2. Build command: `bun install && bun run build`
 3. Build output directory: `dist`
 
 Every push gets a preview URL; your production branch gets the live one.
+Preview the exact Cloudflare build locally with `bun run preview:cf`.
 
 ## Roadmap
 
