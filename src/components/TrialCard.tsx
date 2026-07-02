@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/DataTypeIcons";
-import { InfoIcon } from "./icons/InfoIcon";
+import { DetailsIcon } from "./icons/DetailsIcon";
 import {
   Sheet,
   SheetContent,
@@ -29,7 +29,7 @@ export interface TrialCardProps {
 }
 
 const BUBBLE = 18; // small bubble diameter
-const BUBBLE_CENTER = 46; // center bubble diameter
+const BUBBLE_CENTER = 56; // center bubble diameter
 const GAP = 6; // tighter spacing
 
 export function TrialCard({
@@ -159,7 +159,7 @@ export function TrialCard({
             aria-label="Trial details"
             className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border-2 border-current text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <InfoIcon className="size-4" />
+            <DetailsIcon className="size-4" />
           </button>
         </SheetTrigger>
         <SheetContent side="right" className="w-[88%] sm:max-w-md">
@@ -287,7 +287,7 @@ export function TrialCard({
                         "absolute inset-0 rounded-full flex items-center justify-center",
                         isCenter ? "border-2" : "border",
                         bg,
-                        isCenter && !t && "bg-card border-foreground/30 shadow-[0_2px_10px_rgba(0,0,0,0.15)]",
+                        isCenter && !t && "bg-card border-foreground/30",
                         isCenter && centerBg,
                       )}
                     >
@@ -310,16 +310,9 @@ export function TrialCard({
                         </span>
                       )}
                     </motion.div>
-                    {i < minTrials && (
+                    {i < minTrials && !t && (
                       <span
-                        className={cn(
-                          "absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full",
-                          t === "correct"
-                            ? "bg-green-500"
-                            : t === "incorrect"
-                              ? "bg-red-500"
-                              : "bg-foreground/35",
-                        )}
+                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
                         aria-hidden
                       />
                     )}
@@ -435,11 +428,16 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "btn-bevel absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square rounded-full bg-white border border-stone-200 text-blue-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:text-foreground/30 disabled:bg-stone-50 disabled:border-stone-100 disabled:pointer-events-none",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
         isLeft ? "-left-2" : "-right-2",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
         {isLeft ? (
           <path
             d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z"

@@ -5,8 +5,9 @@ import { CardShell } from "./CardShell";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useRegisterActiveTimer, useSession } from "./SessionContext";
-import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
+
+const PULSE_BEAT_MS = 1000;
 
 export interface DurationCardProps {
   title: string;
@@ -38,7 +39,6 @@ export function DurationCard({
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick, markDirty, resetSignal } = useSession();
-  const { values: settings } = useSettings();
   useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
 
   // The pulse beat should read as one continuous heartbeat tied to the
@@ -51,7 +51,7 @@ export function DurationCard({
   // and correcting it after the CSS animation has already begun jumps its
   // phase instead of cleanly establishing it.
   const [pulseDelayMs, setPulseDelayMs] = useState(0);
-  const pulseStyle = { animationDuration: `${settings.pulseBeatMs}ms`, animationDelay: `${pulseDelayMs}ms` };
+  const pulseStyle = { animationDuration: `${PULSE_BEAT_MS}ms`, animationDelay: `${pulseDelayMs}ms` };
 
   useEffect(() => {
     if (resetSignal === 0) return;
@@ -119,7 +119,7 @@ export function DurationCard({
       if (running) flushLive();
       runningIdxRef.current = viewIdx;
       setRunning(true);
-      setPulseDelayMs(-(getElapsedMsNow() % settings.pulseBeatMs));
+      setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
     }
   };
 
@@ -422,11 +422,16 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "btn-bevel absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full bg-white border border-stone-200 text-blue-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:text-foreground/30 disabled:bg-stone-50 disabled:border-stone-100 disabled:pointer-events-none",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
         isLeft ? "left-0" : "right-0",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
         {isLeft ? (
           <path d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z" />
         ) : (

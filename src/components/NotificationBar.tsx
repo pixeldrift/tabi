@@ -2,8 +2,12 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "motion/react";
 import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
-import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
+
+// Swipe tuning — TODO: surface in user settings.
+const SWIPE_THRESHOLD_PX = 88;
+const SWIPE_SPRING_STIFFNESS = 400;
+const SWIPE_SPRING_DAMPING = 30;
 
 const ZzIcon = ({ className }: { className?: string }) => (
   <svg
@@ -110,7 +114,7 @@ export function NotificationBar() {
   const overflow = ordered.length - visible.length;
 
   return (
-    <div className="px-3 pt-2 pointer-events-none">
+    <div className="px-3 pt-2 overflow-x-hidden pointer-events-none">
       <motion.div layout className="max-w-2xl mx-auto flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {visible.map((n) => (
@@ -154,7 +158,6 @@ function NotificationRow({
   onSnooze: () => void;
   onSilence: () => void;
 }) {
-  const { values: settings } = useSettings();
   const silenced = n.state === "silenced";
   // Once silenced the row stays but reads as muted, regardless of the
   // notification's own stored icon (which is what drives the chime).
@@ -179,27 +182,43 @@ function NotificationRow({
     return () => window.clearInterval(id);
   }, [alert, hasChime, n.kind]);
 
-  const threshold = settings.swipeThresholdPx;
+  const threshold = SWIPE_THRESHOLD_PX;
   const dragX = useMotionValue(0);
   const wasDragging = useRef(false);
   const leftOpacity = useTransform(dragX, [-threshold, 0], [1, 0]);
   const leftScale = useTransform(dragX, [-threshold * 1.4, -threshold, 0], [1.15, 1, 0.6]);
   const rightOpacity = useTransform(dragX, [0, threshold], [0, 1]);
   const rightScale = useTransform(dragX, [0, threshold, threshold * 1.4], [0.6, 1, 1.15]);
+  // The bubble itself fades out as it clears the threshold, so it's already
+  // invisible well before the (larger) offscreen travel finishes.
+  const bubbleOpacity = useTransform(dragX, [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5], [0, 1, 1, 1, 0]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (_e: unknown, info: { velocity: { x: number } }) => {
     const val = dragX.get();
-    if (val <= -threshold) {
-      animate(dragX, -90, { duration: 0.15 });
-      window.setTimeout(onDismiss, 130);
-    } else if (val >= threshold && rightAction) {
-      animate(dragX, 90, { duration: 0.15 });
-      window.setTimeout(rightAction, 130);
+    const vx = info.velocity.x;
+    const commitLeft = val <= -threshold;
+    const commitRight = val >= threshold && !!rightAction;
+    if (commitLeft || commitRight) {
+      // Continues from the drag's current position (and, loosely, its
+      // direction/speed) rather than restarting a fresh, disconnected
+      // slide — a fast, fixed-duration tween keeps this snappy regardless
+      // of exactly how fast the release was; an underdamped spring aimed
+      // at a point this far away can take over a second to actually settle.
+      const remaining = commitLeft ? -500 - val : 500 - val;
+      const fastFlick = Math.abs(vx) > 800;
+      animate(dragX, commitLeft ? -500 : 500, {
+        type: "tween",
+        ease: "easeIn",
+        duration: fastFlick ? 0.12 : Math.min(0.28, Math.max(0.16, Math.abs(remaining) / 1400)),
+      }).then(() => {
+        (commitLeft ? onDismiss : rightAction!)();
+      });
     } else {
       animate(dragX, 0, {
         type: "spring",
-        stiffness: settings.swipeSpringStiffness,
-        damping: settings.swipeSpringDamping,
+        velocity: vx,
+        stiffness: SWIPE_SPRING_STIFFNESS,
+        damping: SWIPE_SPRING_DAMPING,
       });
     }
     window.setTimeout(() => { wasDragging.current = false; }, 80);
@@ -210,9 +229,9 @@ function NotificationRow({
       layout
       initial={{ opacity: 0, y: -10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: -40, transition: { duration: 0.18 } }}
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className="pointer-events-auto relative overflow-hidden rounded-full"
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      className="pointer-events-auto relative"
     >
       {/* Swipe reveal layers — sit behind the draggable row. Sliding the row
           left exposes the strip it just vacated on the RIGHT, and sliding it
@@ -243,10 +262,14 @@ function NotificationRow({
 
       <motion.div
         drag="x"
-        dragConstraints={canSwipeRight ? { left: -120, right: 120 } : { left: -120, right: 0 }}
+        dragConstraints={
+          canSwipeRight
+            ? { left: -threshold * 1.4, right: threshold * 1.4 }
+            : { left: -threshold * 1.4, right: 0 }
+        }
         dragElastic={0.15}
         dragMomentum={false}
-        style={{ x: dragX }}
+        style={{ x: dragX, opacity: bubbleOpacity }}
         onDragStart={() => { wasDragging.current = true; }}
         onDragEnd={handleDragEnd}
         className={cn("relative rounded-full border shadow-sm", styles.ring)}
@@ -321,7 +344,7 @@ function RowButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex items-center justify-center size-8 rounded-full text-stone-600 hover:text-stone-900 hover:bg-black/5 active:bg-black/10 transition-colors"
+      className="inline-flex items-center justify-center size-8 rounded-full border border-black/10 bg-white/70 text-stone-600 shadow-sm hover:text-stone-900 hover:bg-white active:bg-black/5 transition-colors"
     >
       {children}
     </button>

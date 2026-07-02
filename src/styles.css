@@ -118,6 +118,12 @@
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; font-weight: 600; }
+
+  /* Buttons inside a scrollable ancestor (most of this app) otherwise wait
+     ~100-300ms on touch devices to disambiguate a tap from the start of a
+     scroll before firing click — this tells the browser it can resolve the
+     tap immediately. */
+  button, [role="button"] { touch-action: manipulation; }
 }
 
 @layer utilities {

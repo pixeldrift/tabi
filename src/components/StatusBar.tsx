@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
-import { useSettings } from "./SettingsContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { X } from "lucide-react";
@@ -51,6 +50,10 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
+// Session-start sequence timing — TODO: surface in user settings.
+const SESSION_START_DURATION_MS = 900;
+const SESSION_START_STAGGER_MS = 80;
+
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
   const {
     status,
@@ -66,7 +69,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     lastSavedAt,
     forceSync,
   } = useSession();
-  const { values: settings } = useSettings();
 
   const durationTimers = activeTimers.filter((t) => t.source === "duration");
 
@@ -88,7 +90,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   // timer hasn't started yet — gives a smooth, jank-free transition.
   const [pendingStart, setPendingStart] = useState<null | "resume" | "previous" | "new">(null);
   const collapsed = isRunning || pendingStart !== null;
-  const TRANSITION_MS = settings.sessionStartDurationMs;
+  const TRANSITION_MS = SESSION_START_DURATION_MS;
 
   // A brief blue flash the instant the session actually goes live (i.e. right
   // as pendingStart resolves into isRunning), landing slightly after the
@@ -99,10 +101,10 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     const wasRunning = wasRunningRef.current;
     wasRunningRef.current = isRunning;
     if (isRunning && !wasRunning) {
-      const id = window.setTimeout(() => setJustStarted(true), settings.sessionStartStaggerMs);
+      const id = window.setTimeout(() => setJustStarted(true), SESSION_START_STAGGER_MS);
       return () => window.clearTimeout(id);
     }
-  }, [isRunning, settings.sessionStartStaggerMs]);
+  }, [isRunning]);
   useEffect(() => {
     if (!justStarted) return;
     const id = window.setTimeout(() => setJustStarted(false), 450);
@@ -226,7 +228,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               role="tablist"
               aria-label="Session sections"
             >
-              <div className="flex items-end gap-1">
+              <div className="flex items-end gap-1 -ml-1">
                 {TABS.map((t) => {
                   const Icon = t.icon;
                   const isActive = t.id === activeTab;
@@ -255,7 +257,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               </div>
 
               {isRunning && (
-                <div className="pb-1.5 sm:pb-2 pr-1">
+                <div className="pb-1.5 sm:pb-2 -mr-1">
                   <MiniSession elapsedMs={pillElapsed} onPause={pause} disabled={!isRunning} />
                 </div>
               )}

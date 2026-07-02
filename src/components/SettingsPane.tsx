@@ -12,22 +12,21 @@ export function SettingsPane() {
     <div className="max-w-2xl mx-auto mt-6 px-4 pb-16">
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
-          <h2 className="font-display text-lg leading-tight">Animation tuning</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Adjust timing for the newer animations while you feel them out — saved to this
-            browser, no rebuild needed.
-          </p>
+          <h2 className="font-display text-lg leading-tight">Settings</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Nothing here yet.</p>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={resetAll}
-          className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
-        >
-          <RotateCcw className="size-3.5" />
-          Reset all
-        </Button>
+        {groups.length > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={resetAll}
+            className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="size-3.5" />
+            Reset all
+          </Button>
+        )}
       </div>
 
       <div className="mt-6 space-y-8">

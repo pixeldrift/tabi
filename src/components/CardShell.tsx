@@ -9,7 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { InfoIcon } from "./icons/InfoIcon";
+import { DetailsIcon } from "./icons/DetailsIcon";
 import { cn } from "@/lib/utils";
 
 export interface CardShellProps {
@@ -88,7 +88,7 @@ export function CardShell({
             aria-label="Card details"
             className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border-2 border-current text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <InfoIcon className="size-4" />
+            <DetailsIcon className="size-4" />
           </button>
         </SheetTrigger>
         <SheetContent side="right" className="w-[88%] sm:max-w-md">

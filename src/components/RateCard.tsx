@@ -118,7 +118,7 @@ export function RateCard({
     <CardShell
       title={title}
       phase={phase}
-      dataType="Rate / min"
+      dataType="Rate / Min"
       dataTypeIcon={<RateIcon />}
       description={description}
       isActive={isActive}

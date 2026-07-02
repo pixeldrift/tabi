@@ -9,7 +9,7 @@ import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession } from "@/components/SessionContext";
-import { SettingsProvider, useSettings } from "@/components/SettingsContext";
+import { SettingsProvider } from "@/components/SettingsContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
@@ -109,6 +109,11 @@ const cards: CardConfig[] = [
   },
 ];
 
+// Data-submitted animation timing — TODO: surface in user settings.
+const DATA_SUBMIT_STAGGER_MS = 60;
+const DATA_SUBMIT_ENTER_DURATION_MS = 450;
+const DATA_SUBMIT_EXIT_DURATION_MS = 400;
+
 function Index() {
   return (
     <SettingsProvider>
@@ -124,7 +129,6 @@ function IndexInner() {
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const { status } = useSession();
-  const { values: settings } = useSettings();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
 
@@ -194,7 +198,7 @@ function IndexInner() {
                   enter: {},
                   center: { transition: { staggerChildren: 0 } },
                   // Exiting cards stagger-out to the right, oldest/topmost first.
-                  exit: { transition: { staggerChildren: settings.dataSubmitStaggerMs / 1000 } },
+                  exit: { transition: { staggerChildren: DATA_SUBMIT_STAGGER_MS / 1000 } },
                 }}
               >
             {cards.map((card, i) => {
@@ -272,12 +276,12 @@ function IndexInner() {
                     center: {
                       opacity: 1,
                       x: 0,
-                      transition: { duration: settings.dataSubmitEnterDurationMs / 1000 },
+                      transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 },
                     },
                     exit: {
                       opacity: 0,
                       x: 80,
-                      transition: { duration: settings.dataSubmitExitDurationMs / 1000 },
+                      transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 },
                     },
                   }}
                 >
