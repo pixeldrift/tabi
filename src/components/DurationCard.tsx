@@ -331,9 +331,9 @@ function CenterPill({
         className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
       >
         {running ? (
-          <Pause className="size-5" fill="currentColor" strokeWidth={0} />
+          <Pause className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         ) : (
-          <Play className="size-5" fill="currentColor" strokeWidth={0} />
+          <Play className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         )}
       </button>
     </div>
@@ -399,7 +399,7 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 active:bg-blue-500/10 transition-colors disabled:text-foreground/30 disabled:pointer-events-none",
+        "btn-bevel absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 rounded-full bg-white border border-stone-200 text-blue-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:text-foreground/30 disabled:bg-stone-50 disabled:border-stone-100 disabled:pointer-events-none",
         isLeft ? "left-0" : "right-0",
       )}
     >

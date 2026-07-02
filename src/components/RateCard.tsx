@@ -207,7 +207,7 @@ export function RateCard({
                         aria-label="Timer is linked to session"
                         className="grid size-5 place-items-center rounded-r-full bg-stone-300 text-stone-600"
                       >
-                        <Link2 className="size-3 translate-x-px translate-y-px" strokeWidth={2.5} />
+                        <Link2 className="size-3 rotate-45 -translate-x-0.5" strokeWidth={2.5} />
                       </span>
                     </>
                   ) : (
@@ -243,7 +243,11 @@ export function RateCard({
                         aria-label={running ? "Pause timer" : "Resume timer"}
                         className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
                       >
-                        {running ? <Pause className="size-3" fill="currentColor" /> : <Play className="size-3" fill="currentColor" />}
+                        {running ? (
+                          <Pause className="size-3 -translate-x-0.5" fill="currentColor" />
+                        ) : (
+                          <Play className="size-3 -translate-x-0.5" fill="currentColor" />
+                        )}
                       </button>
                     </>
                   )}
@@ -259,7 +263,7 @@ export function RateCard({
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white shadow-[0_4px_12px_rgba(59,130,246,0.35)] transition-colors",
+            "btn-bevel size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >

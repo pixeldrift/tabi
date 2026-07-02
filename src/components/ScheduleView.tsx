@@ -612,7 +612,18 @@ export function ScheduleView({
         const height = Math.max(toMin(a.end) - toMin(a.start), MIN_ROW_MIN) * PX_PER_MIN;
         return { appt: a, top, height };
       }
-      // collapsed: pin to row containing the appt start
+      // Collapsed mode: rows are uniform height regardless of real duration,
+      // so pinning to a row's full top/bottom (as if the appt spanned the
+      // whole row) misrepresents where within the row it actually falls.
+      // Interpolate proportionally within each row's own real time span
+      // instead, same idea as proportional mode but scoped per-row.
+      const pxWithinRow = (row: (typeof rowLayout)[number], minutes: number) => {
+        const rowStart = toMin(row.item.start);
+        const rowEnd = toMin(row.item.end);
+        const span = Math.max(rowEnd - rowStart, 1);
+        const frac = Math.min(1, Math.max(0, (minutes - rowStart) / span));
+        return row.top + frac * row.height;
+      };
       const aStart = toMin(a.start);
       const aEnd = toMin(a.end);
       const startRow =
@@ -622,9 +633,10 @@ export function ScheduleView({
       const endRow =
         rowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
         startRow;
-      const top = startRow ? startRow.top : 0;
-      const bottom = endRow ? endRow.top + endRow.height : top + COLLAPSED_ROW_PX;
-      return { appt: a, top, height: Math.max(bottom - top, COLLAPSED_ROW_PX) };
+      const top = startRow ? pxWithinRow(startRow, aStart) : 0;
+      const bottom = endRow ? pxWithinRow(endRow, aEnd) : top + COLLAPSED_ROW_PX;
+      const MIN_APPT_PX = 20;
+      return { appt: a, top, height: Math.max(bottom - top, MIN_APPT_PX) };
     });
   }, [showAppts, active.appointments, layoutMode, dayStart, rowLayout]);
 

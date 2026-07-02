@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { motion, AnimatePresence, LayoutGroup, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
   Pause,
   Timer,
-  Info,
   ClipboardList,
   CalendarDays,
   Bell,
@@ -17,6 +16,7 @@ import {
   ArrowRight,
   Upload,
 } from "lucide-react";
+import { InfoIcon } from "./icons/InfoIcon";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -41,8 +41,8 @@ interface StatusBarProps {
   title?: string;
 }
 
-const TABS: { id: StatusTab; label: string; icon: typeof Info }[] = [
-  { id: "info", label: "Info", icon: Info },
+const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { id: "info", label: "Info", icon: InfoIcon },
   { id: "data", label: "Data", icon: ClipboardList },
   { id: "schedule", label: "Schedule", icon: CalendarDays },
   { id: "notifications", label: "Alerts", icon: Bell },
@@ -803,7 +803,7 @@ function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: numb
         className="btn-bevel grid place-items-center w-8 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
       >
         <motion.span layoutId="session-pill-icon" className="grid place-items-center">
-          <Pause className="size-3" fill="currentColor" strokeWidth={0} />
+          <Pause className="size-3 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         </motion.span>
       </motion.button>
     </motion.div>

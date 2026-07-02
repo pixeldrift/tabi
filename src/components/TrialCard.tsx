@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/DataTypeIcons";
+import { InfoIcon } from "./icons/InfoIcon";
 import {
   Sheet,
   SheetContent,
@@ -139,65 +140,61 @@ export function TrialCard({
       )}
     >
       {/* Header */}
-      <header className="flex items-start gap-3 pl-5 pr-3 pt-3 pb-0">
+      <header className="flex items-start gap-3 pl-5 pr-9 pt-3 pb-0">
         <h2 className="font-display text-xl leading-tight flex-1 mr-auto">{title}</h2>
-        <div className="flex items-start gap-2">
-          <div className="text-right leading-tight">
-            <div className="text-xs font-medium text-blue-400">{phase}</div>
-            <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-              <PercentCorrectIcon className="size-3 shrink-0" />
-              <span>{dataType}</span>
-            </div>
+        <div className="text-right leading-tight">
+          <div className="text-xs font-medium text-blue-400">{phase}</div>
+          <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
+            <PercentCorrectIcon className="size-3 shrink-0" />
+            <span>{dataType}</span>
           </div>
-          <Sheet>
-            <SheetTrigger asChild>
-              <button
-                aria-label="Trial details"
-                className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <span
-                  className="grid size-6 place-items-center rounded-full border-2 border-current font-serif italic text-[13px] leading-none"
-                  aria-hidden
-                >
-                  i
-                </span>
-              </button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[88%] sm:max-w-md">
-              <SheetHeader>
-                <SheetTitle className="font-display">{title}</SheetTitle>
-                <SheetDescription>{description}</SheetDescription>
-              </SheetHeader>
-              <dl className="mt-6 space-y-3 px-4 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Phase</dt>
-                  <dd className="font-medium">{phase}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Data type</dt>
-                  <dd className="font-medium">{dataType}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Minimum trials</dt>
-                  <dd className="font-medium">{minTrials}</dd>
-                </div>
-                {maxTrials && (
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Maximum trials</dt>
-                    <dd className="font-medium">{maxTrials}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Correct so far</dt>
-                  <dd className="font-medium">
-                    {correctCount} / {completedCount || 0}
-                  </dd>
-                </div>
-              </dl>
-            </SheetContent>
-          </Sheet>
         </div>
       </header>
+
+      {/* Positioned so the circle's center sits at the card's own corner-radius
+          center (rounded-xl = 20px), rather than in the header's flex flow. */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            aria-label="Trial details"
+            className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border-2 border-current text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <InfoIcon className="size-4" />
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-[88%] sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="font-display">{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <dl className="mt-6 space-y-3 px-4 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Phase</dt>
+              <dd className="font-medium">{phase}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Data type</dt>
+              <dd className="font-medium">{dataType}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Minimum trials</dt>
+              <dd className="font-medium">{minTrials}</dd>
+            </div>
+            {maxTrials && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Maximum trials</dt>
+                <dd className="font-medium">{maxTrials}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Correct so far</dt>
+              <dd className="font-medium">
+                {correctCount} / {completedCount || 0}
+              </dd>
+            </div>
+          </dl>
+        </SheetContent>
+      </Sheet>
 
 
       {/* Bubble row */}
@@ -438,7 +435,7 @@ function TriangleNav({
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 active:bg-blue-500/10 transition-colors disabled:text-foreground/30 disabled:pointer-events-none",
+        "btn-bevel absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square rounded-full bg-white border border-stone-200 text-blue-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:text-foreground/30 disabled:bg-stone-50 disabled:border-stone-100 disabled:pointer-events-none",
         isLeft ? "-left-2" : "-right-2",
       )}
     >
