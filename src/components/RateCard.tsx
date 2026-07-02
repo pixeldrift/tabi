@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Lock, Minus, Pause, Play, Plus } from "lucide-react";
+import { Link2, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
@@ -207,7 +207,7 @@ export function RateCard({
                         aria-label="Timer is linked to session"
                         className="grid size-5 place-items-center rounded-r-full bg-stone-300 text-stone-600"
                       >
-                        <Lock className="size-3" strokeWidth={2.5} />
+                        <Link2 className="size-3 translate-x-px translate-y-px" strokeWidth={2.5} />
                       </span>
                     </>
                   ) : (
