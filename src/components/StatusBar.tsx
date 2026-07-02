@@ -31,7 +31,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { NotificationBar } from "@/components/NotificationBar";
+import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
@@ -224,6 +224,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             {/* Tabs row + mini session (when running) */}
             <motion.nav
               layout
+              transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
               className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-2")}
               role="tablist"
               aria-label="Session sections"
