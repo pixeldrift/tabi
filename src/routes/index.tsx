@@ -144,11 +144,11 @@ function IndexInner() {
         )}
       >
         {tab === "data" && (
-          <div className="flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center">
             <div
               className={cn(
-                "sticky z-40 w-full bg-background border-b border-stone-200/70 py-1.5 px-8 -mx-5 text-center transition-[opacity,padding] duration-500",
-                sessionActive ? "opacity-0 h-0 overflow-hidden py-0 border-b-0" : "opacity-100",
+                "sticky z-40 w-full bg-background border-b border-stone-200/70 py-1.5 px-8 -mx-5 mb-5 text-center transition-[opacity,padding,margin] duration-500",
+                sessionActive ? "opacity-0 h-0 mb-0 overflow-hidden py-0 border-b-0" : "opacity-100",
               )}
               style={{ top: stickyTop }}
               aria-hidden={sessionActive}

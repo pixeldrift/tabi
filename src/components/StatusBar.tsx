@@ -15,7 +15,7 @@ import {
   RefreshCw,
   User,
   ArrowRight,
-  LineChart,
+  Upload,
 } from "lucide-react";
 import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -272,7 +272,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               End & Submit Data
-              <LineChart className="size-4" strokeWidth={2.5} />
+              <Upload className="size-4" strokeWidth={2.5} />
             </button>
             <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
@@ -645,7 +645,7 @@ function ExpandedSessionBox({
                 className="btn-bevel flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
               >
                 End & Submit Data
-                <LineChart className="size-3.5" strokeWidth={2.5} />
+                <Upload className="size-3.5" strokeWidth={2.5} />
               </button>
             ) : (
               <button

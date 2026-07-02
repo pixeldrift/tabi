@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, X, Info } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/DataTypeIcons";
 import {
   Sheet,
@@ -132,7 +132,7 @@ export function TrialCard({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
+        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground transition-all duration-200",
         isActive
           ? "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
@@ -155,7 +155,12 @@ export function TrialCard({
                 aria-label="Trial details"
                 className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <Info className="size-6" />
+                <span
+                  className="grid size-6 place-items-center rounded-full border-2 border-current font-serif italic text-[13px] leading-none"
+                  aria-hidden
+                >
+                  i
+                </span>
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[88%] sm:max-w-md">
@@ -374,7 +379,7 @@ export function TrialCard({
       {minTrials > 0 && (
         <div className="relative mt-3">
           {/* Bar background + fill — clipped to card corners */}
-          <div className="relative h-5 overflow-hidden rounded-b-xl">
+          <div className="relative h-5">
             <div className="absolute inset-0 bg-muted">
               <motion.div
                 className={cn(
@@ -434,7 +439,7 @@ function TriangleNav({
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
         "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 active:bg-blue-500/10 transition-colors disabled:text-foreground/30 disabled:pointer-events-none",
-        isLeft ? "left-0" : "right-0",
+        isLeft ? "-left-2" : "-right-2",
       )}
     >
       <svg viewBox="0 0 24 24" className="size-9" fill="currentColor" aria-hidden>

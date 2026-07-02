@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Info, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -56,7 +56,7 @@ export function CardShell({
     <article
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground border-2 transition-all duration-200",
+        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground border-2 transition-all duration-200",
         isActive
           ? editing
             ? "border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
@@ -84,7 +84,12 @@ export function CardShell({
                 aria-label="Card details"
                 className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <Info className="size-6" />
+                <span
+                  className="grid size-6 place-items-center rounded-full border-2 border-current font-serif italic text-[13px] leading-none"
+                  aria-hidden
+                >
+                  i
+                </span>
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[88%] sm:max-w-md">
@@ -102,7 +107,7 @@ export function CardShell({
 
       {showProgress && (
         <div className="relative mt-3">
-          <div className="relative h-5 overflow-hidden rounded-b-xl">
+          <div className="relative h-5">
             <div className="absolute inset-0 bg-stone-200">
               <motion.div
                 className={cn("absolute inset-y-0 left-0", barBg)}
