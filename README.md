@@ -22,22 +22,35 @@ bun run dev       # http://localhost:3000
 Other scripts:
 
 ```bash
-bun run build       # production build (dist/)
+bun run build       # production build (output path depends on the deploy preset, see below)
 bun run preview     # preview the build with Vite's server
-bun run preview:cf  # preview the build in a real Cloudflare Workers runtime
+bun run preview:cf  # preview a Cloudflare build in a real Workers runtime
 bun run lint
 bun run format
 ```
 
 ## Deployment
 
-The production build targets Cloudflare by default (free tier, no
-commercial-use restriction, GitHub-integrated preview deploys). Deploy target
-is a one-line swap — no code changes needed:
+The production build targets [Vercel](https://vercel.com/) by default. Deploy
+target is a one-line swap — no code changes needed:
 
 ```bash
-NITRO_PRESET=vercel bun run build     # or netlify, node-server, etc.
+NITRO_PRESET=cloudflare-module bun run build   # or netlify, node-server, etc.
 ```
+
+To connect this repo to Vercel: Vercel dashboard → Add New → Project →
+import this repo → Deploy. No build/output settings need to be touched —
+Nitro's `vercel` preset writes directly to `.vercel/output` (Vercel's Build
+Output API), which Vercel picks up automatically.
+
+<details>
+<summary>Cloudflare instead</summary>
+
+Set `NITRO_PRESET=cloudflare-module` (see above), then:
+
+1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git
+2. Build command: `bun install && bun run build`
+3. Build output directory: `dist`
 
 Note: Cloudflare's "Workers & Pages → Pages → Connect to Git" flow now
 provisions projects on Cloudflare's unified Workers platform, whose deploy
@@ -46,12 +59,20 @@ step always runs `wrangler deploy` (a plain-Worker deploy) rather than
 `cloudflare-module` preset (Worker + static-assets binding) instead of the
 legacy `cloudflare-pages` preset — using `cloudflare-pages` here fails with
 `Missing entry-point to Worker script or to assets directory` on that flow.
+</details>
 
-To connect this repo to Cloudflare:
+<details>
+<summary>Note on the <code>nf3</code> patch</summary>
 
-1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git
-2. Build command: `bun install && bun run build`
-3. Build output directory: `dist`
+`patches/nf3@0.3.18.patch` fixes a real bug in Nitro's current beta: the
+`vercel`/`netlify` presets (and any other preset that traces dependencies
+into a serverless function bundle) import `@vercel/nft` — a CommonJS
+package — via a named import, which fails under Node's ESM/CJS interop
+(`SyntaxError: Named export 'nodeFileTrace' not found`). The
+Cloudflare-Workers presets don't hit this since Workers bundle everything
+into one file and skip the tracing step entirely. Bun applies this patch
+automatically on `bun install`; remove it once upstream fixes the import.
+</details>
 
 Every push gets a preview URL; your production branch gets the live one.
 Preview the exact Cloudflare build locally with `bun run preview:cf`.
