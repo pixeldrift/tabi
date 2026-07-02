@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
 import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,11 @@ import { cn } from "@/lib/utils";
 const SWIPE_THRESHOLD_PX = 88;
 const SWIPE_SPRING_STIFFNESS = 400;
 const SWIPE_SPRING_DAMPING = 30;
+
+// Shared with the tabs nav's own `layout` transition in StatusBar.tsx, so
+// the notification area's push/collapse and the tabs/pane moving to make
+// room for it read as one attached unit rather than two independent motions.
+export const NOTIFICATION_AREA_TRANSITION = { duration: 0.35, ease: [0.4, 0, 0.2, 1] as const };
 
 const ZzIcon = ({ className }: { className?: string }) => (
   <svg
@@ -115,7 +120,7 @@ export function NotificationBar() {
 
   return (
     <div className="px-3 pt-2 overflow-x-hidden pointer-events-none">
-      <motion.div layout className="max-w-2xl mx-auto flex flex-col gap-2">
+      <motion.div layout transition={{ layout: NOTIFICATION_AREA_TRANSITION }} className="max-w-2xl mx-auto flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {visible.map((n) => (
             <NotificationRow
@@ -131,6 +136,7 @@ export function NotificationBar() {
             <motion.div
               key="overflow"
               layout
+              transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -193,6 +199,21 @@ function NotificationRow({
   // invisible well before the (larger) offscreen travel finishes.
   const bubbleOpacity = useTransform(dragX, [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5], [0, 1, 1, 1, 0]);
 
+  // Three points: home (dragX 0, everything full size), and a trigger point
+  // in each direction where only that direction's action stays — everything
+  // else recedes to 0 by the time you reach it, so the row buttons visually
+  // narrow down to just the one about to fire.
+  const rightIsSnooze = showSnooze;
+  const rightIsSilence = !showSnooze && showSilence;
+  const dismissOpacity = useTransform(dragX, [-threshold, 0, threshold], [1, 1, 0]);
+  const dismissScale = useTransform(dragX, [-threshold, 0, threshold], [1, 1, 0.5]);
+  const snoozeOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, rightIsSnooze ? 1 : 0]);
+  const snoozeScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, rightIsSnooze ? 1 : 0.5]);
+  const silenceOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, rightIsSilence ? 1 : 0]);
+  const silenceScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, rightIsSilence ? 1 : 0.5]);
+  const openOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, 0]);
+  const openScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, 0.5]);
+
   const handleDragEnd = (_e: unknown, info: { velocity: { x: number } }) => {
     const val = dragX.get();
     const vx = info.velocity.x;
@@ -227,10 +248,18 @@ function NotificationRow({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -10, scale: 0.98 }}
+      // The area's own push/collapse (a plain ease, matched to the tabs
+      // nav's layout transition) is kept separate from the bar's entrance
+      // (a bouncier spring): starting a little low and popping up into
+      // place reads as emerging from behind the tabs/pane as they make
+      // room, rather than sliding in from above them.
+      initial={{ opacity: 0, y: 18, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.15 } }}
-      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeOut" } }}
+      transition={{
+        layout: NOTIFICATION_AREA_TRANSITION,
+        default: { type: "spring", stiffness: 420, damping: 20 },
+      }}
       className="pointer-events-auto relative"
     >
       {/* Swipe reveal layers — sit behind the draggable row. Sliding the row
@@ -279,13 +308,16 @@ function NotificationRow({
           tabIndex={0}
           onClick={() => { if (!wasDragging.current) onActivate(); }}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-          className="w-full flex items-center gap-3 pl-3 pr-2 py-1.5 text-left cursor-pointer"
+          className="w-full flex items-center gap-3 pl-3 pr-24 py-1.5 text-left cursor-pointer"
         >
           <div
             className={cn(
               "flex items-center justify-center size-7 shrink-0",
               styles.iconFg,
-              !silenced && n.kind === "alert-now" && "animate-bounce",
+              // animate-bounce's arc sits above the resting baseline, which
+              // reads as off-center within this box — nudged down so its
+              // resting position looks vertically centered.
+              !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
               !silenced && n.kind === "alert-priming" && "animate-pulse",
             )}
           >
@@ -297,34 +329,39 @@ function NotificationRow({
               <div className="text-xs text-stone-600 truncate">{n.body}</div>
             )}
           </div>
-          <div
-            className="flex items-center gap-0.5 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {alert ? (
-              <>
-                {showSilence && (
-                  <RowButton label="Silence" onClick={onSilence}>
-                    <VolumeX className="size-4" />
-                  </RowButton>
-                )}
-                {showSnooze && (
-                  <RowButton label="Snooze" onClick={onSnooze}>
-                    <ZzIcon className="size-4" />
-                  </RowButton>
-                )}
-              </>
-            ) : (
-              <RowButton label="Open" onClick={onActivate}>
-                <ArrowRight className="size-4" />
-              </RowButton>
-            )}
-            <RowButton label="Dismiss" onClick={onDismiss}>
-              <X className="size-4" />
-            </RowButton>
-          </div>
         </div>
       </motion.div>
+
+      {/* Action buttons sit fixed in place — NOT part of the draggable
+          bubble above — so they read as a stable preview of "what will
+          happen" that shrinks away rather than something that slides off
+          with the gesture. */}
+      <div
+        className="absolute inset-y-0 right-2 flex items-center gap-0.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {alert ? (
+          <>
+            {showSilence && (
+              <RowButton label="Silence" tone="primary" style={{ opacity: silenceOpacity, scale: silenceScale }} onClick={onSilence}>
+                <VolumeX className="size-4" />
+              </RowButton>
+            )}
+            {showSnooze && (
+              <RowButton label="Snooze" tone="primary" style={{ opacity: snoozeOpacity, scale: snoozeScale }} onClick={onSnooze}>
+                <ZzIcon className="size-4" />
+              </RowButton>
+            )}
+          </>
+        ) : (
+          <RowButton label="Open" tone="primary" style={{ opacity: openOpacity, scale: openScale }} onClick={onActivate}>
+            <ArrowRight className="size-4" />
+          </RowButton>
+        )}
+        <RowButton label="Dismiss" tone="neutral" style={{ opacity: dismissOpacity, scale: dismissScale }} onClick={onDismiss}>
+          <X className="size-4" />
+        </RowButton>
+      </div>
     </motion.div>
   );
 }
@@ -332,21 +369,31 @@ function NotificationRow({
 function RowButton({
   label,
   onClick,
+  tone,
+  style,
   children,
 }: {
   label: string;
   onClick: () => void;
+  tone: "neutral" | "primary";
+  style?: MotionStyle;
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex items-center justify-center size-8 rounded-full border border-black/10 bg-white/70 text-stone-600 shadow-sm hover:text-stone-900 hover:bg-white active:bg-black/5 transition-colors"
+      style={style}
+      className={cn(
+        "inline-flex items-center justify-center size-8 rounded-full text-white shadow-sm transition-colors",
+        tone === "primary"
+          ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+          : "bg-stone-700 hover:bg-stone-800 active:bg-stone-900",
+      )}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }

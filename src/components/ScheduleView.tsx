@@ -12,7 +12,6 @@ import {
   Type,
   Check,
   X,
-  FilePlus,
   PencilOff,
   Pin,
   Star,
@@ -700,12 +699,13 @@ export function ScheduleView({
         <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }} disabled={editMode}>
           <SelectTrigger
             className={cn(
-              // Border stays 2px in both states (only its color fades) so
-              // the box model — and the name text inside it — never jumps.
-              "flex-1 h-11 text-base rounded-full px-4 font-bold border-2 transition-colors",
+              // min-w-0 lets this shrink below its text's intrinsic width —
+              // without it, a long schedule name can force the flex row wider
+              // than the viewport and push Cancel/Save off screen.
+              "flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 transition-colors",
               "[&>svg]:transition-all [&>svg]:duration-300",
               editMode
-                ? "bg-transparent border-transparent text-stone-800 disabled:opacity-100 [&>svg]:opacity-0 [&>svg]:translate-x-1 [&>svg]:pointer-events-none"
+                ? "bg-transparent border-transparent shadow-none text-stone-800 disabled:opacity-100 [&>svg]:opacity-0 [&>svg]:translate-x-1 [&>svg]:pointer-events-none"
                 : "bg-white border-blue-500 text-blue-700 focus:ring-blue-300 [&>svg]:opacity-100 [&>svg]:translate-x-0",
             )}
             style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
@@ -805,46 +805,67 @@ export function ScheduleView({
         </div>
       </div>
 
-      {editMode && (
-        <div className="mt-2 space-y-2 px-1">
-          <div className="flex items-center gap-1 flex-nowrap">
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
-              onClick={() => {
-                setRenameValue(active.name);
-                setRenameOpen(true);
-              }}
-            >
-              <Type /> Rename
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
-              onClick={duplicateActive}
-            >
-              <Copy /> Duplicate
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
-              onClick={() => setNewSchedOpen(true)}
-            >
-              <FilePlus /> New
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3 ml-auto"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 /> Delete
-            </Button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {editMode && (
+          <motion.div
+            key="edit-actions-row"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: EDIT_MODE_DURATION_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+            className="mt-2 space-y-2 px-1"
+          >
+            <div className="flex items-center gap-1 flex-nowrap">
+              <Button
+                size="sm"
+                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
+                onClick={() => {
+                  setRenameValue(active.name);
+                  setRenameOpen(true);
+                }}
+              >
+                <Type /> Rename
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
+                onClick={duplicateActive}
+              >
+                <Copy /> Duplicate
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
+                onClick={() => setNewSchedOpen(true)}
+              >
+                <Plus /> New
+              </Button>
+              {/* Hollow, unlike the others — destructive action, not a focus. */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-full border-2 border-blue-300 bg-transparent text-blue-700 hover:bg-blue-50 px-2.5 text-xs gap-1 [&_svg]:size-3 ml-auto"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 /> Delete
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {editMode && (
-        <div className="mt-3 px-1 space-y-3">
+      <AnimatePresence initial={false}>
+        {editMode && (
+          <motion.div
+            key="edit-content"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: EDIT_MODE_DURATION_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+            // Extra top margin (vs. the mt-3 used elsewhere) sets this block
+            // visually apart from the action-buttons row above it.
+            className="mt-6 px-1 space-y-3"
+          >
           {/* Appointments editor */}
           <div className="rounded-xl border border-stone-200 bg-white p-3">
             <div className="flex items-center justify-between mb-2">
@@ -902,8 +923,9 @@ export function ScheduleView({
           >
             Add Activity <Plus className="size-4 ml-1.5" />
           </Button>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Toggles row — sticky under StatusBar */}
       <div className="mt-3" />
@@ -1199,14 +1221,16 @@ export function ScheduleView({
               >
                 {/* Clipping lives on this inner layer (not the shadow-bearing
                     outer one) so the box-shadow above isn't clipped along
-                    with the content, and both inner layers share one rounded
-                    mask instead of each needing their own matching radius. */}
+                    with the content. Each inner layer also needs its OWN
+                    rounded-md — a square-cornered border clipped by an
+                    ancestor's rounded overflow still looks notched at the
+                    corner, since the border itself isn't drawn as a curve. */}
                 <div className="relative h-full w-full rounded-md overflow-hidden">
                   <button
                     type="button"
                     onClick={expand}
                     className={cn(
-                      "absolute inset-0 bg-green-500 hover:bg-green-600 transition-opacity",
+                      "absolute inset-0 rounded-md bg-green-500 hover:bg-green-600 transition-opacity",
                       collapsed ? "opacity-100" : "opacity-0 pointer-events-none",
                     )}
                     style={{ transitionDuration: `${APPT_COLLAPSE_DURATION_MS}ms` }}
@@ -1216,7 +1240,7 @@ export function ScheduleView({
 
                   <div
                     className={cn(
-                      "absolute inset-0 bg-green-50 border-2 border-green-500 transition-opacity",
+                      "absolute inset-0 rounded-md bg-green-50 border-2 border-green-500 transition-opacity",
                       collapsed ? "opacity-0 pointer-events-none" : "opacity-100",
                     )}
                     style={{ transitionDuration: `${APPT_COLLAPSE_DURATION_MS}ms` }}
