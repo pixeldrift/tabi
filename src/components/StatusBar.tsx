@@ -56,6 +56,9 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
 // sharing HEADER_MORPH_MS/this ease so they read as a single movement.
 const SESSION_MORPH_MS = HEADER_MORPH_MS;
 const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
+// How long the real destination pill takes to crossfade in once the
+// traveling shape (see the manual-FLIP overlay in StatusBar) lands.
+const PILL_CROSSFADE_MS = 150;
 
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
   const {
@@ -147,6 +150,54 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
         ? 0
         : previousSessionMs;
 
+  // Manual FLIP for the pill's big<->mini morph. Motion's layoutId FLIP
+  // turned out to ignore the configured duration entirely for a size delta
+  // this large (verified by setting it to 2s and seeing no change in pace)
+  // — this replaces it with a shape we animate ourselves (so timing is
+  // actually ours to control), then crossfade into the real, correctly
+  // laid-out element once it lands. See the overlay render below.
+  const bigPillRef = useRef<HTMLDivElement>(null);
+  const miniPillRef = useRef<HTMLDivElement>(null);
+  const [pillView, setPillView] = useState<"big" | "mini">(isRunning ? "mini" : "big");
+  const [pillTraveling, setPillTraveling] = useState(false);
+  const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
+  const pillTravelFromRef = useRef<DOMRect | null>(null);
+  const prevIsRunningForPillRef = useRef(isRunning);
+
+  // The instant `isRunning` flips, grab the outgoing pill's current rect
+  // (before anything else changes) and switch which pill is the resting
+  // target — the destination element mounts (invisible) so the next effect
+  // can measure where it naturally lands.
+  useLayoutEffect(() => {
+    if (isRunning === prevIsRunningForPillRef.current) return;
+    prevIsRunningForPillRef.current = isRunning;
+    const fromEl = isRunning ? bigPillRef.current : miniPillRef.current;
+    if (!fromEl) {
+      setPillView(isRunning ? "mini" : "big");
+      return;
+    }
+    pillTravelFromRef.current = fromEl.getBoundingClientRect();
+    setPillTravelRect(null);
+    setPillTraveling(true);
+    setPillView(isRunning ? "mini" : "big");
+  }, [isRunning]);
+
+  // Once the destination element exists in the DOM (still invisible),
+  // measure its natural resting rect and let the overlay start traveling
+  // toward it.
+  useLayoutEffect(() => {
+    if (!pillTraveling || pillTravelRect) return;
+    const toEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
+    const fromRect = pillTravelFromRef.current;
+    if (!toEl || !fromRect) return;
+    setPillTravelRect({ from: fromRect, to: toEl.getBoundingClientRect() });
+  }, [pillTraveling, pillTravelRect, pillView]);
+
+  const renderBigPill = pillView === "big" || pillTraveling;
+  const renderMiniPill = pillView === "mini" || pillTraveling;
+  const bigPillVisible = pillView === "big" && !pillTraveling;
+  const miniPillVisible = pillView === "mini" && !pillTraveling;
+
 
   return (
     <>
@@ -214,7 +265,9 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   status={status}
                   elapsedMs={pillElapsed}
                   contextTime={status === "paused" ? null : previousSessionEndedAt}
-                  showPill={!isRunning}
+                  renderPill={renderBigPill}
+                  pillVisible={bigPillVisible}
+                  pillRef={bigPillRef}
                   dimmed={dimmed}
                   onPlay={requestPlay}
                   onStartNew={requestStartNew}
@@ -264,12 +317,22 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <ActiveDurationIndicator timers={durationTimers} />
               </div>
 
-              {isRunning && (
+              {renderMiniPill && (
                 // -mr-4 cancels the header's own px-4 edge padding, then
                 // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
-                // clearance on the right as there is below the pill.
+                // clearance on the right as there is below the pill. Reserves
+                // its slot in the tabs row whenever it's the resting view OR
+                // mid-travel (so the destination has somewhere to measure/
+                // crossfade into); visibility itself is separate, see
+                // pillVisible below.
                 <div className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
-                  <MiniSession elapsedMs={pillElapsed} onPause={pause} disabled={!isRunning} />
+                  <MiniSession
+                    elapsedMs={pillElapsed}
+                    onPause={pause}
+                    disabled={!isRunning}
+                    pillVisible={miniPillVisible}
+                    pillRef={miniPillRef}
+                  />
                 </div>
               )}
             </motion.nav>
@@ -278,6 +341,36 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           </LayoutGroup>
         </div>
       </div>
+      {/* The pill's own travel shape — a plain rounded rect (no readable
+          content, since it'd distort unevenly at this scale delta) animated
+          with real numeric top/left/width/height targets, so its duration is
+          actually honored. Rendered outside data-status-bar's overflow-hidden
+          so position:fixed isn't clipped. */}
+      <AnimatePresence>
+        {pillTraveling && pillTravelRect && (
+          <motion.div
+            key="pill-travel-overlay"
+            initial={{
+              top: pillTravelRect.from.top,
+              left: pillTravelRect.from.left,
+              width: pillTravelRect.from.width,
+              height: pillTravelRect.from.height,
+              opacity: 1,
+            }}
+            animate={{
+              top: pillTravelRect.to.top,
+              left: pillTravelRect.to.left,
+              width: pillTravelRect.to.width,
+              height: pillTravelRect.to.height,
+              opacity: 1,
+            }}
+            exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
+            transition={{ duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE }}
+            onAnimationComplete={() => setPillTraveling(false)}
+            className="fixed z-50 rounded-full bg-white shadow-md pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-500 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
@@ -588,7 +681,9 @@ function ExpandedSessionBox({
   status,
   elapsedMs,
   contextTime,
-  showPill = true,
+  renderPill = true,
+  pillVisible = true,
+  pillRef,
   dimmed = false,
   onPlay,
   onStartNew,
@@ -598,7 +693,9 @@ function ExpandedSessionBox({
   status: SessionStatus;
   elapsedMs: number;
   contextTime: Date | null;
-  showPill?: boolean;
+  renderPill?: boolean;
+  pillVisible?: boolean;
+  pillRef?: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
   onPlay: () => void;
   onStartNew: () => void;
@@ -668,15 +765,19 @@ function ExpandedSessionBox({
           )}
         </motion.div>
 
-        {showPill && (
-          <motion.div
-            layoutId="session-pill"
-            transition={{ duration: SESSION_MORPH_MS / 1000, ease, layout: { duration: SESSION_MORPH_MS / 1000, ease } }}
-            className="flex items-stretch rounded-full overflow-hidden border-2 border-stone-300 bg-white w-full h-12"
+        {/* No layoutId morph — see the manual-FLIP overlay comment in
+            StatusBar for why. This just crossfades in/out at its own,
+            always-correct position/size once the traveling shape lands. */}
+        {renderPill && (
+          <div
+            ref={pillRef}
+            style={{ transitionDuration: `${PILL_CROSSFADE_MS}ms` }}
+            className={cn(
+              "flex items-stretch rounded-full overflow-hidden border-2 border-stone-300 bg-white w-full h-12 transition-opacity",
+              pillVisible ? "opacity-100" : "opacity-0 pointer-events-none",
+            )}
           >
-            <motion.span
-              layoutId="session-pill-time"
-              transition={{ duration: SESSION_MORPH_MS / 1000, ease }}
+            <span
               className={cn(
                 "flex-1 flex items-center justify-center text-3xl leading-none font-medium px-3 transition-colors",
                 digitsGray ? "text-stone-400" : "text-stone-800",
@@ -684,20 +785,17 @@ function ExpandedSessionBox({
               style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
               <OdometerDigits text={formatTime(elapsedMs)} />
-            </motion.span>
-            <motion.button
-              layoutId="session-pill-toggle"
+            </span>
+            <button
               onClick={onPlay}
-              whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
-              transition={{ duration: SESSION_MORPH_MS / 1000, ease, layout: { duration: SESSION_MORPH_MS / 1000, ease } }}
               aria-label={isPaused ? "Resume session" : "Continue session"}
-              className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
+              className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
             >
-              <motion.span layoutId="session-pill-icon" className="grid place-items-center">
+              <span className="grid place-items-center">
                 <Play className="size-5" fill="currentColor" strokeWidth={0} />
-              </motion.span>
-            </motion.button>
-          </motion.div>
+              </span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -850,37 +948,45 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
 }
 
 
-function MiniSession({ elapsedMs, onPause, disabled = false }: { elapsedMs: number; onPause: () => void; disabled?: boolean }) {
-  const ease = SESSION_MORPH_EASE;
-  const dur = SESSION_MORPH_MS / 1000;
+function MiniSession({
+  elapsedMs,
+  onPause,
+  disabled = false,
+  pillVisible = true,
+  pillRef,
+}: {
+  elapsedMs: number;
+  onPause: () => void;
+  disabled?: boolean;
+  pillVisible?: boolean;
+  pillRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  // No layoutId morph — see the manual-FLIP overlay comment in StatusBar.
+  // This just crossfades in/out at its own, always-correct position/size
+  // once the traveling shape lands.
   return (
-    <motion.div
-      layoutId="session-pill"
-      transition={{ duration: dur, ease, layout: { duration: dur, ease } }}
-      className="flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white h-7"
+    <div
+      ref={pillRef}
+      style={{ transitionDuration: `${PILL_CROSSFADE_MS}ms` }}
+      className={cn(
+        "flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white h-7 transition-opacity",
+        pillVisible ? "opacity-100" : "opacity-0 pointer-events-none",
+      )}
     >
-      <motion.span
-        layoutId="session-pill-time"
-        transition={{ duration: dur, ease }}
-        className="flex items-center px-2 text-sm leading-none text-blue-700 font-medium"
-      >
+      <span className="flex items-center px-2 text-sm leading-none text-blue-700 font-medium">
         <OdometerDigits text={formatTime(elapsedMs)} />
-      </motion.span>
-      <motion.button
-        layoutId="session-pill-toggle"
+      </span>
+      <button
         onClick={disabled ? undefined : onPause}
-
-        whileTap={{ scale: 0.95, filter: "brightness(0.9)" }}
-        transition={{ duration: dur, ease, layout: { duration: dur, ease } }}
         aria-label="Pause session"
         title="Pause session"
-        className="btn-bevel grid place-items-center w-7 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0"
+        className="btn-bevel grid place-items-center w-7 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
       >
-        <motion.span layoutId="session-pill-icon" className="grid place-items-center">
+        <span className="grid place-items-center">
           <Pause className="size-3 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
-        </motion.span>
-      </motion.button>
-    </motion.div>
+        </span>
+      </button>
+    </div>
   );
 }
 
