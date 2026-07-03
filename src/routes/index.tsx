@@ -221,7 +221,7 @@ function IndexInner() {
                     height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
                     opacity: { duration: 0.25 },
                   }}
-                  className="sticky z-40 mb-5 overflow-hidden bg-background border-b border-stone-200/70 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen"
+                  className="sticky z-40 -mt-5 mb-5 overflow-hidden bg-background border-b border-stone-200/70 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen"
                   style={{ top: stickyTop }}
                 >
                   <motion.div
