@@ -8,7 +8,7 @@ import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { ScheduleView } from "@/components/ScheduleView";
-import { SessionProvider, useSession } from "@/components/SessionContext";
+import { SessionProvider, useSession, CARD_EXIT_MS, CARD_ENTER_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider } from "@/components/SettingsContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
@@ -129,30 +129,56 @@ function IndexInner() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
-  const { status } = useSession();
+  const { status, transitionKind } = useSession();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
 
-  // Bumps on submit (paused -> idle) and on a session going live (-> running),
-  // each remounting the card list so it plays the matching half of the
-  // transition: a staggered exit right on submit, a single unified slide in
-  // from the left on start/resume — the same choreography read backwards.
+  // Which single-unit animation the card list should play, and a remount
+  // key. Only start-new (fresh session) and discard (abandon in-progress
+  // data) actually swap the list's content — resume/continue-previous just
+  // un-fades the same cards (the `opacity-50` wrapper below, untouched by
+  // any of this), and submit keeps its own separate, more elaborate
+  // per-card staggered animation for now.
   const [cardsGen, setCardsGen] = useState(0);
+  const [cardsAnimKind, setCardsAnimKind] = useState<"start-new" | "discard" | "submit">("start-new");
+
+  // Stage 1 (old stuff exits) needs the card list to unmount the INSTANT
+  // transitionKind is set (not one effect-tick later), so the exit and the
+  // header dimming start together; stage 3 (new stuff enters) needs the
+  // fresh cardsGen/cardsAnimKind ready the instant the list re-mounts. Both
+  // are handled with React's "adjust state during render" pattern (comparing
+  // against a ref of the previous value) instead of useEffect, so there's no
+  // one-tick lag or intermediate stale-content flash.
+  const prevKindRef = useRef<TransitionKind>(null);
+  if (transitionKind !== prevKindRef.current) {
+    const prevKind = prevKindRef.current;
+    prevKindRef.current = transitionKind;
+    if (!transitionKind && (prevKind === "start-new" || prevKind === "discard")) {
+      setCardsAnimKind(prevKind);
+      setCardsGen((n) => n + 1);
+    }
+  }
+  // For start-new/discard, hide the card list entirely while stages 1-2 are
+  // in progress (it re-mounts fresh, per above, once stage 2 finishes) —
+  // resume/start-previous are untouched by this, they just keep the same
+  // cards mounted and let the opacity-50 wrapper below fade them.
+  const hideCardsForTransition = transitionKind === "start-new" || transitionKind === "discard";
+
+  // Submit doesn't go through the shared transition stages above (it's a
+  // direct, unstaged action) — detected the same way as before, just guarded
+  // against also matching discard's paused->idle transition.
   const prevStatusRef = useRef(status);
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
-    const justSubmitted = prev === "paused" && status === "idle";
-    const justWentLive = status === "running" && prev !== "running";
-    if (!justSubmitted && !justWentLive) return;
-    // Remounting all 7 cards (each with its own staggered entrance) is heavy
-    // enough to blow past a frame budget on its own — doing it in the exact
-    // same tick as the StatusBar's pill-morph/collapse animation contends
-    // for the main thread with it, which is what was making that animation
-    // stutter. Letting the morph finish first avoids the overlap.
-    const id = window.setTimeout(() => setCardsGen((n) => n + 1), NOTIFICATION_AREA_TRANSITION.duration * 1000);
+    const justSubmitted = prev === "paused" && status === "idle" && transitionKind === null;
+    if (!justSubmitted) return;
+    const id = window.setTimeout(() => {
+      setCardsAnimKind("submit");
+      setCardsGen((n) => n + 1);
+    }, NOTIFICATION_AREA_TRANSITION.duration * 1000);
     return () => window.clearTimeout(id);
-  }, [status]);
+  }, [status, transitionKind]);
 
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
@@ -217,112 +243,13 @@ function IndexInner() {
                 !sessionActive && "opacity-50",
               )}
             >
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div
-                key={cardsGen}
-                className="w-full flex flex-col items-center gap-3"
-                initial="enter"
-                animate="center"
-                exit="exit"
-                variants={{
-                  // Entering cards all slide in from the left together, as
-                  // one sheet — no per-card delay.
-                  enter: {},
-                  center: { transition: { staggerChildren: 0 } },
-                  // Exiting cards stagger-out to the right, oldest/topmost first.
-                  exit: { transition: { staggerChildren: DATA_SUBMIT_STAGGER_MS / 1000 } },
-                }}
-              >
-            {cards.map((card, i) => {
-              const common = {
-                isActive: i === activeIndex,
-                onActivate: () => setActiveIndex(i),
-              };
-              let el: React.ReactNode;
-              switch (card.kind) {
-                case "trial":
-                  el = (
-                    <TrialCard
-                      title={card.title}
-                      phase={card.phase}
-                      dataType="Percent Correct"
-                      description={card.description}
-                      minTrials={card.minTrials}
-                      maxTrials={card.maxTrials}
-                      {...common}
-                    />
-                  );
-                  break;
-                case "frequency":
-                  el = (
-                    <FrequencyCard
-                      title={card.title}
-                      phase={card.phase}
-                      description={card.description}
-                      minCount={card.minCount}
-                      {...common}
-                    />
-                  );
-                  break;
-                case "rate":
-                  el = (
-                    <RateCard
-                      title={card.title}
-                      phase={card.phase}
-                      description={card.description}
-                      minDurationSec={card.minDurationSec}
-                      locked={card.locked}
-                      {...common}
-                    />
-                  );
-                  break;
-                case "duration":
-                  el = (
-                    <DurationCard
-                      title={card.title}
-                      phase={card.phase}
-                      description={card.description}
-                      minDurationSec={card.minDurationSec}
-                      {...common}
-                    />
-                  );
-                  break;
-                case "task-analysis":
-                  el = (
-                    <TaskAnalysisCard
-                      title={card.title}
-                      phase={card.phase}
-                      description={card.description}
-                      steps={card.steps}
-                      {...common}
-                    />
-                  );
-                  break;
-              }
-              return (
-                <motion.div
-                  key={i}
-                  className="w-full flex justify-center"
-                  variants={{
-                    enter: { opacity: 0, x: -40 },
-                    center: {
-                      opacity: 1,
-                      x: 0,
-                      transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 },
-                    },
-                    exit: {
-                      opacity: 0,
-                      x: 80,
-                      transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 },
-                    },
-                  }}
-                >
-                  {el}
-                </motion.div>
-              );
-            })}
-              </motion.div>
-            </AnimatePresence>
+              <DataCardList
+                cardsGen={cardsGen}
+                cardsAnimKind={cardsAnimKind}
+                activeIndex={activeIndex}
+                setActiveIndex={setActiveIndex}
+                hidden={hideCardsForTransition}
+              />
             </div>
           </div>
           </>
@@ -340,6 +267,164 @@ function IndexInner() {
       </motion.section>
     </main>
     </NotificationProvider>
+  );
+}
+
+function renderCard(
+  card: CardConfig,
+  common: { isActive: boolean; onActivate: () => void },
+): React.ReactNode {
+  switch (card.kind) {
+    case "trial":
+      return (
+        <TrialCard
+          title={card.title}
+          phase={card.phase}
+          dataType="Percent Correct"
+          description={card.description}
+          minTrials={card.minTrials}
+          maxTrials={card.maxTrials}
+          {...common}
+        />
+      );
+    case "frequency":
+      return (
+        <FrequencyCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          minCount={card.minCount}
+          {...common}
+        />
+      );
+    case "rate":
+      return (
+        <RateCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          minDurationSec={card.minDurationSec}
+          locked={card.locked}
+          {...common}
+        />
+      );
+    case "duration":
+      return (
+        <DurationCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          minDurationSec={card.minDurationSec}
+          {...common}
+        />
+      );
+    case "task-analysis":
+      return (
+        <TaskAnalysisCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          steps={card.steps}
+          {...common}
+        />
+      );
+  }
+}
+
+// Single-unit variants for start-new/discard — the WHOLE list moves as one
+// element (not per-card), which is both simpler and much cheaper than
+// animating each card individually: only one Motion component is tracked
+// during the transition instead of seven.
+const SINGLE_UNIT_VARIANTS = {
+  "start-new": {
+    initial: { x: "-100%" },
+    animate: { x: 0, transition: { duration: CARD_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] } },
+    exit: { x: "100%", transition: { duration: CARD_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] } },
+  },
+  discard: {
+    initial: { x: "100%", opacity: 0 },
+    animate: { x: 0, opacity: 1, transition: { duration: CARD_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] } },
+    // A gentle deflate-and-sink reads as "being discarded" without a
+    // literal trash/shred effect.
+    exit: { opacity: 0, scale: 0.92, y: 10, transition: { duration: CARD_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] } },
+  },
+} as const;
+
+function DataCardList({
+  cardsGen,
+  cardsAnimKind,
+  activeIndex,
+  setActiveIndex,
+  hidden = false,
+}: {
+  cardsGen: number;
+  cardsAnimKind: "start-new" | "discard" | "submit";
+  activeIndex: number;
+  setActiveIndex: (i: number) => void;
+  /** True during stages 1-2 of a start-new/discard transition — the old
+   * list plays its exit (this flipping true is what triggers it, since
+   * AnimatePresence here tracks its child's presence) and nothing renders
+   * until the fresh list mounts for stage 3. */
+  hidden?: boolean;
+}) {
+  const cardElements = cards.map((card, i) =>
+    renderCard(card, { isActive: i === activeIndex, onActivate: () => setActiveIndex(i) }),
+  );
+
+  if (cardsAnimKind === "submit") {
+    // Submit keeps its own separate, more elaborate per-card staggered
+    // animation — untouched, and deliberately allowed to cost more.
+    return (
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div
+          key={cardsGen}
+          className="w-full flex flex-col items-center gap-3"
+          initial="enter"
+          animate="center"
+          exit="exit"
+          variants={{
+            enter: {},
+            center: { transition: { staggerChildren: 0 } },
+            exit: { transition: { staggerChildren: DATA_SUBMIT_STAGGER_MS / 1000 } },
+          }}
+        >
+          {cardElements.map((el, i) => (
+            <motion.div
+              key={i}
+              className="w-full flex justify-center"
+              variants={{
+                enter: { opacity: 0, x: -40 },
+                center: { opacity: 1, x: 0, transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 } },
+                exit: { opacity: 0, x: 80, transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 } },
+              }}
+            >
+              {el}
+            </motion.div>
+          ))}
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      {!hidden && (
+        <motion.div
+          key={cardsGen}
+          className="w-full flex flex-col items-center gap-3"
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={SINGLE_UNIT_VARIANTS[cardsAnimKind]}
+        >
+          {cardElements.map((el, i) => (
+            <div key={i} className="w-full flex justify-center">
+              {el}
+            </div>
+          ))}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
