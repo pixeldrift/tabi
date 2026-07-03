@@ -2,6 +2,17 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 export type SessionStatus = "idle" | "running" | "paused";
 export type SaveStatus = "clean" | "dirty" | "saving";
+export type TransitionKind = "start-new" | "start-previous" | "resume" | "discard" | null;
+
+// Shared 3-stage session-transition timing (ms) — the same values drive the
+// header's pill-morph/collapse (StatusBar) and the data-card list's
+// exit/enter (routes/index.tsx), so "old stuff exits, then the timer/header
+// morphs, then new stuff enters" reads as one coordinated sequence instead
+// of pieces moving on their own schedules. 350ms matches the notification
+// area's own transition elsewhere in the app.
+export const CARD_EXIT_MS = 350;
+export const HEADER_MORPH_MS = 350;
+export const CARD_ENTER_MS = 350;
 
 export interface ActiveTimer {
   id: string;
@@ -16,12 +27,18 @@ interface SessionContextValue {
   status: SessionStatus;
   elapsedMs: number;
   lastUpdated: Date | null;
-  start: (initialMs?: number) => void;
-  startFresh: () => void;
   pause: () => void;
-  resume: () => void;
   endAndSubmit: () => void;
-  clearAndDiscard: () => void;
+  // Shared 3-stage transition orchestration — see CARD_EXIT_MS et al above.
+  // `transitionStage` is 0 outside of a transition, 1 while old stuff is
+  // exiting, 2 while the timer/header is morphing (this is also when the
+  // real status change actually commits).
+  transitionStage: 0 | 1 | 2;
+  transitionKind: TransitionKind;
+  requestStartNew: () => void;
+  requestContinuePrevious: (initialMs: number) => void;
+  requestResume: () => void;
+  requestDiscard: () => void;
   // shared tick (so all timers stay in unison with the session timer)
   sessionRunning: boolean;
   subscribeTick: (cb: (deltaMs: number) => void) => () => void;
@@ -159,6 +176,54 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     baseRef.current = 0;
   }, []);
 
+  // Shared 3-stage transition orchestration (see CARD_EXIT_MS et al. above).
+  // Stage 1: old stuff exits. Stage 2: the real state change commits (timer
+  // rolls/header morphs). Back to 0: new stuff can enter. A ref-based busy
+  // flag (not state) guards re-entrancy without needing transitionStage as a
+  // callback dependency.
+  const [transitionStage, setTransitionStage] = useState<0 | 1 | 2>(0);
+  const [transitionKind, setTransitionKind] = useState<TransitionKind>(null);
+  const transitionBusyRef = useRef(false);
+  const transitionTimeoutsRef = useRef<number[]>([]);
+  useEffect(() => {
+    return () => transitionTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+  }, []);
+
+  const runStagedTransition = useCallback((kind: Exclude<TransitionKind, null>, commit: () => void) => {
+    if (transitionBusyRef.current) return;
+    transitionBusyRef.current = true;
+    setTransitionKind(kind);
+    setTransitionStage(1);
+    const t1 = window.setTimeout(() => {
+      setTransitionStage(2);
+      commit();
+      const t2 = window.setTimeout(() => {
+        setTransitionStage(0);
+        setTransitionKind(null);
+        transitionBusyRef.current = false;
+      }, HEADER_MORPH_MS);
+      transitionTimeoutsRef.current.push(t2);
+    }, CARD_EXIT_MS);
+    transitionTimeoutsRef.current.push(t1);
+  }, []);
+
+  const requestStartNew = useCallback(
+    () => runStagedTransition("start-new", startFresh),
+    [runStagedTransition, startFresh],
+  );
+  const requestContinuePrevious = useCallback(
+    (initialMs: number) => runStagedTransition("start-previous", () => start(initialMs)),
+    [runStagedTransition, start],
+  );
+  const requestResume = useCallback(
+    () => runStagedTransition("resume", resume),
+    [runStagedTransition, resume],
+  );
+  const requestDiscard = useCallback(
+    () => runStagedTransition("discard", clearAndDiscard),
+    [runStagedTransition, clearAndDiscard],
+  );
+
   // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
   const registerActiveTimer = useCallback((t: ActiveTimer) => {
@@ -185,11 +250,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       status,
       elapsedMs,
       lastUpdated,
-      start,
       pause,
-      resume,
       endAndSubmit,
-      clearAndDiscard,
+      transitionStage,
+      transitionKind,
+      requestStartNew,
+      requestContinuePrevious,
+      requestResume,
+      requestDiscard,
       sessionRunning,
       subscribeTick,
       getElapsedMsNow,
@@ -200,10 +268,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastSavedAt,
       markDirty,
       forceSync,
-      startFresh,
       resetSignal,
     }),
-    [status, elapsedMs, lastUpdated, start, pause, resume, endAndSubmit, clearAndDiscard, sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer, saveStatus, lastSavedAt, markDirty, forceSync, startFresh, resetSignal],
+    [
+      status, elapsedMs, lastUpdated, pause, endAndSubmit,
+      transitionStage, transitionKind, requestStartNew, requestContinuePrevious, requestResume, requestDiscard,
+      sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer,
+      saveStatus, lastSavedAt, markDirty, forceSync, resetSignal,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

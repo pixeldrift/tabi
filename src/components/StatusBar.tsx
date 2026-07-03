@@ -18,7 +18,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
-import { useSession, type SaveStatus, type SessionStatus } from "./SessionContext";
+import { useSession, HEADER_MORPH_MS, type SaveStatus, type SessionStatus } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { X } from "lucide-react";
@@ -50,15 +50,11 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
-// Session-start sequence timing — TODO: surface in user settings.
-// 1. Buttons/context fade out (near-instant).
-// 2. The odometer rolls to zero and settles from gray to black.
-// 3. One synchronized motion: the pill shrinks/moves into the mini slot, the
-//    session box collapses, and the tabs/pane get pushed up — all share
-//    NOTIFICATION_AREA_TRANSITION's duration/ease so they read as a single
-//    movement instead of three animations racing each other.
-const SESSION_ROLL_MS = 450;
-const SESSION_MORPH_MS = NOTIFICATION_AREA_TRANSITION.duration * 1000;
+// Stage 2 (see SessionContext's CARD_EXIT_MS/HEADER_MORPH_MS comment) is
+// where the odometer rolls to zero, settles from gray to black, the pill
+// shrinks/moves into the mini slot, and the session box collapses — all
+// sharing HEADER_MORPH_MS/this ease so they read as a single movement.
+const SESSION_MORPH_MS = HEADER_MORPH_MS;
 const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
 const SESSION_START_STAGGER_MS = 80;
 
@@ -66,12 +62,14 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const {
     status,
     elapsedMs,
-    start,
-    startFresh,
     pause,
-    resume,
     endAndSubmit,
-    clearAndDiscard,
+    transitionStage,
+    transitionKind,
+    requestStartNew,
+    requestContinuePrevious,
+    requestResume,
+    requestDiscard,
     activeTimers,
     saveStatus,
     lastSavedAt,
@@ -94,14 +92,14 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const isRunning = status === "running";
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
-  // While `pendingStart` is set, the collapse animation runs but the session
-  // timer hasn't started yet — gives a smooth, jank-free transition.
-  const [pendingStart, setPendingStart] = useState<null | "resume" | "previous" | "new">(null);
-  const collapsed = isRunning || pendingStart !== null;
-  const TRANSITION_MS = SESSION_ROLL_MS;
+  // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
+  // when the box collapses — except for discard, where the box was already
+  // expanded (paused) and stays that way; only its displayed value swaps.
+  const dimmed = transitionStage > 0;
+  const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
 
   // A brief blue flash the instant the session actually goes live (i.e. right
-  // as pendingStart resolves into isRunning), landing slightly after the
+  // as the transition resolves into isRunning), landing slightly after the
   // collapse/morph so it reads as the sequence's punctuation, not its start.
   const [justStarted, setJustStarted] = useState(false);
   const wasRunningRef = useRef(isRunning);
@@ -120,29 +118,8 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   }, [justStarted]);
 
   const requestPlay = () => {
-    if (pendingStart) return;
-    if (status === "paused") {
-      setPendingStart("resume");
-      window.setTimeout(() => {
-        resume();
-        setPendingStart(null);
-      }, TRANSITION_MS);
-    } else {
-      setPendingStart("previous");
-      window.setTimeout(() => {
-        start(previousSessionMs);
-        setPendingStart(null);
-      }, TRANSITION_MS);
-    }
-  };
-
-  const requestStartNew = () => {
-    if (pendingStart) return;
-    setPendingStart("new");
-    window.setTimeout(() => {
-      startFresh();
-      setPendingStart(null);
-    }, TRANSITION_MS);
+    if (status === "paused") requestResume();
+    else requestContinuePrevious(previousSessionMs);
   };
 
   // What time to show inside the pill during the morph: keep continuity so
@@ -151,7 +128,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     ? elapsedMs
     : status === "paused"
       ? elapsedMs
-      : pendingStart === "new"
+      : transitionStage === 2 && transitionKind === "start-new"
         ? 0
         : previousSessionMs;
 
@@ -205,9 +182,11 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                       // Shares SESSION_MORPH_MS/ease with the pill's layoutId
                       // morph and the tabs/pane's own layout push, so all
                       // three finish in lockstep as one motion rather than
-                      // three animations of different lengths.
-                      height: { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE, delay: TRANSITION_MS / 1000 },
-                      opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6, delay: TRANSITION_MS / 1000 },
+                      // three animations of different lengths. Stage 1 (the
+                      // delay before this becomes true) already happened in
+                      // SessionContext, so no extra delay is needed here.
+                      height: { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
+                      opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
                     }
                   : {
                       height: { duration: 0.45, ease: [0.4, 0, 0.2, 1] },
@@ -221,7 +200,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 elapsedMs={pillElapsed}
                 contextTime={status === "paused" ? null : previousSessionEndedAt}
                 showPill={!isRunning}
-                dimmed={pendingStart !== null}
+                dimmed={dimmed}
                 onPlay={requestPlay}
                 onStartNew={requestStartNew}
                 onEnd={() => setEndOpen(true)}
@@ -294,7 +273,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
             <DiscardAction
               onConfirm={() => {
-                clearAndDiscard();
+                requestDiscard();
                 setDiscardOpen(false);
               }}
             />
@@ -671,7 +650,7 @@ function ExpandedSessionBox({
                 "flex-1 flex items-center justify-center text-3xl leading-none font-medium px-3 transition-colors",
                 digitsGray ? "text-stone-400" : "text-stone-800",
               )}
-              style={{ transitionDuration: `${SESSION_ROLL_MS}ms` }}
+              style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
               <OdometerDigits text={formatTime(elapsedMs)} />
             </motion.span>
