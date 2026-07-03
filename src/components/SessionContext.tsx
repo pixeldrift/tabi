@@ -25,6 +25,19 @@ export const CARD_ENTER_MS = 350;
 // second beat has actually finished playing out.
 export const BOX_COLLAPSE_MS = 200;
 
+// The pill's own big<->mini morph (StatusBar's manual FLIP), broken into its
+// three beats: for a fresh start, the odometer visibly rolls down to zero
+// while the pill is still big and stationary (DIGIT_SETTLE_MS) before it
+// starts shrinking/traveling (PILL_TRAVEL_MS), then crossfades into the
+// real, correctly-positioned destination pill (PILL_CROSSFADE_MS). Cards
+// use PILL_LAND_MS to know when the pill has fully landed, so the new set
+// only enters once the clock has actually arrived, not the instant the old
+// set starts leaving.
+export const DIGIT_SETTLE_MS = 300;
+export const PILL_TRAVEL_MS = HEADER_MORPH_MS;
+export const PILL_CROSSFADE_MS = 150;
+export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;
+
 export interface ActiveTimer {
   id: string;
   label: string;

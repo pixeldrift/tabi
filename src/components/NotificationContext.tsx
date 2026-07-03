@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useSettings, type AlarmSoundStyle } from "./SettingsContext";
 
 
 
@@ -60,22 +61,22 @@ interface NotificationContextValue {
   prefs: UserPrefs;
 }
 
-// User-prefs stub — constants for now, swappable later without touching call sites.
+// Reads the user-configurable Settings-tab values (snooze time, notification
+// duration, alarm sound) plus a couple of constants not yet worth exposing.
 export interface UserPrefs {
   snoozeMs: number;
-  autofadeAlertMs: number;
-  autofadeInfoMs: number;
+  notificationDurationMs: number;
   maxStackVisible: number;
-  notificationSounds: { chime: boolean };
+  alarmSound: AlarmSoundStyle;
 }
 
 export function useUserPrefs(): UserPrefs {
+  const { values, alarmSound } = useSettings();
   return {
-    snoozeMs: 60_000,
-    autofadeAlertMs: 10_000,
-    autofadeInfoMs: 6_000,
+    snoozeMs: (values.snoozeMinutes ?? 1) * 60_000,
+    notificationDurationMs: (values.notificationDurationSeconds ?? 7) * 1000,
     maxStackVisible: 3,
-    notificationSounds: { chime: true },
+    alarmSound,
   };
 }
 

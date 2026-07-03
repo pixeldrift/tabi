@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
-import { motion, AnimatePresence, LayoutGroup, useMotionValue, useTransform, animate } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
   Pause,
@@ -18,7 +18,16 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
-import { useSession, HEADER_MORPH_MS, BOX_COLLAPSE_MS, type SaveStatus, type SessionStatus } from "./SessionContext";
+import {
+  useSession,
+  HEADER_MORPH_MS,
+  BOX_COLLAPSE_MS,
+  DIGIT_SETTLE_MS,
+  PILL_TRAVEL_MS,
+  PILL_CROSSFADE_MS,
+  type SaveStatus,
+  type SessionStatus,
+} from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { X } from "lucide-react";
@@ -56,9 +65,11 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
 // sharing HEADER_MORPH_MS/this ease so they read as a single movement.
 const SESSION_MORPH_MS = HEADER_MORPH_MS;
 const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
-// How long the real destination pill takes to crossfade in once the
-// traveling shape (see the manual-FLIP overlay in StatusBar) lands.
-const PILL_CROSSFADE_MS = 150;
+// A softer landing than the standard ease-in-out above — the pill's own
+// shrink/travel is the one motion in this whole sequence meant to feel
+// physical (something arriving somewhere), so it gets a more pronounced
+// ease-out than the rest of the header's snappier, mechanical transitions.
+const PILL_TRAVEL_EASE = [0.22, 1, 0.36, 1] as const;
 
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
   const {
@@ -164,23 +175,37 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const pillTravelFromRef = useRef<DOMRect | null>(null);
   const prevIsRunningForPillRef = useRef(isRunning);
 
-  // The instant `isRunning` flips, grab the outgoing pill's current rect
-  // (before anything else changes) and switch which pill is the resting
-  // target — the destination element mounts (invisible) so the next effect
-  // can measure where it naturally lands.
+  // The instant `isRunning` flips, decide whether to travel right away or
+  // wait first. A fresh start resets the odometer to zero at this same
+  // instant (see pillElapsed above) — DIGIT_SETTLE_MS holds the pill still
+  // (big) so that reset is visibly readable before anything starts
+  // shrinking/moving, instead of the roll and the travel happening on top
+  // of each other. Resume/pause have no such reset, so they travel
+  // immediately. Either way, the outgoing rect is captured fresh at the
+  // moment travel actually begins (post-settle, if delayed), and the
+  // destination element mounts (invisible) so the next effect can measure
+  // where it naturally lands.
   useLayoutEffect(() => {
     if (isRunning === prevIsRunningForPillRef.current) return;
     prevIsRunningForPillRef.current = isRunning;
+    const startingFresh = isRunning && transitionKind === "start-new";
     const fromEl = isRunning ? bigPillRef.current : miniPillRef.current;
     if (!fromEl) {
       setPillView(isRunning ? "mini" : "big");
       return;
     }
-    pillTravelFromRef.current = fromEl.getBoundingClientRect();
-    setPillTravelRect(null);
-    setPillTraveling(true);
-    setPillView(isRunning ? "mini" : "big");
-  }, [isRunning]);
+    const beginTravel = () => {
+      pillTravelFromRef.current = fromEl.getBoundingClientRect();
+      setPillTravelRect(null);
+      setPillTraveling(true);
+      setPillView(isRunning ? "mini" : "big");
+    };
+    if (startingFresh) {
+      const id = window.setTimeout(beginTravel, DIGIT_SETTLE_MS);
+      return () => window.clearTimeout(id);
+    }
+    beginTravel();
+  }, [isRunning, transitionKind]);
 
   // Once the destination element exists in the DOM (still invisible),
   // measure its natural resting rect and let the overlay start traveling
@@ -222,7 +247,11 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             </div>
           </div>
 
-          <LayoutGroup id="session-bar">
+          {/* LayoutGroup for this box/notification-bar/nav trio now lives in
+              routes/index.tsx, wrapping this whole StatusBar plus the panel
+              section below it, so the tabs and the panel FLIP in the same
+              batch instead of drifting apart — see that file's comment. */}
+          <>
             {/* Session box area — always rendered; height animates symmetrically both ways.
                 The pill inside is hidden when running so only the mini pill carries the
                 shared layoutId, letting motion morph cleanly between the two positions. */}
@@ -338,38 +367,63 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
             </motion.nav>
 
 
-          </LayoutGroup>
+          </>
         </div>
       </div>
-      {/* The pill's own travel shape — a plain rounded rect (no readable
-          content, since it'd distort unevenly at this scale delta) animated
-          with real numeric top/left/width/height targets, so its duration is
-          actually honored. Rendered outside data-status-bar's overflow-hidden
-          so position:fixed isn't clipped. */}
+      {/* The pill's own travel shape — carries real digits (not an empty
+          outline) so the clock reads as the same object shrinking and
+          moving, not a blank placeholder. Animated with real numeric
+          top/left/width/height/font-size targets (not layoutId), so the
+          duration is actually honored. Rendered outside data-status-bar's
+          overflow-hidden so position:fixed isn't clipped. */}
       <AnimatePresence>
-        {pillTraveling && pillTravelRect && (
-          <motion.div
-            key="pill-travel-overlay"
-            initial={{
-              top: pillTravelRect.from.top,
-              left: pillTravelRect.from.left,
-              width: pillTravelRect.from.width,
-              height: pillTravelRect.from.height,
-              opacity: 1,
-            }}
-            animate={{
-              top: pillTravelRect.to.top,
-              left: pillTravelRect.to.left,
-              width: pillTravelRect.to.width,
-              height: pillTravelRect.to.height,
-              opacity: 1,
-            }}
-            exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
-            transition={{ duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE }}
-            onAnimationComplete={() => setPillTraveling(false)}
-            className="fixed z-50 rounded-full bg-white shadow-md pointer-events-none"
-          />
-        )}
+        {pillTraveling && pillTravelRect && (() => {
+          const toMini = pillView === "mini";
+          const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
+          const digitColor = { from: toMini ? "#292524" : "#1d4ed8", to: toMini ? "#1d4ed8" : "#292524" };
+          const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
+          const borderColor = { from: toMini ? "#d6d3d1" : "#3b82f6", to: toMini ? "#3b82f6" : "#d6d3d1" };
+          return (
+            <motion.div
+              key="pill-travel-overlay"
+              initial={{
+                top: pillTravelRect.from.top,
+                left: pillTravelRect.from.left,
+                width: pillTravelRect.from.width,
+                height: pillTravelRect.from.height,
+                borderColor: borderColor.from,
+                opacity: 1,
+              }}
+              animate={{
+                top: pillTravelRect.to.top,
+                left: pillTravelRect.to.left,
+                width: pillTravelRect.to.width,
+                height: pillTravelRect.to.height,
+                borderColor: borderColor.to,
+                opacity: 1,
+              }}
+              exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
+              transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+              onAnimationComplete={() => setPillTraveling(false)}
+              className="fixed z-50 flex items-stretch rounded-full border-2 bg-white shadow-md pointer-events-none overflow-hidden"
+            >
+              <motion.span
+                initial={{ fontSize: digitPx.from, color: digitColor.from }}
+                animate={{ fontSize: digitPx.to, color: digitColor.to }}
+                transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                className="flex-1 flex items-center justify-center leading-none font-medium px-2"
+              >
+                <OdometerDigits text={formatTime(pillElapsed)} />
+              </motion.span>
+              <motion.span
+                initial={{ width: buttonPx.from }}
+                animate={{ width: buttonPx.to }}
+                transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                className="shrink-0 bg-blue-500"
+              />
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-500 rounded-xl">

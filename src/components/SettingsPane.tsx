@@ -1,11 +1,12 @@
 import { RotateCcw } from "lucide-react";
-import { SETTINGS, useSettings } from "./SettingsContext";
+import { ALARM_SOUND_OPTIONS, SETTINGS, useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export function SettingsPane() {
-  const { values, setValue, resetAll, resetOne } = useSettings();
+  const { values, setValue, resetAll, resetOne, alarmSound, setAlarmSound } = useSettings();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
 
   return (
@@ -13,7 +14,7 @@ export function SettingsPane() {
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 className="font-display text-lg leading-tight">Settings</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Nothing here yet.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Notification behavior.</p>
         </div>
         {groups.length > 0 && (
           <Button
@@ -78,6 +79,42 @@ export function SettingsPane() {
                   </div>
                 );
               })}
+              {/* Alarm sound is the one enum-valued setting, so it's rendered
+                  directly here rather than folding a "choice" variant into
+                  SettingDef for a single use case. */}
+              {group === "Notifications" && (
+                <div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <label htmlFor="alarmSound" className="text-sm font-medium">
+                      Alarm sound
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setAlarmSound("normal")}
+                      disabled={alarmSound === "normal"}
+                      aria-label="Reset Alarm sound to default"
+                      className="text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none"
+                    >
+                      <RotateCcw className="size-3" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground/80 mt-0.5">
+                    How urgent an alert's chime sounds while it's live.
+                  </p>
+                  <Select value={alarmSound} onValueChange={(v) => setAlarmSound(v as AlarmSoundStyle)}>
+                    <SelectTrigger id="alarmSound" className="mt-2 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALARM_SOUND_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </section>
         ))}

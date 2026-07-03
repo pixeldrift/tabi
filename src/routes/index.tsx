@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import { User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
@@ -8,7 +8,7 @@ import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { ScheduleView } from "@/components/ScheduleView";
-import { SessionProvider, useSession } from "@/components/SessionContext";
+import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider } from "@/components/SettingsContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
@@ -144,31 +144,62 @@ function IndexInner() {
 
   // Stage 1 (old stuff exits) needs the card list to unmount the INSTANT
   // transitionKind is set (not one effect-tick later), so the exit and the
-  // header dimming start together. The new cards remount and start entering
-  // the instant stage 2 commits — not once the whole sequence finishes —
-  // since that's when the fresh data actually lands (SessionContext's
-  // startFresh/resetSignal), and it happens well before the old cards'
-  // own (slower, CARD_EXIT_MS-long) exit is done: the two overlap into one
-  // continuous relay instead of "exit, dead pause, enter." Handled with
-  // React's "adjust state during render" pattern (comparing against a ref
-  // of the previous value) instead of useEffect, so there's no one-tick lag
-  // or intermediate stale-content flash.
-  const prevStageRef = useRef(transitionStage);
-  if (transitionStage !== prevStageRef.current) {
-    prevStageRef.current = transitionStage;
-    if (transitionStage === 2 && (transitionKind === "start-new" || transitionKind === "discard")) {
-      setCardsAnimKind(transitionKind);
-      setCardsGen((n) => n + 1);
+  // header dimming start together. `cardsHidden` stays true — keeping the
+  // old key's conditional slot empty (its own slower exit animation keeps
+  // playing via AnimatePresence regardless) — until the new cards actually
+  // remount, which happens at a different moment per kind:
+  //  - discard doesn't run the header's pill travel (the box stays open),
+  //    so it remounts immediately once stage 2 commits.
+  //  - start-new does run the pill travel, and resets the odometer to zero
+  //    at that same instant — so its remount waits PILL_LAND_MS, until the
+  //    clock has actually landed in the mini slot, instead of the new cards
+  //    beating it there. See SessionContext's PILL_LAND_MS comment.
+  // Both cases use React's "adjust state during render" pattern (comparing
+  // against a ref of the previous value) for the instant parts, so there's
+  // no one-tick lag or intermediate stale-content flash.
+  const [cardsHidden, setCardsHidden] = useState(false);
+  const prevKindForHideRef = useRef<TransitionKind>(null);
+  if (transitionKind !== prevKindForHideRef.current) {
+    prevKindForHideRef.current = transitionKind;
+    if (transitionKind === "start-new" || transitionKind === "discard") {
+      setCardsHidden(true);
     }
   }
-  // For start-new/discard, hide the card list only during stage 1 (old stuff
-  // exiting) — it re-mounts fresh, per above, the instant stage 2 commits,
-  // so its own (slower) exit animation keeps playing out, overlapping with
-  // the new cards' entrance, rather than being cut short by the hide.
-  // resume/start-previous are untouched by this, they just keep the same
-  // cards mounted and let the opacity-50 wrapper below fade them.
-  const hideCardsForTransition =
-    (transitionKind === "start-new" || transitionKind === "discard") && transitionStage === 1;
+
+  // Stage 2's own commit is itself transient — SessionContext resets
+  // transitionStage/transitionKind back to 0/null well before start-new's
+  // PILL_LAND_MS timeout can fire, so that reset must not be allowed to
+  // cancel the pending timeout (a plain `useEffect` cleanup tied to these
+  // deps would otherwise clearTimeout it the instant they revert). Guard
+  // with a ref so the stage-2 entrance logic only runs once per transition,
+  // and keep the timeout's clearTimeout in a separate, unmount-only effect.
+  const cardEntranceTimeoutRef = useRef<number | null>(null);
+  const stage2HandledRef = useRef(false);
+  useEffect(() => {
+    if (transitionStage === 2 && !stage2HandledRef.current) {
+      stage2HandledRef.current = true;
+      if (transitionKind === "discard") {
+        setCardsAnimKind("discard");
+        setCardsGen((n) => n + 1);
+        setCardsHidden(false);
+      } else if (transitionKind === "start-new") {
+        cardEntranceTimeoutRef.current = window.setTimeout(() => {
+          setCardsAnimKind("start-new");
+          setCardsGen((n) => n + 1);
+          setCardsHidden(false);
+          cardEntranceTimeoutRef.current = null;
+        }, PILL_LAND_MS);
+      }
+    } else if (transitionStage !== 2) {
+      stage2HandledRef.current = false;
+    }
+  }, [transitionStage, transitionKind]);
+
+  useEffect(() => {
+    return () => {
+      if (cardEntranceTimeoutRef.current) window.clearTimeout(cardEntranceTimeoutRef.current);
+    };
+  }, []);
 
   // Submit doesn't go through the shared transition stages above (it's a
   // direct, unstaged action) — detected the same way as before, just guarded
@@ -198,6 +229,12 @@ function IndexInner() {
   return (
     <NotificationProvider onActivate={handleNotificationActivate}>
     <main className="min-h-screen bg-background">
+      {/* Shared across StatusBar's tab nav and this section's panel so their
+          `layout="position"` FLIPs are batched into one coordinated motion
+          instead of two independent trees that can drift a frame apart —
+          see LayoutGroup's docs on coordinating layout detection across
+          separate components. */}
+      <LayoutGroup id="session-bar">
       <StatusBar activeTab={tab} onTabChange={setTab} />
 
 
@@ -254,7 +291,7 @@ function IndexInner() {
                 cardsAnimKind={cardsAnimKind}
                 activeIndex={activeIndex}
                 setActiveIndex={setActiveIndex}
-                hidden={hideCardsForTransition}
+                hidden={cardsHidden}
               />
             </div>
           </div>
@@ -271,6 +308,7 @@ function IndexInner() {
         {tab === "notifications" && <PlaceholderPane title="Alerts & announcements" description="Messages, reminders, and supervisor notes will appear here." />}
         {tab === "settings" && <SettingsPane />}
       </motion.section>
+      </LayoutGroup>
     </main>
     </NotificationProvider>
   );
