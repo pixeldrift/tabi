@@ -56,7 +56,6 @@ const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: st
 // sharing HEADER_MORPH_MS/this ease so they read as a single movement.
 const SESSION_MORPH_MS = HEADER_MORPH_MS;
 const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
-const SESSION_START_STAGGER_MS = 80;
 
 export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Data Sheet" }: StatusBarProps) {
   const {
@@ -98,25 +97,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const dimmed = transitionStage > 0;
   const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
 
-  // A brief blue flash the instant the session actually goes live (i.e. right
-  // as the transition resolves into isRunning), landing slightly after the
-  // collapse/morph so it reads as the sequence's punctuation, not its start.
-  const [justStarted, setJustStarted] = useState(false);
-  const wasRunningRef = useRef(isRunning);
-  useEffect(() => {
-    const wasRunning = wasRunningRef.current;
-    wasRunningRef.current = isRunning;
-    if (isRunning && !wasRunning) {
-      const id = window.setTimeout(() => setJustStarted(true), SESSION_START_STAGGER_MS);
-      return () => window.clearTimeout(id);
-    }
-  }, [isRunning]);
-  useEffect(() => {
-    if (!justStarted) return;
-    const id = window.setTimeout(() => setJustStarted(false), 450);
-    return () => window.clearTimeout(id);
-  }, [justStarted]);
-
   const requestPlay = () => {
     if (status === "paused") requestResume();
     else requestContinuePrevious(previousSessionMs);
@@ -136,19 +116,6 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   return (
     <>
       <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
-        <AnimatePresence>
-          {justStarted && (
-            <motion.div
-              key="session-start-flash"
-              initial={{ opacity: 0.55 }}
-              animate={{ opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="pointer-events-none absolute inset-0 z-50 bg-blue-400"
-              aria-hidden
-            />
-          )}
-        </AnimatePresence>
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -214,7 +181,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
             {/* Tabs row + mini session (when running) */}
             <motion.nav
-              layout
+              layout="position"
               transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
               className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-2")}
               role="tablist"
