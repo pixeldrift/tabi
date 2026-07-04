@@ -737,7 +737,10 @@ export function ScheduleView({
                 e.currentTarget.blur();
               }
             }}
-            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-transparent bg-transparent shadow-none text-stone-800 transition-colors"
+            // Same inset-field look as TimeField (pill border + inner
+            // shadow), so it reads as an actual text entry rather than the
+            // plain-text-with-hidden-border stand-in this used to be.
+            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-blue-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors"
             style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
           />
         ) : (
@@ -1514,10 +1517,10 @@ function ConfirmDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            className={cn("rounded-full text-blue-700 hover:bg-blue-50", "border-2 border-blue-300")}
+            className={cn("rounded-full text-blue-700 hover:bg-blue-50 gap-1.5", "border-2 border-blue-300")}
             onClick={onCancel}
           >
-            Cancel
+            Cancel <X className="size-4" />
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -1672,10 +1675,10 @@ function ItemDialog({
         <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
-            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5"
             onClick={onClose}
           >
-            Cancel
+            Cancel <X className="size-4" />
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700"
@@ -1841,10 +1844,10 @@ function AppointmentDialog({
         <DialogFooter className="flex-row justify-end gap-2">
           <Button
             variant="outline"
-            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5"
             onClick={onClose}
           >
-            Cancel
+            Cancel <X className="size-4" />
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700"
@@ -2076,10 +2079,10 @@ function NewScheduleDialog({
         <DialogFooter className="flex-row justify-end gap-2 space-x-0">
           <Button
             variant="outline"
-            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5"
             onClick={onCancel}
           >
-            Cancel
+            <X className="size-4" /> Cancel
           </Button>
           <Button
             className="rounded-full bg-blue-600 hover:bg-blue-700"

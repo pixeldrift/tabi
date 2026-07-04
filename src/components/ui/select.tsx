@@ -7,42 +7,68 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimeChevronIcon } from "@/components/icons/TimeChevronIcon";
 
-const Select = SelectPrimitive.Root;
-
 const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
+// Radix only exposes the flipped-open side (`data-side`) on the portaled
+// Content element, not on the Trigger — but the chevron icon lives in the
+// Trigger. This context lets SelectContent report which side it actually
+// rendered on so the Trigger's chevron can mirror it (pointing up instead
+// of down when the list had to flip open upward).
+const SelectSideContext = React.createContext<{
+  side: "top" | "bottom";
+  setSide: (side: "top" | "bottom") => void;
+}>({ side: "bottom", setSide: () => {} });
+
+const Select = ({ children, ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) => {
+  const [side, setSide] = React.useState<"top" | "bottom">("bottom");
+  return (
+    <SelectSideContext.Provider value={{ side, setSide }}>
+      <SelectPrimitive.Root {...props}>{children}</SelectPrimitive.Root>
+    </SelectSideContext.Provider>
+  );
+};
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      // relative + the open-only z-[60] keeps the pill stacked above its
-      // OWN portaled content (z-50) while it's open — the content tucks up
-      // under the trigger's lower half (see SelectContent's translate)
-      // instead of leaving a visible gap where the pill's curvature peels
-      // away from a flat-topped list. Scoped to data-[state=open] (not a
-      // permanent z-index) so a closed trigger doesn't sit above unrelated
-      // z-50 content elsewhere on the page, like an open Dialog.
-      // The blue pill look is the app's one Select style — every trigger
-      // gets it by default rather than each call site repeating it.
-      "group relative data-[state=open]:z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className,
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      {/* Same shape as the schedule timeline's "now" chevron, resting in
-          its native orientation (pointing right); rotates 90° to point
-          down as the list opens. */}
-      <TimeChevronIcon className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-));
+>(({ className, children, ...props }, ref) => {
+  const { side } = React.useContext(SelectSideContext);
+  return (
+    <SelectPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        // relative + the open-only z-[60] keeps the pill stacked above its
+        // OWN portaled content (z-50) while it's open — the content tucks up
+        // under the trigger's lower half (see SelectContent's translate)
+        // instead of leaving a visible gap where the pill's curvature peels
+        // away from a flat-topped list. Scoped to data-[state=open] (not a
+        // permanent z-index) so a closed trigger doesn't sit above unrelated
+        // z-50 content elsewhere on the page, like an open Dialog.
+        // The blue pill look is the app's one Select style — every trigger
+        // gets it by default rather than each call site repeating it.
+        "group relative data-[state=open]:z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon asChild>
+        {/* Same shape as the schedule timeline's "now" chevron, resting in
+            its native orientation (pointing right); rotates 90° to point
+            down as the list opens below, or up when it had to flip open
+            above (see SelectSideContext). */}
+        <TimeChevronIcon
+          className={cn(
+            "h-3 w-3 shrink-0 opacity-60 transition-transform duration-200",
+            side === "top" ? "group-data-[state=open]:-rotate-90" : "group-data-[state=open]:rotate-90",
+          )}
+        />
+      </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
+  );
+});
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
 const SelectScrollUpButton = React.forwardRef<
@@ -76,43 +102,95 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-50 max-h-(--radix-select-content-available-height) overflow-y-auto overflow-x-hidden rounded-t-none rounded-b-2xl border-2 border-blue-300 bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-4 data-[side=top]:slide-in-from-bottom-4 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 origin-(--radix-select-content-transform-origin)",
-        position === "popper"
-          ? // Match the trigger's own width exactly (not just a min-width)
-            // so the list reads as part of the same pill, not a wider card.
-            // Pulling the list up to the trigger's vertical center (see
-            // below) is what makes it look attached — the pill, stacked
-            // above via z-[60] on SelectTrigger, covers the overlap.
-            "w-(--radix-select-trigger-width) data-[side=bottom]:-translate-y-[calc(var(--radix-select-trigger-height)/2)] data-[side=left]:-translate-x-0 data-[side=right]:translate-x-0 data-[side=top]:translate-y-[calc(var(--radix-select-trigger-height)/2)]"
-          : "min-w-[8rem]",
-        className,
-      )}
-      position={position}
-      {...props}
-    >
-      <SelectScrollUpButton />
-      <SelectPrimitive.Viewport
+>(({ className, children, position = "popper", ...props }, ref) => {
+  const { setSide } = React.useContext(SelectSideContext);
+  // Mirrors the same value pushed up to SelectSideContext (for the Trigger's
+  // chevron), but kept locally too — the Viewport below needs it to flip its
+  // padding, and Viewport is a plain nested div with no `data-side` of its
+  // own to select against in CSS.
+  const [contentSide, setContentSide] = React.useState<"top" | "bottom">("bottom");
+  const observerRef = React.useRef<MutationObserver | null>(null);
+
+  // Radix sets `data-side` on this element directly (not as a prop we can
+  // read) once its collision detection picks an actual side, and can update
+  // it again later if the trigger's position changes while open. The
+  // observer is wired up right here in the ref callback — rather than in a
+  // separate effect — because Radix mounts/measures/remounts this element
+  // through several passes as it positions itself, and a plain effect (keyed
+  // on a dependency array) only fires once for the whole sequence, missing
+  // the node reference by the time it runs.
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (!node) return;
+      const readSide = () => {
+        const value = node.getAttribute("data-side");
+        if (value === "top" || value === "bottom") {
+          setSide(value);
+          setContentSide(value);
+        }
+      };
+      readSide();
+      const observer = new MutationObserver(readSide);
+      observer.observe(node, { attributes: true, attributeFilter: ["data-side"] });
+      observerRef.current = observer;
+    },
+    [ref, setSide],
+  );
+
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={setRefs}
         className={cn(
-          "p-1",
-          position === "popper" &&
-            // The extra top padding pushes the first real item down past the
-            // zone hidden behind the trigger (see the content's own
-            // translate above) — without it, the top ~half of the list is
-            // both invisible AND unclickable, sitting behind the opaque pill.
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] pt-[calc(var(--radix-select-trigger-height)/2+0.25rem)]",
+          "relative z-50 max-h-(--radix-select-content-available-height) overflow-y-auto overflow-x-hidden border-2 border-blue-300 bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-4 data-[side=top]:slide-in-from-bottom-4 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 origin-(--radix-select-content-transform-origin)",
+          // Normal case: list hangs below the pill, flat top tucks under
+          // it, rounded bottom. Flipped case (opened upward because there's
+          // no room below): mirror it — flat bottom tucks under the pill
+          // from above, rounded top.
+          "data-[side=bottom]:rounded-t-none data-[side=bottom]:rounded-b-2xl data-[side=top]:rounded-b-none data-[side=top]:rounded-t-2xl",
+          position === "popper"
+            ? // Match the trigger's own width exactly (not just a min-width)
+              // so the list reads as part of the same pill, not a wider card.
+              // Pulling the list up to the trigger's vertical center (see
+              // below) is what makes it look attached — the pill, stacked
+              // above via z-[60] on SelectTrigger, covers the overlap.
+              "w-(--radix-select-trigger-width) data-[side=bottom]:-translate-y-[calc(var(--radix-select-trigger-height)/2)] data-[side=left]:-translate-x-0 data-[side=right]:translate-x-0 data-[side=top]:translate-y-[calc(var(--radix-select-trigger-height)/2)]"
+            : "min-w-[8rem]",
+          className,
         )}
+        position={position}
+        {...props}
       >
-        {children}
-      </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-));
+        <SelectScrollUpButton />
+        <SelectPrimitive.Viewport
+          className={cn(
+            "p-1",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            // The extra padding pushes the item nearest the pill (first item
+            // when hanging below, last item when flipped above) past the
+            // zone hidden behind the trigger (see the content's own
+            // translate above) — without it, that item is both invisible
+            // AND unclickable, sitting behind the opaque pill. Viewport is a
+            // plain nested div (no `data-side` of its own), so which side
+            // gets the padding is driven by contentSide instead of CSS.
+            position === "popper" &&
+              (contentSide === "top"
+                ? "pb-[calc(var(--radix-select-trigger-height)/2+0.25rem)]"
+                : "pt-[calc(var(--radix-select-trigger-height)/2+0.25rem)]"),
+          )}
+        >
+          {children}
+        </SelectPrimitive.Viewport>
+        <SelectScrollDownButton />
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  );
+});
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<
