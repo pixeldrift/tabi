@@ -36,6 +36,7 @@ export function DurationCard({
   const [viewIdx, setViewIdx] = useState(0);
   const [liveMs, setLiveMs] = useState(0);
   const [running, setRunning] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
@@ -105,24 +106,30 @@ export function DurationCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionRunning]);
 
-  const togglePause = () => {
+  // Shared by the standard view's center-pill toggle (idx = viewIdx) and the
+  // expanded list's per-instance play/pause buttons (arbitrary idx) —
+  // starting a different instance pauses whichever one was running, so
+  // there's only ever one clock ticking.
+  const toggleInstance = (idx: number) => {
     markDirty();
-    if (running && runningIdxRef.current === viewIdx) {
-      const wasLast = viewIdx === instances.length - 1;
+    if (running && runningIdxRef.current === idx) {
+      const wasLast = idx === instances.length - 1;
       flushLive();
       setRunning(false);
       runningIdxRef.current = null;
       if (wasLast) {
         setInstances((arr) => [...arr, 0]);
-        setViewIdx(instances.length);
       }
     } else {
       if (running) flushLive();
-      runningIdxRef.current = viewIdx;
+      runningIdxRef.current = idx;
+      setViewIdx(idx);
       setRunning(true);
       setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
     }
   };
+
+  const togglePause = () => toggleInstance(viewIdx);
 
   const setInstanceMs = (idx: number, ms: number) => {
     markDirty();
@@ -134,6 +141,10 @@ export function DurationCard({
     setInstances((arr) => {
       const next = arr.slice();
       next[idx] = Math.max(0, ms);
+      // Same "always one more ready" rule as the play/pause path — editing
+      // the last instance's time directly (not via the timer) should also
+      // open up a fresh one, not just get grown when the timer is paused.
+      if (next[idx] > 0 && idx === next.length - 1) next.push(0);
       return next;
     });
   };
@@ -165,6 +176,8 @@ export function DurationCard({
       onActivate={onActivate}
       progress={null}
       isComplete={isComplete}
+      expanded={expanded}
+      onToggleExpanded={() => setExpanded((v) => !v)}
       helperText={
         <span>
           Combined Total{" "}
@@ -181,6 +194,51 @@ export function DurationCard({
           <Row label="Times" value={String(instances.length)} />
           <Row label="Total" value={formatTime(totalMs)} />
         </dl>
+      }
+      expandedView={
+        <ol className="px-3 pt-2 pb-3 space-y-1">
+          {instances.map((_, i) => {
+            const isRunning = isIdxRunning(i);
+            return (
+              <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+                <span
+                  className={cn(
+                    "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-colors",
+                    isRunning ? "bg-blue-500 text-white" : "bg-stone-100 text-foreground/60",
+                  )}
+                >
+                  {i + 1}
+                </span>
+                {/* The instance actually running gets bold blue text — every
+                    other row (including ones with recorded time) stays
+                    regular weight, so there's exactly one obvious highlight. */}
+                <span
+                  className={cn(
+                    "flex-1 tabular-nums text-sm",
+                    isRunning ? "font-bold text-blue-600" : "font-normal text-foreground/80",
+                  )}
+                >
+                  {formatTime(instanceMs(i))}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => toggleInstance(i)}
+                  aria-label={isRunning ? "Pause this instance" : "Start this instance"}
+                  className={cn(
+                    "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors",
+                    isRunning ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600",
+                  )}
+                >
+                  {isRunning ? (
+                    <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
+                  ) : (
+                    <Play className="size-3.5 -translate-x-px" fill="currentColor" strokeWidth={0} />
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       }
     >
       <div className="relative px-2 pt-2 pb-4">

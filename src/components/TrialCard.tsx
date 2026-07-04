@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "
 import { Check, X } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/DataTypeIcons";
 import { DetailsIcon } from "./icons/DetailsIcon";
+import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import {
   Sheet,
   SheetContent,
@@ -23,7 +24,6 @@ export interface TrialCardProps {
   description?: string;
   minTrials?: number;
   maxTrials?: number;
-  initialTrialCount?: number;
   isActive?: boolean;
   onActivate?: () => void;
 }
@@ -39,14 +39,29 @@ export function TrialCard({
   description = "Record whether the learner performed the target behavior independently during this trial.",
   minTrials = 10,
   maxTrials,
-  initialTrialCount = 20,
   isActive = true,
   onActivate,
 }: TrialCardProps) {
-  const initial = maxTrials ?? Math.max(initialTrialCount, minTrials + 5);
+  // Always one slot ahead of the highest-scored trial (so there's always a
+  // next one ready), never fewer than minTrials, capped at maxTrials when
+  // set. Anchored to the highest scored INDEX rather than the total scored
+  // COUNT, since the expanded list lets trials be scored out of order.
   const [trials, setTrials] = useState<TrialResult[]>(() =>
-    Array.from({ length: initial }, () => null),
+    Array.from({ length: maxTrials ?? minTrials }, () => null),
   );
+  const highestScoredIdx = trials.reduce((max, t, i) => (t !== null ? i : max), -1);
+  const displayCount = maxTrials ?? Math.max(minTrials, highestScoredIdx + 2);
+  useEffect(() => {
+    setTrials((prev) => {
+      if (prev.length === displayCount) return prev;
+      if (prev.length < displayCount) {
+        return [...prev, ...Array(displayCount - prev.length).fill(null)];
+      }
+      return prev.slice(0, displayCount);
+    });
+  }, [displayCount]);
+
+  const [expanded, setExpanded] = useState(false);
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const setCurrentDir = (next: number | ((c: number) => number)) => {
@@ -76,26 +91,27 @@ export function TrialCard({
 
   useEffect(() => {
     if (resetSignal === 0) return;
-    setTrials(Array.from({ length: initial }, () => null));
+    setTrials(Array.from({ length: maxTrials ?? minTrials }, () => null));
     setCurrent(0);
     setDirection(1);
     setLastAction({ id: 0, value: null });
-  }, [resetSignal, initial]);
+  }, [resetSignal, maxTrials, minTrials]);
 
-  const setResult = (value: Exclude<TrialResult, null>) => {
+  // Shared by the standard view's Correct/Error buttons (idx = current,
+  // advance = true) and the expanded list's per-trial buttons (arbitrary
+  // idx, advance = false — bulk edits shouldn't jump the stepper forward).
+  const applyResult = (idx: number, value: Exclude<TrialResult, null>, advance: boolean) => {
     markDirty();
-    if (isMaxReached && trials[current] === null) return;
-    const isToggleOff = trials[current] === value;
+    if (isMaxReached && trials[idx] === null) return;
+    const isToggleOff = trials[idx] === value;
     setTrials((prev) => {
       const next = [...prev];
-      if (!isToggleOff && current >= next.length - 2 && maxTrials === undefined) {
-        next.push(null, null, null);
-      }
-      next[current] = isToggleOff ? null : value;
+      next[idx] = isToggleOff ? null : value;
       return next;
     });
+    setCurrent(idx);
     setLastAction({ id: Date.now(), value: isToggleOff ? null : value });
-    if (!isToggleOff) {
+    if (advance && !isToggleOff) {
       setTimeout(() => {
         setCurrentDir((c) => {
           const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
@@ -104,6 +120,8 @@ export function TrialCard({
       }, 280);
     }
   };
+
+  const setResult = (value: Exclude<TrialResult, null>) => applyResult(current, value, true);
 
   const goTo = (idx: number) => {
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
@@ -140,7 +158,19 @@ export function TrialCard({
       )}
     >
       {/* Header */}
-      <header className="flex items-start gap-3 pl-5 pr-9 pt-3 pb-0">
+      <header className="flex items-start gap-2 pl-5 pr-9 pt-3 pb-0">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          aria-expanded={expanded}
+          aria-label={expanded ? "Show standard view" : "Show all trials"}
+          className="mt-1 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+        >
+          <TimeChevronIcon className={cn("size-4 transition-transform duration-200", expanded && "rotate-90")} />
+        </button>
         <h2 className="font-display text-xl leading-tight flex-1 mr-auto">{title}</h2>
         <div className="text-right leading-tight">
           <div className="text-xs font-medium text-blue-400">{phase}</div>
@@ -196,7 +226,17 @@ export function TrialCard({
         </SheetContent>
       </Sheet>
 
+      {/* Universal header/body divider — present in both the standard and
+          expanded views, not just faded in while expanded. */}
+      <div className="mx-[18px] mt-2.5 border-t border-dashed border-stone-200" />
 
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+        )}
+      >
+        <div className="overflow-hidden">
       {/* Bubble row */}
       <div className="relative px-2 -mt-1">
         <div className="relative h-16">
@@ -363,6 +403,57 @@ export function TrialCard({
             />
           </motion.div>
         </AnimatePresence>
+      </div>
+        </div>
+      </div>
+
+      {/* Expanded view — every trial as its own row, each with the same
+          Correct/Error buttons as the standard view, so a run of trials can
+          be corrected or filled in without stepping through one at a time. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="overflow-hidden">
+          <ol className="px-3 pt-2 pb-3 space-y-1">
+            {trials.map((t, i) => (
+              <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+                <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
+                  {i + 1}
+                </span>
+                <span className="flex-1" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => applyResult(i, "incorrect", false)}
+                    className={cn(
+                      "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                      "border-red-300 text-red-700 hover:bg-red-50",
+                      t === "incorrect" && "btn-bevel bg-red-500 border-red-600 text-white",
+                    )}
+                  >
+                    <X className="size-3" strokeWidth={3} />
+                    Error
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyResult(i, "correct", false)}
+                    className={cn(
+                      "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                      "border-green-300 text-green-700 hover:bg-green-50",
+                      t === "correct" && "btn-bevel bg-green-500 border-green-600 text-white",
+                    )}
+                  >
+                    <Check className="size-3" strokeWidth={3} />
+                    Correct
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
 
       {/* Progress bar — flush to bottom of card */}

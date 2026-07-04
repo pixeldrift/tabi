@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell } from "./CardShell";
@@ -17,18 +17,21 @@ export interface TaskAnalysisCardProps {
   onActivate?: () => void;
 }
 
+// Error (negative) on the left, Independent (positive) on the right — same
+// left-to-right reading as Percent Correct's Error/Correct pair, with
+// Prompted as the neutral middle option unique to task analysis.
 const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof Check; strokeWidth: number; classes: string; selectedClasses: string }[] = [
   {
-    value: "independent",
-    label: "I",
-    icon: Check,
+    value: "error",
+    label: "Error",
+    icon: X,
     strokeWidth: 3,
-    classes: "border-green-300 text-green-700 hover:bg-green-50",
-    selectedClasses: "bg-green-400 border-green-500 text-white",
+    classes: "border-red-300 text-red-700 hover:bg-red-50",
+    selectedClasses: "bg-red-400 border-red-500 text-white",
   },
   {
     value: "prompted",
-    label: "P",
+    label: "Prompted",
     icon: HandHelping,
     // HandHelping has much more path detail than Check/X, so the same
     // strokeWidth reads noticeably heavier — thinned to match their weight.
@@ -37,14 +40,18 @@ const OPTIONS: { value: Exclude<StepStatus, null>; label: string; icon: typeof C
     selectedClasses: "bg-amber-400 border-amber-500 text-white",
   },
   {
-    value: "error",
-    label: "E",
-    icon: X,
+    value: "independent",
+    label: "Independent",
+    icon: Check,
     strokeWidth: 3,
-    classes: "border-red-300 text-red-700 hover:bg-red-50",
-    selectedClasses: "bg-red-400 border-red-500 text-white",
+    classes: "border-green-300 text-green-700 hover:bg-green-50",
+    selectedClasses: "bg-green-400 border-green-500 text-white",
   },
 ];
+
+const BUBBLE = 18;
+const BUBBLE_CENTER = 54;
+const GAP = 6;
 
 export function TaskAnalysisCard({
   title,
@@ -55,20 +62,38 @@ export function TaskAnalysisCard({
   onActivate,
 }: TaskAnalysisCardProps) {
   const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
+  const [current, setCurrent] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal } = useCardSession();
 
   useEffect(() => {
     if (resetSignal === 0) return;
     setStatuses(steps.map(() => null));
+    setCurrent(0);
   }, [resetSignal, steps]);
 
-  const setStep = (idx: number, value: Exclude<StepStatus, null>) => {
+  // Mirrors TrialCard's setResult: read the pre-toggle value from the
+  // current render's closure (not inside the setState updater) so we know
+  // whether this was a genuine score vs. a toggle-off before deciding
+  // whether to auto-advance.
+  const setStep = (idx: number, value: Exclude<StepStatus, null>, advance = false) => {
     markDirty();
+    const isToggleOff = statuses[idx] === value;
     setStatuses((prev) => {
       const next = [...prev];
-      next[idx] = next[idx] === value ? null : value;
+      next[idx] = isToggleOff ? null : value;
       return next;
     });
+    setCurrent(idx);
+    if (advance && !isToggleOff) {
+      window.setTimeout(() => {
+        setCurrent((c) => Math.min(c + 1, steps.length - 1));
+      }, 260);
+    }
+  };
+
+  const goTo = (idx: number) => {
+    setCurrent(Math.max(0, Math.min(idx, steps.length - 1)));
   };
 
   const completed = statuses.filter((s) => s !== null).length;
@@ -76,6 +101,12 @@ export function TaskAnalysisCard({
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const isComplete = completed >= steps.length;
   const remaining = Math.max(0, steps.length - completed);
+
+  const stepWidth = BUBBLE + GAP;
+  const trackOffset = useMemo(
+    () => -(current * stepWidth + BUBBLE_CENTER / 2),
+    [current, stepWidth],
+  );
 
   return (
     <CardShell
@@ -88,6 +119,8 @@ export function TaskAnalysisCard({
       onActivate={onActivate}
       progress={progress}
       isComplete={isComplete}
+      expanded={expanded}
+      onToggleExpanded={() => setExpanded((v) => !v)}
       helperText={
         isComplete ? (
           <span>
@@ -112,49 +145,184 @@ export function TaskAnalysisCard({
           <Row label="Independent" value={`${independent} / ${steps.length}`} />
         </dl>
       }
+      expandedView={
+        <ol className="px-3 pt-1 pb-3 space-y-1">
+          {steps.map((step, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+              <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
+                {i + 1}
+              </span>
+              <span
+                className={cn(
+                  "flex-1 text-sm leading-tight",
+                  statuses[i] && "text-foreground/80",
+                )}
+              >
+                {step}
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                {OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const selected = statuses[i] === opt.value;
+                  return (
+                    <motion.button
+                      key={opt.value}
+                      onClick={() => setStep(i, opt.value)}
+                      whileTap={{ scale: 0.9 }}
+                      aria-label={opt.value}
+                      className={cn(
+                        "size-8 rounded-full border-2 grid place-items-center transition-colors",
+                        opt.classes,
+                        selected && cn("btn-bevel", opt.selectedClasses),
+                      )}
+                    >
+                      <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </li>
+          ))}
+        </ol>
+      }
     >
-      <ol className="px-3 pt-1 pb-3 space-y-1">
-        {steps.map((step, i) => (
-          <li
-            key={i}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+      <div className="relative px-2 pt-3 pb-1">
+        <div className="relative h-16">
+          <TriangleNav direction="left" onClick={() => goTo(current - 1)} disabled={current === 0} />
+          <TriangleNav
+            direction="right"
+            onClick={() => goTo(current + 1)}
+            disabled={current >= steps.length - 1}
+          />
+          <div
+            className="relative h-16 overflow-hidden"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+              maskImage:
+                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+            }}
           >
-            <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
-              {i + 1}
-            </span>
-            <span
-              className={cn(
-                "flex-1 text-sm leading-tight",
-                statuses[i] && "text-foreground/80",
-              )}
+            <motion.div
+              className="absolute top-1/2 left-1/2 flex items-center"
+              style={{ gap: GAP, translateY: "-50%" }}
+              animate={{ x: trackOffset }}
+              transition={{ type: "spring", stiffness: 320, damping: 34 }}
             >
-              {step}
-            </span>
-            <div className="flex items-center gap-1 shrink-0">
-              {OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const selected = statuses[i] === opt.value;
+              {steps.map((_, i) => {
+                const isCenter = i === current;
+                const status = statuses[i];
                 return (
                   <motion.button
-                    key={opt.value}
-                    onClick={() => setStep(i, opt.value)}
-                    whileTap={{ scale: 0.9 }}
-                    aria-label={opt.value}
-                    className={cn(
-                      "size-8 rounded-full border-2 grid place-items-center transition-colors",
-                      opt.classes,
-                      selected && cn("btn-bevel", opt.selectedClasses),
-                    )}
+                    key={i}
+                    onClick={() => goTo(i)}
+                    className="relative shrink-0 grid place-items-center rounded-full font-medium select-none border"
+                    animate={{
+                      width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                      height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                    }}
+                    transition={{ type: "spring", stiffness: 360, damping: 28 }}
                   >
-                    <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
+                    <span
+                      className={cn(
+                        "absolute inset-0 rounded-full grid place-items-center",
+                        isCenter ? "border-2" : "border",
+                        status === "independent"
+                          ? "bg-green-50 border-green-300 text-green-700"
+                          : status === "prompted"
+                            ? "bg-amber-50 border-amber-300 text-amber-700"
+                            : status === "error"
+                              ? "bg-red-50 border-red-300 text-red-700"
+                              : "bg-foreground/5 border-foreground/10 text-foreground/40",
+                        isCenter && !status && "bg-card border-foreground/30 text-foreground",
+                      )}
+                    >
+                      <span className={cn(isCenter ? "font-display text-2xl leading-none" : "text-[7px] leading-none")}>
+                        {i + 1}
+                      </span>
+                    </span>
                   </motion.button>
                 );
               })}
-            </div>
-          </li>
-        ))}
-      </ol>
+            </motion.div>
+          </div>
+        </div>
+        <div className="text-center text-xs text-muted-foreground">
+          Step {current + 1} of {steps.length}
+        </div>
+
+        <div className="mt-2 px-3 text-center">
+          <p className="text-base font-semibold leading-tight">{steps[current]}</p>
+        </div>
+
+        <div className="mt-3 flex justify-center gap-1 px-2">
+          {OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const selected = statuses[current] === opt.value;
+            return (
+              <motion.button
+                key={opt.value}
+                onClick={() => setStep(current, opt.value, true)}
+                whileTap={{ scale: 0.96 }}
+                className={cn(
+                  "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors",
+                  opt.classes,
+                  selected && cn("btn-bevel", opt.selectedClasses),
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" strokeWidth={opt.strokeWidth} />
+                <span className="truncate">{opt.label}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
     </CardShell>
+  );
+}
+
+function TriangleNav({
+  direction,
+  onClick,
+  disabled,
+}: {
+  direction: "left" | "right";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isLeft = direction === "left";
+  return (
+    <motion.button
+      aria-label={isLeft ? "Previous step" : "Next step"}
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={{ scale: 0.82 }}
+      whileHover={{ scale: 1.08 }}
+      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
+        isLeft ? "-left-2" : "-right-2",
+      )}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
+        {isLeft ? (
+          <path
+            d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <path
+            d="M8.5 4.2c-1.1-.7-2.5.1-2.5 1.4v12.8c0 1.3 1.4 2.1 2.5 1.4l8.6-5.8a1.9 1.9 0 0 0 0-3.2L8.5 4.2z"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </motion.button>
   );
 }
 

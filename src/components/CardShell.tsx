@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { DetailsIcon } from "./icons/DetailsIcon";
+import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { cn } from "@/lib/utils";
 
 export interface CardShellProps {
@@ -27,6 +28,16 @@ export interface CardShellProps {
   helperText?: ReactNode;
   details?: ReactNode;
   editing?: boolean;
+  /**
+   * When both are provided, a twirl-down caret appears before the title
+   * (same resting-right / rotate-on-open chevron as the Select dropdowns).
+   * `children` is the standard view; `expandedView` swaps in when expanded,
+   * with the standard view's height collapsing away entirely rather than
+   * the two stacking.
+   */
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  expandedView?: ReactNode;
   children: ReactNode;
 }
 
@@ -43,8 +54,12 @@ export function CardShell({
   helperText,
   details,
   editing = false,
+  expanded = false,
+  onToggleExpanded,
+  expandedView,
   children,
 }: CardShellProps) {
+  const hasExpandedView = Boolean(onToggleExpanded && expandedView);
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
   const barBg = isComplete
@@ -65,7 +80,23 @@ export function CardShell({
           : "border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
-      <header className="flex items-start gap-3 pl-5 pr-9 pt-3 pb-0">
+      <header className="flex items-start gap-2 pl-5 pr-9 pt-3 pb-0">
+        {hasExpandedView && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpanded?.();
+            }}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Show standard view" : "Show all"}
+            className="mt-1 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+          >
+            <TimeChevronIcon
+              className={cn("size-4 transition-transform duration-200", expanded && "rotate-90")}
+            />
+          </button>
+        )}
         <h2 className="font-display text-lg leading-tight flex-1 mr-auto">{title}</h2>
         <div className="text-right leading-tight">
           <div className="text-xs font-medium text-blue-400">{phase}</div>
@@ -79,6 +110,10 @@ export function CardShell({
           )}
         </div>
       </header>
+
+      {/* Universal header/body divider — present in every card and both
+          the standard and expanded views, not just faded in while expanded. */}
+      <div className="mx-[18px] mt-2.5 border-t border-dashed border-stone-200" />
 
       {/* Positioned so the circle's center sits at the card's own corner-radius
           center (rounded-xl = 20px), rather than in the header's flex flow. */}
@@ -100,7 +135,28 @@ export function CardShell({
         </SheetContent>
       </Sheet>
 
-      {children}
+      {hasExpandedView ? (
+        <>
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-out",
+              expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+            )}
+          >
+            <div className="overflow-hidden">{children}</div>
+          </div>
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-out",
+              expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+          >
+            <div className="overflow-hidden">{expandedView}</div>
+          </div>
+        </>
+      ) : (
+        children
+      )}
 
       {showProgress && (
         <div className="relative mt-3">
