@@ -197,14 +197,19 @@ export function DurationCard({
       }
       expandedView={
         <ol className="px-3 pt-2 pb-3 space-y-1">
-          {instances.map((_, i) => {
+          {instances.map((ms, i) => {
             const isRunning = isIdxRunning(i);
+            const hasData = ms > 0;
             return (
               <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
                 <span
                   className={cn(
                     "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-colors",
-                    isRunning ? "bg-blue-500 text-white" : "bg-stone-100 text-foreground/60",
+                    isRunning
+                      ? "bg-blue-500 text-white"
+                      : hasData
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-stone-100 text-foreground/60",
                   )}
                 >
                   {i + 1}

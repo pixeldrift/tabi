@@ -7,6 +7,7 @@ import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
+import { RatingCard } from "@/components/RatingCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider } from "@/components/SettingsContext";
@@ -39,11 +40,16 @@ type CardConfig =
       description: string;
       minTrials: number;
       maxTrials?: number;
+      /** Adds a third, neutral "No Response" option between Error and Correct. */
+      noResponse?: boolean;
+      /** Error becomes a picker for these prompt levels instead of a plain toggle. */
+      promptLevels?: string[];
     }
   | { kind: "frequency"; title: string; phase: string; description: string; minCount: number }
   | { kind: "rate"; title: string; phase: string; description: string; minDurationSec: number; locked?: boolean }
   | { kind: "duration"; title: string; phase: string; description: string; minDurationSec: number }
-  | { kind: "task-analysis"; title: string; phase: string; description: string; steps: string[] };
+  | { kind: "task-analysis"; title: string; phase: string; description: string; steps: string[] }
+  | { kind: "rating"; title: string; phase: string; description: string; min?: number; max: number };
 
 const cards: CardConfig[] = [
   {
@@ -53,6 +59,24 @@ const cards: CardConfig[] = [
     description:
       "Score correct if the learner reaches for and maintains hand-hold from the start of the transition through arrival at the destination.",
     minTrials: 5,
+  },
+  {
+    kind: "trial",
+    title: "Requests preferred item",
+    phase: "Intervention",
+    description:
+      "Score correct if the learner independently requests using a full phrase within 5 seconds of the item being visible. Score No Response if the learner does not attempt within the window.",
+    minTrials: 8,
+    noResponse: true,
+  },
+  {
+    kind: "trial",
+    title: "Follows one-step direction",
+    phase: "Intervention",
+    description:
+      "Score correct if the learner completes the direction independently. If an error occurs, record the least-to-most prompt level required.",
+    minTrials: 8,
+    promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
   },
   {
     kind: "frequency",
@@ -107,6 +131,14 @@ const cards: CardConfig[] = [
       "Turn off water",
       "Dry hands",
     ],
+  },
+  {
+    kind: "rating",
+    title: "Overall session engagement",
+    phase: "Intervention",
+    description:
+      "A holistic, end-of-session quality rating capturing overall engagement and cooperation. Unlike the other cards, this is scored once — later interactions simply update the same score rather than adding new entries.",
+    max: 5,
   },
 ];
 
@@ -286,7 +318,10 @@ function IndexInner() {
                 </motion.div>
               )}
             </AnimatePresence>
-          <div className="flex flex-col items-center">
+          {/* -mx-2 cancels 8px of the section's px-5, so the cards sit 12px
+              from the viewport edge — the same as the gap-3 between them,
+              instead of the wider 20px inherited from the shared tab padding. */}
+          <div className="flex flex-col items-center -mx-2">
             <div
               className={cn(
                 "w-full flex flex-col items-center gap-3 transition-opacity duration-300",
@@ -335,6 +370,8 @@ function renderCard(
           description={card.description}
           minTrials={card.minTrials}
           maxTrials={card.maxTrials}
+          noResponse={card.noResponse}
+          promptLevels={card.promptLevels}
           {...common}
         />
       );
@@ -376,6 +413,17 @@ function renderCard(
           phase={card.phase}
           description={card.description}
           steps={card.steps}
+          {...common}
+        />
+      );
+    case "rating":
+      return (
+        <RatingCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          min={card.min}
+          max={card.max}
           {...common}
         />
       );
