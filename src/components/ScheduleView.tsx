@@ -975,7 +975,12 @@ export function ScheduleView({
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] bg-background border-b border-stone-200/70 py-1.5 px-8",
+          // overflow-x-hidden clips the "now" button below while it's
+          // translated off-screen (waiting to slide in once pinned) — its
+          // transformed box still counts toward layout overflow even at
+          // opacity-0, which was inflating the page's scroll width and
+          // making the browser auto-shrink-to-fit the whole viewport.
+          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70 py-1.5 px-8",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
         style={{ top: stickyTop }}
