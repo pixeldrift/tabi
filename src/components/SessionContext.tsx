@@ -242,11 +242,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const t1 = window.setTimeout(() => {
       setTransitionStage(2);
       commit();
+      // start-new's own pill travel doesn't begin until DIGIT_SETTLE_MS
+      // after this commits (the odometer settles to zero first — see
+      // DIGIT_SETTLE_MS's own comment), and StatusBar's box-collapse now
+      // waits that same extra beat to avoid overlapping its own "pull nav
+      // up" with the mini-session slot's "push nav down" (which read as a
+      // bounce). This dwell has to stay in step with that or `dimmed`
+      // resets — and stage-2 content reappears — before the box has
+      // actually finished closing.
+      const dwellMs =
+        kind === "discard"
+          ? 0
+          : kind === "start-new"
+            ? DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS
+            : HEADER_MORPH_MS + BOX_COLLAPSE_MS;
       const t2 = window.setTimeout(() => {
         setTransitionStage(0);
         setTransitionKind(null);
         transitionBusyRef.current = false;
-      }, HEADER_MORPH_MS + (kind === "discard" ? 0 : BOX_COLLAPSE_MS));
+      }, dwellMs);
       transitionTimeoutsRef.current.push(t2);
     }, CARD_EXIT_MS);
     transitionTimeoutsRef.current.push(t1);
