@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { TimeChevronIcon } from "@/components/icons/TimeChevronIcon";
+import { DialogContentContext } from "@/components/ui/dialog";
 
 const SelectGroup = SelectPrimitive.Group;
 
@@ -104,6 +105,7 @@ const SelectContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => {
   const { setSide } = React.useContext(SelectSideContext);
+  const dialogContainer = React.useContext(DialogContentContext);
   // Mirrors the same value pushed up to SelectSideContext (for the Trigger's
   // chevron), but kept locally too — the Viewport below needs it to flip its
   // padding, and Viewport is a plain nested div with no `data-side` of its
@@ -142,7 +144,13 @@ const SelectContent = React.forwardRef<
   );
 
   return (
-    <SelectPrimitive.Portal>
+    // Default to document.body (Radix's own default) outside of a Dialog.
+    // Inside one, portal into the Dialog's own content element instead —
+    // otherwise this list and DialogContent end up as same-z-index body
+    // siblings, and whichever mounts later wins the tie everywhere,
+    // including at the seam where the trigger pill is meant to show
+    // through on top (see DialogContentContext for the full explanation).
+    <SelectPrimitive.Portal container={dialogContainer ?? undefined}>
       <SelectPrimitive.Content
         ref={setRefs}
         className={cn(

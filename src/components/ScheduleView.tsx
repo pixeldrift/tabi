@@ -739,8 +739,12 @@ export function ScheduleView({
             }}
             // Same inset-field look as TimeField (pill border + inner
             // shadow), so it reads as an actual text entry rather than the
-            // plain-text-with-hidden-border stand-in this used to be.
-            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-blue-700 shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors"
+            // plain-text-with-hidden-border stand-in this used to be. Black
+            // text (not the trigger's blue) plus a stronger inset shadow
+            // than the smaller fields use — at this size and weight, the
+            // subtle 0.08 shadow read as decoration rather than a carved-in,
+            // clearly-editable well.
+            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.18)] transition-colors"
             style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
           />
         ) : (
@@ -971,7 +975,12 @@ export function ScheduleView({
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] bg-background border-b border-stone-200/70 py-1.5 px-8",
+          // overflow-x-hidden clips the "now" button below while it's
+          // translated off-screen (waiting to slide in once pinned) — its
+          // transformed box still counts toward layout overflow even at
+          // opacity-0, which was inflating the page's scroll width and
+          // making the browser auto-shrink-to-fit the whole viewport.
+          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70 py-1.5 px-8",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
         style={{ top: stickyTop }}
