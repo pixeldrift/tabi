@@ -346,24 +346,41 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <ActiveDurationIndicator timers={durationTimers} />
               </div>
 
-              {renderMiniPill && (
-                // -mr-4 cancels the header's own px-4 edge padding, then
-                // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
-                // clearance on the right as there is below the pill. Reserves
-                // its slot in the tabs row whenever it's the resting view OR
-                // mid-travel (so the destination has somewhere to measure/
-                // crossfade into); visibility itself is separate, see
-                // pillVisible below.
-                <div className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
-                  <MiniSession
-                    elapsedMs={pillElapsed}
-                    onPause={pause}
-                    disabled={!isRunning}
-                    pillVisible={miniPillVisible}
-                    pillRef={miniPillRef}
-                  />
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {renderMiniPill && (
+                  // -mr-4 cancels the header's own px-4 edge padding, then
+                  // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
+                  // clearance on the right as there is below the pill. Reserves
+                  // its slot in the tabs row whenever it's the resting view OR
+                  // mid-travel (so the destination has somewhere to measure/
+                  // crossfade into); visibility itself is separate, see
+                  // pillVisible below. Animating this slot's OWN height (it
+                  // used to just pop in) means the nav's real height grows
+                  // in smoothly instead of jumping in one frame — that
+                  // instant jump was what made the tabs/panel below visibly
+                  // detach from it, since only a discrete size change like
+                  // that (not a `layout="position"` reposition) needs its
+                  // own transition to not be felt downstream.
+                  <motion.div
+                    key="mini-session-slot"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
+                      <MiniSession
+                        elapsedMs={pillElapsed}
+                        onPause={pause}
+                        disabled={!isRunning}
+                        pillVisible={miniPillVisible}
+                        pillRef={miniPillRef}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.nav>
 
 

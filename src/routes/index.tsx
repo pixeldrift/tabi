@@ -179,9 +179,16 @@ function IndexInner() {
     if (transitionStage === 2 && !stage2HandledRef.current) {
       stage2HandledRef.current = true;
       if (transitionKind === "discard") {
-        setCardsAnimKind("discard");
-        setCardsGen((n) => n + 1);
-        setCardsHidden(false);
+        // Wait for the old cards' own shrink-and-dissolve exit to actually
+        // finish (CARD_SLIDE_EXIT_MS) instead of remounting the instant
+        // stage 2 commits — discard reads as one set fully leaving before
+        // the next arrives, not an overlapping relay like start-new's.
+        cardEntranceTimeoutRef.current = window.setTimeout(() => {
+          setCardsAnimKind("discard");
+          setCardsGen((n) => n + 1);
+          setCardsHidden(false);
+          cardEntranceTimeoutRef.current = null;
+        }, CARD_SLIDE_EXIT_MS);
       } else if (transitionKind === "start-new") {
         cardEntranceTimeoutRef.current = window.setTimeout(() => {
           setCardsAnimKind("start-new");
@@ -397,9 +404,11 @@ const SINGLE_UNIT_VARIANTS = {
   discard: {
     initial: { x: "100%", opacity: 0 },
     animate: { x: 0, opacity: 1, transition: { duration: CARD_SLIDE_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] } },
-    // A gentle deflate-and-sink reads as "being discarded" without a
-    // literal trash/shred effect.
-    exit: { opacity: 0, scale: 0.92, y: 10, transition: { duration: CARD_SLIDE_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] } },
+    // Shrinks and dissolves in place — unlike start-new's slide, this exit
+    // has fully finished (see CARD_SLIDE_EXIT_MS delay in IndexInner) before
+    // the fresh set enters, so discard reads as "gone, then a new one
+    // arrives" rather than an overlapping relay.
+    exit: { opacity: 0, scale: 0.7, transition: { duration: CARD_SLIDE_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] } },
   },
 } as const;
 

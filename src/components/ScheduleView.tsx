@@ -578,11 +578,21 @@ export function ScheduleView({
   };
 
   // Auto-scroll only when the current activity actually changes after mount —
-  // do NOT scroll on initial mount / tab switch.
+  // do NOT scroll on initial mount / tab switch, and do NOT scroll just
+  // because the user picked a different schedule from the dropdown (that
+  // should land at the top and let them invoke "Now" themselves).
   const didInitScrollRef = useRef(false);
+  const prevActiveNameForScrollRef = useRef(activeName);
   useEffect(() => {
     if (!didInitScrollRef.current) {
       didInitScrollRef.current = true;
+      prevActiveNameForScrollRef.current = activeName;
+      return;
+    }
+    const scheduleChanged = activeName !== prevActiveNameForScrollRef.current;
+    prevActiveNameForScrollRef.current = activeName;
+    if (scheduleChanged) {
+      window.scrollTo({ top: 0 });
       return;
     }
     if (!currentItem) return;
@@ -805,11 +815,15 @@ export function ScheduleView({
         {editMode && (
           <motion.div
             key="edit-actions-row"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.9, height: 0 }}
+            animate={{ opacity: 1, scale: 1, height: "auto" }}
+            exit={{ opacity: 0, scale: 0.9, height: 0 }}
             transition={{ duration: EDIT_MODE_DURATION_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
-            className="mt-2 space-y-2 px-1"
+            // overflow-hidden so the mid-animation height doesn't clip
+            // content abruptly; the space itself now closes in step with
+            // the fade instead of holding full height until the instant
+            // it unmounts (which read as a sudden jump).
+            className="mt-2 space-y-2 px-1 overflow-hidden"
           >
             <div className="flex items-center gap-1 flex-nowrap">
               <Button
@@ -854,13 +868,15 @@ export function ScheduleView({
         {editMode && (
           <motion.div
             key="edit-content"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
+            initial={{ opacity: 0, y: -12, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -12, height: 0 }}
             transition={{ duration: EDIT_MODE_DURATION_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
             // Extra top margin (vs. the mt-3 used elsewhere) sets this block
-            // visually apart from the action-buttons row above it.
-            className="mt-6 px-1 space-y-3"
+            // visually apart from the action-buttons row above it. Height
+            // animates alongside the fade (see edit-actions-row above) so
+            // the space collapses smoothly instead of jumping on unmount.
+            className="mt-6 px-1 space-y-3 overflow-hidden"
           >
           {/* Appointments editor */}
           <div className="rounded-xl border border-stone-200 bg-white p-3">
@@ -1003,10 +1019,13 @@ export function ScheduleView({
             </span>
           </button>
 
-          {/* Centered schedule name — fades in when pinned */}
+          {/* Centered schedule name — waits for the toggle icons' own
+              300ms collapse to finish before fading in, so the two read as
+              a sequence (icons move over, then the title appears) rather
+              than everything happening at once. */}
           <div
             className={cn(
-              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
+              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 delay-300 ease-out pointer-events-none",
               stickyCompact ? "opacity-100" : "opacity-0",
             )}
             aria-hidden={!stickyCompact}
@@ -1016,7 +1035,9 @@ export function ScheduleView({
             </span>
           </div>
 
-          {/* Right-aligned time button — fades in when pinned */}
+          {/* Right-aligned time button — slides in from off-screen right
+              once the title has had its turn (icons: 0-300ms, title:
+              300-600ms, this: 600-900ms), instead of fading in place. */}
           <button
             type="button"
             onClick={scrollToNow}
@@ -1024,8 +1045,8 @@ export function ScheduleView({
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
-              "btn-bevel ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-opacity duration-300 ease-out",
-              stickyCompact ? "opacity-100" : "opacity-0 pointer-events-none",
+              "btn-bevel ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-all duration-300 delay-[600ms] ease-out",
+              stickyCompact ? "opacity-100 translate-x-0" : "opacity-0 translate-x-[130%] pointer-events-none",
               !currentItem || editMode
                 ? "bg-stone-300"
                 : "bg-blue-600 hover:bg-blue-700",

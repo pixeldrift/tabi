@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { TimeChevronIcon } from "@/components/icons/TimeChevronIcon";
 
 const Select = SelectPrimitive.Root;
 
@@ -19,20 +20,25 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      // relative + z-[60] keeps the pill stacked above the portaled content
-      // below (z-50) — the content tucks up under the trigger's lower half
-      // (see SelectContent's translate) instead of leaving a visible gap
-      // where the pill's own curvature peels away from a flat-topped list.
+      // relative + the open-only z-[60] keeps the pill stacked above its
+      // OWN portaled content (z-50) while it's open — the content tucks up
+      // under the trigger's lower half (see SelectContent's translate)
+      // instead of leaving a visible gap where the pill's curvature peels
+      // away from a flat-topped list. Scoped to data-[state=open] (not a
+      // permanent z-index) so a closed trigger doesn't sit above unrelated
+      // z-50 content elsewhere on the page, like an open Dialog.
       // The blue pill look is the app's one Select style — every trigger
       // gets it by default rather than each call site repeating it.
-      "relative z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "group relative data-[state=open]:z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
+      {/* Same shape as the schedule timeline's "now" chevron, resting
+          rotated to point down; flips to point up as the list opens. */}
+      <TimeChevronIcon className="h-3 w-3 shrink-0 opacity-60 rotate-90 transition-transform duration-200 group-data-[state=open]:rotate-[270deg]" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -130,16 +136,13 @@ const SelectItem = React.forwardRef<
       // The theme's --accent is a warm amber, which reads as a stray orange
       // highlight in an otherwise all-blue interface — blue directly here
       // instead, so every Select gets it without each call site re-adding it.
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // The selected item's own blue background is enough of a marker on
+      // its own, so there's no separate checkmark glyph next to it.
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-blue-100 focus:text-blue-900 data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
   >
-    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));
