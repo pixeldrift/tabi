@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, X } from "lucide-react";
+import { Check, X, CircleSlash2 } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/DataTypeIcons";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -12,10 +12,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardSession } from "./SessionContext";
 import { cn } from "@/lib/utils";
 
-export type TrialResult = "correct" | "incorrect" | null;
+export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 
 export interface TrialCardProps {
   title: string;
@@ -26,6 +27,12 @@ export interface TrialCardProps {
   maxTrials?: number;
   isActive?: boolean;
   onActivate?: () => void;
+  /** Adds a third, neutral "No Response" option between Error and Correct. */
+  noResponse?: boolean;
+  /** When set, Error becomes a picker for these prompt levels instead of a
+   *  plain toggle — the chosen level is stored per-trial and shown as a
+   *  sub-label under "Error". */
+  promptLevels?: string[];
 }
 
 const BUBBLE = 18; // small bubble diameter
@@ -41,7 +48,13 @@ export function TrialCard({
   maxTrials,
   isActive = true,
   onActivate,
+  noResponse = false,
+  promptLevels,
 }: TrialCardProps) {
+  // Keyed by trial index rather than a parallel array — entries just don't
+  // exist for trials that aren't "incorrect" (or don't have a level yet),
+  // so it never needs to stay in sync/length with the trials array.
+  const [promptLevel, setPromptLevel] = useState<Record<number, string>>({});
   // Always one slot ahead of the highest-scored trial (so there's always a
   // next one ready), never fewer than minTrials, capped at maxTrials when
   // set. Anchored to the highest scored INDEX rather than the total scored
@@ -95,11 +108,13 @@ export function TrialCard({
     setCurrent(0);
     setDirection(1);
     setLastAction({ id: 0, value: null });
+    setPromptLevel({});
   }, [resetSignal, maxTrials, minTrials]);
 
-  // Shared by the standard view's Correct/Error buttons (idx = current,
-  // advance = true) and the expanded list's per-trial buttons (arbitrary
-  // idx, advance = false — bulk edits shouldn't jump the stepper forward).
+  // Shared by the standard view's Correct/Error/No-Response buttons (idx =
+  // current, advance = true) and the expanded list's per-trial buttons
+  // (arbitrary idx, advance = false — bulk edits shouldn't jump the
+  // stepper forward).
   const applyResult = (idx: number, value: Exclude<TrialResult, null>, advance: boolean) => {
     markDirty();
     if (isMaxReached && trials[idx] === null) return;
@@ -109,6 +124,14 @@ export function TrialCard({
       next[idx] = isToggleOff ? null : value;
       return next;
     });
+    if (value === "incorrect" || isToggleOff) {
+      setPromptLevel((prev) => {
+        if (!(idx in prev)) return prev;
+        const next = { ...prev };
+        delete next[idx];
+        return next;
+      });
+    }
     setCurrent(idx);
     setLastAction({ id: Date.now(), value: isToggleOff ? null : value });
     if (advance && !isToggleOff) {
@@ -122,6 +145,36 @@ export function TrialCard({
   };
 
   const setResult = (value: Exclude<TrialResult, null>) => applyResult(current, value, true);
+
+  // Error, when promptLevels is set, opens a picker instead of a plain
+  // toggle — picking a level marks the trial incorrect AND records which
+  // level, so the two always stay in sync (no "incorrect" without a level,
+  // no level surviving a switch away from incorrect).
+  const pickPromptLevel = (idx: number, level: string, advance: boolean) => {
+    markDirty();
+    const isToggleOff = trials[idx] === "incorrect" && promptLevel[idx] === level;
+    setTrials((prev) => {
+      const next = [...prev];
+      next[idx] = isToggleOff ? null : "incorrect";
+      return next;
+    });
+    setPromptLevel((prev) => {
+      const next = { ...prev };
+      if (isToggleOff) delete next[idx];
+      else next[idx] = level;
+      return next;
+    });
+    setCurrent(idx);
+    setLastAction({ id: Date.now(), value: isToggleOff ? null : "incorrect" });
+    if (advance && !isToggleOff) {
+      setTimeout(() => {
+        setCurrentDir((c) => {
+          const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
+          return Math.min(c + 1, max);
+        });
+      }, 280);
+    }
+  };
 
   const goTo = (idx: number) => {
     const max = maxTrials ? maxTrials - 1 : trials.length - 1;
@@ -290,25 +343,33 @@ export function TrialCard({
                     ? "bg-green-50 border-green-300"
                     : t === "incorrect"
                       ? "bg-red-50 border-red-300"
-                      : "bg-foreground/5 border-foreground/10";
+                      : t === "no-response"
+                        ? "bg-amber-50 border-amber-300"
+                        : "bg-foreground/5 border-foreground/10";
                 const textColor =
                   t === "correct"
                     ? "text-green-700"
                     : t === "incorrect"
                       ? "text-red-700"
-                      : "text-foreground/40";
+                      : t === "no-response"
+                        ? "text-amber-700"
+                        : "text-foreground/40";
                 const centerTextColor =
                   t === "correct"
                     ? "text-green-700"
                     : t === "incorrect"
                       ? "text-red-700"
-                      : "text-foreground";
+                      : t === "no-response"
+                        ? "text-amber-700"
+                        : "text-foreground";
                 const centerBg =
                   lastAction.value === "correct" && i === current - 1
                     ? "bg-green-100 border-green-400"
                     : lastAction.value === "incorrect" && i === current - 1
                       ? "bg-red-100 border-red-400"
-                      : "";
+                      : lastAction.value === "no-response" && i === current - 1
+                        ? "bg-amber-100 border-amber-400"
+                        : "";
                 return (
                   <motion.button
                     key={i}
@@ -389,19 +450,40 @@ export function TrialCard({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: direction > 0 ? "-60%" : "60%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 30 }}
-            className="absolute inset-0 px-5 flex items-center gap-3"
+            className={cn("absolute inset-0 px-5 flex items-center", noResponse ? "gap-1.5" : "gap-3")}
           >
-            <ActionButton
-              variant="incorrect"
-              selected={trials[current] === "incorrect"}
-              onClick={() => setResult("incorrect")}
-              disabled={isMaxReached && trials[current] === null}
-            />
+            {promptLevels && promptLevels.length > 0 ? (
+              <PromptLevelButton
+                levels={promptLevels}
+                selectedLevel={promptLevel[current] ?? null}
+                selected={trials[current] === "incorrect"}
+                disabled={isMaxReached && trials[current] === null}
+                onPick={(level) => pickPromptLevel(current, level, true)}
+              />
+            ) : (
+              <ActionButton
+                variant="incorrect"
+                selected={trials[current] === "incorrect"}
+                onClick={() => setResult("incorrect")}
+                disabled={isMaxReached && trials[current] === null}
+                dense={noResponse}
+              />
+            )}
+            {noResponse && (
+              <ActionButton
+                variant="no-response"
+                selected={trials[current] === "no-response"}
+                onClick={() => setResult("no-response")}
+                disabled={isMaxReached && trials[current] === null}
+                dense
+              />
+            )}
             <ActionButton
               variant="correct"
               selected={trials[current] === "correct"}
               onClick={() => setResult("correct")}
               disabled={isMaxReached && trials[current] === null}
+              dense={noResponse}
             />
           </motion.div>
         </AnimatePresence>
@@ -427,18 +509,41 @@ export function TrialCard({
                 </span>
                 <span className="flex-1" />
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => applyResult(i, "incorrect", false)}
-                    className={cn(
-                      "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
-                      "border-red-300 text-red-700 hover:bg-red-50",
-                      t === "incorrect" && "btn-bevel bg-red-500 border-red-600 text-white",
-                    )}
-                  >
-                    <X className="size-3" strokeWidth={3} />
-                    Error
-                  </button>
+                  {promptLevels && promptLevels.length > 0 ? (
+                    <RowPromptLevelButton
+                      levels={promptLevels}
+                      selectedLevel={promptLevel[i] ?? null}
+                      selected={t === "incorrect"}
+                      onPick={(level) => pickPromptLevel(i, level, false)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => applyResult(i, "incorrect", false)}
+                      className={cn(
+                        "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                        "border-red-300 text-red-700 hover:bg-red-50",
+                        t === "incorrect" && "btn-bevel bg-red-500 border-red-600 text-white",
+                      )}
+                    >
+                      <X className="size-3" strokeWidth={3} />
+                      Error
+                    </button>
+                  )}
+                  {noResponse && (
+                    <button
+                      type="button"
+                      onClick={() => applyResult(i, "no-response", false)}
+                      aria-label="No response"
+                      className={cn(
+                        "size-7 rounded-full border-2 grid place-items-center transition-colors shrink-0",
+                        "border-amber-300 text-amber-700 hover:bg-amber-50",
+                        t === "no-response" && "btn-bevel bg-amber-500 border-amber-600 text-white",
+                      )}
+                    >
+                      <CircleSlash2 className="size-3" strokeWidth={2.25} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => applyResult(i, "correct", false)}
@@ -547,18 +652,46 @@ function TriangleNav({
   );
 }
 
+const ACTION_BUTTON_STYLES = {
+  correct: {
+    icon: Check,
+    label: "Correct",
+    classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
+    selectedClasses: "bg-green-500 border-green-600 text-white hover:bg-green-500",
+  },
+  incorrect: {
+    icon: X,
+    label: "Error",
+    classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
+    selectedClasses: "bg-red-500 border-red-600 text-white hover:bg-red-500",
+  },
+  // Neutral (not positive or negative), same amber used for Task Analysis's
+  // Prompted option, so "the target behavior didn't happen at all" reads
+  // distinctly from both Correct and Error.
+  "no-response": {
+    icon: CircleSlash2,
+    label: "No Response",
+    classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
+    selectedClasses: "bg-amber-500 border-amber-600 text-white hover:bg-amber-500",
+  },
+} as const;
+
 function ActionButton({
   variant,
   onClick,
   selected,
   disabled,
+  dense = false,
 }: {
-  variant: "correct" | "incorrect";
+  variant: keyof typeof ACTION_BUTTON_STYLES;
   onClick: () => void;
   selected: boolean;
   disabled?: boolean;
+  /** Tighter gap/padding/text for the 3-button row (Error/No Response/Correct)
+   *  — "No Response" doesn't fit at the 2-button row's roomier sizing. */
+  dense?: boolean;
 }) {
-  const isCorrect = variant === "correct";
+  const { icon: Icon, label, classes, selectedClasses } = ACTION_BUTTON_STYLES[variant];
   return (
     <motion.button
       onClick={onClick}
@@ -567,22 +700,160 @@ function ActionButton({
       animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "btn-bevel flex-1 h-10 rounded-full border-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-40",
-        isCorrect
-          ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-          : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-        selected &&
-          (isCorrect
-            ? "bg-green-500 border-green-600 text-white hover:bg-green-500"
-            : "bg-red-500 border-red-600 text-white hover:bg-red-500"),
-
+        "btn-bevel flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40",
+        dense ? "gap-1 px-1" : "gap-1.5 px-2",
+        classes,
+        selected && selectedClasses,
       )}
     >
-      {isCorrect ? <Check className="size-5" strokeWidth={3} /> : <X className="size-5" strokeWidth={3} />}
-      <span className="text-sm font-medium">
-        {isCorrect ? "Correct" : "Error"}
-      </span>
+      <Icon className="size-4 shrink-0" strokeWidth={variant === "no-response" ? 2.25 : 3} />
+      <span className={cn("font-medium truncate", dense ? "text-[13px]" : "text-sm")}>{label}</span>
     </motion.button>
+  );
+}
+
+/** Error, when a card has prompt levels configured, opens a small anchored
+ *  picker instead of toggling directly — same visual language as the app's
+ *  other anchored popovers (TimeOfDayKeypad, NumberKeypad). */
+function PromptLevelButton({
+  levels,
+  selectedLevel,
+  selected,
+  disabled,
+  onPick,
+}: {
+  levels: string[];
+  selectedLevel: string | null;
+  selected: boolean;
+  disabled?: boolean;
+  onPick: (level: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <motion.button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          disabled={disabled}
+          whileTap={{ scale: 0.94 }}
+          animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+          transition={{ duration: 0.35 }}
+          className={cn(
+            "btn-bevel flex-1 min-w-0 h-10 rounded-full border-2 flex flex-col items-center justify-center transition-colors disabled:opacity-40",
+            "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
+            selected && "bg-red-500 border-red-600 text-white hover:bg-red-500",
+          )}
+        >
+          <span className="flex items-center gap-1.5">
+            <X className="size-4 shrink-0" strokeWidth={3} />
+            <span className="text-sm font-medium">Error</span>
+          </span>
+          {selectedLevel && (
+            <span className={cn("text-[10px] leading-none -mt-0.5", selected ? "text-white/80" : "text-red-600/70")}>
+              {selectedLevel}
+            </span>
+          )}
+        </motion.button>
+      </PopoverAnchor>
+      <PopoverContent
+        side="top"
+        align="center"
+        collisionPadding={8}
+        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <div className="flex flex-col gap-0.5">
+          {levels.map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPick(level);
+                setOpen(false);
+              }}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                selectedLevel === level
+                  ? "bg-red-500 text-white"
+                  : "text-red-700 hover:bg-red-50",
+              )}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Compact version of PromptLevelButton for the expanded list's per-row
+ *  Error button — same popover-picker behavior, sized to match the row's
+ *  other small pill buttons instead of the standard view's large ones. */
+function RowPromptLevelButton({
+  levels,
+  selectedLevel,
+  selected,
+  onPick,
+}: {
+  levels: string[];
+  selectedLevel: string | null;
+  selected: boolean;
+  onPick: (level: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          className={cn(
+            "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+            "border-red-300 text-red-700 hover:bg-red-50",
+            selected && "btn-bevel bg-red-500 border-red-600 text-white",
+          )}
+        >
+          <X className="size-3" strokeWidth={3} />
+          {selectedLevel ?? "Error"}
+        </button>
+      </PopoverAnchor>
+      <PopoverContent
+        side="top"
+        align="center"
+        collisionPadding={8}
+        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <div className="flex flex-col gap-0.5">
+          {levels.map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPick(level);
+                setOpen(false);
+              }}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                selectedLevel === level
+                  ? "bg-red-500 text-white"
+                  : "text-red-700 hover:bg-red-50",
+              )}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

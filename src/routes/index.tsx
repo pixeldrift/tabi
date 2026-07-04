@@ -39,6 +39,10 @@ type CardConfig =
       description: string;
       minTrials: number;
       maxTrials?: number;
+      /** Adds a third, neutral "No Response" option between Error and Correct. */
+      noResponse?: boolean;
+      /** Error becomes a picker for these prompt levels instead of a plain toggle. */
+      promptLevels?: string[];
     }
   | { kind: "frequency"; title: string; phase: string; description: string; minCount: number }
   | { kind: "rate"; title: string; phase: string; description: string; minDurationSec: number; locked?: boolean }
@@ -53,6 +57,24 @@ const cards: CardConfig[] = [
     description:
       "Score correct if the learner reaches for and maintains hand-hold from the start of the transition through arrival at the destination.",
     minTrials: 5,
+  },
+  {
+    kind: "trial",
+    title: "Requests preferred item",
+    phase: "Intervention",
+    description:
+      "Score correct if the learner independently requests using a full phrase within 5 seconds of the item being visible. Score No Response if the learner does not attempt within the window.",
+    minTrials: 8,
+    noResponse: true,
+  },
+  {
+    kind: "trial",
+    title: "Follows one-step direction",
+    phase: "Intervention",
+    description:
+      "Score correct if the learner completes the direction independently. If an error occurs, record the least-to-most prompt level required.",
+    minTrials: 8,
+    promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
   },
   {
     kind: "frequency",
@@ -338,6 +360,8 @@ function renderCard(
           description={card.description}
           minTrials={card.minTrials}
           maxTrials={card.maxTrials}
+          noResponse={card.noResponse}
+          promptLevels={card.promptLevels}
           {...common}
         />
       );
