@@ -970,7 +970,10 @@ export function ScheduleView({
             <span
               className={cn(
                 "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                stickyCompact ? "max-w-0 opacity-0" : "max-w-[140px] opacity-100",
+                // Collapses first (no delay) when pinning; only reappears
+                // once the title + now-button have finished leaving when
+                // un-pinning (delay-300) — see the two below.
+                stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[140px] opacity-100 delay-300",
               )}
             >
               {layoutMode === "proportional" ? "Collapsed" : "Proportional"}
@@ -993,7 +996,7 @@ export function ScheduleView({
             <span
               className={cn(
                 "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                stickyCompact ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100",
+                stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[160px] opacity-100 delay-300",
               )}
             >
               Appointments
@@ -1012,21 +1015,22 @@ export function ScheduleView({
             <span
               className={cn(
                 "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                stickyCompact ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100",
+                stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[120px] opacity-100 delay-300",
               )}
             >
               Icons
             </span>
           </button>
 
-          {/* Centered schedule name — waits for the toggle icons' own
-              300ms collapse to finish before fading in, so the two read as
-              a sequence (icons move over, then the title appears) rather
-              than everything happening at once. */}
+          {/* Centered schedule name — pinning: waits for the toggle icons'
+              own collapse to finish (delay-300) before fading in, together
+              with the now-button below. Un-pinning: fades away immediately
+              (delay-0), together with the now-button, before the icons
+              expand back. */}
           <div
             className={cn(
-              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 delay-300 ease-out pointer-events-none",
-              stickyCompact ? "opacity-100" : "opacity-0",
+              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
+              stickyCompact ? "opacity-100 delay-300" : "opacity-0 delay-0",
             )}
             aria-hidden={!stickyCompact}
           >
@@ -1036,8 +1040,9 @@ export function ScheduleView({
           </div>
 
           {/* Right-aligned time button — slides in from off-screen right
-              once the title has had its turn (icons: 0-300ms, title:
-              300-600ms, this: 600-900ms), instead of fading in place. */}
+              at the same time the title fades in (both delay-300, after
+              the icons collapse); slides out immediately with the title
+              when un-pinning (both delay-0, before the icons expand back). */}
           <button
             type="button"
             onClick={scrollToNow}
@@ -1045,8 +1050,10 @@ export function ScheduleView({
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
-              "btn-bevel ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-all duration-300 delay-[600ms] ease-out",
-              stickyCompact ? "opacity-100 translate-x-0" : "opacity-0 translate-x-[130%] pointer-events-none",
+              "btn-bevel ml-auto inline-flex items-center gap-1 h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold text-white tabular-nums transition-all duration-300 ease-out",
+              stickyCompact
+                ? "opacity-100 translate-x-0 delay-300"
+                : "opacity-0 translate-x-[130%] pointer-events-none delay-0",
               !currentItem || editMode
                 ? "bg-stone-300"
                 : "bg-blue-600 hover:bg-blue-700",

@@ -367,7 +367,11 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
-                    className="overflow-hidden"
+                    // y-only clipping — the mini pill's -mr-4 below relies on
+                    // bleeding past this box's right edge to cancel the
+                    // header's own padding; overflow-hidden on both axes
+                    // was clipping that bleed and cutting the pill off.
+                    className="overflow-y-hidden overflow-x-visible"
                   >
                     <div className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
                       <MiniSession
@@ -531,10 +535,12 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{
-            y: { type: "spring", stiffness: 400, damping: 12 },
-            opacity: { duration: 0.25 },
-          }}
+          // A plain tween, not a spring — this sits directly inside the tab
+          // nav, and a bouncy/oscillating mount here was what made the nav
+          // (and, by extension, the panel it's grouped with) read as
+          // animating independently instead of staying visually locked to
+          // it during transitions.
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className="relative flex items-center justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
         >
           <span className="inline-block animate-pulse-scale">

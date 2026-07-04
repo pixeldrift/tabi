@@ -36,9 +36,10 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      {/* Same shape as the schedule timeline's "now" chevron, resting
-          rotated to point down; flips to point up as the list opens. */}
-      <TimeChevronIcon className="h-3 w-3 shrink-0 opacity-60 rotate-90 transition-transform duration-200 group-data-[state=open]:rotate-[270deg]" />
+      {/* Same shape as the schedule timeline's "now" chevron, resting in
+          its native orientation (pointing right); rotates 90° to point
+          down as the list opens. */}
+      <TimeChevronIcon className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-90" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
