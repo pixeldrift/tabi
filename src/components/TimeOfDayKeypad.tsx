@@ -28,6 +28,10 @@ function from24h(value: string): { hour12: number; minute: number; isPM: boolean
 /** Choose AM or PM so the time falls within business hours. */
 function autoPeriod(hh: number): boolean | null {
   if (hh <= 0 || hh > 12) return null;
+  // A leading zero on the hour (1-9) reads as AM regardless of business
+  // hours — "0315" should always resolve to 3:15 in the morning, not 3:15
+  // PM just because that happens to fall in business hours.
+  if (hh < 10) return false;
   const amH = hh === 12 ? 0 : hh;
   const pmH = hh === 12 ? 12 : hh + 12;
   const amOk = amH >= BUSINESS_START && amH < BUSINESS_END;

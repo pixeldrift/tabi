@@ -9,7 +9,6 @@ import {
   BellRing,
   HandHelping,
   Copy,
-  Type,
   Check,
   X,
   PencilOff,
@@ -351,8 +350,6 @@ export function ScheduleView({
   const [creatingNew, setCreatingNew] = useState(false);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [creatingAppt, setCreatingAppt] = useState(false);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
   const [newSchedOpen, setNewSchedOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmItemDelete, setConfirmItemDelete] = useState<ScheduleItem | null>(null);
@@ -502,6 +499,30 @@ export function ScheduleView({
     if (!newName.trim() || schedules.some((s) => s.name === newName)) return;
     setSchedules((p) => p.map((s) => (s.name === activeName ? { ...s, name: newName } : s)));
     setActiveName(newName);
+  };
+
+  // Edit mode swaps the schedule-name pill for a plain text field (see
+  // render below) — typing directly in is the rename, so there's no
+  // separate Rename button/modal anymore. Committed on blur/Enter rather
+  // than on every keystroke, so a mid-typing collision with another
+  // schedule's name doesn't reject partial input; an invalid result just
+  // reverts to the current name instead of leaving the field stuck.
+  const [scheduleNameDraft, setScheduleNameDraft] = useState(activeName);
+  useEffect(() => {
+    if (editMode) setScheduleNameDraft(activeName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
+  const commitScheduleNameDraft = () => {
+    const trimmed = scheduleNameDraft.trim();
+    if (!trimmed || trimmed === activeName) {
+      setScheduleNameDraft(activeName);
+      return;
+    }
+    if (schedules.some((s) => s.name === trimmed)) {
+      setScheduleNameDraft(activeName);
+      return;
+    }
+    renameActive(trimmed);
   };
 
   const deleteActive = () => {
@@ -700,42 +721,55 @@ export function ScheduleView({
         </div>
       </div>
 
-      {/* Schedule selector */}
+      {/* Schedule selector — edit mode swaps this for a plain text field
+          (typing directly in IS the rename, so there's no separate Rename
+          button/modal). Not focused or selected on entry; the user taps in
+          when they're ready. */}
       <div className="mt-4 flex items-center gap-2 px-1">
-        <Select value={activeName} onValueChange={(v) => { setActiveName(v); setEditMode(false); }} disabled={editMode}>
-          <SelectTrigger
-            className={cn(
+        {editMode ? (
+          <Input
+            value={scheduleNameDraft}
+            onChange={(e) => setScheduleNameDraft(e.target.value)}
+            onBlur={commitScheduleNameDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commitScheduleNameDraft();
+                e.currentTarget.blur();
+              }
+            }}
+            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-transparent bg-transparent shadow-none text-stone-800 transition-colors"
+            style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
+          />
+        ) : (
+          <Select value={activeName} onValueChange={setActiveName}>
+            <SelectTrigger
               // min-w-0 lets this shrink below its text's intrinsic width —
               // without it, a long schedule name can force the flex row wider
               // than the viewport and push Cancel/Save off screen.
-              "flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 transition-colors",
-              "[&>svg]:transition-all [&>svg]:duration-300",
-              editMode
-                ? "bg-transparent border-transparent shadow-none text-stone-800 disabled:opacity-100 [&>svg]:opacity-0 [&>svg]:translate-x-1 [&>svg]:pointer-events-none"
-                : "bg-white border-blue-500 text-blue-700 focus:ring-blue-300 [&>svg]:opacity-100 [&>svg]:translate-x-0",
-            )}
-            style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {schedules.map((s) => (
-              <SelectItem key={s.name} value={s.name}>
-                <span className="inline-flex items-center gap-1.5">
-                  {s.name}
-                  {s.name === CLIENT_GROUP && (
-                    <Star
-                      className="size-3.5 text-blue-600"
-                      fill="currentColor"
-                      strokeWidth={0}
-                      aria-label="Client's group"
-                    />
-                  )}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 bg-white border-blue-500 text-blue-700 focus:ring-blue-300 transition-colors"
+              style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {schedules.map((s) => (
+                <SelectItem key={s.name} value={s.name}>
+                  <span className="inline-flex items-center gap-1.5">
+                    {s.name}
+                    {s.name === CLIENT_GROUP && (
+                      <Star
+                        className="size-3.5 text-blue-600"
+                        fill="currentColor"
+                        strokeWidth={0}
+                        aria-label="Client's group"
+                      />
+                    )}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="flex items-center gap-1 overflow-hidden">
           {/* No `layout` on this wrapper — a layout-animated parent scales
               its whole subtree during the FLIP transition, which visibly
@@ -826,16 +860,6 @@ export function ScheduleView({
             className="mt-2 space-y-2 px-1 overflow-hidden"
           >
             <div className="flex items-center gap-1 flex-nowrap">
-              <Button
-                size="sm"
-                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
-                onClick={() => {
-                  setRenameValue(active.name);
-                  setRenameOpen(true);
-                }}
-              >
-                <Type /> Rename
-              </Button>
               <Button
                 size="sm"
                 className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
@@ -1355,18 +1379,6 @@ export function ScheduleView({
         }}
       />
 
-      <PromptDialog
-        open={renameOpen}
-        title="Rename Schedule"
-        value={renameValue}
-        onChange={setRenameValue}
-        onCancel={() => setRenameOpen(false)}
-        onSave={() => {
-          renameActive(renameValue.trim());
-          setRenameOpen(false);
-        }}
-      />
-
       <NewScheduleDialog
         open={newSchedOpen}
         onCancel={() => setNewSchedOpen(false)}
@@ -1465,80 +1477,16 @@ function useKeyboardInset(active: boolean) {
   return inset;
 }
 
-function PromptDialog({
-  open,
-  title,
-  value,
-  placeholder,
-  onChange,
-  onCancel,
-  onSave,
-}: {
-  open: boolean;
-  title: string;
-  value: string;
-  placeholder?: string;
-  onChange: (v: string) => void;
-  onCancel: () => void;
-  onSave: () => void;
-}) {
-  // Shifts the modal up by half the keyboard's height so it stays centered
-  // in the space actually left visible above it, instead of being covered.
-  const keyboardInset = useKeyboardInset(open);
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogContent
-        className="max-w-sm rounded-2xl border-stone-200 shadow-xl transition-[translate] duration-150"
-        style={
-          // The base DialogContent centers via Tailwind's `translate-x-[-50%]
-          // translate-y-[-50%]` classes — Tailwind v4 compiles those to the
-          // standalone CSS `translate` property, not `transform`, so an
-          // inline `transform` here would compose with (not replace) it and
-          // double the offset. Overriding the same `translate` property is
-          // what actually wins.
-          keyboardInset > 0
-            ? { translate: `-50% calc(-50% - ${keyboardInset / 2}px)` }
-            : undefined
-        }
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        {/* Full-width input on its own row — the icon buttons that used to
-            sit inline ate into the room available to type, so Cancel/Save
-            move to a labeled row underneath instead, matching ConfirmDialog's
-            footer pattern (Save on the right). */}
-        <Input
-          autoFocus
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSave();
-          }}
-          className={cn("w-full rounded-full px-4", INPUT_BLUE_CLS)}
-        />
-        {/* DialogFooter's default stacks full-width at narrow widths
-            (flex-col-reverse below `sm:`) — this app is mobile-width, so
-            forcing a row here keeps Cancel/Save side by side as asked. */}
-        <DialogFooter className="flex-row justify-end gap-2 space-x-0">
-          <Button
-            variant="outline"
-            className="rounded-full text-blue-700 hover:bg-blue-50 border-2 border-blue-300 gap-1.5"
-            onClick={onCancel}
-          >
-            Cancel <X className="size-4" />
-          </Button>
-          <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-            onClick={onSave}
-          >
-            Save <Check className="size-4" />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+// Shared with every text-entry dialog below: shifts the modal up by half
+// the keyboard's height so it stays centered in the space actually left
+// visible above it, instead of the keyboard covering its buttons. The base
+// DialogContent centers via Tailwind's `translate-x-[-50%] translate-y-[-50%]`
+// classes — Tailwind v4 compiles those to the standalone CSS `translate`
+// property, not `transform`, so an inline `transform` here would compose
+// with (not replace) it and double the offset. Overriding the same
+// `translate` property is what actually wins.
+function keyboardInsetStyle(inset: number): React.CSSProperties | undefined {
+  return inset > 0 ? { translate: `-50% calc(-50% - ${inset / 2}px)` } : undefined;
 }
 
 function ConfirmDialog({
@@ -1646,9 +1594,16 @@ function ItemDialog({
     });
   };
 
+  // Shifts the modal up clear of the OS keyboard — this dialog has two text
+  // fields (Icon/Name) when Activity is "Custom".
+  const keyboardInset = useKeyboardInset(open);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl">
+      <DialogContent
+        className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl transition-[translate] duration-150"
+        style={keyboardInsetStyle(keyboardInset)}
+      >
 
         <DialogHeader className="text-left">
           <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
@@ -1806,9 +1761,16 @@ function AppointmentDialog({
     });
   };
 
+  // Shifts the modal up clear of the OS keyboard — this dialog has a
+  // Provider text field.
+  const keyboardInset = useKeyboardInset(open);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl">
+      <DialogContent
+        className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl transition-[translate] duration-150"
+        style={keyboardInsetStyle(keyboardInset)}
+      >
         <DialogHeader className="text-left">
           <DialogTitle className="capitalize">{appt ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
         </DialogHeader>
@@ -2082,9 +2044,15 @@ function NewScheduleDialog({
     }
   }, [open]);
 
+  // Shifts the modal up clear of the OS keyboard.
+  const keyboardInset = useKeyboardInset(open);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+      <DialogContent
+        className="max-w-sm rounded-2xl border-stone-200 shadow-xl transition-[translate] duration-150"
+        style={keyboardInsetStyle(keyboardInset)}
+      >
         <DialogHeader>
           <DialogTitle>New Schedule</DialogTitle>
         </DialogHeader>
@@ -2102,7 +2070,10 @@ function NewScheduleDialog({
             />
           </div>
         </div>
-        <DialogFooter>
+        {/* DialogFooter's default stacks full-width at narrow widths
+            (flex-col-reverse below `sm:`) — forcing a row keeps Cancel/Save
+            side by side, matching the other text-entry dialogs. */}
+        <DialogFooter className="flex-row justify-end gap-2 space-x-0">
           <Button
             variant="outline"
             className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
