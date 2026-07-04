@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/sheet";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
-import { PhaseIcon } from "./icons/DataTypeIcons";
 import { cn } from "@/lib/utils";
 
 export interface CardShellProps {
@@ -81,7 +80,7 @@ export function CardShell({
           : "border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
-      <header className="flex items-center gap-1 pl-5 pr-9 pt-2 pb-0">
+      <header className="flex items-start gap-1 pl-5 pr-9 pt-2 pb-0">
         {hasExpandedView && (
           <button
             type="button"
@@ -91,7 +90,7 @@ export function CardShell({
             }}
             aria-expanded={expanded}
             aria-label={expanded ? "Show standard view" : "Show all"}
-            className="-ml-1.5 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+            className="-ml-1.5 mt-0.5 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
           >
             <TimeChevronIcon
               className={cn(
@@ -101,12 +100,9 @@ export function CardShell({
             />
           </button>
         )}
-        <h2 className="font-display text-lg leading-tight flex-1 mr-auto">{title}</h2>
-        <div className="text-right leading-tight">
-          <div className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground">
-            <PhaseIcon className="size-3 shrink-0" />
-            <span>{phase}</span>
-          </div>
+        <h2 className="font-display text-base leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
+        <div className="text-right leading-tight mt-0.5">
+          <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
           {dataType && (
             <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
               {dataTypeIcon && (

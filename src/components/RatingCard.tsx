@@ -103,7 +103,7 @@ export function RatingCard({
       }
     >
       <div className="px-5 pt-3 pb-4 flex flex-col items-center gap-2">
-        <div className="flex items-end justify-center gap-1.5">
+        <div className="flex items-center justify-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const size = BASE_STAR_SIZE + i * STAR_SIZE_STEP;
@@ -166,7 +166,7 @@ function RatingStar({
       transition={{ duration: 0.3 }}
       aria-label={`Rate ${value}`}
       aria-pressed={filled}
-      className={cn("relative shrink-0", isTop && "btn-bevel rounded-full")}
+      className={cn("relative shrink-0", isTop && "drop-shadow-[0_2px_3px_rgba(29,78,216,0.45)]")}
       style={{ width: size, height: size }}
     >
       <svg

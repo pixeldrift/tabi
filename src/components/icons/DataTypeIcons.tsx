@@ -74,19 +74,6 @@ export function RateIcon(props: IconProps) {
   );
 }
 
-/** Phase — three stages of a program connected by a line, e.g. baseline →
- * intervention → maintenance. */
-export function PhaseIcon(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <circle cx="5" cy="12" r="2" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="12" r="2" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 /** Score / Rank — ascending bars. */
 export function ScoreIcon(props: IconProps) {
   return (

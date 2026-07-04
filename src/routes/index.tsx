@@ -71,7 +71,7 @@ const cards: CardConfig[] = [
   {
     kind: "trial",
     title: "Requests preferred item",
-    phase: "Intervention",
+    phase: "Baseline",
     description:
       "Score correct if the learner independently requests using a full phrase within 5 seconds of the item being visible. Score No Response if the learner does not attempt within the window.",
     minTrials: 8,
@@ -80,7 +80,7 @@ const cards: CardConfig[] = [
   {
     kind: "trial",
     title: "Follows one-step direction",
-    phase: "Intervention",
+    phase: "Probing",
     description:
       "Score correct if the learner completes the direction independently. If an error occurs, record the least-to-most prompt level required.",
     minTrials: 8,
@@ -104,7 +104,7 @@ const cards: CardConfig[] = [
   {
     kind: "rate",
     title: "Uses AAC to request",
-    phase: "Intervention",
+    phase: "Maintenance",
     description: "Tally each independent AAC request. This timer is linked to the session timer.",
     minDurationSec: 60,
     locked: true,
@@ -120,7 +120,7 @@ const cards: CardConfig[] = [
   {
     kind: "duration",
     title: "Tolerates sitting in social group",
-    phase: "Intervention",
+    phase: "Maintenance",
     description:
       "Track each interval the learner remains seated with the social group. Start a new instance when they rejoin.",
     minDurationSec: 60,
@@ -128,7 +128,7 @@ const cards: CardConfig[] = [
   {
     kind: "task-analysis",
     title: "Washing hands",
-    phase: "Intervention",
+    phase: "Probing",
     description: "Score each step as Independent (I), Prompted (P), or Error (E).",
     steps: [
       "Turn on water",

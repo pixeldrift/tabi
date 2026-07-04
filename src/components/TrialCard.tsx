@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X, CircleSlash2 } from "lucide-react";
-import { PercentCorrectIcon, PhaseIcon } from "./icons/DataTypeIcons";
+import { PercentCorrectIcon } from "./icons/DataTypeIcons";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import {
@@ -211,7 +211,7 @@ export function TrialCard({
       )}
     >
       {/* Header */}
-      <header className="flex items-center gap-1 pl-5 pr-9 pt-2 pb-0">
+      <header className="flex items-start gap-1 pl-5 pr-9 pt-2 pb-0">
         <button
           type="button"
           onClick={(e) => {
@@ -220,18 +220,15 @@ export function TrialCard({
           }}
           aria-expanded={expanded}
           aria-label={expanded ? "Show standard view" : "Show all trials"}
-          className="-ml-1.5 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+          className="-ml-1.5 mt-0.5 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
         >
           <TimeChevronIcon
             className={cn("size-4 transition-transform duration-200", expanded && "translate-y-0.5 rotate-90")}
           />
         </button>
-        <h2 className="font-display text-xl leading-tight flex-1 mr-auto">{title}</h2>
-        <div className="text-right leading-tight">
-          <div className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground">
-            <PhaseIcon className="size-3 shrink-0" />
-            <span>{phase}</span>
-          </div>
+        <h2 className="font-display text-lg leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
+        <div className="text-right leading-tight mt-0.5">
+          <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
           <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
             <PercentCorrectIcon className="size-3 shrink-0" />
             <span>{dataType}</span>
