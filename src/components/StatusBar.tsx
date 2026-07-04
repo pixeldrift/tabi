@@ -27,6 +27,7 @@ import {
   PILL_CROSSFADE_MS,
   type SaveStatus,
   type SessionStatus,
+  type TransitionKind,
 } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -111,17 +112,39 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const dimmed = transitionStage > 0;
   const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
 
-  // The box itself waits for the pill's SESSION_MORPH_MS morph to land in
-  // the mini slot before collapsing, so the two reads as sequential beats
-  // ("clock moves, then box closes") instead of happening at once. A real
-  // state flip (not a Motion `transition.delay`) so it can't be disturbed by
-  // the elapsed-timer's frequent re-renders once the session is running.
-  // SessionContext's stage-2 dwell is extended by BOX_COLLAPSE_MS to match,
-  // so `dimmed` doesn't reset (and box content reappear) before this lands.
+  // The box itself waits for the pill to actually land before collapsing,
+  // so the two read as sequential beats ("clock moves, then box closes")
+  // instead of happening at once — and, now that the mini-session slot
+  // animates its own height in (see renderMiniPill below), so the box's
+  // "pull nav up" and the slot's "push nav down" don't overlap and fight
+  // each other, which read as a bounce. A fresh start's pill travel doesn't
+  // begin until DIGIT_SETTLE_MS after isRunning flips (the odometer settles
+  // first), so the box needs that same head start here — every other kind
+  // (resume, etc.) travels immediately, so SESSION_MORPH_MS alone is enough.
+  // Captured once via a ref (not read from `transitionKind` in the
+  // dependency array below) so SessionContext's own later reset of
+  // transitionKind can't cancel this timeout the same way it once could
+  // for the card-entrance delay — see that fix's comment in routes/index.tsx.
+  const collapseKindRef = useRef<TransitionKind>(null);
+  const prevCollapsedRef = useRef(collapsed);
+  if (collapsed !== prevCollapsedRef.current) {
+    prevCollapsedRef.current = collapsed;
+    if (collapsed) collapseKindRef.current = transitionKind;
+  }
+
+  // A real state flip (not a Motion `transition.delay`) so it can't be
+  // disturbed by the elapsed-timer's frequent re-renders once the session
+  // is running. SessionContext's stage-2 dwell is extended by
+  // BOX_COLLAPSE_MS to match, so `dimmed` doesn't reset (and box content
+  // reappear) before this lands.
   const [boxCollapsed, setBoxCollapsed] = useState(collapsed);
   useEffect(() => {
     if (collapsed) {
-      const id = window.setTimeout(() => setBoxCollapsed(true), SESSION_MORPH_MS);
+      const delay =
+        collapseKindRef.current === "start-new"
+          ? DIGIT_SETTLE_MS + SESSION_MORPH_MS
+          : SESSION_MORPH_MS;
+      const id = window.setTimeout(() => setBoxCollapsed(true), delay);
       return () => window.clearTimeout(id);
     }
     setBoxCollapsed(false);
@@ -223,6 +246,23 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   const bigPillVisible = pillView === "big" && !pillTraveling;
   const miniPillVisible = pillView === "mini" && !pillTraveling;
 
+  // Same "never animate to the literal string auto" fix as boxNaturalHeight/
+  // actionsHeight above — Motion's own "auto" resolution re-measures
+  // whenever this slot's content shifts (the pill's own crossfade, the
+  // digits rolling), and can settle at a value below its final height
+  // before correcting back up, which read as the nav bouncing. A
+  // ResizeObserver-measured pixel number never does that.
+  const miniSlotRef = useRef<HTMLDivElement>(null);
+  const [miniSlotHeight, setMiniSlotHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = miniSlotRef.current;
+    if (!el) return;
+    const measure = () => setMiniSlotHeight(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <>
@@ -360,20 +400,26 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   // instant jump was what made the tabs/panel below visibly
                   // detach from it, since only a discrete size change like
                   // that (not a `layout="position"` reposition) needs its
-                  // own transition to not be felt downstream.
+                  // own transition to not be felt downstream. Targets
+                  // miniSlotHeight (a measured pixel number), never the
+                  // string "auto" — see its comment above.
                   <motion.div
                     key="mini-session-slot"
                     initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
+                    animate={{ height: miniSlotHeight ?? "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
-                    // y-only clipping — the mini pill's -mr-4 below relies on
-                    // bleeding past this box's right edge to cancel the
-                    // header's own padding; overflow-hidden on both axes
-                    // was clipping that bleed and cutting the pill off.
-                    className="overflow-y-hidden overflow-x-visible"
+                    // No overflow-hidden here: the mini pill's -mr-4 below
+                    // needs to bleed past this box's right edge to cancel
+                    // the header's own padding, and CSS won't allow "clip Y
+                    // only, stay visible on X" — any non-"visible" value on
+                    // one axis silently forces the other from "visible" to
+                    // "auto" (which still clips), so it clipped the pill
+                    // regardless of which single axis was targeted. Left
+                    // fully unclipped instead; the brief height animation
+                    // doesn't read as messy without it.
                   >
-                    <div className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
+                    <div ref={miniSlotRef} className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
                       <MiniSession
                         elapsedMs={pillElapsed}
                         onPause={pause}
