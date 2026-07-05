@@ -90,7 +90,7 @@ export function CardShell({
             }}
             aria-expanded={expanded}
             aria-label={expanded ? "Show standard view" : "Show all"}
-            className="-ml-1.5 mt-0.5 shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+            className="-ml-1.5 mt-[-0.5px] shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
           >
             <TimeChevronIcon
               className={cn(
