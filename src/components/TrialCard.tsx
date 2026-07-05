@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardSession } from "./SessionContext";
+import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
@@ -24,6 +25,7 @@ export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 const UNSPECIFIED_LEVEL = "-unspecified-";
 
 export interface TrialCardProps {
+  id?: string;
   title: string;
   phase?: string;
   dataType?: string;
@@ -32,6 +34,10 @@ export interface TrialCardProps {
   maxTrials?: number;
   isActive?: boolean;
   onActivate?: () => void;
+  /** Controls the details Sheet from outside (e.g. the toolbar's drawer pull
+   *  tab) — omit both to keep the Sheet's own default uncontrolled state. */
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
   /** Adds a third, neutral "No Response" option between Error and Correct. */
   noResponse?: boolean;
   /** When set, Error becomes a picker for these prompt levels instead of a
@@ -45,6 +51,7 @@ const BUBBLE_CENTER = 56; // center bubble diameter
 const GAP = 6; // tighter spacing
 
 export function TrialCard({
+  id,
   title,
   phase = "Intervention",
   dataType = "Percent Correct",
@@ -53,6 +60,8 @@ export function TrialCard({
   maxTrials,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
   noResponse = false,
   promptLevels,
 }: TrialCardProps) {
@@ -106,6 +115,7 @@ export function TrialCard({
   const remaining = Math.max(0, minTrials - completedCount);
 
   const { markDirty, resetSignal } = useCardSession();
+  useReportCardStatus(id ?? title, completedCount > 0, isComplete);
 
   useEffect(() => {
     if (resetSignal === 0) return;
@@ -249,7 +259,10 @@ export function TrialCard({
 
       {/* Positioned so the circle's center sits at the card's own corner-radius
           center (rounded-xl = 20px), rather than in the header's flex flow. */}
-      <Sheet>
+      {/* Non-modal: the toolbar's drawer pull-tab needs to stay clickable
+          while this is open (to close it), and Radix's default modal mode
+          makes everything outside the portal `pointer-events: none`. */}
+      <Sheet open={detailsOpen} onOpenChange={onDetailsOpenChange} modal={false}>
         <SheetTrigger asChild>
           <button
             aria-label="Trial details"

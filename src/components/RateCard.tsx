@@ -6,9 +6,11 @@ import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
+import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export interface RateCardProps {
+  id?: string;
   title: string;
   phase?: string;
   description?: string;
@@ -16,17 +18,22 @@ export interface RateCardProps {
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
   /** When true, the timer is linked to the session timer: no play/pause, lock icon, gray display. */
   locked?: boolean;
 }
 
 export function RateCard({
+  id,
   title,
   phase = "Intervention",
   description,
   minDurationSec = 60,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
   locked = false,
 }: RateCardProps) {
   const [count, setCount] = useState(0);
@@ -72,6 +79,7 @@ export function RateCard({
     source: "rate",
     onActivate,
   });
+  useReportCardStatus(id ?? title, count > 0 || elapsed > 0, elapsed / 1000 >= minDurationSec);
 
   useEffect(() => {
     if (!ticking) return;
@@ -150,6 +158,8 @@ export function RateCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      detailsOpen={detailsOpen}
+      onDetailsOpenChange={onDetailsOpenChange}
       progress={null}
       editing={editing}
       details={

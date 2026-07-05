@@ -1,12 +1,16 @@
 import { RotateCcw } from "lucide-react";
 import { ALARM_SOUND_OPTIONS, SETTINGS, useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export function SettingsPane() {
-  const { values, setValue, resetAll, resetOne, alarmSound, setAlarmSound } = useSettings();
+  const {
+    values, setValue, resetAll, resetOne, alarmSound, setAlarmSound,
+    keepActiveCardCentered, setKeepActiveCardCentered,
+  } = useSettings();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
 
   return (
@@ -14,7 +18,7 @@ export function SettingsPane() {
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 className="font-display text-lg leading-tight">Settings</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Notification behavior.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Notification and data-view behavior.</p>
         </div>
         {groups.length > 0 && (
           <Button
@@ -118,6 +122,29 @@ export function SettingsPane() {
             </div>
           </section>
         ))}
+
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Data
+          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="keepActiveCardCentered" className="text-sm font-medium">
+                Keep active card centered
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Smoothly scroll the Data tab so whichever card you select stays centered in view —
+                the same kind of auto-scroll as the Schedule tab's "Now" button.
+              </p>
+            </div>
+            <Switch
+              id="keepActiveCardCentered"
+              checked={keepActiveCardCentered}
+              onCheckedChange={setKeepActiveCardCentered}
+              className="shrink-0"
+            />
+          </div>
+        </section>
       </div>
     </div>
   );

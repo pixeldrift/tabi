@@ -4,17 +4,21 @@ import { Check, HandHelping, X } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
 import { useCardSession } from "./SessionContext";
+import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export type StepStatus = "independent" | "prompted" | "error" | null;
 
 export interface TaskAnalysisCardProps {
+  id?: string;
   title: string;
   phase?: string;
   description?: string;
   steps: string[];
   isActive?: boolean;
   onActivate?: () => void;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 // Error (negative) on the left, Independent (positive) on the right — same
@@ -54,12 +58,15 @@ const BUBBLE_CENTER = 54;
 const GAP = 6;
 
 export function TaskAnalysisCard({
+  id,
   title,
   phase = "Intervention",
   description,
   steps,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
 }: TaskAnalysisCardProps) {
   const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
   const [current, setCurrent] = useState(0);
@@ -101,6 +108,7 @@ export function TaskAnalysisCard({
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const isComplete = completed >= steps.length;
   const remaining = Math.max(0, steps.length - completed);
+  useReportCardStatus(id ?? title, completed > 0, isComplete);
 
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
@@ -117,6 +125,8 @@ export function TaskAnalysisCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      detailsOpen={detailsOpen}
+      onDetailsOpenChange={onDetailsOpenChange}
       progress={progress}
       isComplete={isComplete}
       expanded={expanded}

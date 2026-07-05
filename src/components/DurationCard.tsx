@@ -5,11 +5,13 @@ import { CardShell } from "./CardShell";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
+import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 const PULSE_BEAT_MS = 1000;
 
 export interface DurationCardProps {
+  id?: string;
   title: string;
   phase?: string;
   description?: string;
@@ -17,6 +19,8 @@ export interface DurationCardProps {
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 const BUBBLE = 22;
@@ -25,12 +29,15 @@ const CENTER_H = 52;
 const GAP = 8;
 
 export function DurationCard({
+  id,
   title,
   phase = "Intervention",
   description,
   minDurationSec = 30,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
 }: DurationCardProps) {
   const [instances, setInstances] = useState<number[]>([0]);
   const [viewIdx, setViewIdx] = useState(0);
@@ -96,6 +103,7 @@ export function DurationCard({
   const totalSec = totalMs / 1000;
   const isComplete = totalSec >= minDurationSec;
   const remaining = Math.max(0, Math.ceil(minDurationSec - totalSec));
+  useReportCardStatus(id ?? title, totalMs > 0, isComplete);
 
   const flushLive = () => {
     if (running && runningIdxRef.current !== null) {
@@ -205,6 +213,8 @@ export function DurationCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      detailsOpen={detailsOpen}
+      onDetailsOpenChange={onDetailsOpenChange}
       progress={null}
       isComplete={isComplete}
       expanded={expanded}

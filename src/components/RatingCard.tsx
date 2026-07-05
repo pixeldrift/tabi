@@ -3,9 +3,11 @@ import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell } from "./CardShell";
 import { useCardSession } from "./SessionContext";
+import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export interface RatingCardProps {
+  id?: string;
   title: string;
   phase?: string;
   description?: string;
@@ -21,6 +23,8 @@ export interface RatingCardProps {
   levelDescriptions?: string[];
   isActive?: boolean;
   onActivate?: () => void;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 // Each star is a little larger than the one before it, ascending left to
@@ -34,6 +38,7 @@ const STAR_SIZE_STEP = 7;
 const ROW_STAR_SIZE = 30;
 
 export function RatingCard({
+  id,
   title,
   phase = "Intervention",
   description,
@@ -42,6 +47,8 @@ export function RatingCard({
   levelDescriptions,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -50,6 +57,7 @@ export function RatingCard({
   const [rating, setRating] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal } = useCardSession();
+  useReportCardStatus(id ?? title, rating > 0, rating > 0);
 
   useEffect(() => {
     if (resetSignal === 0) return;
@@ -70,6 +78,8 @@ export function RatingCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      detailsOpen={detailsOpen}
+      onDetailsOpenChange={onDetailsOpenChange}
       progress={null}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}

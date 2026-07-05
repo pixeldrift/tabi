@@ -50,6 +50,8 @@ export const ALARM_SOUND_OPTIONS: { value: AlarmSoundStyle; label: string }[] = 
 
 const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "normal";
 
+const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
+
 const DEFAULTS: SettingsValues = Object.fromEntries(SETTINGS.map((s) => [s.key, s.default]));
 
 const STORAGE_KEY = "aba-daba-settings-v2";
@@ -61,6 +63,11 @@ interface SettingsContextValue {
   resetOne: (key: string) => void;
   alarmSound: AlarmSoundStyle;
   setAlarmSound: (style: AlarmSoundStyle) => void;
+  /** Smoothly scrolls the Data tab so the active card stays centered
+   *  whenever it changes — the "now" button's always-on behavior, but
+   *  opt-in here since it's a bigger, more opinionated motion. */
+  keepActiveCardCentered: boolean;
+  setKeepActiveCardCentered: (v: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -74,10 +81,15 @@ export function useSettings() {
 interface StoredShape {
   values: SettingsValues;
   alarmSound: AlarmSoundStyle;
+  keepActiveCardCentered: boolean;
 }
 
 function loadStored(): StoredShape {
-  const fallback: StoredShape = { values: DEFAULTS, alarmSound: DEFAULT_ALARM_SOUND };
+  const fallback: StoredShape = {
+    values: DEFAULTS,
+    alarmSound: DEFAULT_ALARM_SOUND,
+    keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+  };
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -86,6 +98,7 @@ function loadStored(): StoredShape {
     return {
       values: { ...DEFAULTS, ...parsed.values },
       alarmSound: parsed.alarmSound ?? DEFAULT_ALARM_SOUND,
+      keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
     };
   } catch {
     return fallback;
@@ -97,18 +110,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // localStorage on mount to avoid hydration mismatches.
   const [values, setValues] = useState<SettingsValues>(DEFAULTS);
   const [alarmSound, setAlarmSound] = useState<AlarmSoundStyle>(DEFAULT_ALARM_SOUND);
+  const [keepActiveCardCentered, setKeepActiveCardCentered] = useState(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
 
   useEffect(() => {
     const stored = loadStored();
     setValues(stored.values);
     setAlarmSound(stored.alarmSound);
+    setKeepActiveCardCentered(stored.keepActiveCardCentered);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored: StoredShape = { values, alarmSound };
+    const stored: StoredShape = { values, alarmSound, keepActiveCardCentered };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  }, [values, alarmSound]);
+  }, [values, alarmSound, keepActiveCardCentered]);
 
   const setValue = useCallback((key: string, value: number) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -117,14 +132,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const resetAll = useCallback(() => {
     setValues(DEFAULTS);
     setAlarmSound(DEFAULT_ALARM_SOUND);
+    setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
   }, []);
   const resetOne = useCallback((key: string) => {
     setValues((v) => ({ ...v, [key]: DEFAULTS[key] }));
   }, []);
 
   const value = useMemo(
-    () => ({ values, setValue, resetAll, resetOne, alarmSound, setAlarmSound }),
-    [values, setValue, resetAll, resetOne, alarmSound],
+    () => ({
+      values, setValue, resetAll, resetOne, alarmSound, setAlarmSound,
+      keepActiveCardCentered, setKeepActiveCardCentered,
+    }),
+    [values, setValue, resetAll, resetOne, alarmSound, keepActiveCardCentered],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

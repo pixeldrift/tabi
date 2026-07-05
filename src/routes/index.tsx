@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "motion/react";
-import { User } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence, LayoutGroup, Reorder } from "motion/react";
+import { User, GripVertical, Heart, EyeOff } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
@@ -10,12 +10,20 @@ import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
-import { SettingsProvider } from "@/components/SettingsContext";
+import { SettingsProvider, useSettings } from "@/components/SettingsContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { DataToolbar } from "@/components/DataToolbar";
+import {
+  DataToolbarProvider,
+  useDataToolbar,
+  type CardKind,
+  type DataToolbarFilters,
+  type DisplayMode,
+} from "@/components/DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -32,7 +40,11 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type CardConfig =
+// `id` is intersected onto every variant rather than repeated per-branch —
+// stable identity for drag-reorder, favoriting, hiding, and active-card
+// tracking, independent of array position (which filtering/reordering
+// otherwise makes an unreliable key).
+type CardConfig = { id: string } & (
   | {
       kind: "trial";
       title: string;
@@ -57,10 +69,12 @@ type CardConfig =
       min?: number;
       max: number;
       levelDescriptions?: string[];
-    };
+    }
+);
 
 const cards: CardConfig[] = [
   {
+    id: "holds-hand-transition",
     kind: "trial",
     title: "Holds hand during transition",
     phase: "Intervention",
@@ -69,6 +83,7 @@ const cards: CardConfig[] = [
     minTrials: 5,
   },
   {
+    id: "requests-preferred-item",
     kind: "trial",
     title: "Requests preferred item",
     phase: "Baseline",
@@ -78,6 +93,7 @@ const cards: CardConfig[] = [
     noResponse: true,
   },
   {
+    id: "follows-one-step-direction",
     kind: "trial",
     title: "Follows one-step direction",
     phase: "Probing",
@@ -87,6 +103,7 @@ const cards: CardConfig[] = [
     promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
   },
   {
+    id: "giggles-laughs",
     kind: "frequency",
     title: "Giggles/laughs during therapist-led play",
     phase: "Intervention",
@@ -94,6 +111,7 @@ const cards: CardConfig[] = [
     minCount: 5,
   },
   {
+    id: "flopping-dropping",
     kind: "rate",
     title: "Flopping/dropping to floor",
     phase: "Baseline",
@@ -102,6 +120,7 @@ const cards: CardConfig[] = [
     minDurationSec: 60,
   },
   {
+    id: "uses-aac-to-request",
     kind: "rate",
     title: "Uses AAC to request",
     phase: "Maintenance",
@@ -110,6 +129,7 @@ const cards: CardConfig[] = [
     locked: true,
   },
   {
+    id: "tantruming",
     kind: "duration",
     title: "Tantruming",
     phase: "Intervention",
@@ -118,6 +138,7 @@ const cards: CardConfig[] = [
     minDurationSec: 30,
   },
   {
+    id: "tolerates-sitting-social-group",
     kind: "duration",
     title: "Tolerates sitting in social group",
     phase: "Maintenance",
@@ -126,6 +147,7 @@ const cards: CardConfig[] = [
     minDurationSec: 60,
   },
   {
+    id: "washing-hands",
     kind: "task-analysis",
     title: "Washing hands",
     phase: "Probing",
@@ -141,6 +163,7 @@ const cards: CardConfig[] = [
     ],
   },
   {
+    id: "overall-session-engagement",
     kind: "rating",
     title: "Overall session engagement",
     phase: "Intervention",
@@ -166,19 +189,113 @@ function Index() {
   return (
     <SettingsProvider>
       <SessionProvider>
-        <IndexInner />
+        <DataToolbarProvider>
+          <IndexInner />
+        </DataToolbarProvider>
       </SessionProvider>
     </SettingsProvider>
   );
 }
 
+const CARD_KINDS_IN_ORDER: CardKind[] = ["trial", "frequency", "rate", "duration", "task-analysis", "rating"];
+
+function getVisibleCards(
+  order: string[],
+  filters: DataToolbarFilters,
+  searchQuery: string,
+  favorites: Set<string>,
+  hidden: Set<string>,
+  hasData: Record<string, boolean>,
+  completion: Record<string, boolean>,
+  editMode: boolean,
+): CardConfig[] {
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const orderedIds =
+    order.length > 0
+      ? [...order.filter((id) => byId.has(id)), ...cards.map((c) => c.id).filter((id) => !order.includes(id))]
+      : cards.map((c) => c.id);
+  const ordered = orderedIds.map((id) => byId.get(id)).filter((c): c is CardConfig => c !== undefined);
+
+  const q = searchQuery.trim().toLowerCase();
+  return ordered.filter((card) => {
+    // Hidden cards mirror After Effects' shy layers: they stay visible while
+    // editing (so there's a way to find and un-hide them) but otherwise only
+    // show when the "Show hidden" filter is on.
+    if (!editMode && hidden.has(card.id) && !filters.showHidden) return false;
+    if (filters.favoritesOnly && !favorites.has(card.id)) return false;
+    if (filters.kinds.size > 0 && !filters.kinds.has(card.kind)) return false;
+    if (filters.phases.size > 0 && !filters.phases.has(card.phase)) return false;
+    if (filters.incompleteOnly && completion[card.id]) return false;
+    if (filters.logged === "logged" && !hasData[card.id]) return false;
+    if (filters.logged === "no-data" && hasData[card.id]) return false;
+    if (q && !card.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
+  list: "grid-cols-1",
+  card: "grid-cols-1 sm:grid-cols-2",
+  grid: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+};
+
 function IndexInner() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeId, setActiveId] = useState<string>(cards[0].id);
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { status, transitionStage, transitionKind } = useSession();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
+  const { keepActiveCardCentered } = useSettings();
+  const {
+    displayMode,
+    editMode,
+    searchQuery,
+    filters,
+    favorites,
+    toggleFavorite,
+    hidden,
+    toggleHidden,
+    order,
+    setOrder,
+    hasData,
+    completion,
+  } = useDataToolbar();
+
+  const availableKinds = useMemo(
+    () => CARD_KINDS_IN_ORDER.filter((k) => cards.some((c) => c.kind === k)),
+    [],
+  );
+  const availablePhases = useMemo(() => Array.from(new Set(cards.map((c) => c.phase))), []);
+
+  const visibleCards = useMemo(
+    () => getVisibleCards(order, filters, searchQuery, favorites, hidden, hasData, completion, editMode),
+    [order, filters, searchQuery, favorites, hidden, hasData, completion, editMode],
+  );
+
+  const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  // Keep the active card centered whenever it's selected (opt-in — see the
+  // Settings tab's "Keep active card centered" toggle) and, unconditionally,
+  // whenever the display mode changes — switching from a single column to a
+  // multi-column grid reflows every card's position, so without this the
+  // active one can silently scroll off screen.
+  useEffect(() => {
+    if (!keepActiveCardCentered) return;
+    const el = cardRefs.current.get(activeId);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, keepActiveCardCentered]);
+
+  const prevDisplayModeRef = useRef(displayMode);
+  useEffect(() => {
+    if (prevDisplayModeRef.current === displayMode) return;
+    prevDisplayModeRef.current = displayMode;
+    const el = cardRefs.current.get(activeId);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayMode]);
 
   // Which single-unit animation the card list should play, and a remount
   // key. Only start-new (fresh session) and discard (abandon in-progress
@@ -291,64 +408,87 @@ function IndexInner() {
       <LayoutGroup id="session-bar">
       <StatusBar activeTab={tab} onTabChange={setTab} />
 
+      {/* Rendered as a sibling of (not nested inside) the motion.section
+          below — that section's own `layout="position"` tracking applies a
+          (near-identity, but non-"none") transform, which makes it establish
+          a stacking context that traps any z-index inside it. Since the
+          toolbar needs to out-stack the details Sheet's portaled overlay
+          (z-50) so its drawer pull tab stays clickable while the drawer is
+          open, it has to live outside that trap. */}
+      {tab === "data" && (
+        <DataToolbar
+          stickyTop={stickyTop}
+          availableKinds={availableKinds}
+          availablePhases={availablePhases}
+          drawerOpen={drawerOpen}
+          onToggleDrawer={() => setDrawerOpen((v) => !v)}
+        >
+          <AnimatePresence initial={false}>
+            {!sessionActive && (
+              <motion.div
+                key="start-session-banner"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{
+                  height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
+                  opacity: { duration: 0.25 },
+                }}
+                className="overflow-hidden border-t border-stone-200/70"
+              >
+                <motion.div
+                  initial={{ y: -16 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: -16 }}
+                  transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                  className="py-1.5 px-8 text-center"
+                >
+                  <span className="text-sm text-muted-foreground">Start session to record data.</span>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DataToolbar>
+      )}
 
       <motion.section
         layout="position"
         transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
         className={cn(
           "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px",
-          tab === "schedule" ? "pt-2" : "pt-5",
+          tab === "schedule" ? "pt-2" : tab === "data" ? "pt-0" : "pt-5",
         )}
       >
         {tab === "data" && (
           <>
-            {/* Direct child of the section (not the flex/align-items:center
-                wrapper below) — negative margins used to break a flex child
-                out to full width get silently ignored by that container's
-                centering, so this uses the viewport-relative breakout
-                instead, same as the notification bar / schedule toggles. */}
-            <AnimatePresence initial={false}>
-              {!sessionActive && (
-                <motion.div
-                  key="start-session-banner"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{
-                    height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
-                    opacity: { duration: 0.25 },
-                  }}
-                  className="sticky z-40 -mt-5 mb-5 overflow-hidden bg-background border-b border-stone-200/70 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen"
-                  style={{ top: stickyTop }}
-                >
-                  <motion.div
-                    initial={{ y: -16 }}
-                    animate={{ y: 0 }}
-                    exit={{ y: -16 }}
-                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                    className="py-1.5 px-8 text-center"
-                  >
-                    <span className="text-sm text-muted-foreground">Start session to record data.</span>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           {/* -mx-2 cancels 8px of the section's px-5, so the cards sit 12px
               from the viewport edge — the same as the gap-3 between them,
               instead of the wider 20px inherited from the shared tab padding. */}
-          <div className="flex flex-col items-center -mx-2">
+          <div className="flex flex-col items-center -mx-2 mt-5">
             <div
               className={cn(
-                "w-full flex flex-col items-center gap-3 transition-opacity duration-300",
+                "w-full transition-opacity duration-300",
                 !sessionActive && "opacity-50",
               )}
             >
               <DataCardList
                 cardsGen={cardsGen}
                 cardsAnimKind={cardsAnimKind}
-                activeIndex={activeIndex}
-                setActiveIndex={setActiveIndex}
-                hidden={cardsHidden}
+                transitionHidden={cardsHidden}
+                visibleCards={visibleCards}
+                activeId={activeId}
+                setActiveId={setActiveId}
+                cardRefs={cardRefs}
+                editMode={editMode}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                hidden={hidden}
+                toggleHidden={toggleHidden}
+                order={order}
+                setOrder={setOrder}
+                displayMode={displayMode}
+                drawerOpen={drawerOpen}
+                onDrawerOpenChange={setDrawerOpen}
               />
             </div>
           </div>
@@ -373,7 +513,13 @@ function IndexInner() {
 
 function renderCard(
   card: CardConfig,
-  common: { isActive: boolean; onActivate: () => void },
+  common: {
+    id: string;
+    isActive: boolean;
+    onActivate: () => void;
+    detailsOpen?: boolean;
+    onDetailsOpenChange?: (open: boolean) => void;
+  },
 ): React.ReactNode {
   switch (card.kind) {
     case "trial":
@@ -484,23 +630,116 @@ const SINGLE_UNIT_VARIANTS = {
 const DataCardList = memo(function DataCardList({
   cardsGen,
   cardsAnimKind,
-  activeIndex,
-  setActiveIndex,
-  hidden = false,
+  transitionHidden = false,
+  visibleCards,
+  activeId,
+  setActiveId,
+  cardRefs,
+  editMode,
+  favorites,
+  toggleFavorite,
+  hidden,
+  toggleHidden,
+  setOrder,
+  displayMode,
+  drawerOpen,
+  onDrawerOpenChange,
 }: {
   cardsGen: number;
   cardsAnimKind: "start-new" | "discard" | "submit";
-  activeIndex: number;
-  setActiveIndex: (i: number) => void;
   /** True during stages 1-2 of a start-new/discard transition — the old
    * list plays its exit (this flipping true is what triggers it, since
    * AnimatePresence here tracks its child's presence) and nothing renders
    * until the fresh list mounts for stage 3. */
-  hidden?: boolean;
+  transitionHidden?: boolean;
+  visibleCards: CardConfig[];
+  activeId: string;
+  setActiveId: (id: string) => void;
+  cardRefs: React.RefObject<Map<string, HTMLElement>>;
+  editMode: boolean;
+  favorites: Set<string>;
+  toggleFavorite: (id: string) => void;
+  hidden: Set<string>;
+  toggleHidden: (id: string) => void;
+  order: string[];
+  setOrder: (ids: string[]) => void;
+  displayMode: DisplayMode;
+  drawerOpen: boolean;
+  onDrawerOpenChange: (open: boolean) => void;
 }) {
-  const cardElements = cards.map((card, i) =>
-    renderCard(card, { isActive: i === activeIndex, onActivate: () => setActiveIndex(i) }),
-  );
+  const setCardRef = (id: string) => (el: HTMLElement | null) => {
+    if (el) cardRefs.current.set(id, el);
+    else cardRefs.current.delete(id);
+  };
+
+  const renderOne = (card: CardConfig) =>
+    renderCard(card, {
+      id: card.id,
+      isActive: card.id === activeId,
+      onActivate: () => setActiveId(card.id),
+      detailsOpen: card.id === activeId ? drawerOpen : undefined,
+      onDetailsOpenChange: card.id === activeId ? onDrawerOpenChange : undefined,
+    });
+
+  // Edit mode is its own render path — drag-to-reorder (via Motion's
+  // Reorder) plus per-card favorite/hide affordances don't need to
+  // coordinate with the session-lifecycle animations below, since editing
+  // and a start-new/discard/submit transition don't realistically overlap.
+  if (editMode) {
+    return (
+      <Reorder.Group
+        axis="y"
+        values={visibleCards.map((c) => c.id)}
+        onReorder={setOrder}
+        className={cn("grid gap-3 w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
+      >
+        {visibleCards.map((card) => {
+          const isFav = favorites.has(card.id);
+          const isHidden = hidden.has(card.id);
+          return (
+            <Reorder.Item
+              key={card.id}
+              value={card.id}
+              ref={setCardRef(card.id)}
+              className="w-full flex flex-col items-center gap-1"
+            >
+              <div className="flex items-center gap-1 w-full max-w-md px-1">
+                <span className="cursor-grab text-stone-400 touch-none" aria-hidden>
+                  <GripVertical className="size-4" />
+                </span>
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(card.id)}
+                  aria-pressed={isFav}
+                  aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                  className={cn(
+                    "grid place-items-center size-6 rounded-full transition-colors",
+                    isFav ? "text-red-500" : "text-stone-400 hover:text-stone-600",
+                  )}
+                >
+                  <Heart className="size-4" fill={isFav ? "currentColor" : "none"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleHidden(card.id)}
+                  aria-pressed={isHidden}
+                  aria-label={isHidden ? "Unhide card" : "Hide card"}
+                  className={cn(
+                    "grid place-items-center size-6 rounded-full transition-colors",
+                    isHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+                  )}
+                >
+                  <EyeOff className="size-4" />
+                </button>
+              </div>
+              <div className={cn("w-full flex justify-center", isHidden && "opacity-40")}>{renderOne(card)}</div>
+            </Reorder.Item>
+          );
+        })}
+      </Reorder.Group>
+    );
+  }
 
   if (cardsAnimKind === "submit") {
     // Submit keeps its own separate, more elaborate per-card staggered
@@ -509,7 +748,7 @@ const DataCardList = memo(function DataCardList({
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={cardsGen}
-          className="w-full flex flex-col items-center gap-3"
+          className={cn("grid gap-3 w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
           initial="enter"
           animate="center"
           exit="exit"
@@ -519,9 +758,10 @@ const DataCardList = memo(function DataCardList({
             exit: { transition: { staggerChildren: DATA_SUBMIT_STAGGER_MS / 1000 } },
           }}
         >
-          {cardElements.map((el, i) => (
+          {visibleCards.map((card) => (
             <motion.div
-              key={i}
+              key={card.id}
+              ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               variants={{
                 enter: { opacity: 0, x: -40 },
@@ -529,7 +769,7 @@ const DataCardList = memo(function DataCardList({
                 exit: { opacity: 0, x: 80, transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 } },
               }}
             >
-              {el}
+              {renderOne(card)}
             </motion.div>
           ))}
         </motion.div>
@@ -539,18 +779,18 @@ const DataCardList = memo(function DataCardList({
 
   return (
     <AnimatePresence mode="popLayout" initial={false}>
-      {!hidden && (
+      {!transitionHidden && (
         <motion.div
           key={cardsGen}
-          className="w-full flex flex-col items-center gap-3"
+          className={cn("grid gap-3 w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
           initial="initial"
           animate="animate"
           exit="exit"
           variants={SINGLE_UNIT_VARIANTS[cardsAnimKind]}
         >
-          {cardElements.map((el, i) => (
-            <div key={i} className="w-full flex justify-center">
-              {el}
+          {visibleCards.map((card) => (
+            <div key={card.id} ref={setCardRef(card.id)} className="w-full flex justify-center">
+              {renderOne(card)}
             </div>
           ))}
         </motion.div>

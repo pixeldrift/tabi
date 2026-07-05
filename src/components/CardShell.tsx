@@ -22,6 +22,10 @@ export interface CardShellProps {
   description?: string;
   isActive?: boolean;
   onActivate?: () => void;
+  /** Controls the details Sheet from outside (e.g. the toolbar's drawer pull
+   *  tab) — omit both to keep the Sheet's own default uncontrolled state. */
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
   /** 0–100 progress. Pass null/undefined to hide the progress bar entirely. */
   progress?: number | null;
   isComplete?: boolean;
@@ -49,6 +53,8 @@ export function CardShell({
   description,
   isActive = true,
   onActivate,
+  detailsOpen,
+  onDetailsOpenChange,
   progress,
   isComplete = false,
   helperText,
@@ -120,7 +126,10 @@ export function CardShell({
 
       {/* Positioned so the circle's center sits at the card's own corner-radius
           center (rounded-xl = 20px), rather than in the header's flex flow. */}
-      <Sheet>
+      {/* Non-modal: the toolbar's drawer pull-tab needs to stay clickable
+          while this is open (to close it), and Radix's default modal mode
+          makes everything outside the portal `pointer-events: none`. */}
+      <Sheet open={detailsOpen} onOpenChange={onDetailsOpenChange} modal={false}>
         <SheetTrigger asChild>
           <button
             aria-label="Card details"
