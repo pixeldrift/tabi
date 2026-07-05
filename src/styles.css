@@ -162,8 +162,8 @@
      element, sidestepping Framer's own re-trigger-detection on a value it
      may consider unchanged. */
   @keyframes lv-bubble-hop {
-    0% { transform: scale(0.7); }
-    55% { transform: scale(1.22); }
+    0% { transform: scale(0.78); }
+    55% { transform: scale(1.15); }
     100% { transform: scale(1); }
   }
   .animate-pulse-scale { animation: lv-pulse-scale 1s ease-in-out infinite; }
@@ -171,7 +171,11 @@
   .animate-bounce-x { animation: lv-bounce-x 0.6s ease-in-out 2; }
   .animate-now-pulse { animation: lv-now-pulse 0.6s ease-in-out 2; border-style: solid; }
   .animate-wiggle { animation: lv-wiggle 0.6s ease-in-out infinite; }
-  .animate-bubble-hop { animation: lv-bubble-hop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  /* Plain ease-out (not a bouncy back-ease) — a back-ease's control points
+     can overshoot past the stated keyframe value en route, which was eating
+     into the bubble row's clearance and clipping against the accordion
+     wrapper's overflow-hidden bounds. */
+  .animate-bubble-hop { animation: lv-bubble-hop 0.4s ease-out; }
 
   /* Subtle bevel + drop shadow for tactile pill buttons. Light source: top-left. */
   .btn-bevel {
