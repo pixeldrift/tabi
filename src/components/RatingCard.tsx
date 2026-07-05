@@ -179,7 +179,7 @@ const STAR_UP_SHIFT_EXCEPTIONS = new Set([1, 4]);
 // famously-adjusted iOS Calendar icon digit. A hair of extra correction
 // on top of the computed shift above, not a full nudge in its own right.
 const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
-  1: { x: -1, y: -1 },
+  1: { x: 1, y: -1 },
   3: { x: 0, y: -1 },
 };
 
