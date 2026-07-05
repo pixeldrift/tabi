@@ -159,7 +159,16 @@ const ROUNDED_STAR_PATH =
 // within its box. Because both use the same fraction, the two facts —
 // "numbers form a straight line" and "each star's shape is what actually
 // shifts to hold that line" — are the same equation, not two separate fixes.
-const NUMBER_LINE_FRACTION = 0.6;
+//
+// The fraction itself is the star polygon's own area centroid (computed via
+// the shoelace formula on its 10 vertices — 12.51 out of a 24-unit box, see
+// scratch calculation), not a value eyeballed at one size. That distinction
+// matters here: any mismatch between this fraction and the star's true
+// visual center scales with the star's own size, so a value that merely
+// "looked fine" on the smallest star would drift further off on every
+// larger one — using the actual centroid is what keeps every star's shape
+// centered on its own number regardless of size.
+const NUMBER_LINE_FRACTION = 12.51 / 24;
 
 function RatingStar({
   value,
