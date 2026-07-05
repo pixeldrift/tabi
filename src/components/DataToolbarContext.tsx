@@ -4,17 +4,19 @@ export type CardKind = "trial" | "frequency" | "rate" | "duration" | "task-analy
 
 export type DisplayMode = "list" | "card" | "grid";
 
-/** Mutually exclusive: has any data been logged this session, has none yet,
- *  or the filter is off (show both). */
-export type LoggedFilter = "all" | "logged" | "no-data";
-
 export interface DataToolbarFilters {
   /** Empty set = no kind filter applied (show all kinds). */
   kinds: Set<CardKind>;
   /** Empty set = no phase filter applied (show all phases). */
   phases: Set<string>;
-  incompleteOnly: boolean;
-  logged: LoggedFilter;
+  /** withData/noData and trialsReached/incompleteTrials are each a pair of
+   *  independent toggles, not a mutually-exclusive pair — selecting both or
+   *  neither of a pair applies no constraint from it (shows all), matching
+   *  the same combining rule for both. */
+  withData: boolean;
+  noData: boolean;
+  trialsReached: boolean;
+  incompleteTrials: boolean;
   favoritesOnly: boolean;
   /** Mirrors After Effects' "Hide Shy Layers" master switch: OFF (false)
    *  hides shy/hidden cards from the list; ON (true) reveals them alongside
@@ -25,8 +27,10 @@ export interface DataToolbarFilters {
 const DEFAULT_FILTERS: DataToolbarFilters = {
   kinds: new Set(),
   phases: new Set(),
-  incompleteOnly: false,
-  logged: "all",
+  withData: false,
+  noData: false,
+  trialsReached: false,
+  incompleteTrials: false,
   favoritesOnly: false,
   showHidden: false,
 };
@@ -66,8 +70,10 @@ interface DataToolbarContextValue {
   filters: DataToolbarFilters;
   toggleKindFilter: (kind: CardKind) => void;
   togglePhaseFilter: (phase: string) => void;
-  setIncompleteOnly: (v: boolean) => void;
-  setLoggedFilter: (v: LoggedFilter) => void;
+  setWithData: (v: boolean) => void;
+  setNoData: (v: boolean) => void;
+  setTrialsReached: (v: boolean) => void;
+  setIncompleteTrials: (v: boolean) => void;
   setFavoritesOnly: (v: boolean) => void;
   setShowHidden: (v: boolean) => void;
   clearFilters: () => void;
@@ -142,11 +148,17 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const setIncompleteOnly = useCallback((v: boolean) => {
-    setFilters((f) => ({ ...f, incompleteOnly: v }));
+  const setWithData = useCallback((v: boolean) => {
+    setFilters((f) => ({ ...f, withData: v }));
   }, []);
-  const setLoggedFilter = useCallback((v: LoggedFilter) => {
-    setFilters((f) => ({ ...f, logged: v }));
+  const setNoData = useCallback((v: boolean) => {
+    setFilters((f) => ({ ...f, noData: v }));
+  }, []);
+  const setTrialsReached = useCallback((v: boolean) => {
+    setFilters((f) => ({ ...f, trialsReached: v }));
+  }, []);
+  const setIncompleteTrials = useCallback((v: boolean) => {
+    setFilters((f) => ({ ...f, incompleteTrials: v }));
   }, []);
   const setFavoritesOnly = useCallback((v: boolean) => {
     setFilters((f) => ({ ...f, favoritesOnly: v }));
@@ -192,8 +204,10 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
       filters,
       toggleKindFilter,
       togglePhaseFilter,
-      setIncompleteOnly,
-      setLoggedFilter,
+      setWithData,
+      setNoData,
+      setTrialsReached,
+      setIncompleteTrials,
       setFavoritesOnly,
       setShowHidden,
       clearFilters,
@@ -209,7 +223,8 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
     }),
     [
       displayMode, editMode, setEditMode, searchQuery, filters,
-      toggleKindFilter, togglePhaseFilter, setIncompleteOnly, setLoggedFilter, setFavoritesOnly, setShowHidden, clearFilters,
+      toggleKindFilter, togglePhaseFilter, setWithData, setNoData, setTrialsReached, setIncompleteTrials,
+      setFavoritesOnly, setShowHidden, clearFilters,
       favorites, toggleFavorite, hidden, toggleHidden, order, setOrder, hasData, completion, reportCardStatus,
     ],
   );
@@ -218,9 +233,10 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
 }
 
 /** Cards call this with their own live "has any data been recorded" /
- *  "has this met its own minimum" booleans so the toolbar's Logged/No data
- *  and Incomplete-goals filters have something to read — only the card
- *  itself knows what counts as "data" or "complete" for its own type. */
+ *  "has this met its own minimum" booleans so the toolbar's With Data/No Data
+ *  and Trials Reached/Incomplete Trials filters have something to read —
+ *  only the card itself knows what counts as "data" or "complete" for its
+ *  own type. */
 export function useReportCardStatus(id: string, hasData: boolean, isComplete: boolean) {
   const { reportCardStatus } = useDataToolbar();
   useEffect(() => {

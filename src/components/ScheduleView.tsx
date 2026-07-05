@@ -266,7 +266,12 @@ const PHINEAS: ScheduleItem[] = [
   { id: "p7", start: "12:30", end: "13:15", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
   { id: "p9", start: "13:30", end: "14:00", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "p10", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  { id: "p10", start: "14:00", end: "14:45", activity: "Imaginative Play", location: "Classroom", alert: "off" },
+  { id: "p11", start: "14:45", end: "15:30", activity: "Peer Play", location: "Small Gym", alert: "audio" },
+  { id: "p12", start: "15:30", end: "15:45", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
+  { id: "p13", start: "15:45", end: "16:30", activity: "Client Choice", location: "Classroom", alert: "off" },
+  { id: "p14", start: "16:30", end: "17:30", activity: "Reading", location: "Classroom", alert: "visual" },
+  { id: "p15", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
 const PHINEAS_APPTS: Appointment[] = [
@@ -1281,14 +1286,14 @@ export function ScheduleView({
                 // Reachable only in proportional mode (collapsed hides all
                 // gaps outside edit mode, see `rows`) and only for a gap
                 // between two items (edge gaps are trimmed away entirely
-                // when not editing) — a plain blank stretch styled like an
-                // activity's own box, with the same divider lines an
-                // activity would show, rather than a clickable affordance.
+                // when not editing) — genuinely blank, unlike an activity's
+                // own box, so it's left without a border/background of its
+                // own; only the divider lines (same ones an activity would
+                // show) mark off the time increments within it.
                 const gapDurMin = gap.endMin - gap.startMin;
                 const gapGridLines = Math.max(0, Math.floor((gapDurMin - 1) / 5));
                 return (
                   <div key={`gap-${gap.startMin}`} className="absolute left-0 right-0 z-10" style={{ top, height }}>
-                    <div className="absolute inset-0 rounded-md border border-stone-300 bg-white" />
                     {Array.from({ length: gapGridLines }, (_, i) => (
                       <div
                         key={`gg-${i}`}

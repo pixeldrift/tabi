@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, EyeOff, Pencil, Search, Star, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import {
   PercentCorrectIcon,
   FrequencyIcon,
@@ -10,7 +9,7 @@ import {
   TaskAnalysisIcon,
 } from "@/components/icons/DataTypeIcons";
 import { ListViewIcon, CardViewIcon, GridViewIcon, FilterIcon } from "@/components/icons/ToolbarIcons";
-import { useDataToolbar, type CardKind, type DisplayMode, type LoggedFilter } from "./DataToolbarContext";
+import { useDataToolbar, type CardKind, type DisplayMode } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<CardKind, { label: string; icon: (props: { className?: string }) => React.ReactNode }> = {
@@ -55,8 +54,10 @@ export function DataToolbar({
     filters,
     toggleKindFilter,
     togglePhaseFilter,
-    setIncompleteOnly,
-    setLoggedFilter,
+    setWithData,
+    setNoData,
+    setTrialsReached,
+    setIncompleteTrials,
     setFavoritesOnly,
     setShowHidden,
     clearFilters,
@@ -100,8 +101,10 @@ export function DataToolbar({
   const activeFilterCount =
     filters.kinds.size +
     filters.phases.size +
-    (filters.incompleteOnly ? 1 : 0) +
-    (filters.logged !== "all" ? 1 : 0) +
+    // Each pair only counts as an active filter when exactly one side is
+    // selected — both or neither applies no constraint (see the popover).
+    (filters.withData !== filters.noData ? 1 : 0) +
+    (filters.trialsReached !== filters.incompleteTrials ? 1 : 0) +
     (filters.favoritesOnly ? 1 : 0) +
     (filters.showHidden ? 1 : 0);
 
@@ -178,8 +181,10 @@ export function DataToolbar({
               filters={filters}
               toggleKindFilter={toggleKindFilter}
               togglePhaseFilter={togglePhaseFilter}
-              setIncompleteOnly={setIncompleteOnly}
-              setLoggedFilter={setLoggedFilter}
+              setWithData={setWithData}
+              setNoData={setNoData}
+              setTrialsReached={setTrialsReached}
+              setIncompleteTrials={setIncompleteTrials}
               setFavoritesOnly={setFavoritesOnly}
               setShowHidden={setShowHidden}
               clearFilters={clearFilters}
@@ -254,8 +259,10 @@ function FilterPopoverContent({
   filters,
   toggleKindFilter,
   togglePhaseFilter,
-  setIncompleteOnly,
-  setLoggedFilter,
+  setWithData,
+  setNoData,
+  setTrialsReached,
+  setIncompleteTrials,
   setFavoritesOnly,
   setShowHidden,
   clearFilters,
@@ -265,8 +272,10 @@ function FilterPopoverContent({
   filters: ReturnType<typeof useDataToolbar>["filters"];
   toggleKindFilter: (k: CardKind) => void;
   togglePhaseFilter: (p: string) => void;
-  setIncompleteOnly: (v: boolean) => void;
-  setLoggedFilter: (v: LoggedFilter) => void;
+  setWithData: (v: boolean) => void;
+  setNoData: (v: boolean) => void;
+  setTrialsReached: (v: boolean) => void;
+  setIncompleteTrials: (v: boolean) => void;
   setFavoritesOnly: (v: boolean) => void;
   setShowHidden: (v: boolean) => void;
   clearFilters: () => void;
@@ -283,7 +292,7 @@ function FilterPopoverContent({
       <div className="flex gap-1.5">
         <ToggleChip
           icon={<Heart className="size-3" />}
-          label="Favorites Only"
+          label="Favorites"
           selected={filters.favoritesOnly}
           onClick={() => setFavoritesOnly(!filters.favoritesOnly)}
         />
@@ -295,40 +304,34 @@ function FilterPopoverContent({
         />
       </div>
 
-      {/* One three-way control, not two independent switches — "with data"
-          and "without data" are mutually exclusive states of the same
-          `logged` field, not separate booleans. */}
-      <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5">
-        {(
-          [
-            ["all", "All"],
-            ["logged", "With Data"],
-            ["no-data", "Without Data"],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setLoggedFilter(value)}
-            aria-pressed={filters.logged === value}
-            className={cn(
-              "flex-1 rounded-full px-2 py-1 text-[11px] font-medium transition-colors",
-              filters.logged === value
-                ? "btn-bevel bg-blue-500 text-white"
-                : "text-stone-600 hover:text-stone-800",
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Each row below is two independent toggles, not a mutually exclusive
+          pair — selecting both or neither applies no constraint (shows
+          all), rather than one turning the other off. */}
+      <div className="flex gap-1.5">
+        <ToggleChip
+          label="With Data"
+          selected={filters.withData}
+          onClick={() => setWithData(!filters.withData)}
+        />
+        <ToggleChip
+          label="No Data"
+          selected={filters.noData}
+          onClick={() => setNoData(!filters.noData)}
+        />
       </div>
 
-      <SwitchRow
-        label="Incomplete goals only"
-        description="Only show cards that haven't met their minimum yet."
-        checked={filters.incompleteOnly}
-        onCheckedChange={setIncompleteOnly}
-      />
+      <div className="flex gap-1.5">
+        <ToggleChip
+          label="Trials Reached"
+          selected={filters.trialsReached}
+          onClick={() => setTrialsReached(!filters.trialsReached)}
+        />
+        <ToggleChip
+          label="Incomplete Trials"
+          selected={filters.incompleteTrials}
+          onClick={() => setIncompleteTrials(!filters.incompleteTrials)}
+        />
+      </div>
 
       <section>
         <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data type</h4>
@@ -414,30 +417,3 @@ function ToggleChip({
   );
 }
 
-function SwitchRow({
-  icon,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
-}) {
-  const id = `filter-switch-${label.replace(/\s+/g, "-").toLowerCase()}`;
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <label htmlFor={id} className="flex items-center gap-1.5 text-xs font-medium">
-          {icon}
-          {label}
-        </label>
-        {description && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{description}</p>}
-      </div>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
-    </div>
-  );
-}

@@ -226,9 +226,16 @@ function getVisibleCards(
     if (filters.favoritesOnly && !favorites.has(card.id)) return false;
     if (filters.kinds.size > 0 && !filters.kinds.has(card.kind)) return false;
     if (filters.phases.size > 0 && !filters.phases.has(card.phase)) return false;
-    if (filters.incompleteOnly && completion[card.id]) return false;
-    if (filters.logged === "logged" && !hasData[card.id]) return false;
-    if (filters.logged === "no-data" && hasData[card.id]) return false;
+    // Each pair below is two independent toggles, not a mutually exclusive
+    // choice — selecting both or neither applies no constraint (show all).
+    if (filters.withData !== filters.noData) {
+      if (filters.withData && !hasData[card.id]) return false;
+      if (filters.noData && hasData[card.id]) return false;
+    }
+    if (filters.trialsReached !== filters.incompleteTrials) {
+      if (filters.trialsReached && !completion[card.id]) return false;
+      if (filters.incompleteTrials && completion[card.id]) return false;
+    }
     if (q && !card.title.toLowerCase().includes(q)) return false;
     return true;
   });
