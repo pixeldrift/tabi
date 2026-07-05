@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
-import { CardShell } from "./CardShell";
+import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { FrequencyIcon, NumberPadIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
-export interface FrequencyCardProps {
+export interface FrequencyCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
@@ -16,8 +16,6 @@ export interface FrequencyCardProps {
   minCount?: number;
   isActive?: boolean;
   onActivate?: () => void;
-  detailsOpen?: boolean;
-  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 export function FrequencyCard({
@@ -28,8 +26,16 @@ export function FrequencyCard({
   minCount = 5,
   isActive = true,
   onActivate,
+  reorderEditing,
+  favorited,
+  onToggleFavorite,
+  cardHidden,
+  onToggleHidden,
+  dragControls,
   detailsOpen,
   onDetailsOpenChange,
+  onOpenDetails,
+  drawerTop,
 }: FrequencyCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
@@ -88,8 +94,16 @@ export function FrequencyCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      reorderEditing={reorderEditing}
+      favorited={favorited}
+      onToggleFavorite={onToggleFavorite}
+      cardHidden={cardHidden}
+      onToggleHidden={onToggleHidden}
+      dragControls={dragControls}
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
+      onOpenDetails={onOpenDetails}
+      drawerTop={drawerTop}
       progress={null}
       editing={editing}
       isComplete={isComplete}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause } from "lucide-react";
-import { CardShell } from "./CardShell";
+import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const PULSE_BEAT_MS = 1000;
 
-export interface DurationCardProps {
+export interface DurationCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
@@ -19,8 +19,6 @@ export interface DurationCardProps {
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
-  detailsOpen?: boolean;
-  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 const BUBBLE = 22;
@@ -36,8 +34,16 @@ export function DurationCard({
   minDurationSec = 30,
   isActive = true,
   onActivate,
+  reorderEditing,
+  favorited,
+  onToggleFavorite,
+  cardHidden,
+  onToggleHidden,
+  dragControls,
   detailsOpen,
   onDetailsOpenChange,
+  onOpenDetails,
+  drawerTop,
 }: DurationCardProps) {
   const [instances, setInstances] = useState<number[]>([0]);
   const [viewIdx, setViewIdx] = useState(0);
@@ -213,8 +219,16 @@ export function DurationCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      reorderEditing={reorderEditing}
+      favorited={favorited}
+      onToggleFavorite={onToggleFavorite}
+      cardHidden={cardHidden}
+      onToggleHidden={onToggleHidden}
+      dragControls={dragControls}
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
+      onOpenDetails={onOpenDetails}
+      drawerTop={drawerTop}
       progress={null}
       isComplete={isComplete}
       expanded={expanded}

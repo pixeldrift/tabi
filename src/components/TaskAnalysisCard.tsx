@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
-import { CardShell } from "./CardShell";
+import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 export type StepStatus = "independent" | "prompted" | "error" | null;
 
-export interface TaskAnalysisCardProps {
+export interface TaskAnalysisCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
@@ -17,8 +17,6 @@ export interface TaskAnalysisCardProps {
   steps: string[];
   isActive?: boolean;
   onActivate?: () => void;
-  detailsOpen?: boolean;
-  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 // Error (negative) on the left, Independent (positive) on the right — same
@@ -65,8 +63,16 @@ export function TaskAnalysisCard({
   steps,
   isActive = true,
   onActivate,
+  reorderEditing,
+  favorited,
+  onToggleFavorite,
+  cardHidden,
+  onToggleHidden,
+  dragControls,
   detailsOpen,
   onDetailsOpenChange,
+  onOpenDetails,
+  drawerTop,
 }: TaskAnalysisCardProps) {
   const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
   const [current, setCurrent] = useState(0);
@@ -125,8 +131,16 @@ export function TaskAnalysisCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      reorderEditing={reorderEditing}
+      favorited={favorited}
+      onToggleFavorite={onToggleFavorite}
+      cardHidden={cardHidden}
+      onToggleHidden={onToggleHidden}
+      dragControls={dragControls}
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
+      onOpenDetails={onOpenDetails}
+      drawerTop={drawerTop}
       progress={progress}
       isComplete={isComplete}
       expanded={expanded}

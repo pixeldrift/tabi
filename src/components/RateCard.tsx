@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link2, Minus, Pause, Play, Plus } from "lucide-react";
-import { CardShell } from "./CardShell";
+import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
@@ -9,7 +9,7 @@ import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionCon
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
-export interface RateCardProps {
+export interface RateCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
@@ -18,8 +18,6 @@ export interface RateCardProps {
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
-  detailsOpen?: boolean;
-  onDetailsOpenChange?: (open: boolean) => void;
   /** When true, the timer is linked to the session timer: no play/pause, lock icon, gray display. */
   locked?: boolean;
 }
@@ -32,8 +30,16 @@ export function RateCard({
   minDurationSec = 60,
   isActive = true,
   onActivate,
+  reorderEditing,
+  favorited,
+  onToggleFavorite,
+  cardHidden,
+  onToggleHidden,
+  dragControls,
   detailsOpen,
   onDetailsOpenChange,
+  onOpenDetails,
+  drawerTop,
   locked = false,
 }: RateCardProps) {
   const [count, setCount] = useState(0);
@@ -158,8 +164,16 @@ export function RateCard({
       description={description}
       isActive={isActive}
       onActivate={onActivate}
+      reorderEditing={reorderEditing}
+      favorited={favorited}
+      onToggleFavorite={onToggleFavorite}
+      cardHidden={cardHidden}
+      onToggleHidden={onToggleHidden}
+      dragControls={dragControls}
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
+      onOpenDetails={onOpenDetails}
+      drawerTop={drawerTop}
       progress={null}
       editing={editing}
       details={

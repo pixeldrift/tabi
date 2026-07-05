@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence, LayoutGroup, Reorder } from "motion/react";
-import { User, GripVertical, Heart, EyeOff } from "lucide-react";
+import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
+import { User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
@@ -16,6 +16,7 @@ import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { useElementHeight } from "@/hooks/use-element-height";
 import { DataToolbar } from "@/components/DataToolbar";
 import {
   DataToolbarProvider,
@@ -247,6 +248,15 @@ function IndexInner() {
   const { status, transitionStage, transitionKind } = useSession();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
+  // Bounds the shared details drawer to below the toolbar (the Data pane's
+  // own vertical extent) rather than the full viewport — see
+  // DataDetailsDrawer. Built from stickyTop (trusted, always-fresh) plus the
+  // toolbar's own measured height, rather than measuring the toolbar's
+  // absolute position directly — the toolbar's `top` can shift for reasons
+  // (status bar height changing) that a resize observer on the toolbar
+  // itself wouldn't catch.
+  const toolbarHeight = useElementHeight("[data-toolbar]");
+  const drawerTop = stickyTop + toolbarHeight;
   const { keepActiveCardCentered } = useSettings();
   const {
     displayMode,
@@ -411,17 +421,12 @@ function IndexInner() {
       {/* Rendered as a sibling of (not nested inside) the motion.section
           below — that section's own `layout="position"` tracking applies a
           (near-identity, but non-"none") transform, which makes it establish
-          a stacking context that traps any z-index inside it. Since the
-          toolbar needs to out-stack the details Sheet's portaled overlay
-          (z-50) so its drawer pull tab stays clickable while the drawer is
-          open, it has to live outside that trap. */}
+          a stacking context that traps any z-index inside it. */}
       {tab === "data" && (
         <DataToolbar
           stickyTop={stickyTop}
           availableKinds={availableKinds}
           availablePhases={availablePhases}
-          drawerOpen={drawerOpen}
-          onToggleDrawer={() => setDrawerOpen((v) => !v)}
         >
           <AnimatePresence initial={false}>
             {!sessionActive && (
@@ -489,6 +494,7 @@ function IndexInner() {
                 displayMode={displayMode}
                 drawerOpen={drawerOpen}
                 onDrawerOpenChange={setDrawerOpen}
+                drawerTop={drawerTop}
               />
             </div>
           </div>
@@ -517,8 +523,16 @@ function renderCard(
     id: string;
     isActive: boolean;
     onActivate: () => void;
-    detailsOpen?: boolean;
-    onDetailsOpenChange?: (open: boolean) => void;
+    detailsOpen: boolean;
+    onDetailsOpenChange: (open: boolean) => void;
+    onOpenDetails: () => void;
+    drawerTop: number;
+    reorderEditing: boolean;
+    favorited: boolean;
+    onToggleFavorite: () => void;
+    cardHidden: boolean;
+    onToggleHidden: () => void;
+    dragControls?: DragControls;
   },
 ): React.ReactNode {
   switch (card.kind) {
@@ -644,6 +658,7 @@ const DataCardList = memo(function DataCardList({
   displayMode,
   drawerOpen,
   onDrawerOpenChange,
+  drawerTop,
 }: {
   cardsGen: number;
   cardsAnimKind: "start-new" | "discard" | "submit";
@@ -666,25 +681,38 @@ const DataCardList = memo(function DataCardList({
   displayMode: DisplayMode;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
+  drawerTop: number;
 }) {
   const setCardRef = (id: string) => (el: HTMLElement | null) => {
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
   };
 
-  const renderOne = (card: CardConfig) =>
+  const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, {
       id: card.id,
       isActive: card.id === activeId,
       onActivate: () => setActiveId(card.id),
-      detailsOpen: card.id === activeId ? drawerOpen : undefined,
-      onDetailsOpenChange: card.id === activeId ? onDrawerOpenChange : undefined,
+      detailsOpen: card.id === activeId && drawerOpen,
+      onDetailsOpenChange: onDrawerOpenChange,
+      onOpenDetails: () => {
+        setActiveId(card.id);
+        onDrawerOpenChange(true);
+      },
+      drawerTop,
+      reorderEditing: editMode,
+      favorited: favorites.has(card.id),
+      onToggleFavorite: () => toggleFavorite(card.id),
+      cardHidden: hidden.has(card.id),
+      onToggleHidden: () => toggleHidden(card.id),
+      dragControls,
     });
 
   // Edit mode is its own render path — drag-to-reorder (via Motion's
-  // Reorder) plus per-card favorite/hide affordances don't need to
-  // coordinate with the session-lifecycle animations below, since editing
-  // and a start-new/discard/submit transition don't realistically overlap.
+  // Reorder) plus per-card favorite/hide affordances (now rendered right in
+  // each card's own header, see CardEditControls) don't need to coordinate
+  // with the session-lifecycle animations below, since editing and a
+  // start-new/discard/submit transition don't realistically overlap.
   if (editMode) {
     return (
       <Reorder.Group
@@ -693,50 +721,15 @@ const DataCardList = memo(function DataCardList({
         onReorder={setOrder}
         className={cn("grid gap-3 w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
       >
-        {visibleCards.map((card) => {
-          const isFav = favorites.has(card.id);
-          const isHidden = hidden.has(card.id);
-          return (
-            <Reorder.Item
-              key={card.id}
-              value={card.id}
-              ref={setCardRef(card.id)}
-              className="w-full flex flex-col items-center gap-1"
-            >
-              <div className="flex items-center gap-1 w-full max-w-md px-1">
-                <span className="cursor-grab text-stone-400 touch-none" aria-hidden>
-                  <GripVertical className="size-4" />
-                </span>
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() => toggleFavorite(card.id)}
-                  aria-pressed={isFav}
-                  aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-                  className={cn(
-                    "grid place-items-center size-6 rounded-full transition-colors",
-                    isFav ? "text-red-500" : "text-stone-400 hover:text-stone-600",
-                  )}
-                >
-                  <Heart className="size-4" fill={isFav ? "currentColor" : "none"} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleHidden(card.id)}
-                  aria-pressed={isHidden}
-                  aria-label={isHidden ? "Unhide card" : "Hide card"}
-                  className={cn(
-                    "grid place-items-center size-6 rounded-full transition-colors",
-                    isHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-                  )}
-                >
-                  <EyeOff className="size-4" />
-                </button>
-              </div>
-              <div className={cn("w-full flex justify-center", isHidden && "opacity-40")}>{renderOne(card)}</div>
-            </Reorder.Item>
-          );
-        })}
+        {visibleCards.map((card) => (
+          <EditableCardItem
+            key={card.id}
+            card={card}
+            isHidden={hidden.has(card.id)}
+            setCardRef={setCardRef}
+            renderOne={renderOne}
+          />
+        ))}
       </Reorder.Group>
     );
   }
@@ -798,6 +791,35 @@ const DataCardList = memo(function DataCardList({
     </AnimatePresence>
   );
 });
+
+// A real component (not just an inline callback in DataCardList's .map)
+// because `useDragControls` must be called consistently on every render —
+// the number of visible cards changes as filters/search narrow the list, so
+// calling it directly inside the loop would violate the rules of hooks.
+function EditableCardItem({
+  card,
+  isHidden,
+  setCardRef,
+  renderOne,
+}: {
+  card: CardConfig;
+  isHidden: boolean;
+  setCardRef: (id: string) => (el: HTMLElement | null) => void;
+  renderOne: (card: CardConfig, dragControls?: DragControls) => React.ReactNode;
+}) {
+  const dragControls = useDragControls();
+  return (
+    <Reorder.Item
+      value={card.id}
+      ref={setCardRef(card.id)}
+      dragListener={false}
+      dragControls={dragControls}
+      className={cn("w-full flex justify-center", isHidden && "opacity-40")}
+    >
+      {renderOne(card, dragControls)}
+    </Reorder.Item>
+  );
+}
 
 function InfoPane() {
   const { lastUpdated } = useSession();

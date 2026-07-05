@@ -1,19 +1,38 @@
-import { type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
+import { CardEditControls, type CardEditControlsProps } from "./CardEditControls";
+import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { cn } from "@/lib/utils";
 
-export interface CardShellProps {
+/** Shared by every card kind so the toolbar's edit mode (reorder/favorite/
+ *  hide) and the shared details drawer only need declaring once. */
+export interface CardEditAndDrawerProps {
+  /** True while the toolbar's pencil/edit mode is on — swaps the header's
+   *  phase/data-type label and details button for drag/favorite/hide. */
+  reorderEditing?: boolean;
+  favorited?: boolean;
+  onToggleFavorite?: () => void;
+  cardHidden?: boolean;
+  onToggleHidden?: () => void;
+  dragControls?: CardEditControlsProps["dragControls"];
+  /** Controls the shared details drawer from outside — clicking the card's
+   *  own details button (or the toolbar drawer tab) both funnel through
+   *  this rather than each card owning an independent drawer instance. */
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
+  /** Activates this card AND opens the shared drawer — used by the card's
+   *  own details button so clicking it on a non-active card both selects
+   *  it and reveals its info. */
+  onOpenDetails?: () => void;
+  /** Viewport-relative pixel offset where the Data pane begins, passed
+   *  through to the shared drawer so it stays bounded to that pane. */
+  drawerTop?: number;
+}
+
+export interface CardShellProps extends CardEditAndDrawerProps {
   title: string;
   phase?: string;
   dataType?: string;
@@ -22,10 +41,6 @@ export interface CardShellProps {
   description?: string;
   isActive?: boolean;
   onActivate?: () => void;
-  /** Controls the details Sheet from outside (e.g. the toolbar's drawer pull
-   *  tab) — omit both to keep the Sheet's own default uncontrolled state. */
-  detailsOpen?: boolean;
-  onDetailsOpenChange?: (open: boolean) => void;
   /** 0–100 progress. Pass null/undefined to hide the progress bar entirely. */
   progress?: number | null;
   isComplete?: boolean;
@@ -53,8 +68,16 @@ export function CardShell({
   description,
   isActive = true,
   onActivate,
-  detailsOpen,
+  reorderEditing = false,
+  favorited = false,
+  onToggleFavorite,
+  cardHidden = false,
+  onToggleHidden,
+  dragControls,
+  detailsOpen = false,
   onDetailsOpenChange,
+  onOpenDetails,
+  drawerTop = 0,
   progress,
   isComplete = false,
   helperText,
@@ -65,6 +88,7 @@ export function CardShell({
   expandedView,
   children,
 }: CardShellProps) {
+  const articleRef = useRef<HTMLElement | null>(null);
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
@@ -76,6 +100,7 @@ export function CardShell({
 
   return (
     <article
+      ref={articleRef}
       onClick={onActivate}
       className={cn(
         "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground border-2 transition-all duration-200",
@@ -107,17 +132,27 @@ export function CardShell({
           </button>
         )}
         <h2 className="font-display text-base leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
-        <div className="text-right leading-tight -mt-0.5">
-          <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
-          {dataType && (
-            <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-              {dataTypeIcon && (
-                <span className="shrink-0 [&>svg]:size-3">{dataTypeIcon}</span>
-              )}
-              <span>{dataType}</span>
-            </div>
-          )}
-        </div>
+        {reorderEditing ? (
+          <CardEditControls
+            favorited={favorited}
+            onToggleFavorite={onToggleFavorite ?? (() => {})}
+            cardHidden={cardHidden}
+            onToggleHidden={onToggleHidden ?? (() => {})}
+            dragControls={dragControls}
+          />
+        ) : (
+          <div className="text-right leading-tight -mt-0.5">
+            <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
+            {dataType && (
+              <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
+                {dataTypeIcon && (
+                  <span className="shrink-0 [&>svg]:size-3">{dataTypeIcon}</span>
+                )}
+                <span>{dataType}</span>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Universal header/body divider — present in every card and both
@@ -125,27 +160,34 @@ export function CardShell({
       <div className="mx-[18px] mt-2.5 border-t border-dashed border-stone-200" />
 
       {/* Positioned so the circle's center sits at the card's own corner-radius
-          center (rounded-xl = 20px), rather than in the header's flex flow. */}
-      {/* Non-modal: the toolbar's drawer pull-tab needs to stay clickable
-          while this is open (to close it), and Radix's default modal mode
-          makes everything outside the portal `pointer-events: none`. */}
-      <Sheet open={detailsOpen} onOpenChange={onDetailsOpenChange} modal={false}>
-        <SheetTrigger asChild>
-          <button
-            aria-label="Card details"
-            className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-          >
-            <DetailsIcon className="size-4" strokeWidth={1.5} />
-          </button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-[88%] sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="font-display">{title}</SheetTitle>
-            {description && <SheetDescription>{description}</SheetDescription>}
-          </SheetHeader>
-          {details && <div className="mt-6 px-4 text-sm">{details}</div>}
-        </SheetContent>
-      </Sheet>
+          center (rounded-xl = 20px), rather than in the header's flex flow.
+          Hidden in edit mode along with the phase/data-type label — no need
+          to jump into a card's info while busy reordering/hiding cards. */}
+      {!reorderEditing && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenDetails?.();
+          }}
+          aria-label="Card details"
+          className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+        >
+          <DetailsIcon className="size-4" strokeWidth={1.5} />
+        </button>
+      )}
+
+      {isActive && (
+        <DataDetailsDrawer
+          open={detailsOpen}
+          onOpenChange={onDetailsOpenChange ?? (() => {})}
+          title={title}
+          description={description}
+          details={details}
+          top={drawerTop}
+          cardRef={articleRef}
+        />
+      )}
 
       {hasExpandedView ? (
         <>

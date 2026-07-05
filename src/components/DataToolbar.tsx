@@ -9,7 +9,7 @@ import {
   DurationIcon,
   TaskAnalysisIcon,
 } from "@/components/icons/DataTypeIcons";
-import { ListViewIcon, CardViewIcon, GridViewIcon, FilterIcon, DrawerHandleIcon } from "@/components/icons/ToolbarIcons";
+import { ListViewIcon, CardViewIcon, GridViewIcon, FilterIcon } from "@/components/icons/ToolbarIcons";
 import { useDataToolbar, type CardKind, type DisplayMode, type LoggedFilter } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
@@ -28,19 +28,10 @@ const DISPLAY_MODES: { mode: DisplayMode; label: string; icon: (props: { classNa
   { mode: "grid", label: "Grid", icon: (p) => <GridViewIcon {...p} /> },
 ];
 
-const LOGGED_OPTIONS: { value: LoggedFilter; label: string }[] = [
-  { value: "all", label: "Clear" },
-  { value: "logged", label: "Data logged" },
-  { value: "no-data", label: "No data" },
-];
-
 export interface DataToolbarProps {
   stickyTop: number;
   availableKinds: CardKind[];
   availablePhases: string[];
-  drawerOpen: boolean;
-  onToggleDrawer: () => void;
-  drawerDisabled?: boolean;
   /** Rendered below the main bar row, inside the same sticky container —
    *  e.g. the Data tab's "Start session to record data" banner, so the two
    *  stack under one shared `top` offset instead of needing a second one
@@ -52,9 +43,6 @@ export function DataToolbar({
   stickyTop,
   availableKinds,
   availablePhases,
-  drawerOpen,
-  onToggleDrawer,
-  drawerDisabled = false,
   children,
 }: DataToolbarProps) {
   const {
@@ -85,12 +73,10 @@ export function DataToolbar({
 
   return (
     <div
-      // z-[60] (above the details Sheet's z-50 overlay/panel, which are
-      // portaled to the document body and so compare z-index globally, not
-      // against this component's own local stacking context) — otherwise
-      // the whole toolbar, including the drawer pull tab itself, disappears
-      // under the Sheet the instant it opens, with no way to pull it shut
-      // again short of the Sheet's own close button.
+      // Named so the drawer's own top offset can be measured off this
+      // element's rendered bottom edge (see useElementBottom) — the drawer
+      // is bounded to below the toolbar rather than the full viewport.
+      data-toolbar
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70 py-1.5 px-4"
       style={{ top: stickyTop }}
     >
@@ -139,7 +125,12 @@ export function DataToolbar({
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-72 p-3">
+          {/* z-[70]: the arrow straddles the seam with the trigger, poking
+              up slightly into the toolbar's own row — the toolbar itself is
+              z-[60] (see its own className comment), so the popover needs to
+              paint above that or the sticky bar's opaque background hides
+              the arrow (and the top sliver of the box) behind it. */}
+          <PopoverContent side="bottom" align="start" sideOffset={8} className="group z-[70] w-72 p-3">
             <FilterPopoverContent
               availableKinds={availableKinds}
               availablePhases={availablePhases}
@@ -151,6 +142,19 @@ export function DataToolbar({
               setFavoritesOnly={setFavoritesOnly}
               setShowHidden={setShowHidden}
               clearFilters={clearFilters}
+            />
+            {/* Arrow — points back at the filter button, same rotated-square
+                idiom as NumberKeypad's popup. Positioned near the trigger's
+                own width (align="start" keeps the popover's left edge on the
+                trigger's) rather than centered. */}
+            <div
+              className={cn(
+                "absolute left-4 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-popover",
+                "-top-[7px] border-l-2 border-t-2",
+                "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+                "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+                "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+              )}
             />
           </PopoverContent>
         </Popover>
@@ -194,24 +198,6 @@ export function DataToolbar({
             </button>
           )}
         </div>
-
-        {/* Details drawer pull tab */}
-        <button
-          type="button"
-          onClick={onToggleDrawer}
-          disabled={drawerDisabled}
-          aria-label={drawerOpen ? "Close details drawer" : "Open details drawer"}
-          aria-expanded={drawerOpen}
-          title={drawerOpen ? "Close details drawer" : "Open details drawer"}
-          className={cn(
-            "grid place-items-center size-7 shrink-0 rounded-full border transition-colors disabled:opacity-30 disabled:pointer-events-none",
-            drawerOpen
-              ? "btn-bevel bg-blue-500 border-blue-500 text-white"
-              : "border-stone-200 text-blue-500 hover:text-blue-600 hover:bg-blue-50",
-          )}
-        >
-          <DrawerHandleIcon className={cn("size-3.5 transition-transform duration-200", drawerOpen && "rotate-180")} />
-        </button>
       </div>
       {children}
     </div>
@@ -302,25 +288,19 @@ function FilterPopoverContent({
         </div>
       </section>
 
-      <section>
-        <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data logged</h4>
-        <div className="flex rounded-full border border-stone-200 p-0.5 gap-0.5">
-          {LOGGED_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setLoggedFilter(opt.value)}
-              aria-pressed={filters.logged === opt.value}
-              className={cn(
-                "flex-1 rounded-full py-1 text-[11px] font-medium transition-colors",
-                filters.logged === opt.value ? "bg-blue-500 text-white" : "text-stone-600 hover:bg-stone-100",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
+      {/* Linked toggles, not independent checkboxes — turning one on turns
+          the other off (both read/write the same `logged` field), and
+          switching the active one back off just returns to "all". */}
+      <SwitchRow
+        label="Data logged"
+        checked={filters.logged === "logged"}
+        onCheckedChange={(v) => setLoggedFilter(v ? "logged" : "all")}
+      />
+      <SwitchRow
+        label="No data"
+        checked={filters.logged === "no-data"}
+        onCheckedChange={(v) => setLoggedFilter(v ? "no-data" : "all")}
+      />
 
       <SwitchRow
         label="Incomplete goals only"
