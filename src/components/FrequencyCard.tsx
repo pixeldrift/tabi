@@ -171,7 +171,7 @@ export function FrequencyCard({
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "btn-bevel size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
+            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >

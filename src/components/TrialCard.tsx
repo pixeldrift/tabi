@@ -18,6 +18,11 @@ import { cn } from "@/lib/utils";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 
+// Sits at the top of every prompt-level popup as a "yes, an error, but no
+// particular level" choice — picking it marks the trial incorrect without
+// ever populating `promptLevel`, so the Error button shows no sub-text.
+const UNSPECIFIED_LEVEL = "-unspecified-";
+
 export interface TrialCardProps {
   title: string;
   phase?: string;
@@ -124,7 +129,11 @@ export function TrialCard({
       next[idx] = isToggleOff ? null : value;
       return next;
     });
-    if (value === "incorrect" || isToggleOff) {
+    // Any outcome other than "incorrect" (including toggling it off) clears
+    // a leftover prompt level — otherwise switching Error -> Correct left
+    // the old level's sub-text orphaned under a button that no longer
+    // reflects an error at all.
+    if (value !== "incorrect" || isToggleOff) {
       setPromptLevel((prev) => {
         if (!(idx in prev)) return prev;
         const next = { ...prev };
@@ -152,7 +161,9 @@ export function TrialCard({
   // no level surviving a switch away from incorrect).
   const pickPromptLevel = (idx: number, level: string, advance: boolean) => {
     markDirty();
-    const isToggleOff = trials[idx] === "incorrect" && promptLevel[idx] === level;
+    const isUnspecified = level === UNSPECIFIED_LEVEL;
+    const isToggleOff =
+      trials[idx] === "incorrect" && (isUnspecified ? !(idx in promptLevel) : promptLevel[idx] === level);
     setTrials((prev) => {
       const next = [...prev];
       next[idx] = isToggleOff ? null : "incorrect";
@@ -160,7 +171,7 @@ export function TrialCard({
     });
     setPromptLevel((prev) => {
       const next = { ...prev };
-      if (isToggleOff) delete next[idx];
+      if (isToggleOff || isUnspecified) delete next[idx];
       else next[idx] = level;
       return next;
     });
@@ -293,7 +304,7 @@ export function TrialCard({
       >
         <div className="overflow-hidden">
       {/* Bubble row */}
-      <div className="relative px-2 -mt-1">
+      <div className="relative px-2 mt-1">
         <div className="relative h-16">
           {/* Triangle nav buttons — centered with bubbles */}
           <TriangleNav
@@ -381,17 +392,15 @@ export function TrialCard({
                     }}
                     transition={{ type: "spring", stiffness: 360, damping: 28 }}
                   >
-                    <motion.div
+                    <div
                       key={`${i}-${t ?? "none"}`}
-                      initial={isCenter && t ? { scale: 0.6 } : false}
-                      animate={isCenter && t ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-                      transition={{ duration: 0.45 }}
                       className={cn(
                         "absolute inset-0 rounded-full flex items-center justify-center",
                         isCenter ? "border-2" : "border",
                         bg,
                         isCenter && !t && "bg-card border-foreground/30",
                         isCenter && centerBg,
+                        isCenter && t && "animate-bubble-hop",
                       )}
                     >
                       {isCenter ? (
@@ -412,7 +421,7 @@ export function TrialCard({
                           {i + 1}
                         </span>
                       )}
-                    </motion.div>
+                    </div>
                     {i < minTrials && !t && (
                       <span
                         className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
@@ -775,6 +784,22 @@ function PromptLevelButton({
         className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(UNSPECIFIED_LEVEL);
+              setOpen(false);
+            }}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-left text-sm font-medium italic transition-colors",
+              selected && !selectedLevel
+                ? "bg-red-500 text-white"
+                : "text-red-700/70 hover:bg-red-50",
+            )}
+          >
+            {UNSPECIFIED_LEVEL}
+          </button>
           {levels.map((level) => (
             <button
               key={level}
@@ -844,6 +869,22 @@ function RowPromptLevelButton({
         className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(UNSPECIFIED_LEVEL);
+              setOpen(false);
+            }}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-left text-sm font-medium italic transition-colors",
+              selected && !selectedLevel
+                ? "bg-red-500 text-white"
+                : "text-red-700/70 hover:bg-red-50",
+            )}
+          >
+            {UNSPECIFIED_LEVEL}
+          </button>
           {levels.map((level) => (
             <button
               key={level}

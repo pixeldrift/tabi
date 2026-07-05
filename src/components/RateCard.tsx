@@ -37,11 +37,24 @@ export function RateCard({
   const [elapsed, setElapsed] = useState(0); // ms
   const [running, setRunning] = useState(true);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const { sessionRunning, subscribeTick } = useSession();
+  const { sessionRunning, subscribeTick, getElapsedMsNow } = useSession();
   const { markDirty, resetSignal } = useCardSession();
+  // Holds a pending "start on the next full master second" timeout — see
+  // `toggle` below — so a quick pause (or a session reset) before it fires
+  // can cancel it instead of starting the timer late anyway.
+  const pendingStartRef = useRef<number | null>(null);
+
+  const clearPendingStart = () => {
+    if (pendingStartRef.current !== null) {
+      window.clearTimeout(pendingStartRef.current);
+      pendingStartRef.current = null;
+    }
+  };
+  useEffect(() => clearPendingStart, []);
 
   useEffect(() => {
     if (resetSignal === 0) return;
+    clearPendingStart();
     setCount(0);
     setElapsed(0);
     setRunning(true);
@@ -73,9 +86,22 @@ export function RateCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionRunning]);
 
+  // Pausing is immediate, but starting waits until the master session clock
+  // next crosses a whole second — sub-second accuracy doesn't matter here,
+  // and it means every timer's displayed seconds tick over in unison instead
+  // of drifting out of phase depending on the exact moment each was started.
   const toggle = () => {
-    setRunning((r) => !r);
     markDirty();
+    clearPendingStart();
+    if (running) {
+      setRunning(false);
+      return;
+    }
+    const msUntilNextSecond = 1000 - (getElapsedMsNow() % 1000 || 1000);
+    pendingStartRef.current = window.setTimeout(() => {
+      pendingStartRef.current = null;
+      setRunning(true);
+    }, msUntilNextSecond);
   };
 
   const setElapsedMs = (ms: number) => {
@@ -264,7 +290,7 @@ export function RateCard({
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "btn-bevel size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
+            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >
