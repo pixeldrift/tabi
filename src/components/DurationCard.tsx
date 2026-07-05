@@ -248,6 +248,10 @@ export function DurationCard({
               </li>
             );
           })}
+          <li className="flex items-center justify-between gap-2 px-2 py-2 mt-1 border-t border-dashed border-stone-200">
+            <span className="tabular-nums text-sm text-foreground">{formatTime(totalMs)}</span>
+            <span className="text-sm font-bold text-foreground">Total</span>
+          </li>
         </ol>
       }
     >
@@ -330,6 +334,10 @@ export function DurationCard({
             <span className="normal-case tracking-normal tabular-nums text-foreground">
               {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
             </span>
+            , total{" "}
+            <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
+              {formatShortTime(totalMs)}
+            </strong>
           </span>
         </div>
       </div>
@@ -526,4 +534,12 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatShortTime(ms: number) {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
 }
