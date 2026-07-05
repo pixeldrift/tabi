@@ -103,10 +103,11 @@ export function RatingCard({
       }
     >
       <div className="px-5 pt-3 pb-4 flex flex-col items-center gap-2">
-        <div className="flex items-center justify-center gap-1.5">
+        <div className="flex items-start justify-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const size = BASE_STAR_SIZE + i * STAR_SIZE_STEP;
+            const maxSize = BASE_STAR_SIZE + (numStars - 1) * STAR_SIZE_STEP;
             const filled = rating >= value;
             const isTop = filled && value === rating;
             return (
@@ -114,6 +115,7 @@ export function RatingCard({
                 key={value}
                 value={value}
                 size={size}
+                maxSize={maxSize}
                 filled={filled}
                 isTop={isTop}
                 onClick={() => pick(value)}
@@ -135,28 +137,45 @@ export function RatingCard({
   );
 }
 
-// Custom star path (not lucide's <Star>, so we can mark the outline with
-// vector-effect="non-scaling-stroke") — each star's rendered box grows with
-// its value, but the SVG viewBox-to-viewport scale that growth implies would
-// otherwise scale the stroke right along with it. non-scaling-stroke cancels
-// that scale component for the stroke specifically, so line weight stays
-// constant across every star regardless of size, like the trial bubbles'
-// border thickness (2px on the emphasized one, 1px on the rest).
+// A 5-point star with every vertex rounded off (each sharp corner replaced
+// by a short quadratic curve cutting across it) instead of lucide's crisp
+// polygon — reads as much less "spiky" while keeping the star's silhouette
+// recognizable. Outer points get a bigger rounding radius than the inner
+// notches, since those tips are what read as pointy.
+const ROUNDED_STAR_PATH =
+  "M10.85,4.33 Q12,2 13.15,4.33 L14.51,7.09 Q15.09,8.26 16.38,8.45 L19.43,8.89 Q22,9.27 20.14,11.08 " +
+  "L17.93,13.23 Q17,14.14 17.22,15.42 L17.74,18.46 Q18.18,21.02 15.88,19.81 L13.15,18.38 Q12,17.77 10.85,18.38 " +
+  "L8.12,19.81 Q5.82,21.02 6.26,18.46 L6.78,15.42 Q7,14.14 6.07,13.23 L3.86,11.08 Q2,9.27 4.57,8.89 " +
+  "L7.62,8.45 Q8.91,8.26 9.49,7.09 Z";
+
+// Same fraction of box height for every star (they're geometrically similar,
+// just scaled), used both as each star's own margin-top (relative to the
+// largest star, which anchors at 0) and as the number's own vertical anchor
+// within its box. Because both use the same fraction, the two facts —
+// "numbers form a straight line" and "each star's shape is what actually
+// shifts to hold that line" — are the same equation, not two separate fixes.
+const NUMBER_LINE_FRACTION = 0.56;
+
 function RatingStar({
   value,
   size,
+  maxSize,
   filled,
   isTop,
   onClick,
 }: {
   value: number;
   size: number;
+  /** The largest star in the row — every other star's shift is relative to it. */
+  maxSize: number;
   filled: boolean;
   /** The topmost filled star — i.e. the one matching the current rating —
    *  gets the bold "selected" treatment; stars below it just read as filled. */
   isTop: boolean;
   onClick: () => void;
 }) {
+  const marginTop = NUMBER_LINE_FRACTION * (maxSize - size);
+
   return (
     <motion.button
       type="button"
@@ -167,7 +186,7 @@ function RatingStar({
       aria-label={`Rate ${value}`}
       aria-pressed={filled}
       className={cn("relative shrink-0", isTop && "drop-shadow-[0_2px_3px_rgba(29,78,216,0.45)]")}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, marginTop }}
     >
       <svg
         viewBox="0 0 24 24"
@@ -177,20 +196,24 @@ function RatingStar({
           isTop ? "fill-blue-500 stroke-blue-600" : filled ? "fill-blue-100 stroke-blue-300" : "fill-none stroke-stone-300",
         )}
       >
-        <polygon
-          points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+        <path
+          d={ROUNDED_STAR_PATH}
           strokeWidth={isTop ? 2 : 1}
-          strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
       </svg>
       <span
         className={cn(
-          "absolute inset-0 flex items-center justify-center pt-1 font-display font-semibold leading-none tabular-nums transition-colors",
-          isTop ? "text-white" : filled ? "text-blue-700" : "text-stone-400",
+          "absolute inset-x-0 flex justify-center font-display leading-none tabular-nums transition-colors",
+          isTop ? "font-bold text-white" : "font-medium",
+          !isTop && (filled ? "text-blue-700" : "text-stone-400"),
         )}
-        style={{ fontSize: Math.max(10, size * 0.32) }}
+        style={{
+          fontSize: Math.max(10, size * 0.32),
+          top: `${NUMBER_LINE_FRACTION * 100}%`,
+          transform: "translateY(-50%)",
+        }}
       >
         {value}
       </span>
