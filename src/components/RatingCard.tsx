@@ -170,14 +170,19 @@ const ROUNDED_STAR_PATH =
 // centered on its own number regardless of size.
 const NUMBER_LINE_FRACTION = 12.51 / 24;
 
-// Small per-digit corrections on top of the shared centroid line — glyph
-// shapes aren't uniformly weighted (a narrow "1" reads as sitting right and
-// high of where a wider digit's optical center would be, etc.), so a few
-// numerals need a manual nudge no formula accounts for.
-const NUMBER_NUDGE: Record<number, { x: number; y: number }> = {
-  1: { x: -2, y: -2 },
+// Small per-value corrections on top of the shared centroid line — glyph
+// shapes aren't uniformly weighted, and a star's silhouette doesn't always
+// read as centered around its own number either, so a few of them need a
+// manual nudge no formula accounts for. The star and its digit are nudged
+// independently (not as an equal-and-opposite pair) since what looks off
+// on each one doesn't follow a shared rule.
+const STAR_NUDGE: Record<number, { x: number; y: number }> = {
+  1: { x: 0, y: 2 },
+  3: { x: 0, y: 2 },
+};
+const DIGIT_NUDGE: Record<number, { x: number; y: number }> = {
+  1: { x: -2, y: 0 },
   2: { x: 0, y: 2 },
-  3: { x: 0, y: -2 },
 };
 
 function RatingStar({
@@ -199,7 +204,8 @@ function RatingStar({
   onClick: () => void;
 }) {
   const marginTop = NUMBER_LINE_FRACTION * (maxSize - size);
-  const nudge = NUMBER_NUDGE[value] ?? { x: 0, y: 0 };
+  const starNudge = STAR_NUDGE[value] ?? { x: 0, y: 0 };
+  const digitNudge = DIGIT_NUDGE[value] ?? { x: 0, y: 0 };
 
   return (
     <motion.button
@@ -215,7 +221,7 @@ function RatingStar({
     >
       <svg
         viewBox="0 0 24 24"
-        style={{ width: size, height: size, transform: `translate(${nudge.x}px, ${nudge.y}px)` }}
+        style={{ width: size, height: size, transform: `translate(${starNudge.x}px, ${starNudge.y}px)` }}
         className={cn(
           "transition-colors",
           isTop
@@ -243,12 +249,10 @@ function RatingStar({
         style={{
           fontSize: Math.max(10, size * 0.32),
           top: `${NUMBER_LINE_FRACTION * 100}%`,
-          // The star shape shifts by `nudge` to compensate for that
-          // numeral's glyph quirks; the number shifts by the exact
-          // opposite so its own absolute position — and thus the shared
-          // alignment line across every star — never moves. Only the star
-          // moves relative to the number, not the number itself.
-          transform: `translate(${-nudge.x}px, calc(-50% + ${-nudge.y}px))`,
+          // Independent of the star's own nudge above — some digits need
+          // their own correction regardless of whether that value's star
+          // shape moves at all.
+          transform: `translate(${digitNudge.x}px, calc(-50% + ${digitNudge.y}px))`,
         }}
       >
         {value}
