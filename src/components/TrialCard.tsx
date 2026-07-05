@@ -314,7 +314,7 @@ export function TrialCard({
 
           <div
             ref={containerRef}
-            className="relative h-16 overflow-hidden"
+            className="relative h-16 overflow-visible"
             style={{
               WebkitMaskImage:
                 "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",

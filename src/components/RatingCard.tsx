@@ -170,6 +170,16 @@ const ROUNDED_STAR_PATH =
 // centered on its own number regardless of size.
 const NUMBER_LINE_FRACTION = 12.51 / 24;
 
+// Small per-digit corrections on top of the shared centroid line — glyph
+// shapes aren't uniformly weighted (a narrow "1" reads as sitting right and
+// high of where a wider digit's optical center would be, etc.), so a few
+// numerals need a manual nudge no formula accounts for.
+const NUMBER_NUDGE: Record<number, { x: number; y: number }> = {
+  1: { x: -2, y: -2 },
+  2: { x: 0, y: 2 },
+  3: { x: 0, y: -2 },
+};
+
 function RatingStar({
   value,
   size,
@@ -189,6 +199,7 @@ function RatingStar({
   onClick: () => void;
 }) {
   const marginTop = NUMBER_LINE_FRACTION * (maxSize - size);
+  const nudge = NUMBER_NUDGE[value] ?? { x: 0, y: 0 };
 
   return (
     <motion.button
@@ -207,7 +218,13 @@ function RatingStar({
         style={{ width: size, height: size }}
         className={cn(
           "transition-colors",
-          isTop ? "fill-blue-500 stroke-blue-600" : filled ? "fill-blue-100 stroke-blue-300" : "fill-none stroke-stone-300",
+          isTop
+            ? "fill-blue-500 stroke-blue-600"
+            : filled
+              ? "fill-blue-100 stroke-blue-300"
+              // Light gray fill at rest, matching the % Correct bubbles'
+              // unselected state, rather than a hollow outline.
+              : "fill-foreground/5 stroke-foreground/10",
         )}
       >
         <path
@@ -221,12 +238,12 @@ function RatingStar({
         className={cn(
           "absolute inset-x-0 flex justify-center font-display leading-none tabular-nums transition-colors",
           isTop ? "font-bold text-white" : "font-medium",
-          !isTop && (filled ? "text-blue-700" : "text-stone-400"),
+          !isTop && (filled ? "text-blue-700" : "text-foreground/40"),
         )}
         style={{
           fontSize: Math.max(10, size * 0.32),
           top: `${NUMBER_LINE_FRACTION * 100}%`,
-          transform: "translateY(-50%)",
+          transform: `translate(${nudge.x}px, calc(-50% + ${nudge.y}px))`,
         }}
       >
         {value}
