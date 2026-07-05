@@ -301,8 +301,11 @@ function KeyButton({
   );
 }
 
+// Matches the schedule grid's own time convention (see fmt12 in
+// ScheduleView) — lowercase a/p directly after the digits, no space —
+// rather than " AM"/" PM", to save room in the time-entry boxes.
 export function formatTimeOfDay(value: string): string {
   if (!value) return "";
   const { hour12, minute, isPM } = from24h(value);
-  return `${hour12}:${String(minute).padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
+  return `${hour12}:${String(minute).padStart(2, "0")}${isPM ? "p" : "a"}`;
 }

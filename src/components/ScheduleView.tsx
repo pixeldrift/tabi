@@ -188,6 +188,10 @@ type Schedule = {
 const PX_PER_MIN = 3.6;       // proportional: 5min smallest row ≈ 18px
 const MIN_ROW_MIN = 5;
 const COLLAPSED_ROW_PX = 36;  // uniform row height in collapsed mode
+// Proportional edit mode: how tall the before-first/after-last "Add
+// Activity" affordance renders, capped well below its real (often much
+// larger) span — just enough to hold the button, not the whole gap.
+const EDGE_ADD_ACTIVITY_PX = 48;
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
 // Defaults — TODO: surface in user settings.
@@ -304,13 +308,15 @@ function fromMin(m: number) {
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+// Abbreviated to save room next to the time-entry boxes — "30mins",
+// "1hr 15mins" — matching the boxes' own no-space "10:30a" convention.
 function formatDuration(min: number): string {
   const total = Math.max(0, Math.round(min));
   const h = Math.floor(total / 60);
   const m = total % 60;
   const parts: string[] = [];
-  if (h > 0) parts.push(`${h} hour${h === 1 ? "" : "s"}`);
-  if (m > 0 || h === 0) parts.push(`${m} minute${m === 1 ? "" : "s"}`);
+  if (h > 0) parts.push(`${h}hr`);
+  if (m > 0 || h === 0) parts.push(`${m}mins`);
   return parts.join(" ");
 }
 
@@ -575,22 +581,53 @@ export function ScheduleView({
   // Edit mode's "Add Activity" is offered into any genuine blank stretch —
   // before the first item, between any two items, and after the last —
   // each becomes its own row alongside the real items, in both layout
-  // modes, so a gap is never just invisible dead space.
-  type Gap = { startMin: number; endMin: number };
+  // modes, so a gap is never just invisible dead space. The before-first
+  // and after-last gaps are tagged as "edge" — in proportional mode those
+  // two get special treatment (hidden outside edit mode, capped height
+  // inside it) that the gaps between two items don't.
+  type Gap = { startMin: number; endMin: number; edge?: "before" | "after" };
   type Row = { kind: "item"; item: ScheduleItem } | { kind: "gap"; gap: Gap };
-  const rows: Row[] = useMemo(() => {
-    if (!editMode) return items.map((item): Row => ({ kind: "item", item }));
+  const allRows: Row[] = useMemo(() => {
     const out: Row[] = [];
     let cursor = dayStart;
-    for (const it of items) {
+    items.forEach((it, idx) => {
       const s = toMin(it.start);
-      if (s > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: s } });
+      if (s > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: s, edge: idx === 0 ? "before" : undefined } });
       out.push({ kind: "item", item: it });
       cursor = Math.max(cursor, toMin(it.end));
-    }
-    if (dayEnd > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: dayEnd } });
+    });
+    if (dayEnd > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: dayEnd, edge: "after" } });
     return out;
-  }, [items, dayStart, dayEnd, editMode]);
+  }, [items, dayStart, dayEnd]);
+
+  const rows: Row[] = useMemo(() => {
+    if (editMode) return allRows;
+    if (layoutMode === "collapsed") return allRows.filter((r) => r.kind === "item");
+    // Proportional, not editing: keep gaps between items (with their
+    // divider lines) but trim away the dead space before the first item
+    // and after the last — that's the "extra blank time" nobody's editing
+    // into right now.
+    return allRows.filter((r) => r.kind === "item" || !r.gap.edge);
+  }, [allRows, editMode, layoutMode]);
+
+  // Proportional mode's effective top-of-grid/bottom-of-grid time values.
+  // Outside edit mode these are just the first item's start and the last
+  // item's end (the edge gaps are excluded from `rows` entirely above).
+  // Inside edit mode, both edges grow just enough to fit the "Add Activity"
+  // button — capped to the real gap size, so a genuinely short gap never
+  // gets padded out past where the actual clinic hours end.
+  const firstBoundaryMin = items.length ? toMin(items[0].start) : dayStart;
+  const lastBoundaryMin = items.length ? toMin(items[items.length - 1].end) : dayEnd;
+  const beforeFirstEditMin = Math.min(
+    Math.max(0, firstBoundaryMin - dayStart),
+    EDGE_ADD_ACTIVITY_PX / PX_PER_MIN,
+  );
+  const afterLastEditMin = Math.min(
+    Math.max(0, dayEnd - lastBoundaryMin),
+    EDGE_ADD_ACTIVITY_PX / PX_PER_MIN,
+  );
+  const renderOriginMin = editMode ? firstBoundaryMin - beforeFirstEditMin : firstBoundaryMin;
+  const renderEndMin = editMode ? lastBoundaryMin + afterLastEditMin : lastBoundaryMin;
 
   // Compute each row's top and height based on layoutMode.
   const rowLayout = useMemo(() => {
@@ -603,14 +640,20 @@ export function ScheduleView({
     }
     return rows.map((row) => {
       if (row.kind === "item") {
-        const top = (toMin(row.item.start) - dayStart) * PX_PER_MIN;
+        const top = (toMin(row.item.start) - renderOriginMin) * PX_PER_MIN;
         const durMin = Math.max(toMin(row.item.end) - toMin(row.item.start), MIN_ROW_MIN);
         return { row, top, height: durMin * PX_PER_MIN };
       }
-      const top = (row.gap.startMin - dayStart) * PX_PER_MIN;
+      if (row.gap.edge === "before") {
+        return { row, top: 0, height: beforeFirstEditMin * PX_PER_MIN };
+      }
+      if (row.gap.edge === "after") {
+        return { row, top: (lastBoundaryMin - renderOriginMin) * PX_PER_MIN, height: afterLastEditMin * PX_PER_MIN };
+      }
+      const top = (row.gap.startMin - renderOriginMin) * PX_PER_MIN;
       return { row, top, height: (row.gap.endMin - row.gap.startMin) * PX_PER_MIN };
     });
-  }, [rows, layoutMode, dayStart]);
+  }, [rows, layoutMode, renderOriginMin, beforeFirstEditMin, afterLastEditMin, lastBoundaryMin]);
 
   // Item-only view of rowLayout for consumers that only make sense against
   // real activities (the "now" arrow, appointment overlays, item rendering).
@@ -625,19 +668,21 @@ export function ScheduleView({
   const totalHeight =
     layoutMode === "collapsed"
       ? Math.max(rows.length * COLLAPSED_ROW_PX, COLLAPSED_ROW_PX)
-      : (dayEnd - dayStart) * PX_PER_MIN;
+      : (renderEndMin - renderOriginMin) * PX_PER_MIN;
 
   const openAddActivity = (gap: Gap) => {
     // Default to filling the gap's entire available span — the reset
     // buttons on each time field start out disabled/grayed exactly because
-    // the values already match the gap's full extent (see TimeField).
+    // the values already match the gap's full extent (see TimeField). This
+    // is always the gap's real bounds, even for an edge gap whose rendered
+    // height is capped down to just fit the button.
     setCreatingNew({ start: fromMin(gap.startMin), end: fromMin(gap.endMin) });
   };
 
   const arrowTop = (() => {
     if (editMode) return null;
     if (layoutMode === "proportional") {
-      if (!outsideSchedule) return (nowMin - dayStart) * PX_PER_MIN;
+      if (!outsideSchedule) return (nowMin - renderOriginMin) * PX_PER_MIN;
       return nowMin < dayStart ? -2 : totalHeight + 16;
     }
     if (currentItem) {
@@ -1232,6 +1277,28 @@ export function ScheduleView({
           {rowLayout.map(({ row, top, height }) => {
             if (row.kind === "gap") {
               const { gap } = row;
+              if (!editMode) {
+                // Reachable only in proportional mode (collapsed hides all
+                // gaps outside edit mode, see `rows`) and only for a gap
+                // between two items (edge gaps are trimmed away entirely
+                // when not editing) — a plain blank stretch styled like an
+                // activity's own box, with the same divider lines an
+                // activity would show, rather than a clickable affordance.
+                const gapDurMin = gap.endMin - gap.startMin;
+                const gapGridLines = Math.max(0, Math.floor((gapDurMin - 1) / 5));
+                return (
+                  <div key={`gap-${gap.startMin}`} className="absolute left-0 right-0 z-10" style={{ top, height }}>
+                    <div className="absolute inset-0 rounded-md border border-stone-300 bg-white" />
+                    {Array.from({ length: gapGridLines }, (_, i) => (
+                      <div
+                        key={`gg-${i}`}
+                        className="absolute left-1 right-1 border-t border-stone-100"
+                        style={{ top: (i + 1) * 5 * PX_PER_MIN }}
+                      />
+                    ))}
+                  </div>
+                );
+              }
               return (
                 <button
                   key={`gap-${gap.startMin}`}
@@ -1300,6 +1367,13 @@ export function ScheduleView({
                     isCurrent && "!border-2 !border-blue-500 !bg-blue-50",
                   )}
                 />
+                {Array.from({ length: gridLines }, (_, i) => (
+                  <div
+                    key={`g-${i}`}
+                    className="absolute left-1 right-1 border-t border-stone-100"
+                    style={{ top: (i + 1) * 5 * PX_PER_MIN }}
+                  />
+                ))}
                 {flashRowId === it.id && flashGen > 0 && (
                   // A separate, pointer-events-none overlay rather than
                   // animating the box above directly — that box's selected
@@ -1308,20 +1382,15 @@ export function ScheduleView({
                   // animations can never win against an !important
                   // declaration. Pulsing only border-width (not background
                   // or scale) keeps the row's own position/size untouched;
-                  // it just visually overlaps whatever's beneath it.
+                  // it just visually overlaps whatever's beneath it. Rendered
+                  // after the gridlines (not before) so the pulse paints on
+                  // top of them instead of the lines cutting across it.
                   <div
                     key={`pulse-${flashGen}`}
                     className="absolute inset-0 rounded-md pointer-events-none border-blue-500 animate-now-pulse"
                     aria-hidden
                   />
                 )}
-                {Array.from({ length: gridLines }, (_, i) => (
-                  <div
-                    key={`g-${i}`}
-                    className="absolute left-1 right-1 border-t border-stone-100"
-                    style={{ top: (i + 1) * 5 * PX_PER_MIN }}
-                  />
-                ))}
                 <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
                   <div className="text-[11px] tabular-nums leading-tight text-right pr-1.5 pt-0.5">
                     {fmt12(it.start)}
@@ -2350,7 +2419,7 @@ function TimeField({
             display ? "text-blue-700" : "text-stone-300",
           )}
         >
-          {display || "00:00 AM"}
+          {display || "00:00a"}
         </button>
       )}
     </TimeOfDayKeypad>
