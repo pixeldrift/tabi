@@ -170,7 +170,7 @@ export function DataToolbar({
             side="bottom"
             align="center"
             sideOffset={8}
-            className="group z-[70] w-72 p-3"
+            className="group z-[70] w-[308px] p-3"
           >
             <FilterPopoverContent
               availableKinds={availableKinds}
