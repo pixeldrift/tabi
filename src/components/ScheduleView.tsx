@@ -16,6 +16,8 @@ import {
   Star,
   Rows3,
   TriangleAlert,
+  ArrowLeftToLine,
+  ArrowRightToLine,
 } from "lucide-react";
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
@@ -44,6 +46,7 @@ import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { useSettings, DEFAULT_DAY_START, DEFAULT_DAY_END } from "@/components/SettingsContext";
 
 
 const LOCATIONS = [
@@ -182,8 +185,6 @@ type Schedule = {
   locked?: boolean;
 };
 
-const DAY_START = "08:00";
-const DAY_END = "18:00";
 const PX_PER_MIN = 3.6;       // proportional: 5min smallest row ≈ 18px
 const MIN_ROW_MIN = 5;
 const COLLAPSED_ROW_PX = 36;  // uniform row height in collapsed mode
@@ -248,19 +249,20 @@ const GROUP_C: ScheduleItem[] = [
   { id: "c12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
-// p9 ("Pack Up/Dismissal", 13:30–14:00) was removed on purpose — it leaves
-// a real blank stretch from 13:30 to the end of the day (DAY_END) to
-// demonstrate the edit mode's "Add Activity" gap button, on top of the
-// existing 08:00–10:00 gap before the first item.
+// "Sensory Play" (formerly 11:15–11:45) was removed on purpose, leaving a
+// real blank stretch mid-morning to demonstrate the edit mode's
+// "Add Activity" gap buttons — which now render for any contiguous gap, not
+// just the one before the first item or after the last.
 const PHINEAS: ScheduleItem[] = [
   { id: "p1", start: "10:00", end: "10:20", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
   { id: "p2", start: "10:20", end: "10:30", activity: "Potty Time", location: "Solo Bathroom", alert: "off" },
   { id: "p3", start: "10:30", end: "11:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "p4", start: "11:15", end: "11:45", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
   { id: "p5", start: "11:45", end: "12:00", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
   { id: "p6", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
   { id: "p7", start: "12:30", end: "13:15", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
+  { id: "p9", start: "13:30", end: "14:00", activity: "Snack", location: "Kitchen", alert: "visual" },
+  { id: "p10", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
 const PHINEAS_APPTS: Appointment[] = [
@@ -287,10 +289,10 @@ function fmt12(t: string) {
   return `${hh}:${m.toString().padStart(2, "0")}${period}`;
 }
 
-function randomDemoTime(): Date {
+function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
   const d = new Date();
-  const startMin = toMin(DAY_START);
-  const endMin = toMin(DAY_END);
+  const startMin = toMin(dayStartTime);
+  const endMin = toMin(dayEndTime);
   const m = startMin + Math.floor(Math.random() * (endMin - startMin));
   d.setHours(Math.floor(m / 60), m % 60, 0, 0);
   return d;
@@ -325,7 +327,8 @@ export function ScheduleView({
   scrollTargetId?: string | null;
   onScrolledToTarget?: () => void;
 } = {}) {
-  const [now, setNow] = useState<Date>(() => randomDemoTime());
+  const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
+  const [now, setNow] = useState<Date>(() => randomDemoTime(dayStartTime, dayEndTime));
   const bumpTime = () => {
     setNow((prev) => {
       const d = new Date(prev);
@@ -412,12 +415,12 @@ export function ScheduleView({
 
   const items = active.items;
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  // Fixed to the nominal day bounds (not derived from the items) so any
-  // slack before the first item or after the last renders as real, visible
-  // blank space in the grid — that's what the edit-mode "Add Activity"
-  // gap buttons below are anchored to.
-  const dayStart = toMin(DAY_START);
-  const dayEnd = toMin(DAY_END);
+  // Fixed to the configured clinic hours (Settings tab), not derived from
+  // the items, so any slack before the first item or after the last renders
+  // as real, visible blank space in the grid — that's what the edit-mode
+  // "Add Activity" gap buttons below are anchored to.
+  const dayStart = toMin(dayStartTime);
+  const dayEnd = toMin(dayEndTime);
   const currentItem = items.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
@@ -569,47 +572,66 @@ export function ScheduleView({
     minute: "2-digit",
   });
 
+  // Edit mode's "Add Activity" is offered into any genuine blank stretch —
+  // before the first item, between any two items, and after the last —
+  // each becomes its own row alongside the real items, in both layout
+  // modes, so a gap is never just invisible dead space.
+  type Gap = { startMin: number; endMin: number };
+  type Row = { kind: "item"; item: ScheduleItem } | { kind: "gap"; gap: Gap };
+  const rows: Row[] = useMemo(() => {
+    if (!editMode) return items.map((item): Row => ({ kind: "item", item }));
+    const out: Row[] = [];
+    let cursor = dayStart;
+    for (const it of items) {
+      const s = toMin(it.start);
+      if (s > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: s } });
+      out.push({ kind: "item", item: it });
+      cursor = Math.max(cursor, toMin(it.end));
+    }
+    if (dayEnd > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: dayEnd } });
+    return out;
+  }, [items, dayStart, dayEnd, editMode]);
+
   // Compute each row's top and height based on layoutMode.
   const rowLayout = useMemo(() => {
     if (layoutMode === "collapsed") {
-      return items.map((it, idx) => ({
-        item: it,
+      return rows.map((row, idx) => ({
+        row,
         top: idx * COLLAPSED_ROW_PX,
         height: COLLAPSED_ROW_PX,
       }));
     }
-    return items.map((it) => {
-      const top = (toMin(it.start) - dayStart) * PX_PER_MIN;
-      const durMin = Math.max(toMin(it.end) - toMin(it.start), MIN_ROW_MIN);
-      return { item: it, top, height: durMin * PX_PER_MIN };
+    return rows.map((row) => {
+      if (row.kind === "item") {
+        const top = (toMin(row.item.start) - dayStart) * PX_PER_MIN;
+        const durMin = Math.max(toMin(row.item.end) - toMin(row.item.start), MIN_ROW_MIN);
+        return { row, top, height: durMin * PX_PER_MIN };
+      }
+      const top = (row.gap.startMin - dayStart) * PX_PER_MIN;
+      return { row, top, height: (row.gap.endMin - row.gap.startMin) * PX_PER_MIN };
     });
-  }, [items, layoutMode, dayStart]);
+  }, [rows, layoutMode, dayStart]);
+
+  // Item-only view of rowLayout for consumers that only make sense against
+  // real activities (the "now" arrow, appointment overlays, item rendering).
+  const itemRowLayout = useMemo(() => {
+    const out: { item: ScheduleItem; top: number; height: number }[] = [];
+    for (const r of rowLayout) {
+      if (r.row.kind === "item") out.push({ item: r.row.item, top: r.top, height: r.height });
+    }
+    return out;
+  }, [rowLayout]);
 
   const totalHeight =
     layoutMode === "collapsed"
-      ? Math.max(items.length * COLLAPSED_ROW_PX, COLLAPSED_ROW_PX)
+      ? Math.max(rows.length * COLLAPSED_ROW_PX, COLLAPSED_ROW_PX)
       : (dayEnd - dayStart) * PX_PER_MIN;
 
-  // Edit mode's "Add Activity" is only ever offered into genuine blank
-  // space — before the very first item and after the very last — rather
-  // than anywhere in the schedule. Proportional-mode only: collapsed rows
-  // are uniform-height regardless of real duration, so a gap doesn't have
-  // a meaningful size to render there.
-  const gapBeforeFirstMin = items.length ? Math.max(0, toMin(items[0].start) - dayStart) : dayEnd - dayStart;
-  const gapAfterLastMin = items.length ? Math.max(0, dayEnd - toMin(items[items.length - 1].end)) : 0;
-  const gapBeforeFirstPx = layoutMode === "proportional" ? gapBeforeFirstMin * PX_PER_MIN : 0;
-  const gapAfterLastPx = layoutMode === "proportional" ? gapAfterLastMin * PX_PER_MIN : 0;
-
-  const openAddActivity = (which: "before" | "after") => {
-    if (which === "before") {
-      const gapEndMin = items.length ? toMin(items[0].start) : dayEnd;
-      const defaultStartMin = Math.max(dayStart, gapEndMin - 30);
-      setCreatingNew({ start: fromMin(defaultStartMin), end: fromMin(gapEndMin) });
-    } else {
-      const gapStartMin = items.length ? toMin(items[items.length - 1].end) : dayStart;
-      const defaultEndMin = Math.min(dayEnd, gapStartMin + 30);
-      setCreatingNew({ start: fromMin(gapStartMin), end: fromMin(defaultEndMin) });
-    }
+  const openAddActivity = (gap: Gap) => {
+    // Default to filling the gap's entire available span — the reset
+    // buttons on each time field start out disabled/grayed exactly because
+    // the values already match the gap's full extent (see TimeField).
+    setCreatingNew({ start: fromMin(gap.startMin), end: fromMin(gap.endMin) });
   };
 
   const arrowTop = (() => {
@@ -619,7 +641,7 @@ export function ScheduleView({
       return nowMin < dayStart ? -2 : totalHeight + 16;
     }
     if (currentItem) {
-      const row = rowLayout.find((r) => r.item.id === currentItem.id);
+      const row = itemRowLayout.find((r) => r.item.id === currentItem.id);
       if (row) return row.top + row.height / 2;
     }
     return nowMin < dayStart ? -2 : totalHeight + 16;
@@ -695,7 +717,7 @@ export function ScheduleView({
       // whole row) misrepresents where within the row it actually falls.
       // Interpolate proportionally within each row's own real time span
       // instead, same idea as proportional mode but scoped per-row.
-      const pxWithinRow = (row: (typeof rowLayout)[number], minutes: number) => {
+      const pxWithinRow = (row: (typeof itemRowLayout)[number], minutes: number) => {
         const rowStart = toMin(row.item.start);
         const rowEnd = toMin(row.item.end);
         const span = Math.max(rowEnd - rowStart, 1);
@@ -705,18 +727,18 @@ export function ScheduleView({
       const aStart = toMin(a.start);
       const aEnd = toMin(a.end);
       const startRow =
-        rowLayout.find((r) => aStart >= toMin(r.item.start) && aStart < toMin(r.item.end)) ??
-        rowLayout.find((r) => toMin(r.item.start) >= aStart) ??
-        rowLayout[rowLayout.length - 1];
+        itemRowLayout.find((r) => aStart >= toMin(r.item.start) && aStart < toMin(r.item.end)) ??
+        itemRowLayout.find((r) => toMin(r.item.start) >= aStart) ??
+        itemRowLayout[itemRowLayout.length - 1];
       const endRow =
-        rowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
+        itemRowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
         startRow;
       const top = startRow ? pxWithinRow(startRow, aStart) : 0;
       const bottom = endRow ? pxWithinRow(endRow, aEnd) : top + COLLAPSED_ROW_PX;
       const MIN_APPT_PX = 20;
       return { appt: a, top, height: Math.max(bottom - top, MIN_APPT_PX) };
     });
-  }, [active.appointments, layoutMode, dayStart, rowLayout]);
+  }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
 
 
   return (
@@ -1178,26 +1200,6 @@ export function ScheduleView({
         </div>
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
-          {editMode && layoutMode === "proportional" && gapBeforeFirstPx > 0 && (
-            <button
-              type="button"
-              onClick={() => openAddActivity("before")}
-              className="absolute left-1 right-1 z-10 rounded-md border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
-              style={{ top: 0, height: gapBeforeFirstPx }}
-            >
-              <Plus className="size-3.5" /> Add Activity
-            </button>
-          )}
-          {editMode && layoutMode === "proportional" && gapAfterLastPx > 0 && (
-            <button
-              type="button"
-              onClick={() => openAddActivity("after")}
-              className="absolute left-1 right-1 z-10 rounded-md border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
-              style={{ top: totalHeight - gapAfterLastPx, height: gapAfterLastPx }}
-            >
-              <Plus className="size-3.5" /> Add Activity
-            </button>
-          )}
           {arrowTop !== null && !editMode && (
             <div
               key={`arrow-${nowAnim}`}
@@ -1227,7 +1229,40 @@ export function ScheduleView({
             </div>
           )}
 
-          {rowLayout.map(({ item: it, top, height }) => {
+          {rowLayout.map(({ row, top, height }) => {
+            if (row.kind === "gap") {
+              const { gap } = row;
+              return (
+                <button
+                  key={`gap-${gap.startMin}`}
+                  type="button"
+                  onClick={() => openAddActivity(gap)}
+                  className={cn(
+                    "absolute left-1 right-1 z-10 rounded-md border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors",
+                    layoutMode === "collapsed"
+                      ? "grid grid-cols-[40px_1fr_84px_34px] gap-1 items-center px-2"
+                      : "flex items-center justify-center gap-1.5 text-xs font-medium",
+                  )}
+                  style={{ top, height }}
+                >
+                  {layoutMode === "collapsed" ? (
+                    <>
+                      <span className="text-[11px] tabular-nums leading-tight text-right pr-1.5">
+                        {fmt12(fromMin(gap.startMin))}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-xs font-medium">
+                        <Plus className="size-3.5" /> Add Activity
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="size-3.5" /> Add Activity
+                    </>
+                  )}
+                </button>
+              );
+            }
+            const it = row.item;
             const isCurrent = !editMode && currentItem?.id === it.id;
             const displayName =
               it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
@@ -1447,6 +1482,8 @@ export function ScheduleView({
         item={editing}
         defaultStart={creatingNew?.start}
         defaultEnd={creatingNew?.end}
+        dayStartTime={dayStartTime}
+        dayEndTime={dayEndTime}
         existing={active.items}
         onClose={() => {
           setEditing(null);
@@ -1643,6 +1680,8 @@ function ItemDialog({
   item,
   defaultStart,
   defaultEnd,
+  dayStartTime,
+  dayEndTime,
   existing,
   onClose,
   onSave,
@@ -1653,6 +1692,10 @@ function ItemDialog({
    *  "Add Activity" button was pressed from (see openAddActivity). */
   defaultStart?: string;
   defaultEnd?: string;
+  /** Clinic hours (24h "HH:MM") — the fallback gap boundary when this item
+   *  has no previous/next neighbor to bound against. */
+  dayStartTime: string;
+  dayEndTime: string;
   existing: ScheduleItem[];
   onClose: () => void;
   onSave: (i: ScheduleItem) => void;
@@ -1726,6 +1769,26 @@ function ItemDialog({
   const prevItem = findPrevious(toMin(start));
   const nextItem = findNext(toMin(start));
 
+  // The full extent of the gap this item is sitting in — the previous
+  // activity's end (or the day's start) through the next activity's start
+  // (or the day's end). The reset buttons on each time field snap back out
+  // to these edges; they're grayed out exactly when the field already sits
+  // at its edge, since there's nowhere further to reset to.
+  const gapLowerMin = prevItem ? toMin(prevItem.end) : toMin(dayStartTime);
+  const gapUpperMin = nextItem ? toMin(nextItem.start) : toMin(dayEndTime);
+  const startAtGapEdge = toMin(start) === gapLowerMin;
+  const endAtGapEdge = toMin(end) === gapUpperMin;
+  const resetStartToGap = () => {
+    setStart(fromMin(gapLowerMin));
+    setError(null);
+    setConflictHint(null);
+  };
+  const resetEndToGap = () => {
+    setEnd(fromMin(gapUpperMin));
+    setError(null);
+    setConflictHint(null);
+  };
+
   // After entering a new start time: reject it outright if it lands before
   // the previous activity's end, otherwise shift the end time along with
   // it — by default keeping the same duration, but clamped to the next
@@ -1742,7 +1805,7 @@ function ItemDialog({
     const next = findNext(toMin(newStart));
     let newEndMin = toMin(newStart) + duration;
     if (next) newEndMin = Math.min(newEndMin, toMin(next.start));
-    newEndMin = Math.min(newEndMin, toMin(DAY_END));
+    newEndMin = Math.min(newEndMin, toMin(dayEndTime));
     setStart(newStart);
     setEnd(fromMin(Math.max(newEndMin, toMin(newStart))));
   };
@@ -1829,6 +1892,9 @@ function ItemDialog({
                   value={start}
                   onChange={handleStartChange}
                   onEditingChange={handleStartEditingChange}
+                  resetSide="left"
+                  resetActive={!startAtGapEdge}
+                  onReset={resetStartToGap}
                 />
               </div>
               <div className="flex shrink-0 flex-col gap-1">
@@ -1837,6 +1903,9 @@ function ItemDialog({
                   value={end}
                   onChange={handleEndChange}
                   onEditingChange={handleEndEditingChange}
+                  resetSide="right"
+                  resetActive={!endAtGapEdge}
+                  onReset={resetEndToGap}
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -2245,22 +2314,38 @@ function TimeField({
   value,
   onChange,
   onEditingChange,
+  resetSide,
+  resetActive,
+  onReset,
 }: {
   value: string;
   onChange: (v: string) => void;
   /** Fires whenever this field's keypad popover opens/closes — lets the
    *  parent show a hint scoped to whichever field is actively being typed. */
   onEditingChange?: (isEditing: boolean) => void;
+  /** Which side the "fill the gap" reset button sits on — matches the
+   *  session timer's linked pill, with the button attached to the time box
+   *  itself rather than floating separately. Omit for a plain standalone
+   *  pill (e.g. appointments, which have no surrounding-gap concept). */
+  resetSide?: "left" | "right";
+  /** False — grayed out, like the timer pill's "linked" state — exactly
+   *  when this field already sits at the edge of its available gap, since
+   *  there's nowhere further out to reset to. */
+  resetActive?: boolean;
+  onReset?: () => void;
 }) {
   const display = value ? formatTimeOfDay(value) : "";
-  return (
+  const box = (
     <TimeOfDayKeypad value={value} onChange={onChange} onEditingChange={onEditingChange}>
       {({ isEditing, open }) => (
         <button
           type="button"
           onClick={open}
           className={cn(
-            "flex h-9 w-[96px] items-center justify-center rounded-full border-2 bg-white px-2 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
+            "flex h-9 w-[84px] items-center justify-center border-2 bg-white px-1.5 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
+            !resetSide && "rounded-full",
+            resetSide === "left" && "rounded-r-full",
+            resetSide === "right" && "rounded-l-full",
             isEditing ? "border-blue-500" : "border-blue-300",
             display ? "text-blue-700" : "text-stone-300",
           )}
@@ -2269,6 +2354,37 @@ function TimeField({
         </button>
       )}
     </TimeOfDayKeypad>
+  );
+
+  if (!resetSide) return box;
+
+  const ResetIcon = resetSide === "left" ? ArrowLeftToLine : ArrowRightToLine;
+  const resetButton = (
+    <button
+      type="button"
+      onClick={onReset}
+      disabled={!resetActive}
+      aria-label={
+        resetSide === "left" ? "Extend start to fill the available gap" : "Extend end to fill the available gap"
+      }
+      className={cn(
+        "grid h-9 w-7 shrink-0 place-items-center transition-colors",
+        resetSide === "left" ? "rounded-l-full" : "rounded-r-full",
+        resetActive
+          ? "btn-bevel bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+          : "bg-stone-300 text-stone-500",
+      )}
+    >
+      <ResetIcon className="size-3.5" />
+    </button>
+  );
+
+  return (
+    <div className="inline-flex items-stretch">
+      {resetSide === "left" && resetButton}
+      {box}
+      {resetSide === "right" && resetButton}
+    </div>
   );
 }
 

@@ -52,6 +52,10 @@ const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "normal";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
+// Clinic hours the Schedule tab's grid is bounded to — 24h "HH:MM".
+export const DEFAULT_DAY_START = "08:00";
+export const DEFAULT_DAY_END = "18:00";
+
 const DEFAULTS: SettingsValues = Object.fromEntries(SETTINGS.map((s) => [s.key, s.default]));
 
 const STORAGE_KEY = "aba-daba-settings-v2";
@@ -68,6 +72,11 @@ interface SettingsContextValue {
    *  opt-in here since it's a bigger, more opinionated motion. */
   keepActiveCardCentered: boolean;
   setKeepActiveCardCentered: (v: boolean) => void;
+  /** Clinic hours (24h "HH:MM") the Schedule tab's grid is bounded to. */
+  dayStart: string;
+  setDayStart: (v: string) => void;
+  dayEnd: string;
+  setDayEnd: (v: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -82,6 +91,8 @@ interface StoredShape {
   values: SettingsValues;
   alarmSound: AlarmSoundStyle;
   keepActiveCardCentered: boolean;
+  dayStart: string;
+  dayEnd: string;
 }
 
 function loadStored(): StoredShape {
@@ -89,6 +100,8 @@ function loadStored(): StoredShape {
     values: DEFAULTS,
     alarmSound: DEFAULT_ALARM_SOUND,
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+    dayStart: DEFAULT_DAY_START,
+    dayEnd: DEFAULT_DAY_END,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -99,6 +112,8 @@ function loadStored(): StoredShape {
       values: { ...DEFAULTS, ...parsed.values },
       alarmSound: parsed.alarmSound ?? DEFAULT_ALARM_SOUND,
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+      dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
+      dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
     };
   } catch {
     return fallback;
@@ -111,19 +126,23 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [values, setValues] = useState<SettingsValues>(DEFAULTS);
   const [alarmSound, setAlarmSound] = useState<AlarmSoundStyle>(DEFAULT_ALARM_SOUND);
   const [keepActiveCardCentered, setKeepActiveCardCentered] = useState(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
+  const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
+  const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
 
   useEffect(() => {
     const stored = loadStored();
     setValues(stored.values);
     setAlarmSound(stored.alarmSound);
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
+    setDayStart(stored.dayStart);
+    setDayEnd(stored.dayEnd);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored: StoredShape = { values, alarmSound, keepActiveCardCentered };
+    const stored: StoredShape = { values, alarmSound, keepActiveCardCentered, dayStart, dayEnd };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  }, [values, alarmSound, keepActiveCardCentered]);
+  }, [values, alarmSound, keepActiveCardCentered, dayStart, dayEnd]);
 
   const setValue = useCallback((key: string, value: number) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -133,6 +152,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setValues(DEFAULTS);
     setAlarmSound(DEFAULT_ALARM_SOUND);
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
+    setDayStart(DEFAULT_DAY_START);
+    setDayEnd(DEFAULT_DAY_END);
   }, []);
   const resetOne = useCallback((key: string) => {
     setValues((v) => ({ ...v, [key]: DEFAULTS[key] }));
@@ -142,8 +163,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       values, setValue, resetAll, resetOne, alarmSound, setAlarmSound,
       keepActiveCardCentered, setKeepActiveCardCentered,
+      dayStart, setDayStart, dayEnd, setDayEnd,
     }),
-    [values, setValue, resetAll, resetOne, alarmSound, keepActiveCardCentered],
+    [values, setValue, resetAll, resetOne, alarmSound, keepActiveCardCentered, dayStart, dayEnd],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
