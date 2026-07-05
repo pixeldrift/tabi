@@ -247,6 +247,10 @@ const GROUP_C: ScheduleItem[] = [
   { id: "c12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
+// p9 ("Pack Up/Dismissal", 13:30–14:00) was removed on purpose — it leaves
+// a real blank stretch from 13:30 to the end of the day (DAY_END) to
+// demonstrate the edit mode's "Add Activity" gap button, on top of the
+// existing 08:00–10:00 gap before the first item.
 const PHINEAS: ScheduleItem[] = [
   { id: "p1", start: "10:00", end: "10:20", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
   { id: "p2", start: "10:20", end: "10:30", activity: "Potty Time", location: "Solo Bathroom", alert: "off" },
@@ -256,7 +260,6 @@ const PHINEAS: ScheduleItem[] = [
   { id: "p6", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
   { id: "p7", start: "12:30", end: "13:15", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
   { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
-  { id: "p9", start: "13:30", end: "14:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
 const PHINEAS_APPTS: Appointment[] = [
@@ -296,6 +299,16 @@ function fromMin(m: number) {
   const h = Math.floor(m / 60);
   const mm = m % 60;
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function formatDuration(min: number): string {
+  const total = Math.max(0, Math.round(min));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h} hour${h === 1 ? "" : "s"}`);
+  if (m > 0 || h === 0) parts.push(`${m} minute${m === 1 ? "" : "s"}`);
+  return parts.join(" ");
 }
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
@@ -347,7 +360,9 @@ export function ScheduleView({
   const [allApptsCollapsed, setAllApptsCollapsed] = useState(false);
 
   const [editing, setEditing] = useState<ScheduleItem | null>(null);
-  const [creatingNew, setCreatingNew] = useState(false);
+  // Default start/end pre-filled for the gap being added into (see
+  // openAddActivity below) — non-null both opens ItemDialog and seeds it.
+  const [creatingNew, setCreatingNew] = useState<{ start: string; end: string } | null>(null);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [creatingAppt, setCreatingAppt] = useState(false);
   const [newSchedOpen, setNewSchedOpen] = useState(false);
@@ -396,8 +411,12 @@ export function ScheduleView({
 
   const items = active.items;
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const dayStart = items.length ? toMin(items[0].start) : toMin(DAY_START);
-  const dayEnd = items.length ? toMin(items[items.length - 1].end) : toMin(DAY_END);
+  // Fixed to the nominal day bounds (not derived from the items) so any
+  // slack before the first item or after the last renders as real, visible
+  // blank space in the grid — that's what the edit-mode "Add Activity"
+  // gap buttons below are anchored to.
+  const dayStart = toMin(DAY_START);
+  const dayEnd = toMin(DAY_END);
   const currentItem = items.find(
     (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
   );
@@ -569,6 +588,28 @@ export function ScheduleView({
     layoutMode === "collapsed"
       ? Math.max(items.length * COLLAPSED_ROW_PX, COLLAPSED_ROW_PX)
       : (dayEnd - dayStart) * PX_PER_MIN;
+
+  // Edit mode's "Add Activity" is only ever offered into genuine blank
+  // space — before the very first item and after the very last — rather
+  // than anywhere in the schedule. Proportional-mode only: collapsed rows
+  // are uniform-height regardless of real duration, so a gap doesn't have
+  // a meaningful size to render there.
+  const gapBeforeFirstMin = items.length ? Math.max(0, toMin(items[0].start) - dayStart) : dayEnd - dayStart;
+  const gapAfterLastMin = items.length ? Math.max(0, dayEnd - toMin(items[items.length - 1].end)) : 0;
+  const gapBeforeFirstPx = layoutMode === "proportional" ? gapBeforeFirstMin * PX_PER_MIN : 0;
+  const gapAfterLastPx = layoutMode === "proportional" ? gapAfterLastMin * PX_PER_MIN : 0;
+
+  const openAddActivity = (which: "before" | "after") => {
+    if (which === "before") {
+      const gapEndMin = items.length ? toMin(items[0].start) : dayEnd;
+      const defaultStartMin = Math.max(dayStart, gapEndMin - 30);
+      setCreatingNew({ start: fromMin(defaultStartMin), end: fromMin(gapEndMin) });
+    } else {
+      const gapStartMin = items.length ? toMin(items[items.length - 1].end) : dayStart;
+      const defaultEndMin = Math.min(dayEnd, gapStartMin + 30);
+      setCreatingNew({ start: fromMin(gapStartMin), end: fromMin(defaultEndMin) });
+    }
+  };
 
   const arrowTop = (() => {
     if (editMode) return null;
@@ -972,13 +1013,10 @@ export function ScheduleView({
               </div>
             )}
           </div>
-
-          <Button
-            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setCreatingNew(true)}
-          >
-            Add Activity <Plus className="size-4 ml-1.5" />
-          </Button>
+          {/* No standalone "Add Activity" button here — activities can only
+              be added into genuine blank space (before the first item /
+              after the last), via the gap buttons rendered directly in the
+              grid below. */}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1139,6 +1177,26 @@ export function ScheduleView({
         </div>
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
+          {editMode && layoutMode === "proportional" && gapBeforeFirstPx > 0 && (
+            <button
+              type="button"
+              onClick={() => openAddActivity("before")}
+              className="absolute left-1 right-1 z-10 rounded-md border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
+              style={{ top: 0, height: gapBeforeFirstPx }}
+            >
+              <Plus className="size-3.5" /> Add Activity
+            </button>
+          )}
+          {editMode && layoutMode === "proportional" && gapAfterLastPx > 0 && (
+            <button
+              type="button"
+              onClick={() => openAddActivity("after")}
+              className="absolute left-1 right-1 z-10 rounded-md border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors flex items-center justify-center gap-1.5 text-xs font-medium"
+              style={{ top: totalHeight - gapAfterLastPx, height: gapAfterLastPx }}
+            >
+              <Plus className="size-3.5" /> Add Activity
+            </button>
+          )}
           {arrowTop !== null && !editMode && (
             <div
               key={`arrow-${nowAnim}`}
@@ -1384,12 +1442,14 @@ export function ScheduleView({
 
 
       <ItemDialog
-        open={!!editing || creatingNew}
+        open={!!editing || !!creatingNew}
         item={editing}
+        defaultStart={creatingNew?.start}
+        defaultEnd={creatingNew?.end}
         existing={active.items}
         onClose={() => {
           setEditing(null);
-          setCreatingNew(false);
+          setCreatingNew(null);
         }}
         onSave={(item) => {
           if (editing) {
@@ -1400,7 +1460,7 @@ export function ScheduleView({
             );
           }
           setEditing(null);
-          setCreatingNew(false);
+          setCreatingNew(null);
         }}
       />
 
@@ -1580,12 +1640,18 @@ function ConfirmDialog({
 function ItemDialog({
   open,
   item,
+  defaultStart,
+  defaultEnd,
   existing,
   onClose,
   onSave,
 }: {
   open: boolean;
   item: ScheduleItem | null;
+  /** Pre-filled start/end for a new item, seeded from whichever gap the
+   *  "Add Activity" button was pressed from (see openAddActivity). */
+  defaultStart?: string;
+  defaultEnd?: string;
   existing: ScheduleItem[];
   onClose: () => void;
   onSave: (i: ScheduleItem) => void;
@@ -1602,8 +1668,8 @@ function ItemDialog({
 
   useEffect(() => {
     if (open) {
-      setStart(item?.start ?? "10:00");
-      setEnd(item?.end ?? "10:30");
+      setStart(item?.start ?? defaultStart ?? "10:00");
+      setEnd(item?.end ?? defaultEnd ?? "10:30");
       setActivity(item?.activity ?? ACTIVITIES[0]);
       setCustomName(item?.customName ?? "");
       setCustomIcon(item?.customIcon ?? "✨");
@@ -1612,7 +1678,41 @@ function ItemDialog({
       setPriming(item?.priming ?? DEFAULT_PRIMING);
       setError(null);
     }
-  }, [open, item]);
+  }, [open, item, defaultStart, defaultEnd]);
+
+  // The activity immediately before/after this one in time (excluding
+  // itself) — used both to keep a new start time from landing before the
+  // previous activity ends, and to keep an auto-shifted end time from
+  // overlapping whichever activity comes next.
+  const findPrevious = (beforeMin: number) =>
+    existing
+      .filter((x) => x.id !== item?.id && toMin(x.end) <= beforeMin)
+      .reduce<ScheduleItem | null>((best, x) => (!best || toMin(x.end) > toMin(best.end) ? x : best), null);
+  const findNext = (afterMin: number) =>
+    existing
+      .filter((x) => x.id !== item?.id && toMin(x.start) >= afterMin)
+      .reduce<ScheduleItem | null>((best, x) => (!best || toMin(x.start) < toMin(best.start) ? x : best), null);
+
+  // After entering a new start time: reject it outright if it lands before
+  // the previous activity's end, otherwise shift the end time along with
+  // it — by default keeping the same duration, but clamped to the next
+  // activity's start so the shift itself can't create a new overlap.
+  const handleStartChange = (newStart: string) => {
+    const prev = findPrevious(toMin(start));
+    if (prev && toMin(newStart) < toMin(prev.end)) {
+      const prevName = prev.activity === "Custom" ? prev.customName ?? "Custom" : prev.activity;
+      setError(`Start time can't be before ${fmt12(prev.end)}, when "${prevName}" ends.`);
+      return;
+    }
+    setError(null);
+    const duration = Math.max(toMin(end) - toMin(start), MIN_ROW_MIN);
+    const next = findNext(toMin(newStart));
+    let newEndMin = toMin(newStart) + duration;
+    if (next) newEndMin = Math.min(newEndMin, toMin(next.start));
+    newEndMin = Math.min(newEndMin, toMin(DAY_END));
+    setStart(newStart);
+    setEnd(fromMin(Math.max(newEndMin, toMin(newStart))));
+  };
 
   const handleSave = () => {
     if (toMin(end) <= toMin(start)) {
@@ -1657,11 +1757,14 @@ function ItemDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Time</Label>
-            <div className="mt-1 flex items-center justify-center gap-2">
+            <div className="mt-1 flex items-center justify-start flex-wrap gap-2">
               <span className="text-xs text-muted-foreground">From</span>
-              <TimeField value={start} onChange={setStart} />
+              <TimeField value={start} onChange={handleStartChange} />
               <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
+              <span className="text-xs text-muted-foreground">
+                ({formatDuration(toMin(end) - toMin(start))})
+              </span>
             </div>
           </div>
           <div>
@@ -1823,11 +1926,14 @@ function AppointmentDialog({
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Time</Label>
-            <div className="mt-1 flex items-center justify-center gap-2">
+            <div className="mt-1 flex items-center justify-start flex-wrap gap-2">
               <span className="text-xs text-muted-foreground">From</span>
               <TimeField value={start} onChange={setStart} />
               <span className="text-xs text-muted-foreground">to</span>
               <TimeField value={end} onChange={setEnd} />
+              <span className="text-xs text-muted-foreground">
+                ({formatDuration(toMin(end) - toMin(start))})
+              </span>
             </div>
           </div>
           <div>
