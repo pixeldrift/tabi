@@ -1176,17 +1176,38 @@ export function ScheduleView({
                   if (el) rowRefs.current.set(it.id, el);
                   else rowRefs.current.delete(it.id);
                 }}
-                className="absolute left-0 right-0 z-10"
+                className={cn(
+                  "absolute left-0 right-0 z-10",
+                  // Elevated only while its pulse is playing — the pulse's
+                  // thicker border needs to paint over neighboring rows
+                  // (which share z-10 and would otherwise occlude it, since
+                  // later siblings in the same stacking context paint on
+                  // top), but stays below the "now" chevron (z-30).
+                  flashRowId === it.id && flashGen > 0 && "z-20",
+                )}
                 style={{ top, height }}
               >
                 <div
-                  key={flashRowId === it.id ? `bg-${flashGen}` : "bg"}
                   className={cn(
                     "absolute inset-0 rounded-md border border-stone-300 bg-white transition-colors",
                     isCurrent && "!border-2 !border-blue-500 !bg-blue-50",
-                    flashRowId === it.id && flashGen > 0 && "animate-row-flash",
                   )}
                 />
+                {flashRowId === it.id && flashGen > 0 && (
+                  // A separate, pointer-events-none overlay rather than
+                  // animating the box above directly — that box's selected
+                  // state sets border-width via an !important utility (to
+                  // reliably beat its own base border class), and CSS
+                  // animations can never win against an !important
+                  // declaration. Pulsing only border-width (not background
+                  // or scale) keeps the row's own position/size untouched;
+                  // it just visually overlaps whatever's beneath it.
+                  <div
+                    key={`pulse-${flashGen}`}
+                    className="absolute inset-0 rounded-md pointer-events-none border-blue-500 animate-now-pulse"
+                    aria-hidden
+                  />
+                )}
                 {Array.from({ length: gridLines }, (_, i) => (
                   <div
                     key={`g-${i}`}

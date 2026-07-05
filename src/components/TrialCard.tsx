@@ -227,7 +227,7 @@ export function TrialCard({
           />
         </button>
         <h2 className="font-display text-lg leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
-        <div className="text-right leading-tight mt-0.5">
+        <div className="text-right leading-tight -mt-0.5">
           <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
           <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
             <PercentCorrectIcon className="size-3 shrink-0" />

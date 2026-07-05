@@ -101,7 +101,7 @@ export function CardShell({
           </button>
         )}
         <h2 className="font-display text-base leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
-        <div className="text-right leading-tight mt-0.5">
+        <div className="text-right leading-tight -mt-0.5">
           <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
           {dataType && (
             <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
