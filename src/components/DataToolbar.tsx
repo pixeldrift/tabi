@@ -272,13 +272,63 @@ function FilterPopoverContent({
   clearFilters: () => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Filters</h3>
         <button type="button" onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-700">
           Clear all
         </button>
       </div>
+
+      <div className="flex gap-1.5">
+        <ToggleChip
+          icon={<Heart className="size-3" />}
+          label="Favorites Only"
+          selected={filters.favoritesOnly}
+          onClick={() => setFavoritesOnly(!filters.favoritesOnly)}
+        />
+        <ToggleChip
+          icon={<EyeOff className="size-3" />}
+          label="Hidden"
+          selected={filters.showHidden}
+          onClick={() => setShowHidden(!filters.showHidden)}
+        />
+      </div>
+
+      {/* One three-way control, not two independent switches — "with data"
+          and "without data" are mutually exclusive states of the same
+          `logged` field, not separate booleans. */}
+      <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5">
+        {(
+          [
+            ["all", "All"],
+            ["logged", "With Data"],
+            ["no-data", "Without Data"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setLoggedFilter(value)}
+            aria-pressed={filters.logged === value}
+            className={cn(
+              "flex-1 rounded-full px-2 py-1 text-[11px] font-medium transition-colors",
+              filters.logged === value
+                ? "btn-bevel bg-blue-500 text-white"
+                : "text-stone-600 hover:text-stone-800",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <SwitchRow
+        label="Incomplete goals only"
+        description="Only show cards that haven't met their minimum yet."
+        checked={filters.incompleteOnly}
+        onCheckedChange={setIncompleteOnly}
+      />
 
       <section>
         <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data type</h4>
@@ -331,40 +381,36 @@ function FilterPopoverContent({
           })}
         </div>
       </section>
-
-      {/* Linked toggles, not independent checkboxes — turning one on turns
-          the other off (both read/write the same `logged` field), and
-          switching the active one back off just returns to "all". */}
-      <SwitchRow
-        label="Data logged"
-        checked={filters.logged === "logged"}
-        onCheckedChange={(v) => setLoggedFilter(v ? "logged" : "all")}
-      />
-      <SwitchRow
-        label="No data"
-        checked={filters.logged === "no-data"}
-        onCheckedChange={(v) => setLoggedFilter(v ? "no-data" : "all")}
-      />
-
-      <SwitchRow
-        label="Incomplete goals only"
-        description="Only show cards that haven't met their minimum yet."
-        checked={filters.incompleteOnly}
-        onCheckedChange={setIncompleteOnly}
-      />
-      <SwitchRow
-        icon={<Heart className="size-3.5" />}
-        label="Favorites only"
-        checked={filters.favoritesOnly}
-        onCheckedChange={setFavoritesOnly}
-      />
-      <SwitchRow
-        icon={<EyeOff className="size-3.5" />}
-        label="Show hidden cards"
-        checked={filters.showHidden}
-        onCheckedChange={setShowHidden}
-      />
     </div>
+  );
+}
+
+function ToggleChip({
+  icon,
+  label,
+  selected,
+  onClick,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
+        selected
+          ? "border-blue-400 bg-blue-500 text-white"
+          : "border-stone-200 text-stone-600 hover:bg-stone-100",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 

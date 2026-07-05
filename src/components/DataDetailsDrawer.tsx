@@ -91,17 +91,18 @@ export function DataDetailsDrawer({ open, onOpenChange, title, description, deta
       {/* Pull tab — attached to the panel's own left edge (a child of the
           same animated element) so it rides along with the slide instead of
           staying fixed in the toolbar while the panel moves out from under
-          it. Pinned to the toolbar's own icon row (its py-1.5/size-7
-          bounds, not `toolbarHeight` — that also includes the "Start
-          session" banner's variable height below the row, which would push
-          the tab down off the row whenever the banner is showing). No
-          border on the right so it blends seamlessly into the drawer. */}
+          it. Sized to the toolbar's own primary row (its py-1.5/size-7
+          bounds: 6px + 28px + 6px = 40px = h-10), not `toolbarHeight` —
+          that also includes the "Start session" banner's variable height
+          below the row, which isn't part of "the filter bar" this tab
+          should span. No border on the right so it blends seamlessly into
+          the drawer. */}
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
         aria-label={open ? "Close details drawer" : "Open details drawer"}
         aria-expanded={open}
-        className="absolute -left-7 top-1.5 h-7 w-7 grid place-items-center rounded-l-lg border border-r-0 border-stone-200/70 bg-background text-stone-500 hover:text-stone-800 transition-colors"
+        className="absolute -left-7 top-0 h-10 w-7 grid place-items-center rounded-l-lg border border-r-0 border-stone-200/70 bg-background text-stone-500 hover:text-stone-800 transition-colors"
       >
         {/* Base orientation points right; always faces the direction the
             drawer will slide if pressed again — left (toward opening) while
@@ -110,12 +111,18 @@ export function DataDetailsDrawer({ open, onOpenChange, title, description, deta
         <TimeChevronIcon className={cn("size-3.5 transition-transform duration-300", !open && "rotate-180")} />
       </button>
 
-      {/* Arrow — points at the card this drawer's contents belong to. */}
-      <div
-        className="absolute -left-[9px] size-4 -translate-y-1/2 rotate-45 border-l border-b border-stone-300 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
-        style={{ top: clampedArrowTop }}
-        aria-hidden
-      />
+      {/* Arrow — points at the card this drawer's contents belong to. Only
+          rendered while open: when the panel slides off-screen its fixed
+          -9px offset from the (now off-screen) left edge would otherwise
+          leave it sitting as a stray diamond near the viewport's right
+          edge instead of leaving with the rest of the panel. */}
+      {open && (
+        <div
+          className="absolute -left-[9px] size-4 -translate-y-1/2 rotate-45 border-l border-b border-stone-300 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
+          style={{ top: clampedArrowTop }}
+          aria-hidden
+        />
+      )}
 
       <button
         type="button"
