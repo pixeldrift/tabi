@@ -28,6 +28,10 @@ export interface RatingCardProps {
 // needing a legend.
 const BASE_STAR_SIZE = 26;
 const STAR_SIZE_STEP = 7;
+// Expanded-list rows use one uniform size (no ascending scale needed in a
+// vertical list) — the same RatingStar component, just with maxSize equal
+// to its own size so its margin-top offset comes out to zero.
+const ROW_STAR_SIZE = 30;
 
 export function RatingCard({
   title,
@@ -78,22 +82,23 @@ export function RatingCard({
         </dl>
       }
       expandedView={
-        <ol className="px-4 pt-1 pb-3 space-y-2.5">
+        <ol className="px-4 pt-1 pb-3 space-y-2">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
-            const isCurrent = value === rating;
+            const filled = rating >= value;
+            const isTop = filled && value === rating;
             return (
-              <li key={value} className="flex items-start gap-2.5">
-                <span
-                  className={cn(
-                    "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 mt-0.5 transition-colors",
-                    isCurrent ? "bg-blue-500 text-white" : "bg-stone-100 text-foreground/60",
-                  )}
-                >
-                  {value}
-                </span>
-                <span className={cn("flex-1 text-sm leading-snug pt-0.5", isCurrent ? "text-foreground" : "text-foreground/70")}>
+              <li key={value} className="flex items-center gap-2.5">
+                <RatingStar
+                  value={value}
+                  size={ROW_STAR_SIZE}
+                  maxSize={ROW_STAR_SIZE}
+                  filled={filled}
+                  isTop={isTop}
+                  onClick={() => pick(value)}
+                />
+                <span className={cn("flex-1 text-sm leading-snug", isTop ? "text-foreground" : "text-foreground/70")}>
                   {desc}
                 </span>
               </li>
@@ -143,10 +148,10 @@ export function RatingCard({
 // recognizable. Outer points get a bigger rounding radius than the inner
 // notches, since those tips are what read as pointy.
 const ROUNDED_STAR_PATH =
-  "M10.85,4.33 Q12,2 13.15,4.33 L14.51,7.09 Q15.09,8.26 16.38,8.45 L19.43,8.89 Q22,9.27 20.14,11.08 " +
-  "L17.93,13.23 Q17,14.14 17.22,15.42 L17.74,18.46 Q18.18,21.02 15.88,19.81 L13.15,18.38 Q12,17.77 10.85,18.38 " +
-  "L8.12,19.81 Q5.82,21.02 6.26,18.46 L6.78,15.42 Q7,14.14 6.07,13.23 L3.86,11.08 Q2,9.27 4.57,8.89 " +
-  "L7.62,8.45 Q8.91,8.26 9.49,7.09 Z";
+  "M10.5,5.05 Q12,2 13.5,5.05 L14.29,6.65 Q15.09,8.26 16.87,8.52 L18.64,8.78 Q22,9.27 19.56,11.64 " +
+  "L18.29,12.88 Q17,14.14 17.3,15.91 L17.61,17.67 Q18.18,21.02 15.17,19.44 L13.59,18.61 Q12,17.77 10.41,18.61 " +
+  "L8.83,19.44 Q5.82,21.02 6.39,17.67 L6.7,15.91 Q7,14.14 5.71,12.88 L4.44,11.64 Q2,9.27 5.36,8.78 " +
+  "L7.13,8.52 Q8.91,8.26 9.71,6.65 Z";
 
 // Same fraction of box height for every star (they're geometrically similar,
 // just scaled), used both as each star's own margin-top (relative to the
@@ -154,7 +159,7 @@ const ROUNDED_STAR_PATH =
 // within its box. Because both use the same fraction, the two facts —
 // "numbers form a straight line" and "each star's shape is what actually
 // shifts to hold that line" — are the same equation, not two separate fixes.
-const NUMBER_LINE_FRACTION = 0.56;
+const NUMBER_LINE_FRACTION = 0.6;
 
 function RatingStar({
   value,
