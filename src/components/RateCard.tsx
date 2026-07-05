@@ -39,7 +39,8 @@ export function RateCard({
   detailsOpen,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
   locked = false,
 }: RateCardProps) {
   const [count, setCount] = useState(0);
@@ -173,7 +174,8 @@ export function RateCard({
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
-      drawerTop={drawerTop}
+      stickyTop={stickyTop}
+      toolbarHeight={toolbarHeight}
       progress={null}
       editing={editing}
       details={

@@ -72,7 +72,8 @@ export function TaskAnalysisCard({
   detailsOpen,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
 }: TaskAnalysisCardProps) {
   const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
   const [current, setCurrent] = useState(0);
@@ -140,7 +141,8 @@ export function TaskAnalysisCard({
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
-      drawerTop={drawerTop}
+      stickyTop={stickyTop}
+      toolbarHeight={toolbarHeight}
       progress={progress}
       isComplete={isComplete}
       expanded={expanded}

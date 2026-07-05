@@ -43,7 +43,8 @@ export function DurationCard({
   detailsOpen,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
 }: DurationCardProps) {
   const [instances, setInstances] = useState<number[]>([0]);
   const [viewIdx, setViewIdx] = useState(0);
@@ -228,7 +229,8 @@ export function DurationCard({
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
-      drawerTop={drawerTop}
+      stickyTop={stickyTop}
+      toolbarHeight={toolbarHeight}
       progress={null}
       isComplete={isComplete}
       expanded={expanded}

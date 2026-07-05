@@ -27,9 +27,14 @@ export interface CardEditAndDrawerProps {
    *  own details button so clicking it on a non-active card both selects
    *  it and reveals its info. */
   onOpenDetails?: () => void;
-  /** Viewport-relative pixel offset where the Data pane begins, passed
-   *  through to the shared drawer so it stays bounded to that pane. */
-  drawerTop?: number;
+  /** Viewport-relative pixel offset where the sticky toolbar begins — the
+   *  drawer now starts here (not below the toolbar) so it slides out on
+   *  top of it, passed through to the shared drawer. */
+  stickyTop?: number;
+  /** The toolbar's own rendered height, in px — passed through so the
+   *  drawer's pull tab can straddle the seam between the toolbar and the
+   *  pane below it instead of the drawer's own (now higher) top edge. */
+  toolbarHeight?: number;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {
@@ -77,7 +82,8 @@ export function CardShell({
   detailsOpen = false,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop = 0,
+  stickyTop = 0,
+  toolbarHeight = 0,
   progress,
   isComplete = false,
   helperText,
@@ -111,7 +117,7 @@ export function CardShell({
           : "border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
-      <header className="flex items-start gap-1 pl-5 pr-9 pt-2 pb-0">
+      <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>
         {hasExpandedView && (
           <button
             type="button"
@@ -184,7 +190,8 @@ export function CardShell({
           title={title}
           description={description}
           details={details}
-          top={drawerTop}
+          top={stickyTop}
+          toolbarHeight={toolbarHeight}
           cardRef={articleRef}
         />
       )}

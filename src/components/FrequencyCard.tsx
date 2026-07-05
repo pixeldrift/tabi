@@ -35,7 +35,8 @@ export function FrequencyCard({
   detailsOpen,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
 }: FrequencyCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
@@ -103,7 +104,8 @@ export function FrequencyCard({
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
-      drawerTop={drawerTop}
+      stickyTop={stickyTop}
+      toolbarHeight={toolbarHeight}
       progress={null}
       editing={editing}
       isComplete={isComplete}

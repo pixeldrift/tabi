@@ -248,15 +248,13 @@ function IndexInner() {
   const { status, transitionStage, transitionKind } = useSession();
   const sessionActive = status === "running";
   const stickyTop = useStickyTop();
-  // Bounds the shared details drawer to below the toolbar (the Data pane's
-  // own vertical extent) rather than the full viewport — see
-  // DataDetailsDrawer. Built from stickyTop (trusted, always-fresh) plus the
-  // toolbar's own measured height, rather than measuring the toolbar's
-  // absolute position directly — the toolbar's `top` can shift for reasons
-  // (status bar height changing) that a resize observer on the toolbar
-  // itself wouldn't catch.
+  // The shared details drawer starts at stickyTop (the toolbar's own top)
+  // so it slides out on top of the toolbar, not just the pane below it —
+  // see DataDetailsDrawer. toolbarHeight is measured separately (rather
+  // than measuring the toolbar's absolute position directly) since the
+  // toolbar's own `top` can shift for reasons (status bar height changing)
+  // that a resize observer on the toolbar itself wouldn't catch.
   const toolbarHeight = useElementHeight("[data-toolbar]");
-  const drawerTop = stickyTop + toolbarHeight;
   const { keepActiveCardCentered } = useSettings();
   const {
     displayMode,
@@ -494,7 +492,8 @@ function IndexInner() {
                 displayMode={displayMode}
                 drawerOpen={drawerOpen}
                 onDrawerOpenChange={setDrawerOpen}
-                drawerTop={drawerTop}
+                stickyTop={stickyTop}
+                toolbarHeight={toolbarHeight}
               />
             </div>
           </div>
@@ -526,7 +525,8 @@ function renderCard(
     detailsOpen: boolean;
     onDetailsOpenChange: (open: boolean) => void;
     onOpenDetails: () => void;
-    drawerTop: number;
+    stickyTop: number;
+    toolbarHeight: number;
     reorderEditing: boolean;
     favorited: boolean;
     onToggleFavorite: () => void;
@@ -658,7 +658,8 @@ const DataCardList = memo(function DataCardList({
   displayMode,
   drawerOpen,
   onDrawerOpenChange,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
 }: {
   cardsGen: number;
   cardsAnimKind: "start-new" | "discard" | "submit";
@@ -681,7 +682,8 @@ const DataCardList = memo(function DataCardList({
   displayMode: DisplayMode;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
-  drawerTop: number;
+  stickyTop: number;
+  toolbarHeight: number;
 }) {
   const setCardRef = (id: string) => (el: HTMLElement | null) => {
     if (el) cardRefs.current.set(id, el);
@@ -699,7 +701,8 @@ const DataCardList = memo(function DataCardList({
         setActiveId(card.id);
         onDrawerOpenChange(true);
       },
-      drawerTop,
+      stickyTop,
+      toolbarHeight,
       reorderEditing: editMode,
       favorited: favorites.has(card.id),
       onToggleFavorite: () => toggleFavorite(card.id),

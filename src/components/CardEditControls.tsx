@@ -24,35 +24,40 @@ export function CardEditControls({
   dragControls,
 }: CardEditControlsProps) {
   return (
-    <div className="flex items-center gap-0.5 shrink-0 -mt-0.5" onClick={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-pressed={favorited}
-        aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-        className={cn(
-          "grid place-items-center size-6 rounded-full transition-colors",
-          favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-        )}
-      >
-        <Heart className="size-4" fill={favorited ? "currentColor" : "none"} />
-      </button>
-      <button
-        type="button"
-        onClick={onToggleHidden}
-        aria-pressed={cardHidden}
-        aria-label={cardHidden ? "Unhide card" : "Hide card"}
-        className={cn(
-          "grid place-items-center size-6 rounded-full transition-colors",
-          cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-        )}
-      >
-        <EyeOff className="size-4" />
-      </button>
-      {/* Last in the row so it lands in the card's far right corner —
-          matching where the (now-hidden) details button sits in view mode. */}
+    <div className="flex items-center shrink-0 -mt-0.5" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-pressed={favorited}
+          aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+          className={cn(
+            "grid place-items-center size-6 rounded-full transition-colors",
+            favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+          )}
+        >
+          <Heart className="size-4" fill={favorited ? "currentColor" : "none"} />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHidden}
+          aria-pressed={cardHidden}
+          aria-label={cardHidden ? "Unhide card" : "Hide card"}
+          className={cn(
+            "grid place-items-center size-6 rounded-full transition-colors",
+            cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+          )}
+        >
+          <EyeOff className="size-4" />
+        </button>
+      </div>
+      {/* Pulled toward the card's right edge (mirroring the twirl-down
+          chevron's own -ml-1.5 hugging the left edge) and set apart from
+          favorite/hide with its own margin, so it reads as a distinct
+          "edge of the card" control rather than a third icon grouped in
+          with them. */}
       <span
-        className="cursor-grab touch-none select-none grid place-items-center size-6 rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing"
+        className="cursor-grab touch-none select-none ml-2.5 -mr-1.5 grid place-items-center size-6 rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing"
         onPointerDown={(e) => {
           // Without this, a mouse-based (non-touch) drag also kicks off the
           // browser's native text-selection drag as the pointer crosses

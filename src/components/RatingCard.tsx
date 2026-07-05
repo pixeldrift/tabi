@@ -54,7 +54,8 @@ export function RatingCard({
   detailsOpen,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop,
+  stickyTop,
+  toolbarHeight,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -93,7 +94,8 @@ export function RatingCard({
       detailsOpen={detailsOpen}
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
-      drawerTop={drawerTop}
+      stickyTop={stickyTop}
+      toolbarHeight={toolbarHeight}
       progress={null}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}

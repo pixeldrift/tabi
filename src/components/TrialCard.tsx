@@ -60,7 +60,8 @@ export function TrialCard({
   detailsOpen = false,
   onDetailsOpenChange,
   onOpenDetails,
-  drawerTop = 0,
+  stickyTop = 0,
+  toolbarHeight = 0,
   noResponse = false,
   promptLevels,
 }: TrialCardProps) {
@@ -233,7 +234,7 @@ export function TrialCard({
       )}
     >
       {/* Header */}
-      <header className="flex items-start gap-1 pl-5 pr-9 pt-2 pb-0">
+      <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>
         <button
           type="button"
           onClick={(e) => {
@@ -319,7 +320,8 @@ export function TrialCard({
               </div>
             </dl>
           }
-          top={drawerTop}
+          top={stickyTop}
+          toolbarHeight={toolbarHeight}
           cardRef={articleRef}
         />
       )}

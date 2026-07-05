@@ -360,8 +360,7 @@ function FilterPopoverContent({
       />
       <SwitchRow
         icon={<EyeOff className="size-3.5" />}
-        label="Show hidden"
-        description="Hidden cards stay out of the list until this is on — like Hide Shy Layers in After Effects."
+        label="Show hidden cards"
         checked={filters.showHidden}
         onCheckedChange={setShowHidden}
       />
