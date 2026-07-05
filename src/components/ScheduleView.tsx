@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
@@ -15,6 +15,7 @@ import {
   Pin,
   Star,
   Rows3,
+  TriangleAlert,
 } from "lucide-react";
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
@@ -1665,6 +1666,21 @@ function ItemDialog({
   const [alertCfg, setAlertCfg] = useState<AlertSettings>(DEFAULT_ALERT);
   const [priming, setPriming] = useState<PrimingSettings>(DEFAULT_PRIMING);
   const [error, setError] = useState<string | null>(null);
+  // Which time field's keypad is currently open — the boundary hint below
+  // the Time row is scoped to just this one field, not both at once. These
+  // callbacks must stay referentially stable: TimeOfDayKeypad's internal
+  // effect re-fires whenever its onEditingChange prop identity changes, so
+  // an inline arrow here would make the *other* field's still-closed state
+  // clobber whichever field just opened, on every unrelated re-render.
+  const [editingField, setEditingField] = useState<"start" | "end" | null>(null);
+  const handleStartEditingChange = useCallback(
+    (editing: boolean) => setEditingField((f) => (editing ? "start" : f === "start" ? null : f)),
+    [],
+  );
+  const handleEndEditingChange = useCallback(
+    (editing: boolean) => setEditingField((f) => (editing ? "end" : f === "end" ? null : f)),
+    [],
+  );
 
   useEffect(() => {
     if (open) {
@@ -1677,6 +1693,7 @@ function ItemDialog({
       setAlertCfg(item?.alertCfg ?? { ...DEFAULT_ALERT, mode: item?.alert ?? DEFAULT_ALERT.mode });
       setPriming(item?.priming ?? DEFAULT_PRIMING);
       setError(null);
+      setEditingField(null);
     }
   }, [open, item, defaultStart, defaultEnd]);
 
@@ -1692,16 +1709,22 @@ function ItemDialog({
     existing
       .filter((x) => x.id !== item?.id && toMin(x.start) >= afterMin)
       .reduce<ScheduleItem | null>((best, x) => (!best || toMin(x.start) < toMin(best.start) ? x : best), null);
+  const nameOf = (x: ScheduleItem) => (x.activity === "Custom" ? x.customName ?? "Custom" : x.activity);
+
+  // The activities bordering this one's current position — the previous
+  // one's end is the floor for a new start time, the next one's start is
+  // the ceiling for a new end time. Computed off the item's own (committed)
+  // start, so both boundaries stay stable while the user is mid-edit.
+  const prevItem = findPrevious(toMin(start));
+  const nextItem = findNext(toMin(start));
 
   // After entering a new start time: reject it outright if it lands before
   // the previous activity's end, otherwise shift the end time along with
   // it — by default keeping the same duration, but clamped to the next
   // activity's start so the shift itself can't create a new overlap.
   const handleStartChange = (newStart: string) => {
-    const prev = findPrevious(toMin(start));
-    if (prev && toMin(newStart) < toMin(prev.end)) {
-      const prevName = prev.activity === "Custom" ? prev.customName ?? "Custom" : prev.activity;
-      setError(`Start time can't be before ${fmt12(prev.end)}, when "${prevName}" ends.`);
+    if (prevItem && toMin(newStart) < toMin(prevItem.end)) {
+      setError(`Start time can't be before ${fmt12(prevItem.end)}, when "${nameOf(prevItem)}" ends.`);
       return;
     }
     setError(null);
@@ -1714,7 +1737,34 @@ function ItemDialog({
     setEnd(fromMin(Math.max(newEndMin, toMin(newStart))));
   };
 
+  // After entering a new end time: reject it outright if it would land at
+  // or before the (possibly just-changed) start time, or after the next
+  // activity's start — mirrors handleStartChange's rejection so a
+  // conflicting value never actually gets committed.
+  const handleEndChange = (newEnd: string) => {
+    if (toMin(newEnd) <= toMin(start)) {
+      setError("End time must be after start time.");
+      return;
+    }
+    if (nextItem && toMin(newEnd) > toMin(nextItem.start)) {
+      setError(`End time can't be after ${fmt12(nextItem.start)}, when "${nameOf(nextItem)}" starts.`);
+      return;
+    }
+    setError(null);
+    setEnd(newEnd);
+  };
+
+  // Contextual hint below the Time row — shown only for whichever field is
+  // actively being edited, and only when there's no active conflict (the
+  // conflict message takes over that space instead).
+  const hint =
+    error ? null :
+    editingField === "start" && prevItem ? `Must be after ${fmt12(prevItem.end)}, when "${nameOf(prevItem)}" ends.` :
+    editingField === "end" && nextItem ? `Must be before ${fmt12(nextItem.start)}, when "${nameOf(nextItem)}" starts.` :
+    null;
+
   const handleSave = () => {
+    if (error) return;
     if (toMin(end) <= toMin(start)) {
       setError("End time must be after start time.");
       return;
@@ -1759,13 +1809,29 @@ function ItemDialog({
             <Label className="text-xs">Time</Label>
             <div className="mt-1 flex items-center justify-start flex-wrap gap-2">
               <span className="text-xs text-muted-foreground">From</span>
-              <TimeField value={start} onChange={handleStartChange} />
+              <TimeField
+                value={start}
+                onChange={handleStartChange}
+                onEditingChange={handleStartEditingChange}
+              />
               <span className="text-xs text-muted-foreground">to</span>
-              <TimeField value={end} onChange={setEnd} />
+              <TimeField
+                value={end}
+                onChange={handleEndChange}
+                onEditingChange={handleEndEditingChange}
+              />
               <span className="text-xs text-muted-foreground">
                 ({formatDuration(toMin(end) - toMin(start))})
               </span>
             </div>
+            {error ? (
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
+                <TriangleAlert className="size-3.5 shrink-0" />
+                {error}
+              </p>
+            ) : hint ? (
+              <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
+            ) : null}
           </div>
           <div>
             <Label className="text-xs">Activity</Label>
@@ -1816,7 +1882,6 @@ function ItemDialog({
             </Select>
           </div>
           <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
-          {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
         <DialogFooter className="flex-row justify-end gap-2">
           <Button
@@ -1827,7 +1892,8 @@ function ItemDialog({
             Cancel <X className="size-4" />
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            className="rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none"
+            disabled={!!error}
             onClick={handleSave}
           >
             Save
@@ -2150,10 +2216,20 @@ function AlertsBlock({
   );
 }
 
-function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function TimeField({
+  value,
+  onChange,
+  onEditingChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  /** Fires whenever this field's keypad popover opens/closes — lets the
+   *  parent show a hint scoped to whichever field is actively being typed. */
+  onEditingChange?: (isEditing: boolean) => void;
+}) {
   const display = value ? formatTimeOfDay(value) : "";
   return (
-    <TimeOfDayKeypad value={value} onChange={onChange}>
+    <TimeOfDayKeypad value={value} onChange={onChange} onEditingChange={onEditingChange}>
       {({ isEditing, open }) => (
         <button
           type="button"

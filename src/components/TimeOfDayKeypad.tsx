@@ -9,6 +9,9 @@ export interface TimeOfDayKeypadProps {
   value: string;
   /** Called when user commits. Receives 24h "HH:MM". */
   onChange: (next: string) => void;
+  /** Fires whenever the keypad popover opens/closes — lets a parent that
+   *  renders multiple time fields know which one is actively being edited. */
+  onEditingChange?: (isEditing: boolean) => void;
   children: (state: { isEditing: boolean; open: () => void }) => React.ReactNode;
 }
 
@@ -43,12 +46,14 @@ function autoPeriod(hh: number, manualLeadingZero: boolean): boolean | null {
   return null;
 }
 
-export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDayKeypadProps) {
+export function TimeOfDayKeypad({ value: _value, onChange, onEditingChange, children }: TimeOfDayKeypadProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const [isPM, setIsPM] = useState(false);
   const [userPeriodOverride, setUserPeriodOverride] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => onEditingChange?.(open), [open, onEditingChange]);
 
   // Always start blank — do not prepopulate from existing value.
   useEffect(() => {
