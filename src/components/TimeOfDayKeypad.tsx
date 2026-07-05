@@ -9,6 +9,9 @@ export interface TimeOfDayKeypadProps {
   value: string;
   /** Called when user commits. Receives 24h "HH:MM". */
   onChange: (next: string) => void;
+  /** Fires whenever the keypad popover opens/closes — lets a parent that
+   *  renders multiple time fields know which one is actively being edited. */
+  onEditingChange?: (isEditing: boolean) => void;
   children: (state: { isEditing: boolean; open: () => void }) => React.ReactNode;
 }
 
@@ -26,12 +29,14 @@ function from24h(value: string): { hour12: number; minute: number; isPM: boolean
 }
 
 /** Choose AM or PM so the time falls within business hours. */
-function autoPeriod(hh: number): boolean | null {
+function autoPeriod(hh: number, manualLeadingZero: boolean): boolean | null {
   if (hh <= 0 || hh > 12) return null;
-  // A leading zero on the hour (1-9) reads as AM regardless of business
-  // hours — "0315" should always resolve to 3:15 in the morning, not 3:15
-  // PM just because that happens to fall in business hours.
-  if (hh < 10) return false;
+  // A MANUALLY typed leading zero (the user's first keystroke was "0", e.g.
+  // "0800") is explicit 24h notation — always AM, no business-hours
+  // guessing. A single-digit hour reached without one (e.g. typing "8" then
+  // "3" then "0" for "830") isn't explicit either way, so it falls through
+  // to the same business-hours heuristic as 10/11/12 below.
+  if (manualLeadingZero) return false;
   const amH = hh === 12 ? 0 : hh;
   const pmH = hh === 12 ? 12 : hh + 12;
   const amOk = amH >= BUSINESS_START && amH < BUSINESS_END;
@@ -41,12 +46,14 @@ function autoPeriod(hh: number): boolean | null {
   return null;
 }
 
-export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDayKeypadProps) {
+export function TimeOfDayKeypad({ value: _value, onChange, onEditingChange, children }: TimeOfDayKeypadProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const [isPM, setIsPM] = useState(false);
   const [userPeriodOverride, setUserPeriodOverride] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => onEditingChange?.(open), [open, onEditingChange]);
 
   // Always start blank — do not prepopulate from existing value.
   useEffect(() => {
@@ -83,6 +90,12 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
 
   // Hour > 12 = explicit military time → forces PM on commit.
   const forcedPM = hh > 12 && hh <= 23;
+  // The very first digit typed was "0" — an explicit 24h leading zero
+  // (e.g. "0800"), not just a hour value that happens to be under 10.
+  const manualLeadingZero = pending.length > 0 && pending[0] === "0";
+  // Either signal means the digits are already the literal 24h time —
+  // skip AM/PM guessing (and any override) entirely at commit.
+  const forced24h = forcedPM || manualLeadingZero;
 
   // Re-evaluate AM/PM whenever the digit count crosses into 3 or 4 (or back down).
   useEffect(() => {
@@ -92,9 +105,9 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
       setIsPM(true);
       return;
     }
-    const auto = autoPeriod(hh);
+    const auto = autoPeriod(hh, manualLeadingZero);
     if (auto !== null) setIsPM(auto);
-  }, [hh, forcedPM, periodActive, userPeriodOverride]);
+  }, [hh, forcedPM, manualLeadingZero, periodActive, userPeriodOverride]);
 
   const pickPeriod = (pm: boolean) => {
     if (!periodActive) return;
@@ -106,7 +119,7 @@ export function TimeOfDayKeypad({ value: _value, onChange, children }: TimeOfDay
     if (!valid) return;
     let outH: number;
     const outM = mm;
-    if (forcedPM) {
+    if (forced24h) {
       outH = hh;
     } else {
       const h12 = hh === 0 ? 12 : hh;

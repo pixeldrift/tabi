@@ -81,7 +81,7 @@ export function DataDetailsDrawer({ open, onOpenChange, title, description, deta
       // the filter/sort/search row instead of only covering the pane below
       // it, which means it has to out-stack the toolbar, not just sit next
       // to it.
-      className="fixed right-0 z-[62] w-[88%] sm:max-w-md bg-background border-l border-stone-200/70 shadow-[-8px_0_30px_-8px_rgba(0,0,0,0.25)]"
+      className="fixed right-0 z-[62] w-[88%] sm:max-w-md bg-background border border-stone-200/70 shadow-[-8px_0_30px_-8px_rgba(0,0,0,0.25)]"
       style={{ top, bottom: 0 }}
       initial={false}
       animate={{ x: open ? 0 : "100%" }}
@@ -91,17 +91,17 @@ export function DataDetailsDrawer({ open, onOpenChange, title, description, deta
       {/* Pull tab — attached to the panel's own left edge (a child of the
           same animated element) so it rides along with the slide instead of
           staying fixed in the toolbar while the panel moves out from under
-          it. Pinned to straddle the seam between the toolbar and the pane
-          below it (toolbarHeight down from the panel's own top, which now
-          sits higher up at the toolbar's top edge) — the same idiom as the
-          filter popover's arrow — rather than the panel's literal top edge. */}
+          it. Pinned to the toolbar's own icon row (its py-1.5/size-7
+          bounds, not `toolbarHeight` — that also includes the "Start
+          session" banner's variable height below the row, which would push
+          the tab down off the row whenever the banner is showing). No
+          border on the right so it blends seamlessly into the drawer. */}
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
         aria-label={open ? "Close details drawer" : "Open details drawer"}
         aria-expanded={open}
-        style={{ top: toolbarHeight }}
-        className="absolute -left-7 -translate-y-1/2 grid place-items-center h-10 w-7 rounded-l-lg border border-r-0 border-stone-200/70 bg-background text-stone-500 hover:text-stone-800 transition-colors"
+        className="absolute -left-7 top-1.5 h-7 w-7 grid place-items-center rounded-l-lg border border-r-0 border-stone-200/70 bg-background text-stone-500 hover:text-stone-800 transition-colors"
       >
         {/* Base orientation points right; always faces the direction the
             drawer will slide if pressed again — left (toward opening) while
@@ -112,7 +112,7 @@ export function DataDetailsDrawer({ open, onOpenChange, title, description, deta
 
       {/* Arrow — points at the card this drawer's contents belong to. */}
       <div
-        className="absolute -left-[9px] size-4 -translate-y-1/2 rotate-45 border-l-2 border-b-2 border-blue-400/80 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
+        className="absolute -left-[9px] size-4 -translate-y-1/2 rotate-45 border-l border-b border-stone-300 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
         style={{ top: clampedArrowTop }}
         aria-hidden
       />
