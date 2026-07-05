@@ -42,6 +42,18 @@ export function DurationCard({
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
   const { markDirty, resetSignal } = useCardSession();
   useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
+  // Holds a pending "start on the next full master second" timeout — see
+  // `toggleInstance` below — so a quick pause (or a session reset) before it
+  // fires can cancel it instead of starting the timer late anyway.
+  const pendingStartRef = useRef<number | null>(null);
+
+  const clearPendingStart = () => {
+    if (pendingStartRef.current !== null) {
+      window.clearTimeout(pendingStartRef.current);
+      pendingStartRef.current = null;
+    }
+  };
+  useEffect(() => clearPendingStart, []);
 
   // The pulse beat should read as one continuous heartbeat tied to the
   // session clock, not a fresh cycle every time a bubble starts running. A
@@ -57,6 +69,7 @@ export function DurationCard({
 
   useEffect(() => {
     if (resetSignal === 0) return;
+    clearPendingStart();
     setInstances([0]);
     setViewIdx(0);
     setLiveMs(0);
@@ -110,8 +123,13 @@ export function DurationCard({
   // expanded list's per-instance play/pause buttons (arbitrary idx) —
   // starting a different instance pauses whichever one was running, so
   // there's only ever one clock ticking.
+  // Pausing is immediate, but starting waits until the master session clock
+  // next crosses a whole second — sub-second accuracy doesn't matter here,
+  // and it means every timer's displayed seconds tick over in unison instead
+  // of drifting out of phase depending on the exact moment each was started.
   const toggleInstance = (idx: number) => {
     markDirty();
+    clearPendingStart();
     if (running && runningIdxRef.current === idx) {
       const wasLast = idx === instances.length - 1;
       flushLive();
@@ -126,11 +144,19 @@ export function DurationCard({
         setViewIdx(idx + 1);
       }
     } else {
-      if (running) flushLive();
-      runningIdxRef.current = idx;
+      if (running) {
+        flushLive();
+        setRunning(false);
+        runningIdxRef.current = null;
+      }
       setViewIdx(idx);
-      setRunning(true);
-      setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
+      const msUntilNextSecond = 1000 - (getElapsedMsNow() % 1000 || 1000);
+      pendingStartRef.current = window.setTimeout(() => {
+        pendingStartRef.current = null;
+        runningIdxRef.current = idx;
+        setRunning(true);
+        setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
+      }, msUntilNextSecond);
     }
   };
 
