@@ -153,31 +153,34 @@ const ROUNDED_STAR_PATH =
   "L8.83,19.44 Q5.82,21.02 6.39,17.67 L6.7,15.91 Q7,14.14 5.71,12.88 L4.44,11.64 Q2,9.27 5.36,8.78 " +
   "L7.13,8.52 Q8.91,8.26 9.71,6.65 Z";
 
-// Same fraction of box height for every star (they're geometrically similar,
-// just scaled), used both as each star's own margin-top (relative to the
-// largest star, which anchors at 0) and as the number's own vertical anchor
-// within its box. Because both use the same fraction, the two facts —
-// "numbers form a straight line" and "each star's shape is what actually
-// shifts to hold that line" — are the same equation, not two separate fixes.
-//
-// The fraction itself is the star polygon's own area centroid (computed via
-// the shoelace formula on its 10 vertices — 12.51 out of a 24-unit box, see
-// scratch calculation), not a value eyeballed at one size. That distinction
-// matters here: any mismatch between this fraction and the star's true
-// visual center scales with the star's own size, so a value that merely
-// "looked fine" on the smallest star would drift further off on every
-// larger one — using the actual centroid is what keeps every star's shape
-// centered on its own number regardless of size.
-const NUMBER_LINE_FRACTION = 12.51 / 24;
+// The digit's own vertical anchor, as a fraction of the box — measured
+// directly (via Range.getBoundingClientRect on the rendered glyph, not
+// theorized), not derived from the star's geometry at all. A plain CSS
+// center (top: 50%, translateY(-50%)) already lands the glyph's actual ink
+// within half a percent of dead center, so that's what this is: 0.5, not a
+// star-shape-derived value.
+const DIGIT_LINE_FRACTION = 0.5;
 
-// Small per-digit corrections on top of the shared centroid line — glyph
-// shapes aren't uniformly weighted (a narrow "1" reads as sitting right and
-// high of where a wider digit's optical center would be, etc.), so a few
-// numerals need a manual nudge no formula accounts for.
-const NUMBER_NUDGE: Record<number, { x: number; y: number }> = {
-  1: { x: -2, y: -2 },
-  2: { x: 0, y: 2 },
-  3: { x: 0, y: -2 },
+// The star polygon's own area centroid (shoelace formula over its 10
+// vertices — 12.51 of a 24-unit box), a fact about its geometry independent
+// of where the digit sits. Used below to compute how far each star's
+// *natural* centroid position falls from the digit line, so that gap can be
+// cancelled out and the star's centroid actually lands on that line rather
+// than merely sharing the same box.
+const STAR_CENTROID_FRACTION = 12.51 / 24;
+
+// After centering on the digit line, every star shifts 1px further up
+// relative to its digit — except 1 and 4, which stay put. (No single
+// formula predicts this; it's a per-size optical call.)
+const STAR_UP_SHIFT_EXCEPTIONS = new Set([1, 4]);
+
+// A couple of stars still read as slightly off-true even once
+// mathematically centered — the same family of illusion as Apple's
+// famously-adjusted iOS Calendar icon digit. A hair of extra correction
+// on top of the computed shift above, not a full nudge in its own right.
+const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
+  1: { x: 1, y: -1 },
+  3: { x: 0, y: -1 },
 };
 
 function RatingStar({
@@ -198,8 +201,24 @@ function RatingStar({
   isTop: boolean;
   onClick: () => void;
 }) {
-  const marginTop = NUMBER_LINE_FRACTION * (maxSize - size);
-  const nudge = NUMBER_NUDGE[value] ?? { x: 0, y: 0 };
+  // Positions every star's box so its digit — sitting at the plain,
+  // measured DIGIT_LINE_FRACTION within that box — lands on the same
+  // shared line regardless of size (identical mechanism to before, just
+  // anchored to the digit's own fraction instead of the star's).
+  const marginTop = DIGIT_LINE_FRACTION * (maxSize - size);
+
+  // The star's *natural* centroid position (given the box above) sits at
+  // STAR_CENTROID_FRACTION, which generally isn't the same point as the
+  // digit line — this is the gap between the two, in px, that a plain
+  // shared marginTop can't close on its own since the star and the digit
+  // read off two different fractions of the same box.
+  const centroidGapFromDigitLine = (DIGIT_LINE_FRACTION - STAR_CENTROID_FRACTION) * size;
+  // Closing that gap lands the star centroid exactly on the digit line;
+  // subtracting the extra 1px is what actually holds it 1px above that
+  // line for every value except the two exceptions.
+  const starUpShift = STAR_UP_SHIFT_EXCEPTIONS.has(value) ? 0 : 1;
+  const starShiftY = centroidGapFromDigitLine - starUpShift;
+  const starTinyNudge = STAR_TINY_NUDGE[value] ?? { x: 0, y: 0 };
 
   return (
     <motion.button
@@ -215,7 +234,11 @@ function RatingStar({
     >
       <svg
         viewBox="0 0 24 24"
-        style={{ width: size, height: size, transform: `translate(${nudge.x}px, ${nudge.y}px)` }}
+        style={{
+          width: size,
+          height: size,
+          transform: `translate(${starTinyNudge.x}px, ${starShiftY + starTinyNudge.y}px)`,
+        }}
         className={cn(
           "transition-colors",
           isTop
@@ -242,13 +265,8 @@ function RatingStar({
         )}
         style={{
           fontSize: Math.max(10, size * 0.32),
-          top: `${NUMBER_LINE_FRACTION * 100}%`,
-          // The star shape shifts by `nudge` to compensate for that
-          // numeral's glyph quirks; the number shifts by the exact
-          // opposite so its own absolute position — and thus the shared
-          // alignment line across every star — never moves. Only the star
-          // moves relative to the number, not the number itself.
-          transform: `translate(${-nudge.x}px, calc(-50% + ${-nudge.y}px))`,
+          top: `${DIGIT_LINE_FRACTION * 100}%`,
+          transform: "translateY(-50%)",
         }}
       >
         {value}
