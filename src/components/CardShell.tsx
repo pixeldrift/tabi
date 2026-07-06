@@ -109,12 +109,14 @@ export function CardShell({
       ref={articleRef}
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground border-2 transition-all duration-200",
+        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground transition-all duration-200",
+        // Every card's border is 1px except the active/selected highlight
+        // itself — that's the one state that gets the heavier 2px blue.
         isActive
           ? editing
-            ? "border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-            : "border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-          : "border-stone-200 opacity-80 hover:opacity-95",
+            ? "border border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+            : "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
       <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>

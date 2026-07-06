@@ -48,10 +48,12 @@ export function DataListRow({
       ref={rowRef}
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground border-2 transition-all duration-200",
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
+        // Same rule every other card kind follows: 1px border by default,
+        // 2px only for the active/selected blue highlight.
         isActive
-          ? "border-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
-          : "border-stone-200 opacity-80 hover:opacity-95",
+          ? "border-2 border-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
+          : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
       <div className={cn("flex items-start gap-1.5 pl-2 py-2", reorderEditing ? "pr-3" : "pr-9")}>
@@ -109,7 +111,13 @@ export function DataListRow({
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={rowRef}
-          widthClassName="w-1/2"
+          // Past half the viewport — extra reach past the list's own
+          // compressed width (see the width calc above) so the panel's left
+          // edge fully covers a row's "info" button rather than leaving a
+          // sliver of it exposed (the button's own right-1 inset plus its
+          // 24px width lands just past a flat +10px, so a little more is
+          // needed for full coverage rather than a hairline gap).
+          widthClassName="w-[calc(50%+14px)]"
         />
       )}
     </article>
