@@ -1297,14 +1297,17 @@ export function ScheduleView({
                 // when not editing) — genuinely blank, unlike an activity's
                 // own box, so it's left without a border/background of its
                 // own; only the divider lines (same ones an activity would
-                // show) mark off the time increments within it.
+                // show) mark off the time increments within it. stone-200
+                // (not the item boxes' stone-100) because a gap has no
+                // white box behind it — against the schedule pane's own
+                // cream background, stone-100 is nearly invisible.
                 const gapGridLines = Math.max(0, Math.floor((height / PX_PER_MIN - 1) / 5));
                 return (
                   <div key={`gap-${gap.startMin}`} className="absolute left-0 right-0 z-10" style={{ top, height }}>
                     {Array.from({ length: gapGridLines }, (_, i) => (
                       <div
                         key={`gg-${i}`}
-                        className="absolute left-1 right-1 border-t border-stone-100"
+                        className="absolute left-1 right-1 border-t border-stone-200"
                         style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                       />
                     ))}
