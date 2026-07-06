@@ -480,7 +480,45 @@ export function ScheduleView({
         }
       }
     }
-  }, [nowMin, items, now, pushNotification, notificationPrefs]);
+    // Appointments carry the exact same alertCfg/priming shape (and their
+    // own add/edit dialog's AlertsBlock lets a user configure it) but were
+    // never actually checked here — every appointment alert was silently
+    // dead regardless of what its dialog said.
+    for (const appt of active.appointments) {
+      const startMin = toMin(appt.start);
+      const alertCfg = appt.alertCfg ?? DEFAULT_ALERT;
+      const priming = appt.priming;
+      // alert-now
+      if (alertCfg.mode !== "off" && prevMin < startMin && nowMin >= startMin) {
+        pushNotification({
+          dedupeKey: `alert-now:${appt.id}:${dayKey}`,
+          kind: "alert-now",
+          title: appt.type,
+          body: appt.provider,
+          icon: alertCfg.mode === "audio" ? "bell-chime" : "bell",
+          autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
+          allowSnooze: alertCfg.allowSnooze,
+          sourceRef: { type: "activity", id: appt.id },
+        });
+      }
+      // alert-priming
+      if (priming && priming.mode !== "off") {
+        const primeMin = startMin - priming.minutesPrior;
+        if (prevMin < primeMin && nowMin >= primeMin) {
+          pushNotification({
+            dedupeKey: `alert-priming:${appt.id}:${dayKey}`,
+            kind: "alert-priming",
+            title: `In ${priming.minutesPrior} min: ${appt.type}`,
+            body: appt.provider,
+            icon: priming.mode === "audio" ? "bell-chime" : "bell",
+            autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
+            allowSnooze: priming.allowSnooze,
+            sourceRef: { type: "activity", id: appt.id },
+          });
+        }
+      }
+    }
+  }, [nowMin, items, active.appointments, now, pushNotification, notificationPrefs]);
 
 
 

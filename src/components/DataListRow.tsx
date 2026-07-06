@@ -54,16 +54,8 @@ export function DataListRow({
           : "border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
-      <div className={cn("flex items-center gap-2 pl-3 py-2", reorderEditing ? "pr-3" : "pr-9")}>
-        {reorderEditing ? (
-          <CardEditControls
-            favorited={favorited}
-            onToggleFavorite={onToggleFavorite ?? (() => {})}
-            cardHidden={cardHidden}
-            onToggleHidden={onToggleHidden ?? (() => {})}
-            dragControls={dragControls}
-          />
-        ) : (
+      <div className={cn("flex items-start gap-1.5 pl-2 py-2", reorderEditing ? "pr-3" : "pr-9")}>
+        {!reorderEditing && (
           <span
             className="shrink-0 text-muted-foreground [&>svg]:size-4"
             title={dataTypeLabel}
@@ -73,6 +65,20 @@ export function DataListRow({
           </span>
         )}
         <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0">{title}</h2>
+        {/* Trails the title (not leading it, like the data-type icon does)
+            so it sits at the row's right edge — same side CardShell's own
+            edit controls occupy — and inherits this row's items-start,
+            keeping it pinned to the top rather than centering across a
+            title that's wrapped the row taller. */}
+        {reorderEditing && (
+          <CardEditControls
+            favorited={favorited}
+            onToggleFavorite={onToggleFavorite ?? (() => {})}
+            cardHidden={cardHidden}
+            onToggleHidden={onToggleHidden ?? (() => {})}
+            dragControls={dragControls}
+          />
+        )}
       </div>
 
       {/* Same circle/border "info" button every full card shows — hidden in
@@ -86,7 +92,7 @@ export function DataListRow({
             onOpenDetails?.();
           }}
           aria-label="Card details"
-          className="absolute right-2 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          className="absolute right-1 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
         >
           <DetailsIcon className="size-4" strokeWidth={1.5} />
         </button>

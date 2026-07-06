@@ -25,7 +25,7 @@ export function CardEditControls({
 }: CardEditControlsProps) {
   return (
     <div className="flex items-center shrink-0 -mt-0.5" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
           onClick={onToggleFavorite}
