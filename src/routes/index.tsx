@@ -517,27 +517,41 @@ function IndexInner() {
                 displayMode === "list" && drawerOpen ? "w-[55%] self-start" : "w-full",
               )}
             >
-              <DataCardList
-                cardsGen={cardsGen}
-                cardsAnimKind={cardsAnimKind}
-                transitionHidden={cardsHidden}
-                visibleCards={visibleCards}
-                activeId={activeId}
-                setActiveId={setActiveId}
-                cardRefs={cardRefs}
-                editMode={editMode}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-                hidden={hidden}
-                toggleHidden={toggleHidden}
-                order={order}
-                setOrder={setOrder}
-                displayMode={displayMode}
-                drawerOpen={drawerOpen}
-                onDrawerOpenChange={setDrawerOpen}
-                stickyTop={stickyTop}
-                toolbarHeight={toolbarHeight}
-              />
+              {/* Keyed on displayMode (not cardsGen — that's the separate
+                  session-lifecycle transition below) so switching card/list/
+                  grid crossfades the whole list out and back in, instead of
+                  each card silently swapping its rendered content in place. */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={displayMode}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  <DataCardList
+                    cardsGen={cardsGen}
+                    cardsAnimKind={cardsAnimKind}
+                    transitionHidden={cardsHidden}
+                    visibleCards={visibleCards}
+                    activeId={activeId}
+                    setActiveId={setActiveId}
+                    cardRefs={cardRefs}
+                    editMode={editMode}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    hidden={hidden}
+                    toggleHidden={toggleHidden}
+                    order={order}
+                    setOrder={setOrder}
+                    displayMode={displayMode}
+                    drawerOpen={drawerOpen}
+                    onDrawerOpenChange={setDrawerOpen}
+                    stickyTop={stickyTop}
+                    toolbarHeight={toolbarHeight}
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
           </>
