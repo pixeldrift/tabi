@@ -686,10 +686,13 @@ function renderCard(
 const CARD_SLIDE_EXIT_MS = 560;
 const CARD_SLIDE_ENTER_MS = 560;
 
-// Shared by every per-card wrapper's `layout` animation (see DataCardList) —
-// switching card/list/grid resizes each card in place via Motion's FLIP
-// technique instead of an instant snap, using the same eased-duration feel
-// as the rest of the app's non-spring transitions.
+// Shared by every per-card wrapper's `layout="y"` animation (see
+// DataCardList) — switching card/list/grid resizes each card's height in
+// place via Motion's FLIP technique instead of an instant snap, using the
+// same eased-duration feel as the rest of the app's non-spring transitions.
+// Restricted to the y axis so a column-count change (e.g. card's own
+// sm:grid-cols-2 vs list's single column) never animates width — only
+// height ever visibly interpolates, width snaps to its new value immediately.
 const CARD_MORPH_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
 // Crossfades a card's actual rendered content, independent of its outer
@@ -858,7 +861,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout
+              layout="y"
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               variants={{
@@ -890,7 +893,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout
+              layout="y"
               transition={{ layout: CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
@@ -925,7 +928,11 @@ function EditableCardItem({
   return (
     <Reorder.Item
       value={card.id}
-      layout
+      // Reorder.Item's own prop type only advertises true | "position", but
+      // it passes `layout` straight through to the same underlying engine
+      // as motion.div (which does accept "y" — see the other two branches);
+      // this is a gap in that type, not a runtime restriction.
+      layout={"y" as unknown as true}
       transition={{ layout: CARD_MORPH_TRANSITION }}
       ref={setCardRef(card.id)}
       dragListener={false}
