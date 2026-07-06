@@ -118,15 +118,23 @@ export function DataDetailsDrawer({
           that also includes the "Start session" banner's variable height
           below the row, which isn't part of "the filter bar" this tab
           should span. No border on the right so it blends seamlessly into
-          the drawer. */}
+          the drawer — `border-r-0` has to come after the border-color/width
+          utilities below (not just after `border-r-0` in this string) or
+          `cn`'s tailwind-merge treats `border-2`/`border` as the later,
+          winning declaration for every side, right included. -top-0.5
+          shifts it up by the panel's own 2px border width, so the tab's
+          outer top edge lines up with the panel's outer top edge instead of
+          sitting a couple pixels below it (top-0 aligns with the inside of
+          that border, not the outside). */}
       <button
         type="button"
         onClick={() => onOpenChange(!open)}
         aria-label={open ? "Close details drawer" : "Open details drawer"}
         aria-expanded={open}
         className={cn(
-          "absolute -left-7 top-0 h-10 w-7 grid place-items-center rounded-l-lg border-r-0 bg-background text-stone-500 hover:text-stone-800 transition-colors",
+          "absolute -left-7 -top-0.5 h-10 w-7 grid place-items-center rounded-l-lg bg-background text-stone-500 hover:text-stone-800 transition-colors",
           open ? "border-2 border-blue-400/80" : "border border-stone-200/70",
+          "border-r-0",
         )}
       >
         {/* Base orientation points right; always faces the direction the
@@ -143,11 +151,14 @@ export function DataDetailsDrawer({
           edge instead of leaving with the rest of the panel. */}
       {open && (
         <div
-          // size-6 (24px) is size-4 (16px) scaled by 1.5x — the -left offset
-          // scales with it so the diamond's outer corner still just touches
-          // the panel's left edge rather than sitting proud of or sunk into
-          // it. 2px blue borders to match the panel/tab's own outline.
-          className="absolute -left-[13.5px] size-6 -translate-y-1/2 rotate-45 border-l-2 border-b-2 border-blue-400/80 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
+          // size-6 (24px) is size-4 (16px) scaled by 1.5x, so the -left
+          // offset scales with it too — nudged a little further in past
+          // that scaled value so the diamond overlaps into the panel's own
+          // border instead of just touching it, hiding the unbordered
+          // corner's sharp square edge behind the panel rather than
+          // leaving it exposed. 2px blue borders to match the panel/tab's
+          // own outline.
+          className="absolute -left-[15px] size-6 -translate-y-1/2 rotate-45 border-l-2 border-b-2 border-blue-400/80 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
           style={{ top: clampedArrowTop }}
           aria-hidden
         />
