@@ -55,15 +55,17 @@ export function DataListRow({
       )}
     >
       <div className={cn("flex items-start gap-1.5 pl-2 py-2", reorderEditing ? "pr-3" : "pr-9")}>
-        {!reorderEditing && (
-          <span
-            className="shrink-0 text-muted-foreground [&>svg]:size-4"
-            title={dataTypeLabel}
-            aria-label={dataTypeLabel}
-          >
-            {dataTypeIcon}
-          </span>
-        )}
+        {/* Unconditional — CardEditControls now lives in its own slot on
+            the right (see below), so there's no layout conflict keeping
+            this off during editing like there was when both shared one
+            slot. */}
+        <span
+          className="shrink-0 text-muted-foreground [&>svg]:size-4"
+          title={dataTypeLabel}
+          aria-label={dataTypeLabel}
+        >
+          {dataTypeIcon}
+        </span>
         <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0">{title}</h2>
         {/* Trails the title (not leading it, like the data-type icon does)
             so it sits at the row's right edge — same side CardShell's own
