@@ -707,6 +707,7 @@ function MorphContent({ displayMode, children }: { displayMode: DisplayMode; chi
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={displayMode}
+        className="w-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
