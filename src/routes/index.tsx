@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
 import { Star, User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
@@ -686,36 +686,69 @@ function renderCard(
 const CARD_SLIDE_EXIT_MS = 560;
 const CARD_SLIDE_ENTER_MS = 560;
 
-// Shared by every per-card wrapper's `layout="y"` animation (see
-// DataCardList) — switching card/list/grid resizes each card's height in
-// place via Motion's FLIP technique instead of an instant snap, using the
-// same eased-duration feel as the rest of the app's non-spring transitions.
-// Restricted to the y axis so a column-count change (e.g. card's own
-// sm:grid-cols-2 vs list's single column) never animates width — only
-// height ever visibly interpolates, width snaps to its new value immediately.
+// Shared by every per-card wrapper's `layout="position"` animation (see
+// DataCardList) — smoothly translates a card to its new spot when siblings
+// are added/removed (filtering, submit, discard), using the same eased-
+// duration feel as the rest of the app's non-spring transitions. Restricted
+// to "position" (translate only, never scale) because the actual box-size
+// change between card/list/grid is handled separately by MorphContent's own
+// real height animation below — layering a scale-based FLIP on top of that
+// would double-animate the resize and reintroduce content distortion.
 const CARD_MORPH_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
-// Crossfades a card's actual rendered content, independent of its outer
-// wrapper's own `layout` box-resize above — without this, switching
-// card/list/grid pops the new (very differently-shaped) content in
-// instantly, which the still-animating ancestor's scale transform then
-// visibly stretches, reading as a blurry glitch rather than a clean shape
-// change. This settles the content's own appearance quickly while the
-// wrapper keeps smoothly resizing around it afterward.
+// Expands/collapses a card's box to its new mode's natural height and
+// crossfades its content — deliberately NOT a transform-scale (Motion's
+// `layout` FLIP technique), because that scales the whole subtree including
+// descendants Motion isn't tracking (a fresh card/list/grid render is a
+// completely different DOM tree), which visibly stretched text and warped
+// border-radius into an ellipse before easing back to normal. Measuring the
+// real content height and animating the wrapper's `height` (clipped via
+// overflow: hidden) instead means the content never gets scaled — only
+// revealed or clipped — so it always renders at its true, undistorted size.
 function MorphContent({ displayMode, children }: { displayMode: DisplayMode; children: React.ReactNode }) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | "auto">("auto");
+  const isFirstMeasure = useRef(true);
+
+  useLayoutEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    setHeight(el.scrollHeight);
+  }, [displayMode]);
+
+  useEffect(() => {
+    isFirstMeasure.current = false;
+  }, []);
+
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={displayMode}
-        className="w-full"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.12 }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      className="w-full"
+      style={{ overflow: "hidden" }}
+      animate={{ height }}
+      // The very first measurement (initial mount) snaps instantly — there's
+      // no prior state to visually transition from, and animating "auto" to
+      // itself would otherwise be a no-op anyway. Every later mode switch
+      // gets the real eased transition.
+      transition={isFirstMeasure.current ? { duration: 0 } : CARD_MORPH_TRANSITION}
+    >
+      <div ref={measureRef} className="w-full">
+        {/* popLayout (not "wait") lets the new mode's content mount
+            immediately instead of waiting for the old content's exit to
+            finish first — mode="wait" left a blank gap between them. */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={displayMode}
+            className="w-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
@@ -862,7 +895,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout="y"
+              layout="position"
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               variants={{
@@ -894,7 +927,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout="y"
+              layout="position"
               transition={{ layout: CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
@@ -929,11 +962,7 @@ function EditableCardItem({
   return (
     <Reorder.Item
       value={card.id}
-      // Reorder.Item's own prop type only advertises true | "position", but
-      // it passes `layout` straight through to the same underlying engine
-      // as motion.div (which does accept "y" — see the other two branches);
-      // this is a gap in that type, not a runtime restriction.
-      layout={"y" as unknown as true}
+      layout="position"
       transition={{ layout: CARD_MORPH_TRANSITION }}
       ref={setCardRef(card.id)}
       dragListener={false}
