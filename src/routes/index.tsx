@@ -692,6 +692,29 @@ const CARD_SLIDE_ENTER_MS = 560;
 // as the rest of the app's non-spring transitions.
 const CARD_MORPH_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
+// Crossfades a card's actual rendered content, independent of its outer
+// wrapper's own `layout` box-resize above — without this, switching
+// card/list/grid pops the new (very differently-shaped) content in
+// instantly, which the still-animating ancestor's scale transform then
+// visibly stretches, reading as a blurry glitch rather than a clean shape
+// change. This settles the content's own appearance quickly while the
+// wrapper keeps smoothly resizing around it afterward.
+function MorphContent({ displayMode, children }: { displayMode: DisplayMode; children: React.ReactNode }) {
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={displayMode}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.12 }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 // Single-unit variants for start-new/discard — the WHOLE list moves as one
 // element (not per-card), which is both simpler and much cheaper than
 // animating each card individually: only one Motion component is tracked
@@ -808,6 +831,7 @@ const DataCardList = memo(function DataCardList({
             isHidden={hidden.has(card.id)}
             setCardRef={setCardRef}
             renderOne={renderOne}
+            displayMode={displayMode}
           />
         ))}
       </Reorder.Group>
@@ -844,7 +868,7 @@ const DataCardList = memo(function DataCardList({
               }}
               transition={{ layout: CARD_MORPH_TRANSITION }}
             >
-              {renderOne(card)}
+              <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
             </motion.div>
           ))}
         </motion.div>
@@ -871,7 +895,7 @@ const DataCardList = memo(function DataCardList({
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
             >
-              {renderOne(card)}
+              <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
             </motion.div>
           ))}
         </motion.div>
@@ -889,11 +913,13 @@ function EditableCardItem({
   isHidden,
   setCardRef,
   renderOne,
+  displayMode,
 }: {
   card: CardConfig;
   isHidden: boolean;
   setCardRef: (id: string) => (el: HTMLElement | null) => void;
   renderOne: (card: CardConfig, dragControls?: DragControls) => React.ReactNode;
+  displayMode: DisplayMode;
 }) {
   const dragControls = useDragControls();
   return (
@@ -906,7 +932,7 @@ function EditableCardItem({
       dragControls={dragControls}
       className={cn("w-full flex justify-center", isHidden && "opacity-40")}
     >
-      {renderOne(card, dragControls)}
+      <MorphContent displayMode={displayMode}>{renderOne(card, dragControls)}</MorphContent>
     </Reorder.Item>
   );
 }
