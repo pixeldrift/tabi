@@ -1,13 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
-import { User } from "lucide-react";
+import { Star, User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
+import { DataListRow } from "@/components/DataListRow";
+import {
+  PercentCorrectIcon,
+  FrequencyIcon,
+  RateIcon,
+  DurationIcon,
+  TaskAnalysisIcon,
+} from "@/components/icons/DataTypeIcons";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";
@@ -523,8 +531,18 @@ function IndexInner() {
   );
 }
 
+const LIST_ROW_META: Record<CardKind, { dataType: string; icon: React.ReactNode }> = {
+  trial: { dataType: "Percent Correct", icon: <PercentCorrectIcon /> },
+  frequency: { dataType: "Frequency", icon: <FrequencyIcon /> },
+  rate: { dataType: "Rate / Min", icon: <RateIcon /> },
+  duration: { dataType: "Duration", icon: <DurationIcon /> },
+  "task-analysis": { dataType: "Task Analysis", icon: <TaskAnalysisIcon /> },
+  rating: { dataType: "Rating", icon: <Star /> },
+};
+
 function renderCard(
   card: CardConfig,
+  displayMode: DisplayMode,
   common: {
     id: string;
     isActive: boolean;
@@ -542,6 +560,18 @@ function renderCard(
     dragControls?: DragControls;
   },
 ): React.ReactNode {
+  if (displayMode === "list") {
+    const meta = LIST_ROW_META[card.kind];
+    return (
+      <DataListRow
+        title={card.title}
+        description={card.description}
+        dataTypeIcon={meta.icon}
+        dataTypeLabel={meta.dataType}
+        {...common}
+      />
+    );
+  }
   switch (card.kind) {
     case "trial":
       return (
@@ -698,7 +728,7 @@ const DataCardList = memo(function DataCardList({
   };
 
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
-    renderCard(card, {
+    renderCard(card, displayMode, {
       id: card.id,
       isActive: card.id === activeId,
       onActivate: () => setActiveId(card.id),

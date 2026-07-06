@@ -153,8 +153,16 @@ export function NotificationBar() {
   return (
     // Full viewport width (not the centered max-w column) so a row has room
     // to actually slide off the edge of the screen when dragged/committed,
-    // instead of getting clipped by a narrow centered container.
-    <div className="px-3 pt-2 overflow-x-hidden pointer-events-none ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen">
+    // instead of getting clipped by a narrow centered container. The top
+    // padding only applies when there's actually a notification to show —
+    // otherwise this wrapper still rendered an unconditional 8px gap
+    // between the header above and the tabs row below with nothing in it.
+    <div
+      className={cn(
+        "px-3 overflow-x-hidden pointer-events-none ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen",
+        visible.length > 0 && "pt-2",
+      )}
+    >
       <motion.div layout transition={{ layout: NOTIFICATION_AREA_TRANSITION }} className="max-w-2xl mx-auto flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {visible.map((n) => (
