@@ -333,14 +333,83 @@ function IndexInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, keepActiveCardCentered]);
 
-  const prevDisplayModeRef = useRef(displayMode);
+  // Anchors the active card's on-screen top position while the display mode
+  // switches — cards above it are mid-flight through their own MorphContent
+  // height animation, which would otherwise silently drift the active card
+  // up/down underneath the user for the whole transition. This runs after
+  // every render (no dependency array) so activeTopRef always holds the
+  // active card's PREVIOUS position by the time a mode switch's own commit
+  // fires — a `useLayoutEffect` scoped just to `[displayMode]` would still
+  // measure the card AFTER that commit's own instant reflow already
+  // happened, one frame too late to correct before paint. A short
+  // requestAnimationFrame loop then keeps canceling further drift for the
+  // rest of the morph's duration rather than only correcting once at the
+  // end. Switching to a more condensed mode can shrink the page's total
+  // height by more than the user's current scroll offset, so the browser
+  // clamps scrollY on its own the instant that happens — fighting that
+  // clamp frame-by-frame is what produced a worse jump than doing nothing,
+  // so a temporary bottom padding pads the page out for the duration of the
+  // transition, guaranteeing there's always room to scroll to hold the
+  // anchor, then it's removed once the morph settles.
+  // Suppresses each card wrapper's own `layout="position"` specifically
+  // during a mode-switch's morph — that prop exists to smoothly reposition
+  // cards when siblings are added/removed elsewhere (filtering, submit,
+  // discard), but during a mode switch its own FLIP-based repositioning
+  // fights the scroll anchor above, since both are independently trying to
+  // keep the active card visually in the same spot — competing over the
+  // same handful of frames produced a worse, jittery result than either
+  // alone. Derived synchronously during render (not in an effect) so it
+  // takes effect on the very same commit the mode switch itself lands on.
+  const [prevModeForLayout, setPrevModeForLayout] = useState(displayMode);
+  const [suppressCardLayout, setSuppressCardLayout] = useState(false);
+  if (displayMode !== prevModeForLayout) {
+    setPrevModeForLayout(displayMode);
+    setSuppressCardLayout(true);
+  }
   useEffect(() => {
-    if (prevDisplayModeRef.current === displayMode) return;
-    prevDisplayModeRef.current = displayMode;
+    if (!suppressCardLayout) return;
+    const t = setTimeout(() => setSuppressCardLayout(false), CARD_MORPH_TRANSITION.duration * 1000 + 50);
+    return () => clearTimeout(t);
+  }, [suppressCardLayout]);
+
+  const activeTopRef = useRef<number | null>(null);
+  const prevDisplayModeRef = useRef(displayMode);
+  const anchorRafRef = useRef(0);
+  useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
-    if (el) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayMode]);
+    if (!el) return;
+    const isModeSwitch = prevDisplayModeRef.current !== displayMode;
+    prevDisplayModeRef.current = displayMode;
+
+    if (isModeSwitch && activeTopRef.current !== null) {
+      cancelAnimationFrame(anchorRafRef.current);
+      const body = document.body;
+      const prevPaddingBottom = body.style.paddingBottom;
+      body.style.paddingBottom = `${window.innerHeight}px`;
+
+      const initialDelta = el.getBoundingClientRect().top - activeTopRef.current;
+      if (initialDelta !== 0) window.scrollBy(0, initialDelta);
+
+      let anchorTop = el.getBoundingClientRect().top;
+      const start = performance.now();
+      const durationMs = CARD_MORPH_TRANSITION.duration * 1000 + 50;
+      const tick = (now: number) => {
+        const newTop = el.getBoundingClientRect().top;
+        const delta = newTop - anchorTop;
+        if (delta !== 0) window.scrollBy(0, delta);
+        anchorTop = el.getBoundingClientRect().top;
+        if (now - start < durationMs) {
+          anchorRafRef.current = requestAnimationFrame(tick);
+        } else {
+          body.style.paddingBottom = prevPaddingBottom;
+        }
+      };
+      anchorRafRef.current = requestAnimationFrame(tick);
+    }
+
+    activeTopRef.current = el.getBoundingClientRect().top;
+  });
+  useEffect(() => () => cancelAnimationFrame(anchorRafRef.current), []);
 
   // Which single-unit animation the card list should play, and a remount
   // key. Only start-new (fresh session) and discard (abandon in-progress
@@ -539,6 +608,7 @@ function IndexInner() {
                 order={order}
                 setOrder={setOrder}
                 displayMode={displayMode}
+                suppressCardLayout={suppressCardLayout}
                 drawerOpen={drawerOpen}
                 onDrawerOpenChange={setDrawerOpen}
                 stickyTop={stickyTop}
@@ -724,24 +794,46 @@ function MorphContent({ displayMode, children }: { displayMode: DisplayMode; chi
     <motion.div
       className="w-full"
       style={{ overflow: "hidden" }}
-      animate={{ height }}
+      animate={{
+        height,
+        // Hand height back to real "auto" the instant the morph settles
+        // rather than leaving this wrapper pinned to the pixel value it
+        // measured at mode-switch time — otherwise anything that changes a
+        // card's own content height afterward (expanding a trial's row
+        // detail, a frequency counter growing) has nothing here to
+        // re-measure it and gets clipped by this wrapper's stale,
+        // now-too-short height.
+        transitionEnd: { height: "auto" },
+      }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
       // itself would otherwise be a no-op anyway. Every later mode switch
       // gets the real eased transition.
       transition={isFirstMeasure.current ? { duration: 0 } : CARD_MORPH_TRANSITION}
     >
-      <div ref={measureRef} className="w-full">
+      <div className="relative w-full">
         {/* popLayout (not "wait") lets the new mode's content mount
             immediately instead of waiting for the old content's exit to
-            finish first — mode="wait" left a blank gap between them. */}
+            finish first — mode="wait" left a blank gap between them.
+            Setting position: absolute directly in `exit` applies instantly
+            rather than animating, pulling the old content out of flow the
+            moment it starts fading instead of waiting on that. The height
+            measurement below is taken from THIS entering node specifically
+            (not the shared parent above) — measuring the parent would also
+            pick up the exiting sibling's own footprint for however long it
+            takes AnimatePresence's own effects to actually apply that
+            position: absolute, which runs on a separate cycle from this
+            component's own layout effect and isn't guaranteed to have
+            settled first; the entering node's own scrollHeight is
+            unaffected by the exiting sibling regardless of that timing. */}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={displayMode}
+            ref={measureRef}
             className="w-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, position: "absolute", top: 0, left: 0 }}
             transition={{ duration: 0.12 }}
           >
             {children}
@@ -793,6 +885,7 @@ const DataCardList = memo(function DataCardList({
   toggleHidden,
   setOrder,
   displayMode,
+  suppressCardLayout,
   drawerOpen,
   onDrawerOpenChange,
   stickyTop,
@@ -817,6 +910,7 @@ const DataCardList = memo(function DataCardList({
   order: string[];
   setOrder: (ids: string[]) => void;
   displayMode: DisplayMode;
+  suppressCardLayout: boolean;
   drawerOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
   stickyTop: number;
@@ -869,6 +963,7 @@ const DataCardList = memo(function DataCardList({
             setCardRef={setCardRef}
             renderOne={renderOne}
             displayMode={displayMode}
+            suppressCardLayout={suppressCardLayout}
           />
         ))}
       </Reorder.Group>
@@ -895,7 +990,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout="position"
+              layout={suppressCardLayout ? false : "position"}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               variants={{
@@ -927,7 +1022,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout="position"
+              layout={suppressCardLayout ? false : "position"}
               transition={{ layout: CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
@@ -951,18 +1046,20 @@ function EditableCardItem({
   setCardRef,
   renderOne,
   displayMode,
+  suppressCardLayout,
 }: {
   card: CardConfig;
   isHidden: boolean;
   setCardRef: (id: string) => (el: HTMLElement | null) => void;
   renderOne: (card: CardConfig, dragControls?: DragControls) => React.ReactNode;
   displayMode: DisplayMode;
+  suppressCardLayout: boolean;
 }) {
   const dragControls = useDragControls();
   return (
     <Reorder.Item
       value={card.id}
-      layout="position"
+      layout={(suppressCardLayout ? false : "position") as unknown as true}
       transition={{ layout: CARD_MORPH_TRANSITION }}
       ref={setCardRef(card.id)}
       dragListener={false}
