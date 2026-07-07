@@ -23,10 +23,14 @@ export interface DataDetailsDrawerProps {
   /** The card this drawer's contents describe — its on-screen position
    *  drives the arrow pointing back at it. */
   cardRef: RefObject<HTMLElement | null>;
-  /** Overrides the panel's own width classes (default: the card views'
-   *  narrow `w-[88%] sm:max-w-md`) — the list view's much wider row needs a
-   *  proportionally wider drawer (half the viewport) to actually look like
-   *  a paired side-by-side layout rather than a narrow strip. */
+  /** Overrides the panel's own width classes — the sm+ half of the default
+   *  pairs with card/grid mode's own drawerOpen compression (see IndexInner),
+   *  which collapses to a single ~55%-wide column so this can sit alongside
+   *  it rather than covering it; the "+14px" past an even half covers a
+   *  card's own top-right info button the same way the list row's does.
+   *  Below sm, card/grid content stays full-width instead (too dense to
+   *  compress at phone widths without truncating), so this just overlays
+   *  on top there rather than sitting side-by-side. */
   widthClassName?: string;
 }
 
@@ -45,7 +49,7 @@ export function DataDetailsDrawer({
   top,
   toolbarHeight,
   cardRef,
-  widthClassName = "w-[88%] sm:max-w-md",
+  widthClassName = "w-[88%] sm:w-[calc(50%+14px)]",
 }: DataDetailsDrawerProps) {
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
