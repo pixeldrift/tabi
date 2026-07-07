@@ -578,12 +578,25 @@ function IndexInner() {
               className={cn(
                 "transition-[opacity,width] duration-300",
                 !sessionActive && "opacity-50",
-                // List view's own drawer is half the viewport wide (see
-                // DataListRow) — left-anchored and just over half width
-                // itself (rather than the usual full width, centered) so
-                // both the list and the open drawer stay visible side by
-                // side instead of the drawer covering the list entirely.
-                displayMode === "list" && drawerOpen ? "w-[55%] self-start" : "w-full",
+                // The open drawer is half the viewport wide (see
+                // DataListRow/CardShell) — left-anchored and just over half
+                // width itself (rather than the usual full width, centered)
+                // so the cards/rows and the open drawer stay visible side by
+                // side instead of the drawer covering them entirely. Card/grid
+                // mode's own content is much denser than a list row, though —
+                // squeezing it to the same 55% at phone widths left button
+                // labels truncating and text wrapping badly, so those two
+                // modes only compress at sm+ (tablet/desktop, where 55% is
+                // still wide enough to hold a full card); below that the
+                // drawer just overlays on top full-width instead (see
+                // DataDetailsDrawer's own mobile-width default). List mode's
+                // rows are minimal enough that compressing at every width,
+                // including mobile, has always worked fine.
+                drawerOpen
+                  ? displayMode === "list"
+                    ? "w-[55%] self-start"
+                    : "w-full sm:w-[55%] sm:self-start"
+                  : "w-full",
               )}
             >
               {/* Each card's own wrapper carries `layout` (see DataCardList)
@@ -921,6 +934,15 @@ const DataCardList = memo(function DataCardList({
     else cardRefs.current.delete(id);
   };
 
+  // Card/grid's own sm:/lg: column classes are viewport-width-driven, so
+  // simply narrowing this list's outer container (see the drawerOpen width
+  // compression in IndexInner) wouldn't collapse them to one column on its
+  // own — a wide-enough viewport would still ask for 2-3 columns and just
+  // cram them into the shrunken space. List mode's own class is already
+  // single-column, so it's left untouched.
+  const gridClasses =
+    drawerOpen && displayMode !== "list" ? "grid-cols-1 gap-3" : DISPLAY_MODE_GRID_CLASSES[displayMode];
+
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, displayMode, {
       id: card.id,
@@ -953,7 +975,7 @@ const DataCardList = memo(function DataCardList({
         axis="y"
         values={visibleCards.map((c) => c.id)}
         onReorder={setOrder}
-        className={cn("grid w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
+        className={cn("grid w-full", gridClasses)}
       >
         {visibleCards.map((card) => (
           <EditableCardItem
@@ -977,7 +999,7 @@ const DataCardList = memo(function DataCardList({
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={cardsGen}
-          className={cn("grid w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
+          className={cn("grid w-full", gridClasses)}
           initial="enter"
           animate="center"
           exit="exit"
@@ -1013,7 +1035,7 @@ const DataCardList = memo(function DataCardList({
       {!transitionHidden && (
         <motion.div
           key={cardsGen}
-          className={cn("grid w-full", DISPLAY_MODE_GRID_CLASSES[displayMode])}
+          className={cn("grid w-full", gridClasses)}
           initial="initial"
           animate="animate"
           exit="exit"
