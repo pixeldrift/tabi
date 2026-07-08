@@ -69,8 +69,21 @@ export function MiniTileShell({
       <div className="flex items-start gap-1">
         <h2
           className={cn(
-            "font-display font-bold leading-[1.15] flex-1 line-clamp-2",
-            large ? "text-[14.5px] pr-6" : "text-[11.5px] pr-5",
+            // A 2-line clamp otherwise truncates a title after only its
+            // first couple of words, dropping an entire trailing word
+            // ("Holds hand during..." losing "transition" outright) rather
+            // than actually needing a third line's worth of room. Large
+            // tiles have that room to spare (confirmed — a third line
+            // there still leaves the body's own content full-size); small
+            // tiles don't — their body content (e.g. the bubble strip's own
+            // circles) has so little vertical slack already that a third
+            // title line squeezes it down to an illegible sliver, which is
+            // worse than the truncation it would avoid. So only large gets
+            // the taller clamp; small keeps 2 lines, with a bit of its own
+            // reserved padding clawed back instead to fit a little more of
+            // each line before it has to truncate at all.
+            "font-display font-bold leading-[1.15] flex-1",
+            large ? "text-[14.5px] pr-5 line-clamp-3" : "text-[11.5px] pr-4 line-clamp-2",
           )}
         >
           {title}
@@ -106,13 +119,13 @@ export function MiniTileShell({
         <DataDetailsDrawer
           open={detailsOpen}
           onOpenChange={onDetailsOpenChange ?? (() => {})}
-          // Tiles are compact enough (unlike a full-size card) to compress
-          // to a single left-hand column at any viewport width, not just
-          // sm+ — this overrides the shared default's mobile-overlay
-          // behavior (see DataDetailsDrawer's own widthClassName doc),
-          // matching the always-compressed width index.tsx now uses for
-          // both quick-action grid modes.
-          widthClassName="w-[calc(50%+14px)]"
+          // Tiles keep their own grid's normal per-column width when the
+          // drawer opens (see index.tsx's `stackToLeftColumn`) rather than
+          // the pane compressing — so a fixed widthClassName guess can't
+          // reliably reach exactly this tile's own right edge the way it
+          // can for card/list's more predictable half-viewport split.
+          // hugCardRight measures the real thing instead.
+          hugCardRight
           title={title}
           description={description}
           details={details}
