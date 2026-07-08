@@ -90,6 +90,11 @@ export function DataDetailsDrawer({
       setArrowTop(rect.top + rect.height / 2 - top);
       if (hugCardRight) setHugWidth(window.innerWidth - rect.right + HUG_OVERLAP_PX);
     };
+    // A grid-mode tile has already finished reflowing into its single left
+    // column by the time `open` goes true (IndexInner delays the drawer's
+    // own slide-open until that settles — see its own comment), so a single
+    // measurement now lands on the tile's real, final position instead of
+    // needing to poll every frame to chase a still-moving one.
     update();
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);

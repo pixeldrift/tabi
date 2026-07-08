@@ -331,6 +331,43 @@ function IndexInner() {
 
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
 
+  // The actual signal fed to DataDetailsDrawer's `open` (distinct from
+  // `drawerOpen`, which drives the tile reflow in DataCardList) — for the
+  // two grid modes, delayed until the reflow triggered by `drawerOpen` has
+  // actually settled. Sequencing it this way means DataDetailsDrawer only
+  // ever has to measure the target tile's position once (it's already at
+  // its final spot by the time the drawer starts sliding), instead of
+  // polling every frame to chase a still-moving target — that polling was
+  // fighting the drawer's own spring for frames and reading as sluggish/
+  // jerky. Card/list modes don't reflow on open, so there's nothing to wait
+  // for there.
+  const isGridDisplayMode = displayMode === "grid-large" || displayMode === "grid-small";
+  const [drawerSlideOpen, setDrawerSlideOpen] = useState(false);
+  const drawerSlideTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    window.clearTimeout(drawerSlideTimeoutRef.current ?? undefined);
+    if (!drawerOpen) {
+      setDrawerSlideOpen(false);
+      return;
+    }
+    if (!isGridDisplayMode) {
+      setDrawerSlideOpen(true);
+      return;
+    }
+    drawerSlideTimeoutRef.current = window.setTimeout(() => {
+      setDrawerSlideOpen(true);
+      // The reflow just collapsed every tile into a single left column,
+      // which can shift the active tile to a completely different row —
+      // recenter it now that it's settled, the same way a display-mode
+      // switch already does (see the effect below), rather than leaving it
+      // wherever the reflow happened to land it.
+      const el = cardRefs.current.get(activeId);
+      if (el) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
+    }, CARD_MORPH_TRANSITION.duration * 1000 + 50);
+    return () => window.clearTimeout(drawerSlideTimeoutRef.current ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerOpen, isGridDisplayMode]);
+
   // Keep the active card centered whenever it's selected (opt-in — see the
   // Settings tab's "Keep active card centered" toggle) and, unconditionally,
   // whenever the display mode changes — switching from a single column to a
@@ -645,6 +682,7 @@ function IndexInner() {
                 displayMode={displayMode}
                 suppressCardLayout={suppressCardLayout}
                 drawerOpen={drawerOpen}
+                drawerSlideOpen={drawerSlideOpen}
                 onDrawerOpenChange={setDrawerOpen}
                 stickyTop={stickyTop}
                 toolbarHeight={toolbarHeight}
@@ -927,6 +965,7 @@ const DataCardList = memo(function DataCardList({
   displayMode,
   suppressCardLayout,
   drawerOpen,
+  drawerSlideOpen,
   onDrawerOpenChange,
   stickyTop,
   toolbarHeight,
@@ -951,7 +990,12 @@ const DataCardList = memo(function DataCardList({
   setOrder: (ids: string[]) => void;
   displayMode: DisplayMode;
   suppressCardLayout: boolean;
+  /** Drives the tile reflow (see `stackToLeftColumn` below) the instant the
+   *  user asks to open the drawer. */
   drawerOpen: boolean;
+  /** The drawer's own actual slide-open signal — lags `drawerOpen` in grid
+   *  modes until the reflow it triggers has settled (see IndexInner). */
+  drawerSlideOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
   stickyTop: number;
   toolbarHeight: number;
@@ -984,7 +1028,7 @@ const DataCardList = memo(function DataCardList({
       id: card.id,
       isActive: card.id === activeId,
       onActivate: () => setActiveId(card.id),
-      detailsOpen: card.id === activeId && drawerOpen,
+      detailsOpen: card.id === activeId && drawerSlideOpen,
       onDetailsOpenChange: onDrawerOpenChange,
       onOpenDetails: () => {
         setActiveId(card.id);
