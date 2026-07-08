@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -63,15 +64,19 @@ export function RatingCard({
   // A single subjective score for the whole session — unlike the other card
   // types there's no running count or trial list to fill in, just one value
   // that later interactions simply overwrite.
-  const [rating, setRating] = useState(0);
+  const cardKey = id ?? title;
+  const [rating, setRating] = useCardState(cardKey, "rating", 0);
   const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal } = useCardSession();
-  useReportCardStatus(id ?? title, rating > 0, rating > 0);
+  useReportCardStatus(cardKey, rating > 0, rating > 0);
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     setRating(0);
-  }, [resetSignal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset]);
 
   const pick = (value: number) => {
     markDirty();

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Link2, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
@@ -45,13 +46,14 @@ export function RateCard({
   locked = false,
   tileDensity,
 }: RateCardProps) {
-  const [count, setCount] = useState(0);
+  const cardKey = id ?? title;
+  const [count, setCount] = useCardState(cardKey, "count", 0);
   const [bumpKey, setBumpKey] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [elapsed, setElapsed] = useState(0); // ms
-  const [running, setRunning] = useState(true);
+  const [elapsed, setElapsed] = useCardState(cardKey, "elapsed", 0); // ms
+  const [running, setRunning] = useCardState(cardKey, "running", true);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const { sessionRunning, subscribeTick, getElapsedMsNow } = useSession();
   const { markDirty, resetSignal } = useCardSession();
@@ -68,15 +70,18 @@ export function RateCard({
   };
   useEffect(() => clearPendingStart, []);
 
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     clearPendingStart();
     setCount(0);
     setElapsed(0);
     setRunning(true);
     setFlash(false);
     setBumpKey((k) => k + 1);
-  }, [resetSignal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset]);
   // Locked timers always follow the session. Unlocked timers tick only when
   // BOTH the session is running and the card timer is running.
   const ticking = locked ? sessionRunning : sessionRunning && running;
@@ -88,7 +93,7 @@ export function RateCard({
     source: "rate",
     onActivate,
   });
-  useReportCardStatus(id ?? title, count > 0 || elapsed > 0, elapsed / 1000 >= minDurationSec);
+  useReportCardStatus(cardKey, count > 0 || elapsed > 0, elapsed / 1000 >= minDurationSec);
 
   useEffect(() => {
     if (!ticking) return;

@@ -98,6 +98,15 @@ export function SwipeStrip({
   // design mockup's own drag shim.
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse") return;
+    // Duration's instance pages embed a real play/pause button directly
+    // inside the strip's own items (unlike the bubble/step strips, whose
+    // buttons live outside it in the tile's `actions` row) — capturing the
+    // pointer unconditionally would reroute that button's own click to this
+    // container instead, silently swallowing it. Letting the click through
+    // untouched here is safe either way: a genuine drag starts moving the
+    // pointer before any click fires, so a real button press is never
+    // mistaken for one.
+    if ((e.target as HTMLElement).closest("button")) return;
     const el = scrollRef.current;
     if (!el) return;
     // Without this, a mouse-based drag also kicks off the browser's native

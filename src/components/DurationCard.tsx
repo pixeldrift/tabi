@@ -4,6 +4,7 @@ import { Play, Pause } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
@@ -49,12 +50,13 @@ export function DurationCard({
   toolbarHeight,
   tileDensity,
 }: DurationCardProps) {
-  const [instances, setInstances] = useState<number[]>([0]);
-  const [viewIdx, setViewIdx] = useState(0);
-  const [liveMs, setLiveMs] = useState(0);
-  const [running, setRunning] = useState(false);
+  const cardKey = id ?? title;
+  const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
+  const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", 0);
+  const [liveMs, setLiveMs] = useCardState(cardKey, "liveMs", 0);
+  const [running, setRunning] = useCardState(cardKey, "running", false);
+  const [runningIdx, setRunningIdx] = useCardState<number | null>(cardKey, "runningIdx", null);
   const [expanded, setExpanded] = useState(false);
-  const runningIdxRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
   const { markDirty, resetSignal } = useCardSession();
@@ -84,15 +86,18 @@ export function DurationCard({
   const [pulseDelayMs, setPulseDelayMs] = useState(0);
   const pulseStyle = { animationDuration: `${PULSE_BEAT_MS}ms`, animationDelay: `${pulseDelayMs}ms` };
 
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     clearPendingStart();
     setInstances([0]);
     setViewIdx(0);
     setLiveMs(0);
     setRunning(false);
-    runningIdxRef.current = null;
-  }, [resetSignal]);
+    setRunningIdx(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset]);
 
 
   // Tick in unison with the master session timer.
@@ -103,7 +108,7 @@ export function DurationCard({
 
   const instanceMs = (idx: number) => {
     if (idx < 0 || idx >= instances.length) return 0;
-    if (running && runningIdxRef.current === idx) {
+    if (running && runningIdx === idx) {
       return instances[idx] + liveMs;
     }
     return instances[idx];
@@ -113,11 +118,11 @@ export function DurationCard({
   const totalSec = totalMs / 1000;
   const isComplete = totalSec >= minDurationSec;
   const remaining = Math.max(0, Math.ceil(minDurationSec - totalSec));
-  useReportCardStatus(id ?? title, totalMs > 0, isComplete);
+  useReportCardStatus(cardKey, totalMs > 0, isComplete);
 
   const flushLive = () => {
-    if (running && runningIdxRef.current !== null) {
-      const idx = runningIdxRef.current;
+    if (running && runningIdx !== null) {
+      const idx = runningIdx;
       setInstances((arr) => {
         const next = arr.slice();
         next[idx] = (next[idx] ?? 0) + liveMs;
@@ -132,7 +137,7 @@ export function DurationCard({
     if (!sessionRunning && running) {
       flushLive();
       setRunning(false);
-      runningIdxRef.current = null;
+      setRunningIdx(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionRunning]);
@@ -148,11 +153,11 @@ export function DurationCard({
   const toggleInstance = (idx: number) => {
     markDirty();
     clearPendingStart();
-    if (running && runningIdxRef.current === idx) {
+    if (running && runningIdx === idx) {
       const wasLast = idx === instances.length - 1;
       flushLive();
       setRunning(false);
-      runningIdxRef.current = null;
+      setRunningIdx(null);
       if (wasLast) {
         setInstances((arr) => [...arr, 0]);
         // Only auto-advance the view when the paused instance was the last
@@ -165,13 +170,13 @@ export function DurationCard({
       if (running) {
         flushLive();
         setRunning(false);
-        runningIdxRef.current = null;
+        setRunningIdx(null);
       }
       setViewIdx(idx);
       const msUntilNextSecond = 1000 - (getElapsedMsNow() % 1000 || 1000);
       pendingStartRef.current = window.setTimeout(() => {
         pendingStartRef.current = null;
-        runningIdxRef.current = idx;
+        setRunningIdx(idx);
         setRunning(true);
         setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
       }, msUntilNextSecond);
@@ -182,10 +187,10 @@ export function DurationCard({
 
   const setInstanceMs = (idx: number, ms: number) => {
     markDirty();
-    if (running && runningIdxRef.current === idx) {
+    if (running && runningIdx === idx) {
       flushLive();
       setRunning(false);
-      runningIdxRef.current = null;
+      setRunningIdx(null);
     }
     setInstances((arr) => {
       const next = arr.slice();
@@ -209,8 +214,8 @@ export function DurationCard({
     [viewIdx, stepWidth],
   );
 
-  const isViewingRunning = running && runningIdxRef.current === viewIdx;
-  const isIdxRunning = (i: number) => running && runningIdxRef.current === i;
+  const isViewingRunning = running && runningIdx === viewIdx;
+  const isIdxRunning = (i: number) => running && runningIdx === i;
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
   if (tileDensity) {
@@ -498,7 +503,7 @@ export function DurationCard({
             </span>{" "}
             of{" "}
             <span className="normal-case tracking-normal tabular-nums text-foreground">
-              {instances.filter((v, i) => v > 0 || (running && runningIdxRef.current === i)).length}
+              {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
             </span>
             , total{" "}
             <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">

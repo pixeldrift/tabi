@@ -33,6 +33,7 @@ import {
   type DataToolbarFilters,
   type DisplayMode,
 } from "@/components/DataToolbarContext";
+import { CardDataStoreProvider } from "@/components/CardDataStore";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -199,7 +200,12 @@ function Index() {
     <SettingsProvider>
       <SessionProvider>
         <DataToolbarProvider>
-          <IndexInner />
+          {/* Above the whole card list, so its store survives the per-card
+              remounts that MorphContent's display-mode crossfade causes
+              below it (see CardDataStore's own comment). */}
+          <CardDataStoreProvider>
+            <IndexInner />
+          </CardDataStoreProvider>
         </DataToolbarProvider>
       </SessionProvider>
     </SettingsProvider>
@@ -586,20 +592,25 @@ function IndexInner() {
                 // DataListRow/CardShell) — left-anchored and just over half
                 // width itself (rather than the usual full width, centered)
                 // so the cards/rows and the open drawer stay visible side by
-                // side instead of the drawer covering them entirely. Card/grid
-                // mode's own content is much denser than a list row, though —
-                // squeezing it to the same 55% at phone widths left button
-                // labels truncating and text wrapping badly, so those two
-                // modes only compress at sm+ (tablet/desktop, where 55% is
-                // still wide enough to hold a full card); below that the
+                // side instead of the drawer covering them entirely. Card
+                // mode's full-size cards are much denser than a list row,
+                // though — squeezing them to the same 55% at phone widths
+                // left button labels truncating and text wrapping badly, so
+                // that mode only compresses at sm+ (tablet/desktop, where 55%
+                // is still wide enough to hold a full card); below that the
                 // drawer just overlays on top full-width instead (see
-                // DataDetailsDrawer's own mobile-width default). List mode's
-                // rows are minimal enough that compressing at every width,
-                // including mobile, has always worked fine.
+                // DataDetailsDrawer's own mobile-width default). Every other
+                // mode's own content is compact enough to compress at any
+                // width, including mobile: list's rows are minimal, and the
+                // two quick-action grids' own tiles (see MiniTileShell's own
+                // widthClassName override) are small enough on their own
+                // that leaving a column of them visible alongside the drawer
+                // — rather than letting it cover them — reads better than
+                // the overlay treatment card mode needs.
                 drawerOpen
-                  ? displayMode === "list"
-                    ? "w-[55%] self-start"
-                    : "w-full sm:w-[55%] sm:self-start"
+                  ? displayMode === "card"
+                    ? "w-full sm:w-[55%] sm:self-start"
+                    : "w-[55%] self-start"
                   : "w-full",
               )}
             >

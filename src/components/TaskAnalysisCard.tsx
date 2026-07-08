@@ -4,6 +4,7 @@ import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -78,16 +79,20 @@ export function TaskAnalysisCard({
   toolbarHeight,
   tileDensity,
 }: TaskAnalysisCardProps) {
-  const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
-  const [current, setCurrent] = useState(0);
+  const cardKey = id ?? title;
+  const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
   const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal } = useCardSession();
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     setStatuses(steps.map(() => null));
     setCurrent(0);
-  }, [resetSignal, steps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset, steps]);
 
   // Mirrors TrialCard's setResult: read the pre-toggle value from the
   // current render's closure (not inside the setState updater) so we know
@@ -118,7 +123,7 @@ export function TaskAnalysisCard({
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const isComplete = completed >= steps.length;
   const remaining = Math.max(0, steps.length - completed);
-  useReportCardStatus(id ?? title, completed > 0, isComplete);
+  useReportCardStatus(cardKey, completed > 0, isComplete);
 
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(

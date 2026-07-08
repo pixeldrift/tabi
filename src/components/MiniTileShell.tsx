@@ -106,6 +106,13 @@ export function MiniTileShell({
         <DataDetailsDrawer
           open={detailsOpen}
           onOpenChange={onDetailsOpenChange ?? (() => {})}
+          // Tiles are compact enough (unlike a full-size card) to compress
+          // to a single left-hand column at any viewport width, not just
+          // sm+ — this overrides the shared default's mobile-overlay
+          // behavior (see DataDetailsDrawer's own widthClassName doc),
+          // matching the always-compressed width index.tsx now uses for
+          // both quick-action grid modes.
+          widthClassName="w-[calc(50%+14px)]"
           title={title}
           description={description}
           details={details}

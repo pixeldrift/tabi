@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { FrequencyIcon, NumberPadIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { useCardSession } from "./SessionContext";
@@ -40,22 +41,26 @@ export function FrequencyCard({
   toolbarHeight,
   tileDensity,
 }: FrequencyCardProps) {
-  const [count, setCount] = useState(0);
+  const cardKey = id ?? title;
+  const [count, setCount] = useCardState(cardKey, "count", 0);
   const [bumpKey, setBumpKey] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
   const { markDirty, resetSignal } = useCardSession();
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     setCount(0);
     setFlash(false);
     setBumpKey((k) => k + 1);
-  }, [resetSignal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset]);
 
   const isComplete = count >= minCount;
-  useReportCardStatus(id ?? title, count > 0, isComplete);
+  useReportCardStatus(cardKey, count > 0, isComplete);
   const remaining = Math.max(0, minCount - count);
 
   const triggerFlash = () => {

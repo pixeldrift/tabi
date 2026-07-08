@@ -9,6 +9,7 @@ import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { useCardState, useResetGuard } from "./CardDataStore";
 import { type CardEditAndDrawerProps } from "./CardShell";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -69,15 +70,16 @@ export function TrialCard({
   tileDensity,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const cardKey = id ?? title;
   // Keyed by trial index rather than a parallel array — entries just don't
   // exist for trials that aren't "incorrect" (or don't have a level yet),
   // so it never needs to stay in sync/length with the trials array.
-  const [promptLevel, setPromptLevel] = useState<Record<number, string>>({});
+  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>>(cardKey, "promptLevel", {});
   // Always one slot ahead of the highest-scored trial (so there's always a
   // next one ready), never fewer than minTrials, capped at maxTrials when
   // set. Anchored to the highest scored INDEX rather than the total scored
   // COUNT, since the expanded list lets trials be scored out of order.
-  const [trials, setTrials] = useState<TrialResult[]>(() =>
+  const [trials, setTrials] = useCardState<TrialResult[]>(cardKey, "trials", () =>
     Array.from({ length: maxTrials ?? minTrials }, () => null),
   );
   const highestScoredIdx = trials.reduce((max, t, i) => (t !== null ? i : max), -1);
@@ -93,7 +95,7 @@ export function TrialCard({
   }, [displayCount]);
 
   const [expanded, setExpanded] = useState(false);
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const setCurrentDir = (next: number | ((c: number) => number)) => {
     setCurrent((c) => {
@@ -119,16 +121,19 @@ export function TrialCard({
   const remaining = Math.max(0, minTrials - completedCount);
 
   const { markDirty, resetSignal } = useCardSession();
-  useReportCardStatus(id ?? title, completedCount > 0, isComplete);
+  useReportCardStatus(cardKey, completedCount > 0, isComplete);
+  const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
-    if (resetSignal === 0) return;
+    if (!shouldReset) return;
+    markResetHandled();
     setTrials(Array.from({ length: maxTrials ?? minTrials }, () => null));
     setCurrent(0);
     setDirection(1);
     setLastAction({ id: 0, value: null });
     setPromptLevel({});
-  }, [resetSignal, maxTrials, minTrials]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset, maxTrials, minTrials]);
 
   // Shared by the standard view's Correct/Error/No-Response buttons (idx =
   // current, advance = true) and the expanded list's per-trial buttons
