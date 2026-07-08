@@ -82,8 +82,8 @@ export function MiniTileShell({
             // the taller clamp; small keeps 2 lines, with a bit of its own
             // reserved padding clawed back instead to fit a little more of
             // each line before it has to truncate at all.
-            "font-display font-bold leading-[1.15] flex-1",
-            large ? "text-[14.5px] pr-5 line-clamp-3" : "text-[11.5px] pr-4 line-clamp-2",
+            "font-display font-bold leading-[1.02] flex-1",
+            large ? "text-[13px] pr-5 line-clamp-3" : "text-[10.5px] pr-4 line-clamp-2",
           )}
         >
           {title}
