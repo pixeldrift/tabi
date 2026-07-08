@@ -24,15 +24,31 @@ export interface DataDetailsDrawerProps {
    *  drives the arrow pointing back at it. */
   cardRef: RefObject<HTMLElement | null>;
   /** Overrides the panel's own width classes — the sm+ half of the default
-   *  pairs with card/grid mode's own drawerOpen compression (see IndexInner),
+   *  pairs with card mode's own drawerOpen compression (see IndexInner),
    *  which collapses to a single ~55%-wide column so this can sit alongside
    *  it rather than covering it; the "+14px" past an even half covers a
    *  card's own top-right info button the same way the list row's does.
-   *  Below sm, card/grid content stays full-width instead (too dense to
-   *  compress at phone widths without truncating), so this just overlays
-   *  on top there rather than sitting side-by-side. */
+   *  Below sm, card content stays full-width instead (too dense to compress
+   *  at phone widths without truncating), so this just overlays on top
+   *  there rather than sitting side-by-side. Ignored once `hugCardRight`
+   *  computes a real width — this only matters as its fallback until then. */
   widthClassName?: string;
+  /** Instead of a fixed widthClassName, size the panel to exactly reach
+   *  `cardRef`'s own right edge (plus a small overlap so the arrow lands on
+   *  it, not just beside it) — for the quick-action grids, where each
+   *  tile's own width is a card-count-dependent, non-round fraction of the
+   *  pane (a plain half-viewport-ish widthClassName would either fall short
+   *  of the tile's edge or overshoot past it, rather than the two meeting
+   *  exactly). Measured the same way `arrowTop` already is, from the same
+   *  card rect. */
+  hugCardRight?: boolean;
 }
+
+// How far the panel's own left edge reaches past the card's right edge when
+// `hugCardRight` is on — enough that the arrow (itself offset -13px further
+// left still, see its own comment below) actually overlaps the card instead
+// of just meeting its edge.
+const HUG_OVERLAP_PX = 14;
 
 /** A single shared, non-modal details panel — mounted only by whichever card
  *  is currently active (see CardShell) — rendered via portal so its `fixed`
@@ -50,9 +66,11 @@ export function DataDetailsDrawer({
   toolbarHeight,
   cardRef,
   widthClassName = "w-[88%] sm:w-[calc(50%+14px)]",
+  hugCardRight = false,
 }: DataDetailsDrawerProps) {
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
+  const [hugWidth, setHugWidth] = useState<number | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -63,6 +81,7 @@ export function DataDetailsDrawer({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       setArrowTop(rect.top + rect.height / 2 - top);
+      if (hugCardRight) setHugWidth(window.innerWidth - rect.right + HUG_OVERLAP_PX);
     };
     update();
     window.addEventListener("scroll", update, true);
@@ -74,7 +93,7 @@ export function DataDetailsDrawer({
       window.removeEventListener("resize", update);
       ro.disconnect();
     };
-  }, [open, top, cardRef]);
+  }, [open, top, cardRef, hugCardRight]);
 
   useEffect(() => {
     if (!open) return;
@@ -106,9 +125,12 @@ export function DataDetailsDrawer({
         // same 2px weight — so the drawer visibly reads as "this card,
         // pulled out," not a generic unrelated panel.
         open ? "border-2 border-blue-400/80" : "border border-stone-200/70",
+        // widthClassName is only a fallback here — a real hugWidth (once
+        // measured) wins via the inline style below regardless of which
+        // class is present, so there's no conflict in leaving both applied.
         widthClassName,
       )}
-      style={{ top, bottom: 0 }}
+      style={{ top, bottom: 0, ...(hugCardRight && hugWidth !== null ? { width: hugWidth } : {}) }}
       initial={false}
       animate={{ x: open ? 0 : "100%" }}
       transition={{ type: "spring", stiffness: 340, damping: 34 }}

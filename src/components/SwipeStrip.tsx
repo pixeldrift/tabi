@@ -48,6 +48,17 @@ export function SwipeStrip({
   const isFirstRender = useRef(true);
   const rafRef = useRef(0);
   const dragRef = useRef<{ startX: number; startScroll: number } | null>(null);
+  // Set right before every programmatic scroll (the effect below, reacting
+  // to an external `current` change — e.g. Duration auto-advancing to a
+  // fresh instance after a pause) and cleared once it actually finishes.
+  // Without this, the "scroll" events that scroll itself fires while
+  // animating are indistinguishable from a genuine user swipe, so
+  // handleScroll's own onCurrentChange call was reporting the
+  // (mid-animation, not-yet-settled) scroll position right back as if the
+  // user had dragged there — clobbering the very update that caused the
+  // scroll in the first place, sometimes right back to where it started.
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollTimeoutRef = useRef(0);
 
   useEffect(() => {
     isFirstRender.current = false;
@@ -57,6 +68,14 @@ export function SwipeStrip({
     const el = scrollRef.current;
     if (!el) return;
     const behavior: ScrollBehavior = isFirstRender.current ? "auto" : "smooth";
+    programmaticScrollRef.current = true;
+    window.clearTimeout(programmaticScrollTimeoutRef.current);
+    // "scrollend" is the precise signal, but isn't universally supported —
+    // this timeout is a backstop so the flag can't get stuck true forever
+    // on a browser that never fires it.
+    programmaticScrollTimeoutRef.current = window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 500);
     if (variant === "paged") {
       el.scrollTo({ left: current * el.clientWidth, behavior });
     } else {
@@ -65,7 +84,19 @@ export function SwipeStrip({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, variant]);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScrollEnd = () => {
+      window.clearTimeout(programmaticScrollTimeoutRef.current);
+      programmaticScrollRef.current = false;
+    };
+    el.addEventListener("scrollend", onScrollEnd);
+    return () => el.removeEventListener("scrollend", onScrollEnd);
+  }, []);
+
   const handleScroll = () => {
+    if (programmaticScrollRef.current) return;
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
       const el = scrollRef.current;

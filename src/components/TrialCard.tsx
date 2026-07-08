@@ -232,8 +232,6 @@ export function TrialCard({
 
   if (tileDensity) {
     const large = tileDensity === "large";
-    const tileBubble = large ? 20 : 15;
-    const tileBubbleCenter = large ? 52 : 38;
     const errorPress = () => {
       if (promptLevels && promptLevels.length > 0) pickPromptLevel(current, UNSPECIFIED_LEVEL, true);
       else setResult("incorrect");
@@ -350,31 +348,24 @@ export function TrialCard({
         >
           {(i, isCenter) => {
             const t = trials[i];
-            const bg =
+            const color =
               t === "correct"
-                ? "bg-green-50 border-green-300 text-green-700"
+                ? "text-green-700"
                 : t === "incorrect"
-                  ? "bg-red-50 border-red-300 text-red-700"
+                  ? "text-red-700"
                   : t === "no-response"
-                    ? "bg-amber-50 border-amber-300 text-amber-700"
-                    : "bg-foreground/5 border-foreground/10 text-foreground/40";
+                    ? "text-amber-700"
+                    : isCenter
+                      ? "text-foreground"
+                      : "text-foreground/30";
             return (
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                   goTo(i);
                 }}
-                className={cn(
-                  "grid place-items-center rounded-full font-semibold tabular-nums transition-[width,height,font-size]",
-                  isCenter ? "border-2" : "border",
-                  bg,
-                  isCenter && !t && "bg-card border-foreground/30 text-foreground",
-                )}
-                style={{
-                  width: isCenter ? tileBubbleCenter : tileBubble,
-                  height: isCenter ? tileBubbleCenter : tileBubble,
-                  fontSize: isCenter ? (large ? 23 : 17) : large ? 8 : 6.5,
-                }}
+                className={cn("font-display font-bold tabular-nums transition-[font-size] leading-none", color)}
+                style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
               >
                 {i + 1}
               </div>

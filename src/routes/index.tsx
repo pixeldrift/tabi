@@ -599,18 +599,25 @@ function IndexInner() {
                 // that mode only compresses at sm+ (tablet/desktop, where 55%
                 // is still wide enough to hold a full card); below that the
                 // drawer just overlays on top full-width instead (see
-                // DataDetailsDrawer's own mobile-width default). Every other
-                // mode's own content is compact enough to compress at any
-                // width, including mobile: list's rows are minimal, and the
-                // two quick-action grids' own tiles (see MiniTileShell's own
-                // widthClassName override) are small enough on their own
-                // that leaving a column of them visible alongside the drawer
-                // — rather than letting it cover them — reads better than
-                // the overlay treatment card mode needs.
+                // DataDetailsDrawer's own mobile-width default). List's rows
+                // are minimal enough to compress at any width. The two
+                // quick-action grids don't compress this container at all —
+                // unlike a card (which is already a fixed intrinsic size
+                // regardless of its grid track's own width) a tile's size
+                // IS its grid track's width, so shrinking the container here
+                // would shrink every tile with it. Instead their own tiles
+                // stay pinned to column 1 of their normal (unchanged)
+                // multi-column grid — see gridClasses/the per-card
+                // `gridColumn` override below — so they keep their usual
+                // size and just stack into the left column the drawer
+                // doesn't cover, rather than a general-purpose "compress the
+                // pane" approach.
                 drawerOpen
                   ? displayMode === "card"
                     ? "w-full sm:w-[55%] sm:self-start"
-                    : "w-[55%] self-start"
+                    : displayMode === "list"
+                      ? "w-[55%] self-start"
+                      : "w-full"
                   : "w-full",
               )}
             >
@@ -954,14 +961,23 @@ const DataCardList = memo(function DataCardList({
     else cardRefs.current.delete(id);
   };
 
-  // Card/grid's own sm:/lg: column classes are viewport-width-driven, so
-  // simply narrowing this list's outer container (see the drawerOpen width
-  // compression in IndexInner) wouldn't collapse them to one column on its
-  // own — a wide-enough viewport would still ask for 2-3 columns and just
-  // cram them into the shrunken space. List mode's own class is already
-  // single-column, so it's left untouched.
+  // Card mode's own template collapses to one column when the drawer opens
+  // (see IndexInner) — safe there since a card's own max-w-md already caps
+  // its size regardless of its grid track's width, so the template change
+  // doesn't resize anything, just reduces how many fit per row. The two
+  // quick-action grids deliberately do NOT get the same treatment: a tile's
+  // size IS its grid track's width, so collapsing to grid-cols-1 would
+  // stretch every tile to fill the whole row instead of leaving them their
+  // normal size. Their own template stays exactly as it is — see the
+  // per-card `gridColumn` override below, which pins each one into column 1
+  // of that unchanged template instead.
   const gridClasses =
-    drawerOpen && displayMode !== "list" ? "grid-cols-1 gap-3" : DISPLAY_MODE_GRID_CLASSES[displayMode];
+    drawerOpen && displayMode === "card" ? "grid-cols-1 gap-3" : DISPLAY_MODE_GRID_CLASSES[displayMode];
+  // Only the two quick-action grids need the per-card column pin above —
+  // list is already single-column and card's own template change already
+  // achieves the same "one per row" result without it.
+  const stackToLeftColumn =
+    drawerOpen && (displayMode === "grid-large" || displayMode === "grid-small");
 
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, displayMode, {
@@ -1007,6 +1023,7 @@ const DataCardList = memo(function DataCardList({
             renderOne={renderOne}
             displayMode={displayMode}
             suppressCardLayout={suppressCardLayout}
+            stackToLeftColumn={stackToLeftColumn}
           />
         ))}
       </Reorder.Group>
@@ -1036,6 +1053,7 @@ const DataCardList = memo(function DataCardList({
               layout={suppressCardLayout ? false : "position"}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
+              style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
               variants={{
                 enter: { opacity: 0, x: -40 },
                 center: { opacity: 1, x: 0, transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 } },
@@ -1069,6 +1087,7 @@ const DataCardList = memo(function DataCardList({
               transition={{ layout: CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
+              style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
             >
               <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
             </motion.div>
@@ -1090,6 +1109,7 @@ function EditableCardItem({
   renderOne,
   displayMode,
   suppressCardLayout,
+  stackToLeftColumn,
 }: {
   card: CardConfig;
   isHidden: boolean;
@@ -1097,6 +1117,7 @@ function EditableCardItem({
   renderOne: (card: CardConfig, dragControls?: DragControls) => React.ReactNode;
   displayMode: DisplayMode;
   suppressCardLayout: boolean;
+  stackToLeftColumn: boolean;
 }) {
   const dragControls = useDragControls();
   return (
@@ -1108,6 +1129,7 @@ function EditableCardItem({
       dragListener={false}
       dragControls={dragControls}
       className={cn("w-full flex justify-center", isHidden && "opacity-40")}
+      style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
     >
       <MorphContent displayMode={displayMode}>{renderOne(card, dragControls)}</MorphContent>
     </Reorder.Item>
