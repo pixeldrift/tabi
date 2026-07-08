@@ -58,6 +58,18 @@ const BUBBLE = 18;
 const BUBBLE_CENTER = 54;
 const GAP = 6;
 
+// Solid dot color for a step's status — used by the tile's prev/next status
+// indicator (unlike OPTIONS' classes above, which style a full button).
+function statusDotColor(status: StepStatus) {
+  return status === "independent"
+    ? "bg-green-500"
+    : status === "prompted"
+      ? "bg-amber-500"
+      : status === "error"
+        ? "bg-red-500"
+        : "bg-stone-300";
+}
+
 export function TaskAnalysisCard({
   id,
   title,
@@ -188,6 +200,16 @@ export function TaskAnalysisCard({
           </div>
         }
       >
+        {/* Previous/next step status, in the same left-behind/coming-up
+            reading direction as the nav arrows elsewhere — large density
+            only ("if there is room"; small's own step text is already
+            fighting for space, see MiniTileShell's own clamp comment). */}
+        {large && (
+          <div className="flex items-center gap-3" aria-hidden>
+            <span className={cn("rounded-full size-1.5", current > 0 ? statusDotColor(statuses[current - 1]) : "bg-transparent")} />
+            <span className={cn("rounded-full size-1.5", current < steps.length - 1 ? statusDotColor(statuses[current + 1]) : "bg-transparent")} />
+          </div>
+        )}
         <SwipeStrip
           count={steps.length}
           current={current}
@@ -206,16 +228,22 @@ export function TaskAnalysisCard({
                   ? "text-amber-700"
                   : status === "error"
                     ? "text-red-700"
-                    : isCenter
-                      ? "text-foreground"
-                      : "text-muted-foreground";
+                    : "text-foreground";
+            // Neighboring steps keep their usual footprint (so the swipe
+            // strip's own drag distance doesn't change) but show no text at
+            // all — previously a dimmed preview of the step name spilled
+            // onto the tile next to the centered one; the dots above now
+            // cover "what's coming" instead, so this just stays blank.
             return (
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                   goTo(i);
                 }}
-                className={cn("whitespace-nowrap overflow-hidden text-ellipsis font-semibold transition-[font-size]", color)}
+                className={cn(
+                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold transition-[font-size]",
+                  isCenter ? color : "invisible",
+                )}
                 style={{
                   maxWidth: isCenter ? (large ? 148 : 96) : large ? 130 : 82,
                   fontSize: isCenter ? (large ? 17 : 11.5) : large ? 11 : 8.5,

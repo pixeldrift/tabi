@@ -50,13 +50,6 @@ export interface DataDetailsDrawerProps {
 // of just meeting its edge.
 const HUG_OVERLAP_PX = 14;
 
-// Grid-mode tiles reflow into a single left column the instant this panel
-// opens (see index.tsx's `stackToLeftColumn`), sliding via a pure `transform`
-// over CARD_MORPH_TRANSITION's 300ms — long enough to safely cover that
-// (plus this panel's own spring) that a bounded per-frame poll (below) can
-// track the tile all the way to its settled position, rather than measuring
-// once at open (landing on the pre-reflow rect) and never updating again.
-const REFLOW_TRACK_MS = 500;
 /** A single shared, non-modal details panel — mounted only by whichever card
  *  is currently active (see CardShell) — rendered via portal so its `fixed`
  *  positioning isn't trapped by a transformed ancestor (Reorder.Item/motion
@@ -90,29 +83,20 @@ export function DataDetailsDrawer({
       setArrowTop(rect.top + rect.height / 2 - top);
       if (hugCardRight) setHugWidth(window.innerWidth - rect.right + HUG_OVERLAP_PX);
     };
+    // A grid-mode tile has already finished reflowing into its single left
+    // column by the time `open` goes true (IndexInner delays the drawer's
+    // own slide-open until that settles — see its own comment), so a single
+    // measurement now lands on the tile's real, final position instead of
+    // needing to poll every frame to chase a still-moving one.
     update();
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     const ro = new ResizeObserver(update);
     if (cardRef.current) ro.observe(cardRef.current);
-
-    // Neither the ResizeObserver nor the scroll/resize listeners above ever
-    // fire for the grid reflow (a `transform` slide changes nothing they
-    // watch), so a bounded per-frame poll picks up what they can't — see
-    // REFLOW_TRACK_MS's own comment.
-    let rafId = 0;
-    const start = performance.now();
-    const poll = (now: number) => {
-      update();
-      if (now - start < REFLOW_TRACK_MS) rafId = requestAnimationFrame(poll);
-    };
-    rafId = requestAnimationFrame(poll);
-
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
       ro.disconnect();
-      cancelAnimationFrame(rafId);
     };
   }, [open, top, cardRef, hugCardRight]);
 

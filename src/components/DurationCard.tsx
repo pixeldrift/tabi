@@ -249,6 +249,21 @@ export function DurationCard({
             </dl>
           }
         >
+          <div
+            className={cn("flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
+            aria-hidden
+          >
+            {instances.map((ms, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "rounded-full shrink-0",
+                  large ? "size-1.5" : "size-1",
+                  isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
+                )}
+              />
+            ))}
+          </div>
           <SwipeStrip
             count={instances.length}
             current={viewIdx}
@@ -280,8 +295,14 @@ export function DurationCard({
                   >
                     <span
                       className={cn(
-                        "flex items-center font-bold tabular-nums",
-                        large ? "px-3 text-lg" : "px-2 text-[13px]",
+                        // Reserves room up front for one more digit than the
+                        // common case (e.g. crossing from "9:59" to "10:00",
+                        // or gaining an hours place entirely) — without this,
+                        // the pill only grows when it actually needs to,
+                        // which reads as a sudden jolt right as the button
+                        // shifts over with it.
+                        "flex items-center justify-center font-bold tabular-nums",
+                        large ? "px-3 text-lg min-w-[4.5rem]" : "px-2 text-[13px] min-w-[3.25rem]",
                       )}
                     >
                       {formatCompactTime(instanceMs(i))}
