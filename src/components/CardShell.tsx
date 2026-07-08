@@ -35,6 +35,11 @@ export interface CardEditAndDrawerProps {
    *  drawer's pull tab can straddle the seam between the toolbar and the
    *  pane below it instead of the drawer's own (now higher) top edge. */
   toolbarHeight?: number;
+  /** Set for the two quick-action grid modes — swaps this card's own
+   *  full-size markup for a compact aspect-square tile rendering the same
+   *  underlying state (see MiniTileShell), rather than mounting a separate
+   *  component, which would lose that state on every mode switch. */
+  tileDensity?: "large" | "small";
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {

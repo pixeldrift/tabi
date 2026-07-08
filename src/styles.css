@@ -132,6 +132,13 @@
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-lift { box-shadow: var(--shadow-lift); }
 
+  /* Hides the scrollbar on the quick-action tiles' swipeable strips (see
+     SwipeStrip) — they're meant to read as a paged/bubble control, not an
+     obviously-scrollable list, so the native scrollbar chrome would be a
+     distracting mismatch with that intent. */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
   /* Master-pulse synced keyframes — all start at page load so phases align. */
   @keyframes lv-pulse-scale {
     0%, 100% { transform: scale(1); }

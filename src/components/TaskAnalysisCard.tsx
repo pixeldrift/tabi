@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -74,6 +76,7 @@ export function TaskAnalysisCard({
   onOpenDetails,
   stickyTop,
   toolbarHeight,
+  tileDensity,
 }: TaskAnalysisCardProps) {
   const [statuses, setStatuses] = useState<StepStatus[]>(() => steps.map(() => null));
   const [current, setCurrent] = useState(0);
@@ -122,6 +125,104 @@ export function TaskAnalysisCard({
     () => -(current * stepWidth + BUBBLE_CENTER / 2),
     [current, stepWidth],
   );
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    return (
+      <MiniTileShell
+        title={title}
+        description={description}
+        density={tileDensity}
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        details={
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Task analysis (I / P / E)" />
+            <Row label="Steps" value={String(steps.length)} />
+            <Row label="Scored" value={`${completed} / ${steps.length}`} />
+            <Row label="Independent" value={`${independent} / ${steps.length}`} />
+          </dl>
+        }
+        actions={
+          <div className={cn("flex items-center justify-center", large ? "gap-2" : "gap-1.5")}>
+            {OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const selected = statuses[current] === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStep(current, opt.value, true);
+                  }}
+                  aria-label={opt.label}
+                  className={cn(
+                    "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors",
+                    large ? "size-10" : "size-7",
+                    selected ? cn("btn-bevel", opt.selectedClasses) : opt.classes,
+                  )}
+                >
+                  <Icon className={large ? "size-[19px]" : "size-3.5"} strokeWidth={opt.strokeWidth} />
+                </button>
+              );
+            })}
+          </div>
+        }
+      >
+        <SwipeStrip
+          count={steps.length}
+          current={current}
+          onCurrentChange={goTo}
+          variant="centered"
+          className="w-full"
+          gapClassName={large ? "gap-3" : "gap-2"}
+          itemWrapperClassName="flex items-center justify-center"
+        >
+          {(i, isCenter) => {
+            const status = statuses[i];
+            const color =
+              status === "independent"
+                ? "text-green-700"
+                : status === "prompted"
+                  ? "text-amber-700"
+                  : status === "error"
+                    ? "text-red-700"
+                    : isCenter
+                      ? "text-foreground"
+                      : "text-muted-foreground";
+            return (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(i);
+                }}
+                className={cn("whitespace-nowrap overflow-hidden text-ellipsis font-semibold transition-[font-size]", color)}
+                style={{
+                  maxWidth: isCenter ? (large ? 148 : 96) : large ? 130 : 82,
+                  fontSize: isCenter ? (large ? 17 : 11.5) : large ? 11 : 8.5,
+                }}
+              >
+                {i + 1}: {steps[i]}
+              </div>
+            );
+          }}
+        </SwipeStrip>
+      </MiniTileShell>
+    );
+  }
 
   return (
     <CardShell

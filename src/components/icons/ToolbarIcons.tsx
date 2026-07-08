@@ -41,8 +41,7 @@ export function CardViewIcon(props: IconProps) {
   );
 }
 
-/** Grid view — a 2x2 array of small square tiles, for the denser
- *  multi-column layout. */
+/** Large grid — a 2x2 array of quick-action tiles, two per row. */
 export function GridViewIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
@@ -50,6 +49,24 @@ export function GridViewIcon(props: IconProps) {
       <rect x="13" y="4" width="7" height="7" rx="1.3" />
       <rect x="4" y="13" width="7" height="7" rx="1.3" />
       <rect x="13" y="13" width="7" height="7" rx="1.3" />
+    </svg>
+  );
+}
+
+/** Small grid — a 3x3 array of tiles, smaller and more numerous than the
+ *  large-grid icon's 2x2, echoing the denser three-per-row tile layout. */
+export function SmallGridViewIcon(props: IconProps) {
+  return (
+    <svg {...base} strokeWidth={1.8} {...props}>
+      <rect x="3" y="3" width="5" height="5" rx="1" />
+      <rect x="9.5" y="3" width="5" height="5" rx="1" />
+      <rect x="16" y="3" width="5" height="5" rx="1" />
+      <rect x="3" y="9.5" width="5" height="5" rx="1" />
+      <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
+      <rect x="16" y="9.5" width="5" height="5" rx="1" />
+      <rect x="3" y="16" width="5" height="5" rx="1" />
+      <rect x="9.5" y="16" width="5" height="5" rx="1" />
+      <rect x="16" y="16" width="5" height="5" rx="1" />
     </svg>
   );
 }

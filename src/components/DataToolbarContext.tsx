@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 export type CardKind = "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating";
 
-export type DisplayMode = "list" | "card" | "grid";
+export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 
 export interface DataToolbarFilters {
   /** Empty set = no kind filter applied (show all kinds). */

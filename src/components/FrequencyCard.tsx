@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { MiniTileShell } from "./MiniTileShell";
 import { FrequencyIcon, NumberPadIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { useCardSession } from "./SessionContext";
@@ -37,6 +38,7 @@ export function FrequencyCard({
   onOpenDetails,
   stickyTop,
   toolbarHeight,
+  tileDensity,
 }: FrequencyCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
@@ -85,6 +87,89 @@ export function FrequencyCard({
     markDirty();
   };
 
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    return (
+      <MiniTileShell
+        title={title}
+        description={description}
+        density={tileDensity}
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        details={
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Frequency (count)" />
+            <Row label="Minimum count" value={String(minCount)} />
+            <Row label="Recorded so far" value={String(count)} />
+          </dl>
+        }
+        actions={
+          <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                dec();
+              }}
+              disabled={count === 0}
+              aria-label="Decrement"
+              className={cn(
+                "btn-bevel shrink-0 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
+                large ? "size-[42px]" : "size-7",
+              )}
+            >
+              <Minus className={large ? "size-[19px]" : "size-3.5"} strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                inc();
+              }}
+              aria-label="Increment"
+              className={cn(
+                "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                large ? "size-[42px]" : "size-7",
+              )}
+            >
+              <Plus className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+            </button>
+          </div>
+        }
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={bumpKey}
+            initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+            style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+            className={cn(
+              "block font-display leading-none tabular-nums",
+              large ? "text-[38px]" : "text-[28px]",
+              flash ? "text-blue-600" : "text-foreground",
+            )}
+          >
+            {count}
+          </motion.span>
+        </AnimatePresence>
+      </MiniTileShell>
+    );
+  }
 
   return (
     <CardShell

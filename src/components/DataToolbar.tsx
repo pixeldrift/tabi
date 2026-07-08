@@ -8,7 +8,7 @@ import {
   DurationIcon,
   TaskAnalysisIcon,
 } from "@/components/icons/DataTypeIcons";
-import { ListViewIcon, CardViewIcon, GridViewIcon, FilterIcon } from "@/components/icons/ToolbarIcons";
+import { ListViewIcon, CardViewIcon, GridViewIcon, SmallGridViewIcon, FilterIcon } from "@/components/icons/ToolbarIcons";
 import { useDataToolbar, type CardKind, type DisplayMode } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,8 @@ const KIND_META: Record<CardKind, { label: string; icon: (props: { className?: s
 const DISPLAY_MODES: { mode: DisplayMode; label: string; icon: (props: { className?: string }) => React.ReactNode }[] = [
   { mode: "list", label: "List", icon: (p) => <ListViewIcon {...p} /> },
   { mode: "card", label: "Card", icon: (p) => <CardViewIcon {...p} /> },
-  { mode: "grid", label: "Grid", icon: (p) => <GridViewIcon {...p} /> },
+  { mode: "grid-large", label: "Large Grid", icon: (p) => <GridViewIcon {...p} /> },
+  { mode: "grid-small", label: "Small Grid", icon: (p) => <SmallGridViewIcon {...p} /> },
 ];
 
 export interface DataToolbarProps {
@@ -117,7 +118,7 @@ export function DataToolbar({
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70 py-1.5 px-4"
       style={{ top: stickyTop }}
     >
-      <div className="flex items-center gap-2 max-w-3xl mx-auto">
+      <div className="flex items-center gap-1.5 max-w-3xl mx-auto">
         {/* View mode segmented toggle */}
         <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
           {DISPLAY_MODES.map(({ mode, label, icon }) => (
@@ -225,8 +226,11 @@ export function DataToolbar({
 
         {/* Search — trimmed a bit short of the row's full width (mr-6) so
             the details drawer's tab, now pinned to the top of the drawer
-            and overlapping this row, has clear space to sit in. */}
-        <div className="relative flex-1 min-w-0 mr-6">
+            and overlapping this row, has clear space to sit in. min-w-8
+            (not min-w-0) keeps a sliver of usable tap target once the
+            fourth view-mode pill above claims its share of this shrink-0
+            row's space, rather than letting it collapse to nothing first. */}
+        <div className="relative flex-1 min-w-8 mr-6">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-stone-400 pointer-events-none" />
           <input
             type="text"

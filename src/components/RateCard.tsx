@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link2, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { MiniTileShell } from "./MiniTileShell";
 import { NumberPadIcon, RateIcon } from "./icons/DataTypeIcons";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
@@ -42,6 +43,7 @@ export function RateCard({
   stickyTop,
   toolbarHeight,
   locked = false,
+  tileDensity,
 }: RateCardProps) {
   const [count, setCount] = useState(0);
   const [bumpKey, setBumpKey] = useState(0);
@@ -154,6 +156,106 @@ export function RateCard({
     triggerFlash();
     markDirty();
   };
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    return (
+      <div ref={cardRef} className="w-full h-full">
+        <MiniTileShell
+          title={title}
+          description={description}
+          density={tileDensity}
+          isActive={isActive}
+          onActivate={onActivate}
+          reorderEditing={reorderEditing}
+          favorited={favorited}
+          onToggleFavorite={onToggleFavorite}
+          cardHidden={cardHidden}
+          onToggleHidden={onToggleHidden}
+          dragControls={dragControls}
+          detailsOpen={detailsOpen}
+          onDetailsOpenChange={onDetailsOpenChange}
+          onOpenDetails={onOpenDetails}
+          stickyTop={stickyTop}
+          toolbarHeight={toolbarHeight}
+          details={
+            <dl className="space-y-3">
+              <Row label="Phase" value={phase} />
+              <Row label="Data type" value="Rate (per minute)" />
+              <Row label="Required window" value={`${minDurationSec}s`} />
+              <Row label="Count" value={String(count)} />
+              <Row label="Elapsed" value={formatTime(elapsed)} />
+            </dl>
+          }
+          actions={
+            <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dec();
+                }}
+                disabled={count === 0}
+                aria-label="Decrement"
+                className={cn(
+                  "btn-bevel shrink-0 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
+                  large ? "size-[42px]" : "size-7",
+                )}
+              >
+                <Minus className={large ? "size-[19px]" : "size-3.5"} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  inc();
+                }}
+                aria-label="Increment"
+                className={cn(
+                  "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                  large ? "size-[42px]" : "size-7",
+                )}
+              >
+                <Plus className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+              </button>
+            </div>
+          }
+        >
+          {/* The pulsing stopwatch is absolutely positioned off to the left
+              rather than sharing flex flow with the number, so the number's
+              own box — not the icon+number pair — is what ends up centered
+              in the tile (matching the full card's own centered count). */}
+          <div className="relative inline-flex items-center">
+            {ticking && (
+              <RateIcon
+                className={cn(
+                  "absolute right-full top-1/2 -translate-y-1/2 text-blue-500 animate-pulse-scale",
+                  large ? "size-5 mr-[7px]" : "size-[15px] mr-[5px]",
+                )}
+              />
+            )}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={bumpKey}
+                initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                className={cn(
+                  "block font-display leading-none tabular-nums",
+                  large ? "text-[38px]" : "text-[28px]",
+                  flash ? "text-blue-600" : "text-foreground",
+                )}
+              >
+                {count}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+        </MiniTileShell>
+      </div>
+    );
+  }
 
   return (
     <div ref={cardRef} className="w-full max-w-md scroll-mt-32">

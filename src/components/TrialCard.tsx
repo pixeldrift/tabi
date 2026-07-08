@@ -7,6 +7,8 @@ import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
+import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { type CardEditAndDrawerProps } from "./CardShell";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -64,6 +66,7 @@ export function TrialCard({
   toolbarHeight = 0,
   noResponse = false,
   promptLevels,
+  tileDensity,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   // Keyed by trial index rather than a parallel array — entries just don't
@@ -221,6 +224,161 @@ export function TrialCard({
     setCurrentDir(clamped);
     animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
   };
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    const tileBubble = large ? 20 : 15;
+    const tileBubbleCenter = large ? 52 : 38;
+    const errorPress = () => {
+      if (promptLevels && promptLevels.length > 0) pickPromptLevel(current, UNSPECIFIED_LEVEL, true);
+      else setResult("incorrect");
+    };
+    return (
+      <MiniTileShell
+        title={title}
+        description={description}
+        density={tileDensity}
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen ?? false}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        details={
+          <dl className="space-y-3">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Phase</dt>
+              <dd className="font-medium">{phase}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Data type</dt>
+              <dd className="font-medium">{dataType}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Minimum trials</dt>
+              <dd className="font-medium">{minTrials}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Correct so far</dt>
+              <dd className="font-medium">
+                {correctCount} / {completedCount || 0}
+              </dd>
+            </div>
+          </dl>
+        }
+        actions={
+          <div className={cn("flex items-center justify-center", noResponse ? "gap-1.5" : "gap-2", large && (noResponse ? "gap-2.5" : "gap-3.5"))}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                errorPress();
+              }}
+              disabled={isMaxReached && trials[current] === null}
+              aria-label="Error"
+              className={cn(
+                "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+                large ? "size-10" : "size-7",
+                trials[current] === "incorrect"
+                  ? "btn-bevel bg-red-500 border-red-600 text-white"
+                  : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
+              )}
+            >
+              <X className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+            </button>
+            {noResponse && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setResult("no-response");
+                }}
+                disabled={isMaxReached && trials[current] === null}
+                aria-label="No Response"
+                className={cn(
+                  "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+                  large ? "size-10" : "size-7",
+                  trials[current] === "no-response"
+                    ? "btn-bevel bg-amber-500 border-amber-600 text-white"
+                    : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
+                )}
+              >
+                <CircleSlash2 className={large ? "size-4" : "size-3"} strokeWidth={2.5} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setResult("correct");
+              }}
+              disabled={isMaxReached && trials[current] === null}
+              aria-label="Correct"
+              className={cn(
+                "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+                large ? "size-10" : "size-7",
+                trials[current] === "correct"
+                  ? "btn-bevel bg-green-500 border-green-600 text-white"
+                  : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
+              )}
+            >
+              <Check className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+            </button>
+          </div>
+        }
+      >
+        <SwipeStrip
+          count={trials.length}
+          current={current}
+          onCurrentChange={goTo}
+          variant="centered"
+          className="w-full"
+          gapClassName={large ? "gap-2" : "gap-1.5"}
+          itemWrapperClassName="flex items-center justify-center"
+        >
+          {(i, isCenter) => {
+            const t = trials[i];
+            const bg =
+              t === "correct"
+                ? "bg-green-50 border-green-300 text-green-700"
+                : t === "incorrect"
+                  ? "bg-red-50 border-red-300 text-red-700"
+                  : t === "no-response"
+                    ? "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-foreground/5 border-foreground/10 text-foreground/40";
+            return (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(i);
+                }}
+                className={cn(
+                  "grid place-items-center rounded-full font-semibold tabular-nums transition-[width,height,font-size]",
+                  isCenter ? "border-2" : "border",
+                  bg,
+                  isCenter && !t && "bg-card border-foreground/30 text-foreground",
+                )}
+                style={{
+                  width: isCenter ? tileBubbleCenter : tileBubble,
+                  height: isCenter ? tileBubbleCenter : tileBubble,
+                  fontSize: isCenter ? (large ? 23 : 17) : large ? 8 : 6.5,
+                }}
+              >
+                {i + 1}
+              </div>
+            );
+          }}
+        </SwipeStrip>
+      </MiniTileShell>
+    );
+  }
 
   return (
     <article

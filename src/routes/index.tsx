@@ -270,11 +270,15 @@ function scrollActiveCardIntoView(el: HTMLElement, headerHeight: number) {
 }
 
 const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
-  // Tighter than card/grid's gap-3 — a condensed list reads better with its
-  // rows sitting close together rather than spaced like full cards.
+  // Tighter than card's gap-3 — a condensed list reads better with its rows
+  // sitting close together rather than spaced like full cards.
   list: "grid-cols-1 gap-1.5",
   card: "grid-cols-1 sm:grid-cols-2 gap-3",
-  grid: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3",
+  // Quick-action tiles are deliberately mobile-first multi-column (unlike
+  // list/card's single column on narrow viewports) — the whole point is
+  // fitting several at once on a phone screen, not just at sm+.
+  "grid-large": "grid-cols-2 gap-2",
+  "grid-small": "grid-cols-3 gap-1.5",
 };
 
 function IndexInner() {
@@ -675,6 +679,11 @@ function renderCard(
     cardHidden: boolean;
     onToggleHidden: () => void;
     dragControls?: DragControls;
+    /** Set for the two quick-action grid modes — swaps each card's own
+     *  full-size markup for a compact aspect-square tile rendering the
+     *  same underlying state, rather than mounting a separate component
+     *  (which would lose that state on every mode switch). */
+    tileDensity?: "large" | "small";
   },
 ): React.ReactNode {
   if (displayMode === "list") {
@@ -962,6 +971,7 @@ const DataCardList = memo(function DataCardList({
       cardHidden: hidden.has(card.id),
       onToggleHidden: () => toggleHidden(card.id),
       dragControls,
+      tileDensity: displayMode === "grid-large" ? "large" : displayMode === "grid-small" ? "small" : undefined,
     });
 
   // Edit mode is its own render path — drag-to-reorder (via Motion's

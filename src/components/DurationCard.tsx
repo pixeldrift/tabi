@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { DurationIcon } from "./icons/DataTypeIcons";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
@@ -45,6 +47,7 @@ export function DurationCard({
   onOpenDetails,
   stickyTop,
   toolbarHeight,
+  tileDensity,
 }: DurationCardProps) {
   const [instances, setInstances] = useState<number[]>([0]);
   const [viewIdx, setViewIdx] = useState(0);
@@ -209,6 +212,102 @@ export function DurationCard({
   const isViewingRunning = running && runningIdxRef.current === viewIdx;
   const isIdxRunning = (i: number) => running && runningIdxRef.current === i;
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    return (
+      <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full h-full">
+        <MiniTileShell
+          title={title}
+          description={description}
+          density={tileDensity}
+          isActive={isActive}
+          onActivate={onActivate}
+          reorderEditing={reorderEditing}
+          favorited={favorited}
+          onToggleFavorite={onToggleFavorite}
+          cardHidden={cardHidden}
+          onToggleHidden={onToggleHidden}
+          dragControls={dragControls}
+          detailsOpen={detailsOpen}
+          onDetailsOpenChange={onDetailsOpenChange}
+          onOpenDetails={onOpenDetails}
+          stickyTop={stickyTop}
+          toolbarHeight={toolbarHeight}
+          details={
+            <dl className="space-y-3">
+              <Row label="Phase" value={phase} />
+              <Row label="Data type" value="Frequency / Duration" />
+              <Row label="Minimum" value={`${minDurationSec}s`} />
+              <Row label="Times" value={String(instances.length)} />
+              <Row label="Total" value={formatTime(totalMs)} />
+            </dl>
+          }
+        >
+          <SwipeStrip
+            count={instances.length}
+            current={viewIdx}
+            onCurrentChange={goTo}
+            variant="paged"
+            className="w-full h-full"
+            itemWrapperClassName="w-full h-full flex flex-col items-center justify-center gap-1"
+          >
+            {(i) => {
+              const running = isIdxRunning(i);
+              const activated = isActivated(i);
+              const accent = running || activated;
+              return (
+                <>
+                  <span
+                    className={cn(
+                      "font-bold uppercase tracking-wide text-muted-foreground",
+                      large ? "text-[11px]" : "text-[9px]",
+                    )}
+                  >
+                    Instance {i + 1}
+                  </span>
+                  <div
+                    className={cn(
+                      "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+                      large ? "h-10" : "h-[30px]",
+                      accent ? "border-blue-500" : "border-stone-300",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex items-center font-bold tabular-nums",
+                        large ? "px-3 text-lg" : "px-2 text-[13px]",
+                      )}
+                    >
+                      {formatCompactTime(instanceMs(i))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleInstance(i);
+                      }}
+                      aria-label={running ? "Pause this instance" : "Start this instance"}
+                      className={cn(
+                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                        large ? "w-10" : "w-[30px]",
+                      )}
+                    >
+                      {running ? (
+                        <Pause className={large ? "size-[17px]" : "size-3.5"} fill="currentColor" strokeWidth={0} />
+                      ) : (
+                        <Play className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")} fill="currentColor" strokeWidth={0} />
+                      )}
+                    </button>
+                  </div>
+                </>
+              );
+            }}
+          </SwipeStrip>
+        </MiniTileShell>
+      </div>
+    );
+  }
 
   return (
     <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full max-w-md scroll-mt-32">
@@ -601,6 +700,18 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+// Deliberately no leading-zero hour/minute padding (unlike formatTime's
+// 00:00:00) — the quick-action tile is much narrower than a full card, and
+// stopwatch-style "0:45" comfortably fits where "00:00:45" would overflow.
+function formatCompactTime(ms: number) {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = h > 0 ? m.toString().padStart(2, "0") : String(m);
+  return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 
 function formatShortTime(ms: number) {

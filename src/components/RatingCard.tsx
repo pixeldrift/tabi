@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { MiniTileShell } from "./MiniTileShell";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function RatingCard({
   onOpenDetails,
   stickyTop,
   toolbarHeight,
+  tileDensity,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -75,6 +77,69 @@ export function RatingCard({
     markDirty();
     setRating((r) => (r === value ? 0 : value));
   };
+
+  if (tileDensity) {
+    const large = tileDensity === "large";
+    return (
+      <MiniTileShell
+        title={title}
+        description={description}
+        density={tileDensity}
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        details={
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Rating (quality)" />
+            <Row label="Range" value={`${min}–${max}`} />
+            <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
+          </dl>
+        }
+      >
+        <div className={cn("flex items-center", large ? "gap-1" : "gap-[3px]")}>
+          {Array.from({ length: numStars }, (_, i) => {
+            const value = min + i + 1;
+            const filled = rating >= value;
+            return (
+              <motion.button
+                key={value}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  pick(value);
+                }}
+                whileTap={{ scale: 0.88 }}
+                animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+                aria-label={`Rate ${value}`}
+                aria-pressed={filled}
+                className="shrink-0"
+              >
+                <Star
+                  className={cn(
+                    large ? "size-[23px]" : "size-[17px]",
+                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/5 stroke-foreground/20",
+                  )}
+                  strokeWidth={1.5}
+                />
+              </motion.button>
+            );
+          })}
+        </div>
+      </MiniTileShell>
+    );
+  }
 
   return (
     <CardShell
