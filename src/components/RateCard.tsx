@@ -200,7 +200,7 @@ export function RateCard({
                   e.stopPropagation();
                   dec();
                 }}
-                disabled={count === 0}
+                disabled={!sessionRunning || count === 0}
                 aria-label="Decrement"
                 className={cn(
                   "btn-bevel shrink-0 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
@@ -215,9 +215,10 @@ export function RateCard({
                   e.stopPropagation();
                   inc();
                 }}
+                disabled={!sessionRunning}
                 aria-label="Increment"
                 className={cn(
-                  "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                  "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40",
                   large ? "size-[42px]" : "size-7",
                 )}
               >
@@ -298,7 +299,7 @@ export function RateCard({
       <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">
         <button
           onClick={dec}
-          disabled={count === 0}
+          disabled={!sessionRunning || count === 0}
           aria-label="Decrement"
           className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
         >
@@ -316,7 +317,8 @@ export function RateCard({
               <button
                 type="button"
                 onClick={open}
-                className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text"
+                disabled={!sessionRunning}
+                className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label={`Current tally is ${count}. Tap to edit.`}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -384,9 +386,10 @@ export function RateCard({
                               e.stopPropagation();
                               openTime();
                             }}
+                            disabled={!sessionRunning}
                             aria-label="Edit elapsed time"
                             className={cn(
-                              "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors",
+                              "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                               running ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
@@ -400,8 +403,9 @@ export function RateCard({
                           e.stopPropagation();
                           toggle();
                         }}
+                        disabled={!sessionRunning}
                         aria-label={running ? "Pause timer" : "Resume timer"}
-                        className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors"
+                        className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-40"
                       >
                         {running ? (
                           <Pause className="size-3 -translate-x-0.5" fill="currentColor" />
@@ -420,10 +424,11 @@ export function RateCard({
 
         <motion.button
           onClick={inc}
+          disabled={!sessionRunning}
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
+            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors disabled:opacity-40",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >

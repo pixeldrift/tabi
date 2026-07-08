@@ -67,7 +67,7 @@ export function RatingCard({
   const cardKey = id ?? title;
   const [rating, setRating] = useCardState(cardKey, "rating", 0);
   const [expanded, setExpanded] = useState(false);
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, sessionRunning } = useCardSession();
   useReportCardStatus(cardKey, rating > 0, rating > 0);
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
@@ -124,12 +124,13 @@ export function RatingCard({
                   e.stopPropagation();
                   pick(value);
                 }}
+                disabled={!sessionRunning}
                 whileTap={{ scale: 0.88 }}
                 animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
                 transition={{ duration: 0.3 }}
                 aria-label={`Rate ${value}`}
                 aria-pressed={filled}
-                className="shrink-0"
+                className="shrink-0 disabled:opacity-40"
               >
                 <Star
                   className={cn(
@@ -192,6 +193,7 @@ export function RatingCard({
                   maxSize={ROW_STAR_SIZE}
                   filled={filled}
                   isTop={isTop}
+                  disabled={!sessionRunning}
                   onClick={() => pick(value)}
                 />
                 <span className={cn("flex-1 text-sm leading-tight", isTop ? "text-foreground" : "text-foreground/70")}>
@@ -219,6 +221,7 @@ export function RatingCard({
                 maxSize={maxSize}
                 filled={filled}
                 isTop={isTop}
+                disabled={!sessionRunning}
                 onClick={() => pick(value)}
               />
             );
@@ -287,6 +290,7 @@ function RatingStar({
   maxSize,
   filled,
   isTop,
+  disabled,
   onClick,
 }: {
   value: number;
@@ -297,6 +301,7 @@ function RatingStar({
   /** The topmost filled star — i.e. the one matching the current rating —
    *  gets the bold "selected" treatment; stars below it just read as filled. */
   isTop: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   // Positions every star's box so its digit — sitting at the plain,
@@ -322,12 +327,16 @@ function RatingStar({
     <motion.button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       whileTap={{ scale: 0.88 }}
       animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
       transition={{ duration: 0.3 }}
       aria-label={`Rate ${value}`}
       aria-pressed={filled}
-      className={cn("relative shrink-0", isTop && "drop-shadow-[0_2px_3px_rgba(29,78,216,0.45)]")}
+      className={cn(
+        "relative shrink-0 disabled:opacity-40",
+        isTop && "drop-shadow-[0_2px_3px_rgba(29,78,216,0.45)]",
+      )}
       style={{ width: size, height: size, marginTop }}
     >
       <svg

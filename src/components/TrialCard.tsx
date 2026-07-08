@@ -120,7 +120,7 @@ export function TrialCard({
   const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
   const remaining = Math.max(0, minTrials - completedCount);
 
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, sessionRunning } = useCardSession();
   useReportCardStatus(cardKey, completedCount > 0, isComplete);
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
@@ -284,7 +284,7 @@ export function TrialCard({
                 e.stopPropagation();
                 errorPress();
               }}
-              disabled={isMaxReached && trials[current] === null}
+              disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
               aria-label="Error"
               className={cn(
                 "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -303,7 +303,7 @@ export function TrialCard({
                   e.stopPropagation();
                   setResult("no-response");
                 }}
-                disabled={isMaxReached && trials[current] === null}
+                disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
                 aria-label="No Response"
                 className={cn(
                   "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -322,7 +322,7 @@ export function TrialCard({
                 e.stopPropagation();
                 setResult("correct");
               }}
-              disabled={isMaxReached && trials[current] === null}
+              disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
               aria-label="Correct"
               className={cn(
                 "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -654,7 +654,7 @@ export function TrialCard({
                 levels={promptLevels}
                 selectedLevel={promptLevel[current] ?? null}
                 selected={trials[current] === "incorrect"}
-                disabled={isMaxReached && trials[current] === null}
+                disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
                 onPick={(level) => pickPromptLevel(current, level, true)}
               />
             ) : (
@@ -662,7 +662,7 @@ export function TrialCard({
                 variant="incorrect"
                 selected={trials[current] === "incorrect"}
                 onClick={() => setResult("incorrect")}
-                disabled={isMaxReached && trials[current] === null}
+                disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
                 dense={noResponse}
               />
             )}
@@ -671,7 +671,7 @@ export function TrialCard({
                 variant="no-response"
                 selected={trials[current] === "no-response"}
                 onClick={() => setResult("no-response")}
-                disabled={isMaxReached && trials[current] === null}
+                disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
                 dense
               />
             )}
@@ -679,7 +679,7 @@ export function TrialCard({
               variant="correct"
               selected={trials[current] === "correct"}
               onClick={() => setResult("correct")}
-              disabled={isMaxReached && trials[current] === null}
+              disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
               dense={noResponse}
             />
           </motion.div>
@@ -711,14 +711,16 @@ export function TrialCard({
                       levels={promptLevels}
                       selectedLevel={promptLevel[i] ?? null}
                       selected={t === "incorrect"}
+                      disabled={!sessionRunning}
                       onPick={(level) => pickPromptLevel(i, level, false)}
                     />
                   ) : (
                     <button
                       type="button"
                       onClick={() => applyResult(i, "incorrect", false)}
+                      disabled={!sessionRunning}
                       className={cn(
-                        "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                        "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                         "border-red-300 text-red-700 hover:bg-red-50",
                         t === "incorrect" && "btn-bevel bg-red-500 border-red-600 text-white",
                       )}
@@ -731,8 +733,9 @@ export function TrialCard({
                     <button
                       type="button"
                       onClick={() => applyResult(i, "no-response", false)}
+                      disabled={!sessionRunning}
                       className={cn(
-                        "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                        "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                         "border-amber-300 text-amber-700 hover:bg-amber-50",
                         t === "no-response" && "btn-bevel bg-amber-500 border-amber-600 text-white",
                       )}
@@ -744,8 +747,9 @@ export function TrialCard({
                   <button
                     type="button"
                     onClick={() => applyResult(i, "correct", false)}
+                    disabled={!sessionRunning}
                     className={cn(
-                      "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+                      "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                       "border-green-300 text-green-700 hover:bg-green-50",
                       t === "correct" && "btn-bevel bg-green-500 border-green-600 text-white",
                     )}
@@ -1020,11 +1024,13 @@ function RowPromptLevelButton({
   levels,
   selectedLevel,
   selected,
+  disabled,
   onPick,
 }: {
   levels: string[];
   selectedLevel: string | null;
   selected: boolean;
+  disabled?: boolean;
   onPick: (level: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1037,8 +1043,9 @@ function RowPromptLevelButton({
             e.stopPropagation();
             setOpen((o) => !o);
           }}
+          disabled={disabled}
           className={cn(
-            "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors",
+            "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
             "border-red-300 text-red-700 hover:bg-red-50",
             selected && "btn-bevel bg-red-500 border-red-600 text-white",
           )}
