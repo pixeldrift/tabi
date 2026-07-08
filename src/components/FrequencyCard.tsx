@@ -47,7 +47,7 @@ export function FrequencyCard({
   const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, sessionRunning } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
@@ -129,7 +129,7 @@ export function FrequencyCard({
                 e.stopPropagation();
                 dec();
               }}
-              disabled={count === 0}
+              disabled={!sessionRunning || count === 0}
               aria-label="Decrement"
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
@@ -144,9 +144,10 @@ export function FrequencyCard({
                 e.stopPropagation();
                 inc();
               }}
+              disabled={!sessionRunning}
               aria-label="Increment"
               className={cn(
-                "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
               )}
             >
@@ -238,7 +239,8 @@ export function FrequencyCard({
               <button
               type="button"
               onClick={open}
-              className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors"
+              disabled={!sessionRunning}
+              className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
               <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
@@ -284,10 +286,11 @@ export function FrequencyCard({
 
         <motion.button
           onClick={inc}
+          disabled={!sessionRunning}
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(
-            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors",
+            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors disabled:opacity-40",
             "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
           )}
         >

@@ -292,9 +292,10 @@ export function DurationCard({
                         e.stopPropagation();
                         toggleInstance(i);
                       }}
+                      disabled={!sessionRunning}
                       aria-label={running ? "Pause this instance" : "Start this instance"}
                       className={cn(
-                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40",
                         large ? "w-10" : "w-[30px]",
                       )}
                     >
@@ -390,9 +391,10 @@ export function DurationCard({
                         e.stopPropagation();
                         open();
                       }}
+                      disabled={!sessionRunning}
                       aria-label={`Edit time for instance ${i + 1}`}
                       className={cn(
-                        "flex-1 text-left tabular-nums text-sm rounded-md transition-colors hover:text-blue-600",
+                        "flex-1 text-left tabular-nums text-sm rounded-md transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
                         isRunning ? "font-bold text-blue-600" : "font-normal text-foreground/80",
                       )}
                     >
@@ -403,9 +405,10 @@ export function DurationCard({
                 <button
                   type="button"
                   onClick={() => toggleInstance(i)}
+                  disabled={!sessionRunning}
                   aria-label={isRunning ? "Pause this instance" : "Start this instance"}
                   className={cn(
-                    "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors",
+                    "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40",
                     isRunning ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600",
                   )}
                 >
@@ -475,6 +478,7 @@ export function DurationCard({
                         ms={instanceMs(i)}
                         running={centerRunning}
                         activated={activated}
+                        disabled={!sessionRunning}
                         onToggle={togglePause}
                         onEditTime={(ms) => setInstanceMs(i, ms)}
                         pulseStyle={pulseStyle}
@@ -522,6 +526,7 @@ function CenterPill({
   ms,
   running,
   activated,
+  disabled,
   onToggle,
   onEditTime,
   pulseStyle,
@@ -530,6 +535,7 @@ function CenterPill({
   ms: number;
   running: boolean;
   activated: boolean;
+  disabled?: boolean;
   onToggle: () => void;
   onEditTime: (ms: number) => void;
   pulseStyle: { animationDuration: string; animationDelay: string };
@@ -567,8 +573,9 @@ function CenterPill({
                   e.stopPropagation();
                   open();
                 }}
+                disabled={disabled}
                 className={cn(
-                  "font-display text-2xl tabular-nums leading-none transition-colors",
+                  "font-display text-2xl tabular-nums leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                   running ? "text-foreground" : activated ? "text-foreground" : "text-stone-400",
                 )}
               >
@@ -595,8 +602,9 @@ function CenterPill({
           e.stopPropagation();
           onToggle();
         }}
+        disabled={disabled}
         aria-label={running ? "Pause this instance" : "Start this instance"}
-        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700"
+        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40"
       >
         {running ? (
           <Pause className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />

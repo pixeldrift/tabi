@@ -83,7 +83,7 @@ export function TaskAnalysisCard({
   const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
   const [current, setCurrent] = useCardState(cardKey, "current", 0);
   const [expanded, setExpanded] = useState(false);
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, sessionRunning } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
@@ -173,9 +173,10 @@ export function TaskAnalysisCard({
                     e.stopPropagation();
                     setStep(current, opt.value, true);
                   }}
+                  disabled={!sessionRunning}
                   aria-label={opt.label}
                   className={cn(
-                    "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors",
+                    "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                     large ? "size-10" : "size-7",
                     selected ? cn("btn-bevel", opt.selectedClasses) : opt.classes,
                   )}
@@ -300,10 +301,11 @@ export function TaskAnalysisCard({
                     <motion.button
                       key={opt.value}
                       onClick={() => setStep(i, opt.value)}
+                      disabled={!sessionRunning}
                       whileTap={{ scale: 0.9 }}
                       aria-label={opt.value}
                       className={cn(
-                        "size-8 rounded-full border-2 grid place-items-center transition-colors",
+                        "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
                         opt.classes,
                         selected && cn("btn-bevel", opt.selectedClasses),
                       )}
@@ -395,9 +397,10 @@ export function TaskAnalysisCard({
               <motion.button
                 key={opt.value}
                 onClick={() => setStep(current, opt.value, true)}
+                disabled={!sessionRunning}
                 whileTap={{ scale: 0.96 }}
                 className={cn(
-                  "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors",
+                  "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors disabled:opacity-40",
                   opt.classes,
                   selected && cn("btn-bevel", opt.selectedClasses),
                 )}

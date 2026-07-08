@@ -102,6 +102,12 @@ export function useSession() {
 interface CardSessionValue {
   markDirty: () => void;
   resetSignal: number;
+  // Cards gate their own recording controls on this (disabled while idle or
+  // paused) — split off from the main context same as markDirty/resetSignal
+  // above: it only flips on start/pause/resume/discard, not every tick, so
+  // reading it here doesn't cost cards the render-storm subscribing to the
+  // full context (with its every-250ms elapsedMs) would.
+  sessionRunning: boolean;
 }
 
 const CardSessionContext = createContext<CardSessionValue | null>(null);
@@ -337,7 +343,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  const cardValue = useMemo(() => ({ markDirty, resetSignal }), [markDirty, resetSignal]);
+  const cardValue = useMemo(
+    () => ({ markDirty, resetSignal, sessionRunning }),
+    [markDirty, resetSignal, sessionRunning],
+  );
 
   return (
     <SessionContext.Provider value={value}>
