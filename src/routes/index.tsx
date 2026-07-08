@@ -9,13 +9,11 @@ import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
 import { DataListRow } from "@/components/DataListRow";
-import {
-  PercentCorrectIcon,
-  FrequencyIcon,
-  RateIcon,
-  DurationIcon,
-  TaskAnalysisIcon,
-} from "@/components/icons/DataTypeIcons";
+import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
+import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
+import { RateIcon } from "@/components/icons/RateIcon";
+import { DurationIcon } from "@/components/icons/DurationIcon";
+import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";

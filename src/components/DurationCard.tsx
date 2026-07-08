@@ -5,7 +5,7 @@ import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
 import { useCardState, useResetGuard } from "./CardDataStore";
-import { DurationIcon } from "./icons/DataTypeIcons";
+import { DurationIcon } from "./icons/DurationIcon";
 import { TimeKeypad } from "./TimeKeypad";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";

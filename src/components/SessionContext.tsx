@@ -14,7 +14,6 @@ export type TransitionKind = "start-new" | "start-previous" | "resume" | "discar
 // matches the notification area's own transition elsewhere in the app.
 export const CARD_EXIT_MS = 350;
 export const HEADER_MORPH_MS = 350;
-export const CARD_ENTER_MS = 350;
 
 // The session box itself waits for the pill's HEADER_MORPH_MS morph to land
 // in the mini slot before it collapses (see StatusBar's boxCollapsed state),

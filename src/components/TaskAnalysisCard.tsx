@@ -5,7 +5,7 @@ import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
 import { useCardState, useResetGuard } from "./CardDataStore";
-import { TaskAnalysisIcon } from "./icons/DataTypeIcons";
+import { TaskAnalysisIcon } from "./icons/TaskAnalysisIcon";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";

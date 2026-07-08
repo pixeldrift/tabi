@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, EyeOff, Pencil, Search, Star, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  PercentCorrectIcon,
-  FrequencyIcon,
-  RateIcon,
-  DurationIcon,
-  TaskAnalysisIcon,
-} from "@/components/icons/DataTypeIcons";
-import { ListViewIcon, CardViewIcon, GridViewIcon, SmallGridViewIcon, FilterIcon } from "@/components/icons/ToolbarIcons";
+import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
+import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
+import { RateIcon } from "@/components/icons/RateIcon";
+import { DurationIcon } from "@/components/icons/DurationIcon";
+import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
+import { ListViewIcon } from "@/components/icons/ListViewIcon";
+import { CardViewIcon } from "@/components/icons/CardViewIcon";
+import { GridViewIcon } from "@/components/icons/GridViewIcon";
+import { SmallGridViewIcon } from "@/components/icons/SmallGridViewIcon";
+import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, type CardKind, type DisplayMode } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 

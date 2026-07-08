@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X, CircleSlash2 } from "lucide-react";
-import { PercentCorrectIcon } from "./icons/DataTypeIcons";
+import { PercentCorrectIcon } from "./icons/PercentCorrectIcon";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
