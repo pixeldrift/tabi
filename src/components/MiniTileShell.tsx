@@ -90,7 +90,11 @@ export function MiniTileShell({
             // the merged string wins the whole group. With leading first,
             // it was silently discarded and this was rendering at the
             // browser's ~1.5x default the entire time.
-            large ? "text-[13px] line-clamp-3 leading-[0.7]" : "text-[10.5px] line-clamp-2 leading-[0.7]",
+            // 1.05 matches the ratio Card/List titles use (see TrialCard's
+            // and DataListRow's own header h2) — anything much tighter than
+            // that starts clipping ascenders/descenders against the line
+            // box instead of just looking snug.
+            large ? "text-[13px] line-clamp-3 leading-[1.05]" : "text-[10.5px] line-clamp-2 leading-[1.05]",
           )}
         >
           {title}

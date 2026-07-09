@@ -4,6 +4,11 @@ import { Check, X, CircleSlash2 } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/PercentCorrectIcon";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
+import { VerbalPromptIcon } from "./icons/VerbalPromptIcon";
+import { GesturalPromptIcon } from "./icons/GesturalPromptIcon";
+import { ModelingPromptIcon } from "./icons/ModelingPromptIcon";
+import { PartialPhysicalPromptIcon } from "./icons/PartialPhysicalPromptIcon";
+import { FullPhysicalPromptIcon } from "./icons/FullPhysicalPromptIcon";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
@@ -23,6 +28,18 @@ export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 // particular level" choice — picking it marks the trial incorrect without
 // ever populating `promptLevel`, so the Error button shows no sub-text.
 const UNSPECIFIED_LEVEL = "-unspecified-";
+
+// Only covers the prompt-hierarchy levels this app actually ships with
+// (see `promptLevels` on the "Follows one-step direction" card) — an
+// unrecognized custom level just renders with no icon rather than needing
+// this map kept exhaustively in sync.
+const PROMPT_LEVEL_ICONS: Record<string, typeof VerbalPromptIcon> = {
+  Verbal: VerbalPromptIcon,
+  Gestural: GesturalPromptIcon,
+  Modeling: ModelingPromptIcon,
+  "Partial Physical": PartialPhysicalPromptIcon,
+  "Full Physical": FullPhysicalPromptIcon,
+};
 
 export interface TrialCardProps extends CardEditAndDrawerProps {
   id?: string;
@@ -400,8 +417,10 @@ export function TrialCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <ListActionSlide actionKey={current} direction={direction}>
-            <ListActionBadge value={current + 1} />
+          <div className="flex items-center gap-1">
+            <ListActionSlide actionKey={current} direction={direction}>
+              <ListActionBadge value={current + 1} />
+            </ListActionSlide>
             {promptLevels && promptLevels.length > 0 ? (
               <ListPromptLevelButton
                 levels={promptLevels}
@@ -438,7 +457,7 @@ export function TrialCard({
               ariaLabel="Correct"
               onClick={() => setResult("correct")}
             />
-          </ListActionSlide>
+          </div>
         }
       />
     );
@@ -1060,25 +1079,29 @@ function PromptLevelButton({
           >
             {UNSPECIFIED_LEVEL}
           </button>
-          {levels.map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPick(level);
-                setOpen(false);
-              }}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
-                selectedLevel === level
-                  ? "bg-red-500 text-white"
-                  : "text-red-700 hover:bg-red-50",
-              )}
-            >
-              {level}
-            </button>
-          ))}
+          {levels.map((level) => {
+            const LevelIcon = PROMPT_LEVEL_ICONS[level];
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(level);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                  selectedLevel === level
+                    ? "bg-red-500 text-white"
+                    : "text-red-700 hover:bg-red-50",
+                )}
+              >
+                {LevelIcon && <LevelIcon className="size-3.5 shrink-0" />}
+                {level}
+              </button>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>
@@ -1121,9 +1144,9 @@ function ListPromptLevelButton({
             selected && "btn-bevel bg-red-500 border-red-600 text-white",
           )}
         >
-          <X className="size-3.5" strokeWidth={3} />
+          <X className="size-3.5 -translate-y-0.5" strokeWidth={3} />
           <span
-            className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-current opacity-70"
+            className="absolute bottom-1 left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[3.5px] border-l-transparent border-r-transparent border-t-current opacity-70"
             aria-hidden
           />
         </button>
@@ -1151,25 +1174,29 @@ function ListPromptLevelButton({
           >
             {UNSPECIFIED_LEVEL}
           </button>
-          {levels.map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPick(level);
-                setOpen(false);
-              }}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
-                selectedLevel === level
-                  ? "bg-red-500 text-white"
-                  : "text-red-700 hover:bg-red-50",
-              )}
-            >
-              {level}
-            </button>
-          ))}
+          {levels.map((level) => {
+            const LevelIcon = PROMPT_LEVEL_ICONS[level];
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(level);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                  selectedLevel === level
+                    ? "bg-red-500 text-white"
+                    : "text-red-700 hover:bg-red-50",
+                )}
+              >
+                {LevelIcon && <LevelIcon className="size-3.5 shrink-0" />}
+                {level}
+              </button>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>
@@ -1239,25 +1266,29 @@ function RowPromptLevelButton({
           >
             {UNSPECIFIED_LEVEL}
           </button>
-          {levels.map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPick(level);
-                setOpen(false);
-              }}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
-                selectedLevel === level
-                  ? "bg-red-500 text-white"
-                  : "text-red-700 hover:bg-red-50",
-              )}
-            >
-              {level}
-            </button>
-          ))}
+          {levels.map((level) => {
+            const LevelIcon = PROMPT_LEVEL_ICONS[level];
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(level);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                  selectedLevel === level
+                    ? "bg-red-500 text-white"
+                    : "text-red-700 hover:bg-red-50",
+                )}
+              >
+                {LevelIcon && <LevelIcon className="size-3.5 shrink-0" />}
+                {level}
+              </button>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>

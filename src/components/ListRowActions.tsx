@@ -2,12 +2,28 @@ import { type ReactNode, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-/** Small round value badge — the current trial/step number, or a raw
- *  count/tally — that sits just left of a List row's action buttons. Same
- *  visual language as TrialCard's own expanded-list per-row number. */
-export function ListActionBadge({ value }: { value: number | string }) {
+/** Bare value — the current trial/step number, or a raw count/tally — that
+ *  sits just left of a List row's action buttons. No bubble/background of
+ *  its own (previously a filled circle) so it reads as plain text distinct
+ *  from the buttons' own filled shapes, not another button-like shape among
+ *  them. `weight` is "bold" where the number itself IS the recorded data
+ *  (a Rate/Frequency tally) and "regular" where it's just a position marker
+ *  (a trial/step/instance index) — same distinction Card mode's own large
+ *  center numerals vs. small side numerals draw. */
+export function ListActionBadge({
+  value,
+  weight = "regular",
+}: {
+  value: number | string;
+  weight?: "bold" | "regular";
+}) {
   return (
-    <span className="grid shrink-0 place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-semibold text-foreground/70 tabular-nums">
+    <span
+      className={cn(
+        "grid shrink-0 place-items-center min-w-[1.25rem] h-7 tabular-nums",
+        weight === "bold" ? "text-[15px] font-bold text-foreground" : "text-[11px] font-semibold text-foreground/60",
+      )}
+    >
       {value}
     </span>
   );
@@ -77,10 +93,13 @@ export function ListActionButton({
         selected && cn("btn-bevel", selectedClasses),
       )}
     >
-      <Icon className="size-3.5" strokeWidth={3} />
+      {/* Nudged up a hair to leave room for the triangle below it, inside
+          the button, rather than the icon sitting dead-center and pushing
+          the triangle out past the button's own edge. */}
+      <Icon className={cn("size-3.5", hasMenu && "-translate-y-0.5")} strokeWidth={3} />
       {hasMenu && (
         <span
-          className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-current opacity-70"
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[3.5px] border-l-transparent border-r-transparent border-t-current opacity-70"
           aria-hidden
         />
       )}
@@ -88,17 +107,20 @@ export function ListActionButton({
   );
 }
 
-/** Wraps a List row's whole floating action cluster (badge + buttons) so
- *  advancing to a new trial/instance/step reads as one continuous relay
- *  instead of the numbers and button states just snapping to their new
- *  values in place: the old cluster slides up and out while the new one
- *  slides in from below, keyed by whatever identifies "which one" (trial
- *  index, instance index, step index). Deliberately NOT forced to
- *  position: absolute here — with mode="popLayout", Motion already pulls
- *  only the EXITING copy out of flow on its own, leaving the entering one
- *  in normal flow so its content still sizes this wrapper's (and the
- *  floating parent's) width; forcing both to absolute collapsed that
- *  width to 0, since neither copy was left to size anything.
+/** Wraps just a List row's value/badge (NOT its buttons) so advancing to a
+ *  new trial/instance/step/tally reads as one continuous relay instead of
+ *  the number just snapping to its new value in place: the old value slides
+ *  up and out while the new one slides in from below, keyed by whatever
+ *  identifies "which one" (trial index, instance index, step index, tally
+ *  count). The buttons stay put as plain siblings outside this wrapper —
+ *  same pattern Card mode's own action buttons already follow (their
+ *  selected/disabled state just updates in place, never remounting the
+ *  button itself). Deliberately NOT forced to position: absolute here —
+ *  with mode="popLayout", Motion already pulls only the EXITING copy out of
+ *  flow on its own, leaving the entering one in normal flow so its content
+ *  still sizes this wrapper's (and the floating parent's) width; forcing
+ *  both to absolute collapsed that width to 0, since neither copy was left
+ *  to size anything.
  *  `direction` reverses which way it travels — 1 (the default) is "moved
  *  forward" (next trial, incremented count): new content rises in from the
  *  bottom, old content exits off the top. -1 is "moved backward"

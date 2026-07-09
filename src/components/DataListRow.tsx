@@ -96,9 +96,11 @@ export function DataListRow({
       </div>
 
       {/* Floated (not part of the header's flex flow) so it stays pinned to
-          this same top-right corner regardless of whether the title above
-          it wraps to one line or two. */}
-      {showActions && <div className="absolute top-1.5 right-1.5">{actions}</div>}
+          this same vertically-centered right edge regardless of whether the
+          title above it wraps to one line or two — centered against the
+          row's full height (not the header alone) so it reads as equal top
+          and bottom margins within the box either way. */}
+      {showActions && <div className="absolute top-1/2 -translate-y-1/2 right-1.5">{actions}</div>}
 
       {isActive && (
         <DataDetailsDrawer

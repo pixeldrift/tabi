@@ -284,8 +284,10 @@ export function RateCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <ListActionSlide actionKey={bumpKey} direction={dir}>
-            <ListActionBadge value={count} />
+          <div className="flex items-center gap-1">
+            <ListActionSlide actionKey={bumpKey} direction={dir}>
+              <ListActionBadge value={count} weight="bold" />
+            </ListActionSlide>
             <ListActionButton
               icon={Minus}
               variant="neutral"
@@ -300,7 +302,7 @@ export function RateCard({
               ariaLabel="Increment"
               onClick={inc}
             />
-          </ListActionSlide>
+          </div>
         }
       />
     );

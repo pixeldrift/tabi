@@ -281,8 +281,10 @@ export function TaskAnalysisCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <ListActionSlide actionKey={current}>
-            <ListActionBadge value={current + 1} />
+          <div className="flex items-center gap-1">
+            <ListActionSlide actionKey={current}>
+              <ListActionBadge value={current + 1} />
+            </ListActionSlide>
             {OPTIONS.map((opt) => (
               <ListActionButton
                 key={opt.value}
@@ -294,7 +296,7 @@ export function TaskAnalysisCard({
                 onClick={() => setStep(current, opt.value, true)}
               />
             ))}
-          </ListActionSlide>
+          </div>
         }
       />
     );

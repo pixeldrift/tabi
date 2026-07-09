@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
-import { ListActionSlide } from "./ListRowActions";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { useCardSession } from "./SessionContext";
@@ -171,16 +170,14 @@ export function RatingCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <ListActionSlide actionKey={rating}>
-            <ListRatingButton
-              rating={rating}
-              numStars={numStars}
-              min={min}
-              levelDescriptions={levelDescriptions}
-              disabled={!sessionRunning}
-              onPick={pick}
-            />
-          </ListActionSlide>
+          <ListRatingButton
+            rating={rating}
+            numStars={numStars}
+            min={min}
+            levelDescriptions={levelDescriptions}
+            disabled={!sessionRunning}
+            onPick={pick}
+          />
         }
       />
     );
@@ -363,13 +360,29 @@ function ListRatingButton({
               : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
           )}
         >
-          {rating > 0 ? (
-            <span className="text-xs font-bold tabular-nums">{rating}</span>
-          ) : (
-            <Star className="size-3.5" strokeWidth={2} />
-          )}
+          {/* Only the numeral/star itself slides on a new rating — the
+              button chrome around it stays put, same pattern as every other
+              kind's badge+buttons split (see ListActionSlide). */}
+          <span className="relative size-3.5 grid place-items-center overflow-hidden -translate-y-0.5">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={rating}
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                className="absolute inset-0 grid place-items-center"
+              >
+                {rating > 0 ? (
+                  <span className="text-xs font-bold tabular-nums">{rating}</span>
+                ) : (
+                  <Star className="size-3.5" strokeWidth={2} />
+                )}
+              </motion.span>
+            </AnimatePresence>
+          </span>
           <span
-            className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-current opacity-70"
+            className="absolute bottom-1 left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[3.5px] border-l-transparent border-r-transparent border-t-current opacity-70"
             aria-hidden
           />
         </button>
