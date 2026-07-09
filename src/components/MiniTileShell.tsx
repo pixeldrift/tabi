@@ -253,24 +253,29 @@ function MiniEditControls({
       className="flex items-center gap-0.5 shrink-0 -mt-0.5"
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-pressed={favorited}
-        aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-        className={cn("grid place-items-center rounded-full transition-colors", size, favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
-      >
-        <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
-      </button>
-      <button
-        type="button"
-        onClick={onToggleHidden}
-        aria-pressed={cardHidden}
-        aria-label={cardHidden ? "Unhide card" : "Hide card"}
-        className={cn("grid place-items-center rounded-full transition-colors", size, cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
-      >
-        <EyeOff className={icon} />
-      </button>
+      {/* Favorite/hidden grouped tighter than their gap to the drag handle
+          — they're the same kind of toggle, so read as a pair rather than
+          three evenly-spaced controls. */}
+      <div className="flex items-center -space-x-1">
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-pressed={favorited}
+          aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+          className={cn("grid place-items-center rounded-full transition-colors", size, favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+        >
+          <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHidden}
+          aria-pressed={cardHidden}
+          aria-label={cardHidden ? "Unhide card" : "Hide card"}
+          className={cn("grid place-items-center rounded-full transition-colors", size, cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+        >
+          <EyeOff className={icon} />
+        </button>
+      </div>
       <span
         className={cn("cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing", size)}
         onPointerDown={(e) => {
