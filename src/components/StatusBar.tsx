@@ -609,7 +609,7 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
               <Timer className="size-4" />
             </span>
             {count > 1 && (
-              <sup className="text-[9px] font-semibold leading-none -ml-px -mt-1.5">
+              <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">
                 {count}
               </sup>
             )}

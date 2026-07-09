@@ -267,12 +267,23 @@ export function TaskAnalysisCard({
                   goTo(i);
                 }}
                 className={cn(
-                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold leading-none transition-[font-size]",
+                  "line-clamp-2 text-left font-semibold leading-[1.15] transition-[font-size]",
                   isCenter ? color : "invisible",
                 )}
+                // A real `width` (not just `maxWidth`) so text-left has room
+                // to work with — sized to the tile's own actual available
+                // content width (measured against the rendered tile, minus
+                // its padding) rather than the old, narrower guess that
+                // clipped anything longer than a couple words. line-clamp-2
+                // (rather than a single nowrap line + ellipsis) is the other
+                // half of "no clipping": even at a smaller font, the
+                // longest step names (e.g. "Scrub for 20 seconds") don't
+                // fit on one line in a tile this narrow — wrapping to a
+                // second line reads the whole thing instead of truncating
+                // it.
                 style={{
-                  maxWidth: isCenter ? (large ? 148 : 96) : large ? 130 : 82,
-                  fontSize: isCenter ? (large ? 17 : 11.5) : large ? 11 : 8.5,
+                  width: isCenter ? (large ? 160 : 102) : large ? 160 : 102,
+                  fontSize: isCenter ? (large ? 13 : 10) : large ? 13 : 10,
                 }}
               >
                 {i + 1}: {steps[i]}
@@ -351,11 +362,21 @@ export function TaskAnalysisCard({
       isComplete={isComplete}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}
-      // No helperText here — it now sits right under "Step X of Y" inside
-      // the card's own body instead of overlaid on the progress bar at the
-      // card's bottom, so it reads next to the step count it's talking
-      // about rather than detached from it. The bar itself is still shown
-      // (via `progress` above) as a plain, textless indicator.
+      helperText={
+        isComplete ? (
+          <span>
+            All steps scored ·{" "}
+            <strong className="font-semibold">
+              {independent}/{steps.length} independent
+            </strong>
+          </span>
+        ) : (
+          <span>
+            Score <strong className="font-semibold">{remaining} more</strong>{" "}
+            {remaining === 1 ? "step" : "steps"}.
+          </span>
+        )
+      }
       details={
         <dl className="space-y-3">
           <Row label="Phase" value={phase} />
@@ -474,25 +495,6 @@ export function TaskAnalysisCard({
         </div>
         <div className="text-center text-xs text-muted-foreground">
           Step {current + 1} of {steps.length}
-        </div>
-        {/* Sits right under the step count it's talking about, rather than
-            overlaid on the progress bar down at the card's bottom (see the
-            CardShell call above) — reads as one connected caption instead
-            of two disconnected pieces of status. */}
-        <div className="text-center text-[11px] text-muted-foreground">
-          {isComplete ? (
-            <span>
-              All steps scored ·{" "}
-              <strong className="font-semibold">
-                {independent}/{steps.length} independent
-              </strong>
-            </span>
-          ) : (
-            <span>
-              Score <strong className="font-semibold">{remaining} more</strong>{" "}
-              {remaining === 1 ? "step" : "steps"}.
-            </span>
-          )}
         </div>
 
         {/* flex+justify-center on the row, rather than text-align:center on

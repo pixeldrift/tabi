@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { GripVertical, Heart, EyeOff } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
@@ -59,10 +59,27 @@ export function MiniTileShell({
   isComplete = false,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
   const large = density === "large";
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
   const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
+
+  // Sized off the actions row's own rendered width (rather than a fixed
+  // guess) so it stays just a bit wider than whatever button cluster this
+  // card kind actually renders — 2 buttons for Trial, 3 for Task Analysis,
+  // large vs small density, etc. — instead of spanning near the tile's
+  // full width and catching in its rounded corners.
+  const [actionsWidth, setActionsWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = actionsRef.current;
+    if (!el) return;
+    const update = () => setActionsWidth(el.offsetWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <article
@@ -175,22 +192,34 @@ export function MiniTileShell({
 
       <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">{children}</div>
 
-      {actions && <div className="shrink-0">{actions}</div>}
+      {actions && (
+        // self-center (rather than the flex-col parent's default stretch)
+        // so this wrapper shrinks to the actions row's own natural width —
+        // actionsRef needs that real width, not the full stretched column
+        // width, to size the progress bar below.
+        <div className="shrink-0 self-center" ref={actionsRef}>
+          {actions}
+        </div>
+      )}
       </div>
 
       {/* A background wash behind the tile's own content (z-10 above, see
           that wrapper's comment) rather than a layout sibling it shrinks to
           make room for — so scoring a trial doesn't nudge everything else
           up a few px. Skinnier than CardShell's own labeled version since
-          there's no helper text to make room for. Inset from the edges
-          (rather than flush corner-to-corner) and rounded-full so it reads
-          as sitting inside the tile's own border instead of touching/
-          merging into it — most visible once a selected tile's ring makes
-          that border more prominent. Only rendered where a running
-          percentage is meaningful for the data type (Trial, Task Analysis);
-          Frequency/Rate/Duration/Rating pass no `progress`. */}
+          there's no helper text to make room for. Centered and sized off
+          the actions row's own measured width (see actionsWidth above)
+          rather than spanning near the tile's full width — just a bit
+          wider than whatever button cluster this card kind renders, so it
+          doesn't reach into the tile's rounded corners. Only rendered
+          where a running percentage is meaningful for the data type
+          (Trial, Task Analysis); Frequency/Rate/Duration/Rating pass no
+          `progress`. */}
       {showProgress && (
-        <div className="absolute inset-x-2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 bottom-1 z-0 w-16 h-0.5 rounded-full overflow-hidden bg-stone-200/80"
+          style={actionsWidth != null ? { width: actionsWidth + 16 } : undefined}
+        >
           <div
             className={cn("h-full transition-[width]", barColor)}
             style={{ width: `${pct}%` }}
@@ -224,24 +253,29 @@ function MiniEditControls({
       className="flex items-center gap-0.5 shrink-0 -mt-0.5"
       onClick={(e) => e.stopPropagation()}
     >
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-pressed={favorited}
-        aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-        className={cn("grid place-items-center rounded-full transition-colors", size, favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
-      >
-        <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
-      </button>
-      <button
-        type="button"
-        onClick={onToggleHidden}
-        aria-pressed={cardHidden}
-        aria-label={cardHidden ? "Unhide card" : "Hide card"}
-        className={cn("grid place-items-center rounded-full transition-colors", size, cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
-      >
-        <EyeOff className={icon} />
-      </button>
+      {/* Favorite/hidden grouped tighter than their gap to the drag handle
+          — they're the same kind of toggle, so read as a pair rather than
+          three evenly-spaced controls. */}
+      <div className="flex items-center -space-x-1">
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-pressed={favorited}
+          aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+          className={cn("grid place-items-center rounded-full transition-colors", size, favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+        >
+          <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHidden}
+          aria-pressed={cardHidden}
+          aria-label={cardHidden ? "Unhide card" : "Hide card"}
+          className={cn("grid place-items-center rounded-full transition-colors", size, cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+        >
+          <EyeOff className={icon} />
+        </button>
+      </div>
       <span
         className={cn("cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing", size)}
         onPointerDown={(e) => {
