@@ -21,7 +21,13 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // z-[100]: above every sticky bar in the app (DataToolbar's z-[60],
+      // its DataDetailsDrawer's z-[62], Schedule/Status's sticky bars at
+      // z-40) and the Select trigger's open-state z-[60] — a modal has to
+      // outrank all of them, not just the base-level z-50 content Radix
+      // defaults to, or it renders tucked underneath whatever sticky bar
+      // happens to be on screen.
+      "fixed inset-0 z-[100] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -61,7 +67,12 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={setRefs}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          // Same z-[100] as DialogOverlay above (see its own comment) —
+          // content just needs to clear the overlay it already shares a
+          // stacking context with; DOM order (content mounts after overlay)
+          // handles that even at equal z-index, but matching the value
+          // keeps the two from ever being read as independently tunable.
+          "fixed left-[50%] top-[50%] z-[100] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
           className,
         )}
         {...props}
