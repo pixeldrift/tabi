@@ -174,7 +174,6 @@ export function RatingCard({
             rating={rating}
             numStars={numStars}
             min={min}
-            levelDescriptions={levelDescriptions}
             disabled={!sessionRunning}
             onPick={pick}
           />
@@ -321,22 +320,20 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
 };
 
 /** The List display mode's single floating action — shows the current
- *  rating (or a bare star while unrated) and opens the same star+
- *  description picker as the full card's own expanded view, just in a
- *  popup instead of an inline expand/collapse panel. The triangle is the
- *  same "more choices below" cue every other button-with-a-menu uses. */
+ *  rating (or a bare star while unrated) and opens a plain star-row picker,
+ *  the same style as the grid tile's own star row (no level descriptions —
+ *  those only appear in Card mode's roomier expanded view). The triangle is
+ *  the same "more choices below" cue every other button-with-a-menu uses. */
 function ListRatingButton({
   rating,
   numStars,
   min,
-  levelDescriptions,
   disabled,
   onPick,
 }: {
   rating: number;
   numStars: number;
   min: number;
-  levelDescriptions?: string[];
   disabled?: boolean;
   onPick: (value: number) => void;
 }) {
@@ -389,37 +386,52 @@ function ListRatingButton({
       </PopoverAnchor>
       <PopoverContent
         side="top"
-        align="end"
+        align="center"
         collisionPadding={8}
-        className="w-64 rounded-2xl border-2 border-blue-300 bg-card p-2 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        className="group w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
-        <ol className="space-y-1">
+        <div className="flex items-center gap-1">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
-            const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
             const filled = rating >= value;
-            const isTop = filled && value === rating;
             return (
-              <li key={value} className="flex items-start gap-2">
-                <RatingStar
-                  value={value}
-                  size={ROW_STAR_SIZE}
-                  maxSize={ROW_STAR_SIZE}
-                  filled={filled}
-                  isTop={isTop}
-                  disabled={disabled}
-                  onClick={() => {
-                    onPick(value);
-                    setOpen(false);
-                  }}
+              <motion.button
+                key={value}
+                type="button"
+                onClick={() => {
+                  onPick(value);
+                  setOpen(false);
+                }}
+                disabled={disabled}
+                whileTap={{ scale: 0.88 }}
+                animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+                aria-label={`Rate ${value}`}
+                aria-pressed={filled}
+                className="shrink-0 disabled:opacity-40"
+              >
+                <Star
+                  className={cn(
+                    "size-6",
+                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/5 stroke-foreground/20",
+                  )}
+                  strokeWidth={1.5}
                 />
-                <span className={cn("flex-1 text-xs leading-tight pt-1", isTop ? "text-foreground" : "text-foreground/70")}>
-                  {desc}
-                </span>
-              </li>
+              </motion.button>
             );
           })}
-        </ol>
+        </div>
+        {/* Arrow — points back at the star button that opened this popup,
+            same idiom as NumberKeypad's own popover arrow. */}
+        <div
+          className={cn(
+            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
+            "-bottom-[7px] border-r-2 border-b-2",
+            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
+            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+          )}
+        />
       </PopoverContent>
     </Popover>
   );

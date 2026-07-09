@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -146,6 +146,17 @@ export function TaskAnalysisCard({
     [current, stepWidth],
   );
 
+  // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
+  // mouse dragging in addition to the triangle nav buttons, snapping to
+  // whichever step ends up nearest center on release.
+  const dragX = useMotionValue(0);
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const finalOffset = trackOffset + info.offset.x;
+    const targetIdx = Math.round(-(finalOffset + BUBBLE_CENTER / 2) / stepWidth);
+    goTo(targetIdx);
+    animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
+  };
+
   if (tileDensity) {
     const large = tileDensity === "large";
     return (
@@ -166,6 +177,8 @@ export function TaskAnalysisCard({
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        progress={progress}
+        isComplete={isComplete}
         details={
           <dl className="space-y-3">
             <Row label="Phase" value={phase} />
@@ -203,13 +216,17 @@ export function TaskAnalysisCard({
           </div>
         }
       >
-        {/* Previous/next step status, in the same left-behind/coming-up
-            reading direction as the nav arrows elsewhere — large density
-            only ("if there is room"; small's own step text is already
-            fighting for space, see MiniTileShell's own clamp comment). */}
+        {/* Previous/current/next step status, in the same left-behind/
+            coming-up reading direction as the nav arrows elsewhere — large
+            density only ("if there is room"; small's own step text is
+            already fighting for space, see MiniTileShell's own clamp
+            comment). The current step's own dot sits bigger in the middle,
+            emphasizing it against its (smaller) neighbors — shifted up a
+            few px so it doesn't crowd the step text/nav directly below it. */}
         {large && (
-          <div className="flex items-center gap-3" aria-hidden>
+          <div className="-mt-1 flex items-center gap-2.5" aria-hidden>
             <span className={cn("rounded-full size-1.5", current > 0 ? statusDotColor(statuses[current - 1]) : "bg-transparent")} />
+            <span className={cn("rounded-full size-2.5", statusDotColor(statuses[current]))} />
             <span className={cn("rounded-full size-1.5", current < steps.length - 1 ? statusDotColor(statuses[current + 1]) : "bg-transparent")} />
           </div>
         )}
@@ -280,6 +297,8 @@ export function TaskAnalysisCard({
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        progress={progress}
+        isComplete={isComplete}
         actions={
           <div className="flex items-center gap-1">
             <ListActionSlide actionKey={current}>
@@ -326,21 +345,11 @@ export function TaskAnalysisCard({
       isComplete={isComplete}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}
-      helperText={
-        isComplete ? (
-          <span>
-            All steps scored ·{" "}
-            <strong className="font-semibold">
-              {independent}/{steps.length} independent
-            </strong>
-          </span>
-        ) : (
-          <span>
-            Score <strong className="font-semibold">{remaining} more</strong>{" "}
-            {remaining === 1 ? "step" : "steps"}.
-          </span>
-        )
-      }
+      // No helperText here — it now sits right under "Step X of Y" inside
+      // the card's own body instead of overlaid on the progress bar at the
+      // card's bottom, so it reads next to the step count it's talking
+      // about rather than detached from it. The bar itself is still shown
+      // (via `progress` above) as a plain, textless indicator.
       details={
         <dl className="space-y-3">
           <Row label="Phase" value={phase} />
@@ -411,9 +420,13 @@ export function TaskAnalysisCard({
           >
             <motion.div
               className="absolute top-1/2 left-1/2 flex items-center"
-              style={{ gap: GAP, translateY: "-50%" }}
+              style={{ gap: GAP, x: dragX, translateY: "-50%" }}
               animate={{ x: trackOffset }}
               transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              drag="x"
+              dragConstraints={{ left: -((steps.length - 1) * stepWidth) - 200, right: 200 }}
+              dragElastic={0.08}
+              onDragEnd={handleDragEnd}
             >
               {steps.map((_, i) => {
                 const isCenter = i === current;
@@ -455,6 +468,25 @@ export function TaskAnalysisCard({
         </div>
         <div className="text-center text-xs text-muted-foreground">
           Step {current + 1} of {steps.length}
+        </div>
+        {/* Sits right under the step count it's talking about, rather than
+            overlaid on the progress bar down at the card's bottom (see the
+            CardShell call above) — reads as one connected caption instead
+            of two disconnected pieces of status. */}
+        <div className="text-center text-[11px] text-muted-foreground">
+          {isComplete ? (
+            <span>
+              All steps scored ·{" "}
+              <strong className="font-semibold">
+                {independent}/{steps.length} independent
+              </strong>
+            </span>
+          ) : (
+            <span>
+              Score <strong className="font-semibold">{remaining} more</strong>{" "}
+              {remaining === 1 ? "step" : "steps"}.
+            </span>
+          )}
         </div>
 
         {/* flex+justify-center on the row, rather than text-align:center on

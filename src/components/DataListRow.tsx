@@ -19,6 +19,11 @@ export interface DataListRowProps extends CardEditAndDrawerProps {
    *  stays put in the same corner even when the title wraps to a second
    *  line instead of push down alongside it. */
   actions?: ReactNode;
+  /** 0–100 progress — a thin, color-coded bar flush to the row's bottom
+   *  edge, no label. Omit for kinds where a running percentage isn't
+   *  meaningful (mirrors CardShell's own `progress={null}` for those). */
+  progress?: number | null;
+  isComplete?: boolean;
 }
 
 /** The list `displayMode`'s row: a bare data-type icon then the title, no
@@ -44,23 +49,31 @@ export function DataListRow({
   stickyTop = 0,
   toolbarHeight = 0,
   actions,
+  progress,
+  isComplete = false,
 }: DataListRowProps) {
   const rowRef = useRef<HTMLElement | null>(null);
   const showActions = actions && !reorderEditing;
+  const showProgress = typeof progress === "number";
+  const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
 
   return (
     <article
       ref={rowRef}
       onClick={onActivate}
       className={cn(
+        // Border is ALWAYS 1px — see CardShell's own version of this
+        // comment (the same ring-based fix, applied here for consistency
+        // even though this row has no progress bar of its own yet to
+        // reveal the shadow-clip half of that bug).
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
-        // Same rule every other card kind follows: 1px border by default,
-        // 2px only for the active/selected blue highlight.
         isActive
-          ? "border-2 border-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
+          ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
+      <div className="relative rounded-xl overflow-hidden">
       <div
         className={cn(
           "flex items-start gap-1.5 pl-2 py-2",
@@ -101,6 +114,16 @@ export function DataListRow({
           row's full height (not the header alone) so it reads as equal top
           and bottom margins within the box either way. */}
       {showActions && <div className="absolute top-1/2 -translate-y-1/2 right-1.5">{actions}</div>}
+
+      {/* Flush to the row's own bottom edge — a few px tall, no label. Only
+          rendered where a running percentage is meaningful for the data
+          type (Trial, Task Analysis); other kinds pass no `progress`. */}
+      {showProgress && (
+        <div className="h-1.5 bg-stone-200">
+          <div className={cn("h-full transition-[width]", barColor)} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      </div>
 
       {isActive && (
         <DataDetailsDrawer

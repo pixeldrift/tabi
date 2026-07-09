@@ -306,7 +306,14 @@ function IndexInner() {
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { status, transitionStage, transitionKind } = useSession();
-  const sessionActive = status === "running";
+  // Paused counts as "active" too — a session still exists, it's just not
+  // ticking. Gating this on "running" alone flashed the "Start session to
+  // record data" banner and dimmed every card each time a session was
+  // paused (only "idle" should read as no active session), which is what
+  // was producing the tab/content-pane "bounce" on pause: the banner
+  // sliding in and the cards dropping to half-opacity added an extra,
+  // unrelated layout shift on top of the box's own expand animation.
+  const sessionActive = status !== "idle";
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
   // so it slides out on top of the toolbar, not just the pane below it —
@@ -883,13 +890,36 @@ const CARD_MORPH_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const
 // revealed or clipped — so it always renders at its true, undistorted size.
 function MorphContent({ displayMode, children }: { displayMode: DisplayMode; children: React.ReactNode }) {
   const measureRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | "auto">("auto");
+  const [height, setHeight] = useState<number | null>(null);
   const isFirstMeasure = useRef(true);
 
-  useLayoutEffect(() => {
+  // ResizeObserver instead of the more obvious "measure scrollHeight in a
+  // useLayoutEffect keyed on displayMode, animate to it, then transitionEnd
+  // back to auto" — that trick doesn't hold up here. AnimatePresence's own
+  // `exit` (below) pulls the OLD content out of flow via position:absolute
+  // the INSTANT the key changes, not animated, so this wrapper's "auto"
+  // height can already reflow to match the ENTERING content alone before a
+  // same-pass layout effect ever runs — collapsing the animation's start
+  // and end to the same number, so it snaps instead of morphing. A regular
+  // (non-layout) effect here, by contrast, naturally fires AFTER that
+  // paint — so `height` state still holds the OLD value through that first
+  // paint, and only advances to the new measurement afterward, which is
+  // exactly the two genuinely-different, two-separately-painted values
+  // Motion needs to interpolate between. Same ResizeObserver-based pattern
+  // StatusBar's own boxNaturalHeight/miniSlotHeight already use, for the
+  // identical reason ("Motion's own auto height resolution wasn't
+  // reliable") — and it doubles as the ongoing remeasure this wrapper needs
+  // for any later in-place content growth (a trial's row expanding, a
+  // frequency counter growing), which the old transitionEnd approach had to
+  // hand off to "auto" for since it had no other way to keep tracking it.
+  useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    setHeight(el.scrollHeight);
+    const measure = () => setHeight(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [displayMode]);
 
   useEffect(() => {
@@ -900,17 +930,7 @@ function MorphContent({ displayMode, children }: { displayMode: DisplayMode; chi
     <motion.div
       className="w-full"
       style={{ overflow: "hidden" }}
-      animate={{
-        height,
-        // Hand height back to real "auto" the instant the morph settles
-        // rather than leaving this wrapper pinned to the pixel value it
-        // measured at mode-switch time — otherwise anything that changes a
-        // card's own content height afterward (expanding a trial's row
-        // detail, a frequency counter growing) has nothing here to
-        // re-measure it and gets clipped by this wrapper's stale,
-        // now-too-short height.
-        transitionEnd: { height: "auto" },
-      }}
+      animate={{ height: height ?? "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
       // itself would otherwise be a no-op anyway. Every later mode switch
@@ -1059,8 +1079,19 @@ const DataCardList = memo(function DataCardList({
       detailsOpen: card.id === activeId && drawerSlideOpen,
       onDetailsOpenChange: onDrawerOpenChange,
       onOpenDetails: () => {
+        // Activating a card that wasn't already active mounts a FRESH
+        // DataDetailsDrawer instance for it (see CardShell/MiniTileShell/
+        // DataListRow's own `{isActive && <DataDetailsDrawer .../>}`) —
+        // setting `open` true in that same tick means its very first commit
+        // is already-open, and Motion's `initial={false}` treats that first
+        // commit as the resting state rather than something to animate from,
+        // so the panel pops open instead of sliding out. Deferring the open
+        // flag one frame lets that fresh instance actually mount (and paint)
+        // closed first, so the slide-open plays as a normal, already-mounted
+        // prop change — the same way toggling the drawer's own pull tab
+        // (which never remounts) already animates correctly.
         setActiveId(card.id);
-        onDrawerOpenChange(true);
+        requestAnimationFrame(() => onDrawerOpenChange(true));
       },
       stickyTop,
       toolbarHeight,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Play, Pause } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -221,6 +221,17 @@ export function DurationCard({
   const isIdxRunning = (i: number) => running && runningIdx === i;
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
+  // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
+  // mouse dragging in addition to the triangle nav buttons, snapping to
+  // whichever instance ends up nearest center on release.
+  const dragX = useMotionValue(0);
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const finalOffset = trackOffset + info.offset.x;
+    const targetIdx = Math.round(-(finalOffset + CENTER_W / 2) / stepWidth);
+    goTo(targetIdx);
+    animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
+  };
+
   if (tileDensity) {
     const large = tileDensity === "large";
     return (
@@ -253,19 +264,23 @@ export function DurationCard({
           }
         >
           <div
-            className={cn("flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
+            className={cn("mt-auto flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
             aria-hidden
           >
-            {instances.map((ms, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "rounded-full shrink-0",
-                  large ? "size-1.5" : "size-1",
-                  isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
-                )}
-              />
-            ))}
+            {instances.map((ms, i) => {
+              const isCurrent = i === viewIdx;
+              return (
+                <span
+                  key={i}
+                  className={cn(
+                    "rounded-full shrink-0 transition-[width,height]",
+                    isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
+                    isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
+                    isCurrent && !isIdxRunning(i) && "bg-blue-400",
+                  )}
+                />
+              );
+            })}
           </div>
           <SwipeStrip
             count={instances.length}
@@ -273,7 +288,7 @@ export function DurationCard({
             onCurrentChange={goTo}
             variant="paged"
             className="w-full h-full"
-            itemWrapperClassName="w-full h-full flex flex-col items-center justify-center gap-1"
+            itemWrapperClassName="w-full h-full flex flex-col items-center justify-start pt-1 gap-1"
           >
             {(i) => {
               const running = isIdxRunning(i);
@@ -288,20 +303,35 @@ export function DurationCard({
                       accent ? "border-blue-500" : "border-stone-300",
                     )}
                   >
-                    <span
-                      className={cn(
-                        // Reserves room up front for one more digit than the
-                        // common case (e.g. crossing from "9:59" to "10:00",
-                        // or gaining an hours place entirely) — without this,
-                        // the pill only grows when it actually needs to,
-                        // which reads as a sudden jolt right as the button
-                        // shifts over with it.
-                        "flex items-center justify-center font-bold tabular-nums",
-                        large ? "px-3 text-lg min-w-[4.5rem]" : "px-2 text-[13px] min-w-[3.25rem]",
-                      )}
+                    <TimeKeypad
+                      valueMs={instanceMs(i)}
+                      onReplace={(next) => setInstanceMs(i, next)}
+                      onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
                     >
-                      {formatCompactTime(instanceMs(i))}
-                    </span>
+                      {({ open }) => (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            open();
+                          }}
+                          disabled={!sessionRunning}
+                          aria-label={`Edit time for instance ${i + 1}`}
+                          className={cn(
+                            // Reserves room up front for one more digit than
+                            // the common case (e.g. crossing from "9:59" to
+                            // "10:00", or gaining an hours place entirely) —
+                            // without this, the pill only grows when it
+                            // actually needs to, which reads as a sudden
+                            // jolt right as the button shifts over with it.
+                            "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
+                            large ? "px-3 text-lg min-w-[4.5rem]" : "px-2 text-[13px] min-w-[3.25rem]",
+                          )}
+                        >
+                          {formatCompactTime(instanceMs(i))}
+                        </button>
+                      )}
+                    </TimeKeypad>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -324,11 +354,24 @@ export function DurationCard({
                   </div>
                   <span
                     className={cn(
-                      "font-bold uppercase tracking-wide text-muted-foreground",
+                      "flex items-baseline gap-1 uppercase tracking-wide text-muted-foreground",
                       large ? "text-[11px] leading-none" : "text-[9px] leading-none",
                     )}
                   >
-                    Instance {i + 1}
+                    <span>Instance</span>
+                    {/* The instance number itself is the one thing worth a
+                        glance here — larger and bolder than the rest of the
+                        label, same emphasis idiom as Duration's own "Time X
+                        of Y" helper text in Card mode. */}
+                    <span
+                      className={cn(
+                        "font-display font-bold normal-case tabular-nums text-foreground",
+                        large ? "text-sm" : "text-xs",
+                      )}
+                    >
+                      {i + 1}
+                    </span>
+                    <span>of {instances.length}</span>
                   </span>
                 </>
               );
@@ -374,9 +417,26 @@ export function DurationCard({
                 isActivated(viewIdx) ? "border-blue-500" : "border-stone-300",
               )}
             >
-              <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem]">
-                {formatCompactTime(instanceMs(viewIdx))}
-              </span>
+              <TimeKeypad
+                valueMs={instanceMs(viewIdx)}
+                onReplace={(next) => setInstanceMs(viewIdx, next)}
+                onAdd={(delta) => setInstanceMs(viewIdx, instanceMs(viewIdx) + delta)}
+              >
+                {({ open }) => (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    disabled={!sessionRunning}
+                    aria-label={`Edit time for instance ${viewIdx + 1}`}
+                    className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem] cursor-text disabled:cursor-not-allowed"
+                  >
+                    {formatCompactTime(instanceMs(viewIdx))}
+                  </button>
+                )}
+              </TimeKeypad>
               <button
                 type="button"
                 onClick={(e) => {
@@ -538,9 +598,13 @@ export function DurationCard({
           >
             <motion.div
               className="absolute top-1/2 left-1/2 flex items-center"
-              style={{ gap: GAP, translateY: "-50%" }}
+              style={{ gap: GAP, x: dragX, translateY: "-50%" }}
               animate={{ x: trackOffset }}
               transition={{ type: "spring", stiffness: 320, damping: 34 }}
+              drag="x"
+              dragConstraints={{ left: -((instances.length - 1) * stepWidth) - 200, right: 200 }}
+              dragElastic={0.08}
+              onDragEnd={handleDragEnd}
             >
               {instances.map((_, i) => {
                 const isCenter = i === viewIdx;

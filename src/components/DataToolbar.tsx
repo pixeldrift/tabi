@@ -242,7 +242,12 @@ export function DataToolbar({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search"
             aria-label="Search cards"
-            className="w-full h-7 rounded-full border border-stone-200 bg-white pl-7 pr-6 text-xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+            // 16px (text-base) on phones — iOS Safari auto-zooms the whole
+            // page on focus for any input whose computed font-size is under
+            // that, regardless of the viewport meta tag's own scale limits
+            // in current iOS versions. Desktop/tablet (sm+) doesn't have
+            // that behavior, so it reverts to the toolbar's own compact size.
+            className="w-full h-7 rounded-full border border-stone-200 bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
           />
           {searchQuery && (
             <button

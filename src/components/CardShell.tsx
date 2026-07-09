@@ -118,16 +118,30 @@ export function CardShell({
       ref={articleRef}
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground transition-all duration-200",
-        // Every card's border is 1px except the active/selected highlight
-        // itself — that's the one state that gets the heavier 2px blue.
+        // Border is ALWAYS 1px — the selected look comes from an inset ring
+        // (a box-shadow, not real border width) layered on top instead of an
+        // actual border-2. A real width change there would shrink the
+        // content box by the extra pixel on every side (border participates
+        // in box-sizing; a fixed padding doesn't compensate), visibly
+        // nudging every child inward the instant a card became active. A
+        // ring paints without consuming layout space, so nothing inside
+        // ever shifts. overflow-hidden also moved off this element (see the
+        // inner clip wrapper below) — box-shadow is part of an element's own
+        // paint, not its overflow, but keeping it on the SAME node as
+        // overflow-hidden is what let the shadow visibly clip into a
+        // squared-off corner instead of fading past the rounded edge.
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? editing
             ? "border border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-            : "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+            : "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
+      {/* Clips inner content (mainly the progress bar's own square corners,
+          see historical #18 fix) to the card's rounded shape — kept on a
+          separate node from the border/shadow above, see that comment. */}
+      <div className="relative rounded-xl overflow-hidden">
       <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>
         {hasExpandedView && (
           <button
@@ -251,6 +265,7 @@ export function CardShell({
           )}
         </div>
       )}
+      </div>
 
     </article>
   );

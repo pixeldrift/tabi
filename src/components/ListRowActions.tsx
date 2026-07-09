@@ -24,7 +24,10 @@ export function ListActionBadge({
         weight === "bold" ? "text-[15px] font-bold text-foreground" : "text-[11px] font-semibold text-foreground/60",
       )}
     >
-      {value}
+      {/* The colon reads as "position N, of the data that follows" — only
+          meaningful for a position marker (weight="regular"), not a bare
+          tally that IS the data itself. */}
+      {weight === "regular" ? `${value}:` : value}
     </span>
   );
 }
@@ -48,6 +51,14 @@ const LIST_BUTTON_VARIANTS = {
   },
   blue: {
     classes: "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
+    selectedClasses: "bg-blue-500 border-blue-600 text-white",
+  },
+  // Always filled/solid, never just outlined — for direct-action buttons
+  // like Frequency/Rate's Increment that have no on/off "selected" state of
+  // their own (they just fire), matching Card mode's own solid blue plus
+  // button instead of reading as an unselected toggle.
+  "blue-solid": {
+    classes: "border-blue-600 bg-blue-500 text-white hover:bg-blue-600",
     selectedClasses: "bg-blue-500 border-blue-600 text-white",
   },
 } as const;

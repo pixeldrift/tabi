@@ -274,6 +274,8 @@ export function TrialCard({
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        progress={progress}
+        isComplete={isComplete}
         details={
           <dl className="space-y-3">
             <div className="flex justify-between">
@@ -416,6 +418,8 @@ export function TrialCard({
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        progress={progress}
+        isComplete={isComplete}
         actions={
           <div className="flex items-center gap-1">
             <ListActionSlide actionKey={current} direction={direction}>
@@ -468,12 +472,17 @@ export function TrialCard({
       ref={articleRef}
       onClick={onActivate}
       className={cn(
-        "relative w-full max-w-md rounded-xl overflow-hidden bg-card text-card-foreground transition-all duration-200",
+        // Border always 1px (ring adds the selected weight without
+        // consuming layout space) — see CardShell's own version of this
+        // comment for the full rationale; overflow-hidden moved to the
+        // inner clip wrapper below for the same shadow-clipping reason.
+        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
-          ? "border-2 border-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
+      <div className="relative rounded-xl overflow-hidden">
       {/* Header */}
       <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>
         <button
@@ -891,6 +900,7 @@ export function TrialCard({
 
 
 
+      </div>
     </article>
   );
 }
@@ -1060,7 +1070,7 @@ function PromptLevelButton({
         side="top"
         align="center"
         collisionPadding={8}
-        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1103,6 +1113,17 @@ function PromptLevelButton({
             );
           })}
         </div>
+        {/* Arrow — points back at the button that opened this popup, same
+            idiom as NumberKeypad's own popover arrow. */}
+        <div
+          className={cn(
+            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "-bottom-[7px] border-r-2 border-b-2",
+            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
+            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+          )}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -1155,7 +1176,7 @@ function ListPromptLevelButton({
         side="top"
         align="center"
         collisionPadding={8}
-        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1198,6 +1219,17 @@ function ListPromptLevelButton({
             );
           })}
         </div>
+        {/* Arrow — points back at the button that opened this popup, same
+            idiom as NumberKeypad's own popover arrow. */}
+        <div
+          className={cn(
+            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "-bottom-[7px] border-r-2 border-b-2",
+            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
+            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+          )}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -1247,7 +1279,7 @@ function RowPromptLevelButton({
         side="top"
         align="center"
         collisionPadding={8}
-        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1290,6 +1322,17 @@ function RowPromptLevelButton({
             );
           })}
         </div>
+        {/* Arrow — points back at the button that opened this popup, same
+            idiom as NumberKeypad's own popover arrow. */}
+        <div
+          className={cn(
+            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "-bottom-[7px] border-r-2 border-b-2",
+            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
+            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+          )}
+        />
       </PopoverContent>
     </Popover>
   );

@@ -20,6 +20,13 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
    *  as a separate slot (rather than just trailing content) so its gap is
    *  consistent across card kinds. */
   actions?: ReactNode;
+  /** 0–100 progress — a thin, color-coded bar flush to the tile's bottom
+   *  edge, no label (unlike CardShell's own progress bar, which has room
+   *  for helper text). Omit for kinds where a running percentage isn't
+   *  meaningful (Frequency, Rate, Duration, Rating already pass `null` to
+   *  CardShell for the same reason). */
+  progress?: number | null;
+  isComplete?: boolean;
 }
 
 /** Compact aspect-square counterpart to CardShell, used by every card kind
@@ -48,22 +55,44 @@ export function MiniTileShell({
   toolbarHeight = 0,
   children,
   actions,
+  progress,
+  isComplete = false,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const large = density === "large";
+  const showProgress = typeof progress === "number";
+  const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
 
   return (
     <article
       ref={articleRef}
       onClick={onActivate}
       className={cn(
-        "relative aspect-square w-full flex flex-col overflow-hidden bg-card text-card-foreground transition-all duration-200",
-        large ? "rounded-[18px] p-3.5 gap-2" : "rounded-[14px] p-2.5 gap-1.5",
+        // Border is ALWAYS 1px — see CardShell's own version of this same
+        // comment. A real border-2 on isActive shrinks the content box by
+        // an extra px per side (border participates in box-sizing), nudging
+        // every child inward the instant a tile is selected; an inset ring
+        // (box-shadow) adds the same visual weight without consuming any
+        // layout space, so nothing shifts. overflow-hidden also moved onto
+        // the absolutely-positioned inner wrapper below instead of living
+        // on this bordered/shadowed element — the two together were what
+        // let the shadow clip into a squared-off corner instead of fading
+        // past the rounded edge.
+        "relative aspect-square w-full bg-card text-card-foreground transition-all duration-200",
+        large ? "rounded-[18px]" : "rounded-[14px]",
         isActive
-          ? "border-2 border-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]"
+          ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]"
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
+      <div
+        className={cn(
+          "absolute inset-0 flex flex-col overflow-hidden",
+          large ? "rounded-[18px]" : "rounded-[14px]",
+        )}
+      >
+      <div className={cn("flex-1 min-h-0 flex flex-col", large ? "p-3.5 gap-2" : "p-2.5 gap-1.5")}>
       <div className="flex items-start gap-1">
         <h2
           className={cn(
@@ -90,11 +119,15 @@ export function MiniTileShell({
             // the merged string wins the whole group. With leading first,
             // it was silently discarded and this was rendering at the
             // browser's ~1.5x default the entire time.
-            // 1.05 matches the ratio Card/List titles use (see TrialCard's
-            // and DataListRow's own header h2) — anything much tighter than
-            // that starts clipping ascenders/descenders against the line
-            // box instead of just looking snug.
-            large ? "text-[13px] line-clamp-3 leading-[1.05]" : "text-[10.5px] line-clamp-2 leading-[1.05]",
+            // 1.05 (matching Card/List's own ratio) still clips descenders
+            // here specifically — line-clamp hard-caps the box at exactly
+            // lines × line-height with no allowance for glyph overhang,
+            // unlike Card/List's plain wrapping text (no line-clamp, so an
+            // ascender/descender bleeding a hair past the line box just
+            // renders — there's no hard edge there to clip against). 1.2
+            // gives real headroom for that overhang without reading as
+            // loose.
+            large ? "text-[13px] line-clamp-3 leading-[1.2]" : "text-[10.5px] line-clamp-2 leading-[1.2]",
           )}
         >
           {title}
@@ -134,6 +167,22 @@ export function MiniTileShell({
       <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">{children}</div>
 
       {actions && <div className="shrink-0">{actions}</div>}
+      </div>
+
+      {/* Flush to the tile's own bottom edge (outside the padded content
+          wrapper above, unlike CardShell's own progress bar, which has room
+          for helper text) — a few px tall, no label. Only rendered where a
+          running percentage is meaningful for the data type (Trial, Task
+          Analysis); Frequency/Rate/Duration/Rating pass no `progress`. */}
+      {showProgress && (
+        <div className="shrink-0 h-1.5 bg-stone-200">
+          <div
+            className={cn("h-full transition-[width]", barColor)}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+      </div>
     </article>
   );
 }

@@ -160,23 +160,43 @@ export function FrequencyCard({
           </div>
         }
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
-            key={bumpKey}
-            initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
-            transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
-            style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-            className={cn(
-              "block font-display leading-none tabular-nums",
-              large ? "text-[38px]" : "text-[28px]",
-              flash ? "text-blue-600" : "text-foreground",
-            )}
-          >
-            {count}
-          </motion.span>
-        </AnimatePresence>
+        <NumberKeypad
+          value={count}
+          onReplace={(v) => commit(v)}
+          onAdd={(delta) => commit(count + delta)}
+          onOpenChange={setEditing}
+        >
+          {({ open }) => (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                open();
+              }}
+              disabled={!sessionRunning}
+              className="cursor-text disabled:cursor-not-allowed"
+              aria-label={`Current count is ${count}. Tap to edit.`}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={bumpKey}
+                  initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                  className={cn(
+                    "block font-display leading-none tabular-nums",
+                    large ? "text-[38px]" : "text-[28px]",
+                    flash ? "text-blue-600" : "text-foreground",
+                  )}
+                >
+                  {count}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          )}
+        </NumberKeypad>
       </MiniTileShell>
     );
   }
@@ -202,9 +222,29 @@ export function FrequencyCard({
         toolbarHeight={toolbarHeight}
         actions={
           <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={bumpKey} direction={dir}>
-              <ListActionBadge value={count} weight="bold" />
-            </ListActionSlide>
+            <NumberKeypad
+              value={count}
+              onReplace={(v) => commit(v)}
+              onAdd={(delta) => commit(count + delta)}
+              onOpenChange={setEditing}
+            >
+              {({ open }) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    open();
+                  }}
+                  disabled={!sessionRunning}
+                  className="cursor-text disabled:cursor-not-allowed"
+                  aria-label={`Current count is ${count}. Tap to edit.`}
+                >
+                  <ListActionSlide actionKey={bumpKey} direction={dir}>
+                    <ListActionBadge value={count} weight="bold" />
+                  </ListActionSlide>
+                </button>
+              )}
+            </NumberKeypad>
             <ListActionButton
               icon={Minus}
               variant="neutral"
@@ -214,7 +254,7 @@ export function FrequencyCard({
             />
             <ListActionButton
               icon={Plus}
-              variant="blue"
+              variant="blue-solid"
               disabled={!sessionRunning}
               ariaLabel="Increment"
               onClick={inc}
