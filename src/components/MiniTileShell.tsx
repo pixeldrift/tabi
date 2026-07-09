@@ -1,6 +1,5 @@
 import { useRef, type ReactNode } from "react";
 import { GripVertical, Heart, EyeOff } from "lucide-react";
-import { DetailsIcon } from "./icons/DetailsIcon";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
 import { cn } from "@/lib/utils";
@@ -45,7 +44,6 @@ export function MiniTileShell({
   dragControls,
   detailsOpen = false,
   onDetailsOpenChange,
-  onOpenDetails,
   stickyTop = 0,
   toolbarHeight = 0,
   children,
@@ -79,16 +77,25 @@ export function MiniTileShell({
             // circles) has so little vertical slack already that a third
             // title line squeezes it down to an illegible sliver, which is
             // worse than the truncation it would avoid. So only large gets
-            // the taller clamp; small keeps 2 lines, with a bit of its own
-            // reserved padding clawed back instead to fit a little more of
-            // each line before it has to truncate at all.
-            "font-display font-bold leading-[0.82] flex-1",
-            large ? "text-[13px] pr-5 line-clamp-3" : "text-[10.5px] pr-4 line-clamp-2",
+            // the taller clamp; small keeps 2 lines. No reserved right-side
+            // padding here anymore — that was only clearing space for the
+            // per-tile details button (removed; the drawer's own pull-tab
+            // is the one way to open it now), so the title gets that width
+            // back.
+            "font-display font-bold flex-1",
+            // leading-[…] MUST come after text-[…] here — tailwind-merge
+            // treats an arbitrary text-size and leading as the same
+            // conflict group (real Tailwind size utilities like text-sm
+            // bundle their own line-height), so whichever comes LAST in
+            // the merged string wins the whole group. With leading first,
+            // it was silently discarded and this was rendering at the
+            // browser's ~1.5x default the entire time.
+            large ? "text-[13px] line-clamp-3 leading-[0.7]" : "text-[10.5px] line-clamp-2 leading-[0.7]",
           )}
         >
           {title}
         </h2>
-        {reorderEditing ? (
+        {reorderEditing && (
           <MiniEditControls
             favorited={favorited}
             onToggleFavorite={onToggleFavorite ?? (() => {})}
@@ -97,21 +104,6 @@ export function MiniTileShell({
             dragControls={dragControls}
             large={large}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetails?.();
-            }}
-            aria-label="Card details"
-            className={cn(
-              "absolute grid place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors shrink-0",
-              large ? "top-2.5 right-2.5 size-5" : "top-1.5 right-1.5 size-4",
-            )}
-          >
-            <DetailsIcon className={large ? "size-3" : "size-2.5"} strokeWidth={1.5} />
-          </button>
         )}
       </div>
 

@@ -1,5 +1,4 @@
 import { useRef, type ReactNode } from "react";
-import { DetailsIcon } from "./icons/DetailsIcon";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { type CardEditAndDrawerProps } from "./CardShell";
@@ -14,14 +13,19 @@ export interface DataListRowProps extends CardEditAndDrawerProps {
   dataTypeLabel: string;
   isActive?: boolean;
   onActivate?: () => void;
+  /** Each card kind's own compact data-entry controls (a number/count badge
+   *  plus a couple of small circular buttons, or a timer pill) — floated
+   *  top-right rather than laid out in the header's normal flex flow, so it
+   *  stays put in the same corner even when the title wraps to a second
+   *  line instead of push down alongside it. */
+  actions?: ReactNode;
 }
 
 /** The list `displayMode`'s row: a bare data-type icon then the title, no
  *  phase, no inline data-entry controls — there's no room for those in a
- *  single line. A tap just selects the row (matching every other card
- *  kind's own whole-card click); its own "info" button — same circle/border
- *  style as a full card's — is what opens the shared details drawer, rather
- *  than the row itself auto-opening it. */
+ *  single line. A tap selects the row; the drawer itself (once the row is
+ *  active) is opened via its own pull-tab, not a per-row button — that
+ *  would just duplicate the pull-tab in a view where space is tight. */
 export function DataListRow({
   title,
   description,
@@ -37,11 +41,12 @@ export function DataListRow({
   dragControls,
   detailsOpen = false,
   onDetailsOpenChange,
-  onOpenDetails,
   stickyTop = 0,
   toolbarHeight = 0,
+  actions,
 }: DataListRowProps) {
   const rowRef = useRef<HTMLElement | null>(null);
+  const showActions = actions && !reorderEditing;
 
   return (
     <article
@@ -56,7 +61,12 @@ export function DataListRow({
           : "border border-stone-200 opacity-80 hover:opacity-95",
       )}
     >
-      <div className={cn("flex items-start gap-1.5 pl-2 py-2", reorderEditing ? "pr-3" : "pr-9")}>
+      <div
+        className={cn(
+          "flex items-start gap-1.5 pl-2 py-2",
+          reorderEditing ? "pr-3" : showActions ? "pr-32" : "pr-9",
+        )}
+      >
         {/* Unconditional — CardEditControls now lives in its own slot on
             the right (see below), so there's no layout conflict keeping
             this off during editing like there was when both shared one
@@ -85,22 +95,10 @@ export function DataListRow({
         )}
       </div>
 
-      {/* Same circle/border "info" button every full card shows — hidden in
-          edit mode along with the drag/favorite/hide row it'd otherwise sit
-          alongside, same as CardShell. */}
-      {!reorderEditing && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetails?.();
-          }}
-          aria-label="Card details"
-          className="absolute right-1 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-        >
-          <DetailsIcon className="size-4" strokeWidth={1.5} />
-        </button>
-      )}
+      {/* Floated (not part of the header's flex flow) so it stays pinned to
+          this same top-right corner regardless of whether the title above
+          it wraps to one line or two. */}
+      {showActions && <div className="absolute top-1.5 right-1.5">{actions}</div>}
 
       {isActive && (
         <DataDetailsDrawer
@@ -111,13 +109,6 @@ export function DataListRow({
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={rowRef}
-          // Past half the viewport — extra reach past the list's own
-          // compressed width (see the width calc above) so the panel's left
-          // edge fully covers a row's "info" button rather than leaving a
-          // sliver of it exposed (the button's own right-1 inset plus its
-          // 24px width lands just past a flat +10px, so a little more is
-          // needed for full coverage rather than a hairline gap).
-          widthClassName="w-[calc(50%+14px)]"
         />
       )}
     </article>

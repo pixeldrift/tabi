@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { ListActionSlide } from "./ListRowActions";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
@@ -59,6 +62,7 @@ export function RatingCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -144,6 +148,41 @@ export function RatingCard({
           })}
         </div>
       </MiniTileShell>
+    );
+  }
+
+  if (listMode) {
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<Star />}
+        dataTypeLabel="Rating"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={rating}>
+            <ListRatingButton
+              rating={rating}
+              numStars={numStars}
+              min={min}
+              levelDescriptions={levelDescriptions}
+              disabled={!sessionRunning}
+              onPick={pick}
+            />
+          </ListActionSlide>
+        }
+      />
     );
   }
 
@@ -283,6 +322,95 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
   3: { x: 0, y: -0.5 },
   5: { x: 0, y: 0.5 },
 };
+
+/** The List display mode's single floating action — shows the current
+ *  rating (or a bare star while unrated) and opens the same star+
+ *  description picker as the full card's own expanded view, just in a
+ *  popup instead of an inline expand/collapse panel. The triangle is the
+ *  same "more choices below" cue every other button-with-a-menu uses. */
+function ListRatingButton({
+  rating,
+  numStars,
+  min,
+  levelDescriptions,
+  disabled,
+  onPick,
+}: {
+  rating: number;
+  numStars: number;
+  min: number;
+  levelDescriptions?: string[];
+  disabled?: boolean;
+  onPick: (value: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          disabled={disabled}
+          aria-label={rating > 0 ? `Rated ${rating}` : "Rate"}
+          aria-haspopup
+          className={cn(
+            "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+            rating > 0
+              ? "bg-blue-500 border-blue-600 text-white"
+              : "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
+          )}
+        >
+          {rating > 0 ? (
+            <span className="text-xs font-bold tabular-nums">{rating}</span>
+          ) : (
+            <Star className="size-3.5" strokeWidth={2} />
+          )}
+          <span
+            className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-current opacity-70"
+            aria-hidden
+          />
+        </button>
+      </PopoverAnchor>
+      <PopoverContent
+        side="top"
+        align="end"
+        collisionPadding={8}
+        className="w-64 rounded-2xl border-2 border-blue-300 bg-card p-2 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <ol className="space-y-1">
+          {Array.from({ length: numStars }, (_, i) => {
+            const value = min + i + 1;
+            const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
+            const filled = rating >= value;
+            const isTop = filled && value === rating;
+            return (
+              <li key={value} className="flex items-start gap-2">
+                <RatingStar
+                  value={value}
+                  size={ROW_STAR_SIZE}
+                  maxSize={ROW_STAR_SIZE}
+                  filled={filled}
+                  isTop={isTop}
+                  disabled={disabled}
+                  onClick={() => {
+                    onPick(value);
+                    setOpen(false);
+                  }}
+                />
+                <span className={cn("flex-1 text-xs leading-tight pt-1", isTop ? "text-foreground" : "text-foreground/70")}>
+                  {desc}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function RatingStar({
   value,

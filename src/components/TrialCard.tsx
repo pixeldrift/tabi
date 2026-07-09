@@ -7,8 +7,10 @@ import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { type CardEditAndDrawerProps } from "./CardShell";
 import { useCardSession } from "./SessionContext";
@@ -68,6 +70,7 @@ export function TrialCard({
   noResponse = false,
   promptLevels,
   tileDensity,
+  listMode,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const cardKey = id ?? title;
@@ -373,6 +376,71 @@ export function TrialCard({
           }}
         </SwipeStrip>
       </MiniTileShell>
+    );
+  }
+
+  if (listMode) {
+    const isDisabled = !sessionRunning || (isMaxReached && trials[current] === null);
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<PercentCorrectIcon />}
+        dataTypeLabel={dataType}
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={current} direction={direction}>
+            <ListActionBadge value={current + 1} />
+            {promptLevels && promptLevels.length > 0 ? (
+              <ListPromptLevelButton
+                levels={promptLevels}
+                selectedLevel={promptLevel[current] ?? null}
+                selected={trials[current] === "incorrect"}
+                disabled={isDisabled}
+                onPick={(level) => pickPromptLevel(current, level, true)}
+              />
+            ) : (
+              <ListActionButton
+                icon={X}
+                variant="red"
+                selected={trials[current] === "incorrect"}
+                disabled={isDisabled}
+                ariaLabel="Error"
+                onClick={() => setResult("incorrect")}
+              />
+            )}
+            {noResponse && (
+              <ListActionButton
+                icon={CircleSlash2}
+                variant="amber"
+                selected={trials[current] === "no-response"}
+                disabled={isDisabled}
+                ariaLabel="No Response"
+                onClick={() => setResult("no-response")}
+              />
+            )}
+            <ListActionButton
+              icon={Check}
+              variant="green"
+              selected={trials[current] === "correct"}
+              disabled={isDisabled}
+              ariaLabel="Correct"
+              onClick={() => setResult("correct")}
+            />
+          </ListActionSlide>
+        }
+      />
     );
   }
 
@@ -968,6 +1036,97 @@ function PromptLevelButton({
             </span>
           )}
         </motion.button>
+      </PopoverAnchor>
+      <PopoverContent
+        side="top"
+        align="center"
+        collisionPadding={8}
+        className="w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(UNSPECIFIED_LEVEL);
+              setOpen(false);
+            }}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-left text-sm font-medium italic transition-colors",
+              selected && !selectedLevel
+                ? "bg-red-500 text-white"
+                : "text-red-700/70 hover:bg-red-50",
+            )}
+          >
+            {UNSPECIFIED_LEVEL}
+          </button>
+          {levels.map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPick(level);
+                setOpen(false);
+              }}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                selectedLevel === level
+                  ? "bg-red-500 text-white"
+                  : "text-red-700 hover:bg-red-50",
+              )}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Icon-only circular version of PromptLevelButton for the List display
+ *  mode's floating action row — same popover-picker behavior as the other
+ *  two, styled to match ListActionButton (including its "more choices"
+ *  triangle) rather than either of the pill-shaped variants. */
+function ListPromptLevelButton({
+  levels,
+  selectedLevel,
+  selected,
+  disabled,
+  onPick,
+}: {
+  levels: string[];
+  selectedLevel: string | null;
+  selected: boolean;
+  disabled?: boolean;
+  onPick: (level: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          disabled={disabled}
+          aria-label="Error"
+          aria-haspopup
+          className={cn(
+            "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+            "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
+            selected && "btn-bevel bg-red-500 border-red-600 text-white",
+          )}
+        >
+          <X className="size-3.5" strokeWidth={3} />
+          <span
+            className="absolute -bottom-[3px] left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[4px] border-l-transparent border-r-transparent border-t-current opacity-70"
+            aria-hidden
+          />
+        </button>
       </PopoverAnchor>
       <PopoverContent
         side="top"

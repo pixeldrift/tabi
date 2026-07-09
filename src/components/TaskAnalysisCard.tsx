@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TaskAnalysisIcon } from "./icons/TaskAnalysisIcon";
 import { useCardSession } from "./SessionContext";
@@ -90,6 +92,7 @@ export function TaskAnalysisCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: TaskAnalysisCardProps) {
   const cardKey = id ?? title;
   const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
@@ -241,7 +244,7 @@ export function TaskAnalysisCard({
                   goTo(i);
                 }}
                 className={cn(
-                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold transition-[font-size]",
+                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold leading-none transition-[font-size]",
                   isCenter ? color : "invisible",
                 )}
                 style={{
@@ -255,6 +258,45 @@ export function TaskAnalysisCard({
           }}
         </SwipeStrip>
       </MiniTileShell>
+    );
+  }
+
+  if (listMode) {
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<TaskAnalysisIcon />}
+        dataTypeLabel="Task Analysis"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={current}>
+            <ListActionBadge value={current + 1} />
+            {OPTIONS.map((opt) => (
+              <ListActionButton
+                key={opt.value}
+                icon={opt.icon}
+                variant={opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"}
+                selected={statuses[current] === opt.value}
+                disabled={!sessionRunning}
+                ariaLabel={opt.label}
+                onClick={() => setStep(current, opt.value, true)}
+              />
+            ))}
+          </ListActionSlide>
+        }
+      />
     );
   }
 

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { ListActionBadge, ListActionSlide } from "./ListRowActions";
 import { SwipeStrip } from "./SwipeStrip";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { DurationIcon } from "./icons/DurationIcon";
@@ -49,6 +51,7 @@ export function DurationCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: DurationCardProps) {
   const cardKey = id ?? title;
   const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
@@ -322,7 +325,7 @@ export function DurationCard({
                   <span
                     className={cn(
                       "font-bold uppercase tracking-wide text-muted-foreground",
-                      large ? "text-[11px]" : "text-[9px]",
+                      large ? "text-[11px] leading-none" : "text-[9px] leading-none",
                     )}
                   >
                     Instance {i + 1}
@@ -333,6 +336,63 @@ export function DurationCard({
           </SwipeStrip>
         </MiniTileShell>
       </div>
+    );
+  }
+
+  if (listMode) {
+    const running_ = isIdxRunning(viewIdx);
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<DurationIcon />}
+        dataTypeLabel="Duration"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={viewIdx}>
+            <ListActionBadge value={viewIdx + 1} />
+            {/* Same rounded pill/play-pause pattern as the grid tile's own
+                timer, just sized to match this row's other action buttons. */}
+            <div
+              className={cn(
+                "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
+                isActivated(viewIdx) ? "border-blue-500" : "border-stone-300",
+              )}
+            >
+              <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem]">
+                {formatCompactTime(instanceMs(viewIdx))}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePause();
+                }}
+                disabled={!sessionRunning}
+                aria-label={running_ ? "Pause this instance" : "Start this instance"}
+                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40"
+              >
+                {running_ ? (
+                  <Pause className="size-3" fill="currentColor" strokeWidth={0} />
+                ) : (
+                  <Play className="size-3 translate-x-px" fill="currentColor" strokeWidth={0} />
+                )}
+              </button>
+            </div>
+          </ListActionSlide>
+        }
+      />
     );
   }
 

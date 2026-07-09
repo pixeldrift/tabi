@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { FrequencyIcon } from "./icons/FrequencyIcon";
 import { NumberPadIcon } from "./icons/NumberPadIcon";
@@ -41,6 +43,7 @@ export function FrequencyCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: FrequencyCardProps) {
   const cardKey = id ?? title;
   const [count, setCount] = useCardState(cardKey, "count", 0);
@@ -175,6 +178,48 @@ export function FrequencyCard({
           </motion.span>
         </AnimatePresence>
       </MiniTileShell>
+    );
+  }
+
+  if (listMode) {
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<FrequencyIcon />}
+        dataTypeLabel="Frequency"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={bumpKey} direction={dir}>
+            <ListActionBadge value={count} />
+            <ListActionButton
+              icon={Minus}
+              variant="neutral"
+              disabled={!sessionRunning || count === 0}
+              ariaLabel="Decrement"
+              onClick={dec}
+            />
+            <ListActionButton
+              icon={Plus}
+              variant="blue"
+              disabled={!sessionRunning}
+              ariaLabel="Increment"
+              onClick={inc}
+            />
+          </ListActionSlide>
+        }
+      />
     );
   }
 

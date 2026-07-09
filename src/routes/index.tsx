@@ -1,19 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
-import { Star, User } from "lucide-react";
+import { User } from "lucide-react";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
-import { DataListRow } from "@/components/DataListRow";
-import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
-import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
-import { RateIcon } from "@/components/icons/RateIcon";
-import { DurationIcon } from "@/components/icons/DurationIcon";
-import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";
@@ -758,15 +752,6 @@ function IndexInner() {
   );
 }
 
-const LIST_ROW_META: Record<CardKind, { dataType: string; icon: React.ReactNode }> = {
-  trial: { dataType: "Percent Correct", icon: <PercentCorrectIcon /> },
-  frequency: { dataType: "Frequency", icon: <FrequencyIcon /> },
-  rate: { dataType: "Rate / Min", icon: <RateIcon /> },
-  duration: { dataType: "Duration", icon: <DurationIcon /> },
-  "task-analysis": { dataType: "Task Analysis", icon: <TaskAnalysisIcon /> },
-  rating: { dataType: "Rating", icon: <Star /> },
-};
-
 function renderCard(
   card: CardConfig,
   displayMode: DisplayMode,
@@ -790,20 +775,13 @@ function renderCard(
      *  same underlying state, rather than mounting a separate component
      *  (which would lose that state on every mode switch). */
     tileDensity?: "large" | "small";
+    /** Set for the list display mode — same reasoning as tileDensity: each
+     *  card kind renders its own DataListRow (with its own kind-specific
+     *  floating action buttons) from the same component instance, rather
+     *  than a separate generic component that has no access to that state. */
+    listMode?: boolean;
   },
 ): React.ReactNode {
-  if (displayMode === "list") {
-    const meta = LIST_ROW_META[card.kind];
-    return (
-      <DataListRow
-        title={card.title}
-        description={card.description}
-        dataTypeIcon={meta.icon}
-        dataTypeLabel={meta.dataType}
-        {...common}
-      />
-    );
-  }
   switch (card.kind) {
     case "trial":
       return (
@@ -1093,6 +1071,7 @@ const DataCardList = memo(function DataCardList({
       onToggleHidden: () => toggleHidden(card.id),
       dragControls,
       tileDensity: displayMode === "grid-large" ? "large" : displayMode === "grid-small" ? "small" : undefined,
+      listMode: displayMode === "list",
     });
 
   // Edit mode is its own render path — drag-to-reorder (via Motion's
