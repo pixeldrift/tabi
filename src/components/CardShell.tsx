@@ -40,6 +40,10 @@ export interface CardEditAndDrawerProps {
    *  underlying state (see MiniTileShell), rather than mounting a separate
    *  component, which would lose that state on every mode switch. */
   tileDensity?: "large" | "small";
+  /** Set for the list display mode — same reasoning as tileDensity: swaps
+   *  this card's own markup for a DataListRow rendering the same
+   *  underlying state, with this kind's own compact floating actions. */
+  listMode?: boolean;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {

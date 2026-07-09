@@ -1,9 +1,14 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { X, ChevronUp, ChevronDown } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { cn } from "@/lib/utils";
+
+/** Breathing room left between a hugCardRight drawer's panel edge and the
+ *  tile's own right edge — enough to read as a gap, not so much that it eats
+ *  into the panel's already-tight body width. */
+const DRAWER_TILE_GAP_PX = 6;
 
 export interface DataDetailsDrawerProps {
   open: boolean;
@@ -66,6 +71,13 @@ export function DataDetailsDrawer({
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
   const [hugWidth, setHugWidth] = useState<number | null>(null);
+  // Set once the card has scrolled fully out of the visible pane (not just
+  // clamped near an edge — clampedArrowTop below already handles "close to
+  // the edge" by sliding the diamond to it). While this is set, the arrow —
+  // which would otherwise have to point off the top/bottom of the panel —
+  // is replaced by a button indicating which way to scroll to bring the
+  // card back into view.
+  const [offDirection, setOffDirection] = useState<"above" | "below" | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -76,16 +88,20 @@ export function DataDetailsDrawer({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       setArrowTop(rect.top + rect.height / 2 - top);
-      // No added overlap here (unlike Card/List's widthClassName fallback,
+      // A small positive gap (unlike Card/List's widthClassName fallback,
       // which deliberately reaches a bit past a card's own edge to cover its
       // now-redundant info button) — a tile is small enough that a body
       // overlap running its full height would sit across real controls the
-      // whole way down, not just near one button. The panel's left edge
-      // lands exactly on the tile's right edge instead; only the arrow
-      // (below, via its own fixed inset) and the pull tab still dip into the
+      // whole way down, not just near one button. So the panel's left edge
+      // stops a few px short of the tile's right edge instead, leaving a
+      // sliver of breathing room; only the arrow (below, via its own fixed
+      // inset, unaffected by this gap) and the pull tab still dip into the
       // tile a little, the same intentional, localized overlap Card/List's
       // fallback width has always accepted.
-      if (hugCardRight) setHugWidth(window.innerWidth - rect.right);
+      if (hugCardRight) setHugWidth(window.innerWidth - rect.right - DRAWER_TILE_GAP_PX);
+      if (rect.bottom <= top) setOffDirection("above");
+      else if (rect.top >= window.innerHeight) setOffDirection("below");
+      else setOffDirection(null);
     };
     // A grid-mode tile has already finished reflowing into its single left
     // column by the time `open` goes true (IndexInner delays the drawer's
@@ -112,6 +128,11 @@ export function DataDetailsDrawer({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onOpenChange]);
+
+  // Same smooth-center pattern as the Schedule tab's own "Now" button.
+  const scrollToCard = () => {
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   if (!mounted) return null;
 
@@ -183,8 +204,12 @@ export function DataDetailsDrawer({
           rendered while open: when the panel slides off-screen its fixed
           -9px offset from the (now off-screen) left edge would otherwise
           leave it sitting as a stray diamond near the viewport's right
-          edge instead of leaving with the rest of the panel. */}
-      {open && (
+          edge instead of leaving with the rest of the panel. Swapped out
+          entirely once the card has scrolled fully out of the visible pane
+          — pointing at a card that isn't there to point at reads as broken,
+          not just imprecise, so a direction button takes its place instead
+          (see offDirection above). */}
+      {open && !offDirection && (
         <div
           // size-6 (24px) is size-4 (16px) scaled by 1.5x, so the -left
           // offset scales with it too — nudged a little further in past
@@ -197,6 +222,25 @@ export function DataDetailsDrawer({
           style={{ top: clampedArrowTop }}
           aria-hidden
         />
+      )}
+
+      {/* Off-screen indicator — replaces the arrow above once the card it
+          points to has scrolled fully out of view. Same corner the arrow
+          would otherwise sit near (top-left/bottom-left of the panel), and
+          the same smooth-center scroll as the Schedule tab's "Now" button. */}
+      {open && offDirection && (
+        <button
+          type="button"
+          onClick={scrollToCard}
+          aria-label={offDirection === "above" ? "Active card is above — scroll to it" : "Active card is below — scroll to it"}
+          title="Scroll to active card"
+          className={cn(
+            "absolute left-3 z-10 grid place-items-center size-7 rounded-full border-2 border-blue-400/80 bg-background text-blue-600 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.25)] hover:bg-blue-50 transition-colors active:scale-95",
+            offDirection === "above" ? "top-3" : "bottom-3",
+          )}
+        >
+          {offDirection === "above" ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
       )}
 
       <button

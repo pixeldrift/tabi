@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link2, Minus, Pause, Play, Plus } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { NumberPadIcon } from "./icons/NumberPadIcon";
 import { RateIcon } from "./icons/RateIcon";
@@ -46,6 +48,7 @@ export function RateCard({
   toolbarHeight,
   locked = false,
   tileDensity,
+  listMode,
 }: RateCardProps) {
   const cardKey = id ?? title;
   const [count, setCount] = useCardState(cardKey, "count", 0);
@@ -228,19 +231,12 @@ export function RateCard({
             </div>
           }
         >
-          {/* The pulsing stopwatch is absolutely positioned off to the left
-              rather than sharing flex flow with the number, so the number's
-              own box — not the icon+number pair — is what ends up centered
-              in the tile (matching the full card's own centered count). */}
-          <div className="relative inline-flex items-center">
-            {ticking && (
-              <RateIcon
-                className={cn(
-                  "absolute right-full top-1/2 -translate-y-1/2 text-blue-500 animate-pulse-scale",
-                  large ? "size-5 mr-[7px]" : "size-[15px] mr-[5px]",
-                )}
-              />
-            )}
+          {/* Number, then a slash, then the (smaller) stopwatch — in that
+              order rather than icon-first — reads as "count per unit time"
+              (a rate), not just "a count with a clock next to it". The icon
+              stays put as a permanent unit label; it only pulses while an
+              instance is actually ticking. */}
+          <div className="inline-flex items-center gap-1">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
                 key={bumpKey}
@@ -258,9 +254,55 @@ export function RateCard({
                 {count}
               </motion.span>
             </AnimatePresence>
+            <span className={cn("font-display text-foreground/30", large ? "text-xl" : "text-base")}>/</span>
+            <RateIcon
+              className={cn("text-blue-500", ticking && "animate-pulse-scale", large ? "size-3.5" : "size-3")}
+            />
           </div>
         </MiniTileShell>
       </div>
+    );
+  }
+
+  if (listMode) {
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<RateIcon />}
+        dataTypeLabel="Rate / Min"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={bumpKey} direction={dir}>
+            <ListActionBadge value={count} />
+            <ListActionButton
+              icon={Minus}
+              variant="neutral"
+              disabled={!sessionRunning || count === 0}
+              ariaLabel="Decrement"
+              onClick={dec}
+            />
+            <ListActionButton
+              icon={Plus}
+              variant="blue"
+              disabled={!sessionRunning}
+              ariaLabel="Increment"
+              onClick={inc}
+            />
+          </ListActionSlide>
+        }
+      />
     );
   }
 

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Pause } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { ListActionBadge, ListActionSlide } from "./ListRowActions";
 import { SwipeStrip } from "./SwipeStrip";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { DurationIcon } from "./icons/DurationIcon";
@@ -49,6 +51,7 @@ export function DurationCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: DurationCardProps) {
   const cardKey = id ?? title;
   const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
@@ -278,14 +281,6 @@ export function DurationCard({
               const accent = running || activated;
               return (
                 <>
-                  <span
-                    className={cn(
-                      "font-bold uppercase tracking-wide text-muted-foreground",
-                      large ? "text-[11px]" : "text-[9px]",
-                    )}
-                  >
-                    Instance {i + 1}
-                  </span>
                   <div
                     className={cn(
                       "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
@@ -327,12 +322,77 @@ export function DurationCard({
                       )}
                     </button>
                   </div>
+                  <span
+                    className={cn(
+                      "font-bold uppercase tracking-wide text-muted-foreground",
+                      large ? "text-[11px] leading-none" : "text-[9px] leading-none",
+                    )}
+                  >
+                    Instance {i + 1}
+                  </span>
                 </>
               );
             }}
           </SwipeStrip>
         </MiniTileShell>
       </div>
+    );
+  }
+
+  if (listMode) {
+    const running_ = isIdxRunning(viewIdx);
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<DurationIcon />}
+        dataTypeLabel="Duration"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={viewIdx}>
+            <ListActionBadge value={viewIdx + 1} />
+            {/* Same rounded pill/play-pause pattern as the grid tile's own
+                timer, just sized to match this row's other action buttons. */}
+            <div
+              className={cn(
+                "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
+                isActivated(viewIdx) ? "border-blue-500" : "border-stone-300",
+              )}
+            >
+              <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem]">
+                {formatCompactTime(instanceMs(viewIdx))}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePause();
+                }}
+                disabled={!sessionRunning}
+                aria-label={running_ ? "Pause this instance" : "Start this instance"}
+                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40"
+              >
+                {running_ ? (
+                  <Pause className="size-3" fill="currentColor" strokeWidth={0} />
+                ) : (
+                  <Play className="size-3 translate-x-px" fill="currentColor" strokeWidth={0} />
+                )}
+              </button>
+            </div>
+          </ListActionSlide>
+        }
+      />
     );
   }
 
@@ -736,15 +796,19 @@ function formatTime(ms: number) {
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-// Deliberately no leading-zero hour/minute padding (unlike formatTime's
-// 00:00:00) — the quick-action tile is much narrower than a full card, and
-// stopwatch-style "0:45" comfortably fits where "00:00:45" would overflow.
+// Deliberately no leading-zero HOUR padding (unlike formatTime's 00:00:00) —
+// the quick-action tile is much narrower than a full card, and stopwatch-
+// style "1:23:45" comfortably fits where "01:23:45" would overflow. Minutes
+// are always 2 digits though (00:45, not 0:45) — that place changes every
+// minute, so leaving it unpadded made the pill's own digit count (and the
+// button riding along with it) visibly hop by one character width on every
+// single-to-double-digit rollover, not just the rare hour-gain crossing.
 function formatCompactTime(ms: number) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  const mm = h > 0 ? m.toString().padStart(2, "0") : String(m);
+  const mm = m.toString().padStart(2, "0");
   return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 

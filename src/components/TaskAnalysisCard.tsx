@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
+import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
+import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TaskAnalysisIcon } from "./icons/TaskAnalysisIcon";
 import { useCardSession } from "./SessionContext";
@@ -90,6 +92,7 @@ export function TaskAnalysisCard({
   stickyTop,
   toolbarHeight,
   tileDensity,
+  listMode,
 }: TaskAnalysisCardProps) {
   const cardKey = id ?? title;
   const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
@@ -241,7 +244,7 @@ export function TaskAnalysisCard({
                   goTo(i);
                 }}
                 className={cn(
-                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold transition-[font-size]",
+                  "whitespace-nowrap overflow-hidden text-ellipsis font-semibold leading-none transition-[font-size]",
                   isCenter ? color : "invisible",
                 )}
                 style={{
@@ -255,6 +258,45 @@ export function TaskAnalysisCard({
           }}
         </SwipeStrip>
       </MiniTileShell>
+    );
+  }
+
+  if (listMode) {
+    return (
+      <DataListRow
+        title={title}
+        description={description}
+        dataTypeIcon={<TaskAnalysisIcon />}
+        dataTypeLabel="Task Analysis"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        actions={
+          <ListActionSlide actionKey={current}>
+            <ListActionBadge value={current + 1} />
+            {OPTIONS.map((opt) => (
+              <ListActionButton
+                key={opt.value}
+                icon={opt.icon}
+                variant={opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"}
+                selected={statuses[current] === opt.value}
+                disabled={!sessionRunning}
+                ariaLabel={opt.label}
+                onClick={() => setStep(current, opt.value, true)}
+              />
+            ))}
+          </ListActionSlide>
+        }
+      />
     );
   }
 
@@ -413,8 +455,19 @@ export function TaskAnalysisCard({
           Step {current + 1} of {steps.length}
         </div>
 
-        <div className="mt-2 px-3 text-center">
-          <p className="text-base font-semibold leading-tight">{steps[current]}</p>
+        {/* flex+justify-center on the row, rather than text-align:center on
+         *  the paragraph itself: a centered *line* pushes overflow past
+         *  both edges equally, and CardShell's own rounded-corner
+         *  overflow-hidden then clips the beginning of a too-long word
+         *  along with the end. Centering the *box* instead means a short
+         *  line (which fits, so the box shrinks to its content) still reads
+         *  as centered, but a long line's box gets capped at max-w-full —
+         *  leaving nothing left to center around — so it truncates from its
+         *  natural (left) start, losing only the tail. */}
+        <div className="mt-2 px-3 flex justify-center">
+          <p className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
+            {steps[current]}
+          </p>
         </div>
 
         <div className="mt-3 flex justify-center gap-1 px-2">

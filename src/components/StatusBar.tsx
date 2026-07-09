@@ -104,6 +104,21 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
   }, []);
 
   const isRunning = status === "running";
+
+  // Resuming un-hides this row (it's only absent while paused) the instant
+  // `status` flips to "running" — which, for a staged resume, lands well
+  // before the box has actually started collapsing (see boxCollapsed's own
+  // delay below). Left live, that briefly grows boxNaturalHeight mid-fade,
+  // which the nav/tabs below dutifully track — reading as the whole header
+  // bouncing down and then sharply back up once the collapse catches up.
+  // Since the box is headed for a full collapse to zero anyway the moment
+  // it's running, there's nothing to gain by growing it first: frozen here,
+  // it keeps showing whatever it last showed while genuinely paused/idle
+  // until the box needs it again (i.e. the next time it isn't running).
+  const rawContextTime = status === "paused" ? null : previousSessionEndedAt;
+  const frozenContextTimeRef = useRef(rawContextTime);
+  if (!isRunning) frozenContextTimeRef.current = rawContextTime;
+
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
@@ -333,7 +348,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <ExpandedSessionBox
                   status={status}
                   elapsedMs={pillElapsed}
-                  contextTime={status === "paused" ? null : previousSessionEndedAt}
+                  contextTime={frozenContextTimeRef.current}
                   renderPill={renderBigPill}
                   pillVisible={bigPillVisible}
                   pillRef={bigPillRef}
@@ -587,17 +602,25 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           // animating independently instead of staying visually locked to
           // it during transitions.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex items-center justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
+          className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
         >
-          <span className="inline-block animate-pulse-scale">
-            <Timer className="size-4" />
+          <span className="relative inline-flex">
+            <span className="inline-block animate-pulse-scale">
+              <Timer className="size-4" />
+            </span>
+            {count > 1 && (
+              <sup className="text-[9px] font-semibold leading-none -ml-px -mt-1.5">
+                {count}
+              </sup>
+            )}
           </span>
-
-          {count > 1 && (
-            <sup className="text-[9px] font-semibold leading-none -ml-px -mt-1.5">
-              {count}
-            </sup>
-          )}
+          {/* Only where there's room to spare — a phone-width tab bar is
+              already tight with five icon+label tabs, but tablet/desktop
+              have space beside them for this to read as a sentence instead
+              of a bare icon. */}
+          <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
+            {count > 1 ? "Timers Running" : "Timer Running"}
+          </span>
         </motion.div>
       )}
     </AnimatePresence>
