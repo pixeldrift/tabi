@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Delete, Plus, Check, X } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { cn } from "@/lib/utils";
 
 export interface NumberKeypadProps {
@@ -33,6 +34,9 @@ export function NumberKeypad({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
 
   const setOpenWithCallback = useCallback(
     (next: boolean) => {
@@ -93,16 +97,23 @@ export function NumberKeypad({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverAnchor asChild>
-        <span>{children({ isEditing: open, open: openKeypad })}</span>
+        {/* flex + h-full — see TimeKeypad's identical comment: keeps this
+            trigger filling the anchor span's full height instead of sitting
+            top-aligned inside it whenever a parent stretches the span. */}
+        <span ref={anchorRef} className="flex h-full">{children({ isEditing: open, open: openKeypad })}</span>
       </PopoverAnchor>
       <PopoverContent
         side="top"
         sideOffset={8}
         align="center"
-        className="group w-auto border-none bg-transparent p-0 shadow-none"
+        // z-[70]: matches DataToolbar's filter popover — otherwise this sits
+        // at the base popover z-50, which the sticky toolbar (z-[60]) and
+        // details drawer (z-[62]) both paint over once the trigger scrolls
+        // near them.
+        className="group z-[70] w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="relative w-[200px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
+        <div ref={contentRef} className="relative w-[200px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
           {/* Hidden input — catches native + physical keyboard */}
           <input
             ref={hiddenInputRef}
@@ -196,10 +207,15 @@ export function NumberKeypad({
             </div>
           </div>
 
-          {/* Arrow — part of the bordered card shape */}
+          {/* Arrow — part of the bordered card shape. Its left offset
+              tracks the trigger's real position (see useSlidingArrowOffset)
+              rather than staying hard-centered, since Radix's own collision
+              avoidance can shift the popup sideways to stay on screen when
+              the trigger sits near a viewport edge — a fixed center would
+              then no longer line up with the element it's pointing at. */}
           <div
             className={cn(
-              "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-card",
+              "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-card",
               // Default (side="top"): popup is above the trigger, so the arrow
               // sits on the bottom edge and points down at it.
               "-bottom-[7px] border-r-2 border-b-2",
@@ -210,6 +226,7 @@ export function NumberKeypad({
               "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
               "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
             )}
+            style={{ left: arrowLeft ?? "50%" }}
           />
         </div>
       </PopoverContent>
