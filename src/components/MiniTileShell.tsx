@@ -92,7 +92,16 @@ export function MiniTileShell({
           large ? "rounded-[18px]" : "rounded-[14px]",
         )}
       >
-      <div className={cn("flex-1 min-h-0 flex flex-col", large ? "p-3.5 gap-2" : "p-2.5 gap-1.5")}>
+      <div
+        className={cn(
+          // relative z-10: keeps this in-flow content painting above the
+          // progress bar below, which is an absolutely positioned
+          // background wash now rather than a layout sibling this wrapper
+          // shrinks to make room for — see that div's own comment.
+          "relative z-10 flex-1 min-h-0 flex flex-col",
+          large ? "p-3.5 gap-2" : "p-2.5 gap-1.5",
+        )}
+      >
       <div className="flex items-start gap-1">
         <h2
           className={cn(
@@ -169,13 +178,15 @@ export function MiniTileShell({
       {actions && <div className="shrink-0">{actions}</div>}
       </div>
 
-      {/* Flush to the tile's own bottom edge (outside the padded content
-          wrapper above, unlike CardShell's own progress bar, which has room
-          for helper text) — a few px tall, no label. Only rendered where a
+      {/* A background wash behind the tile's own content (z-10 above, see
+          that wrapper's comment) rather than a layout sibling it shrinks to
+          make room for — so scoring a trial doesn't nudge everything else
+          up a few px. Skinnier than CardShell's own labeled version since
+          there's no helper text to make room for. Only rendered where a
           running percentage is meaningful for the data type (Trial, Task
           Analysis); Frequency/Rate/Duration/Rating pass no `progress`. */}
       {showProgress && (
-        <div className="shrink-0 h-1.5 bg-stone-200">
+        <div className="absolute inset-x-0 bottom-0 z-0 h-0.5 bg-stone-200/80">
           <div
             className={cn("h-full transition-[width]", barColor)}
             style={{ width: `${pct}%` }}

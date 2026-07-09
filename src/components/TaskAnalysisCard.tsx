@@ -140,6 +140,12 @@ export function TaskAnalysisCard({
   const remaining = Math.max(0, steps.length - completed);
   useReportCardStatus(cardKey, completed > 0, isComplete);
 
+  // Steps must be scored in order — a step can't be scored while an earlier
+  // one is still blank, so its own score buttons stay disabled until the
+  // gap behind it closes. -1 (all scored) allows everything.
+  const firstUnscored = statuses.indexOf(null);
+  const canScore = (idx: number) => firstUnscored === -1 || idx <= firstUnscored;
+
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
     () => -(current * stepWidth + BUBBLE_CENTER / 2),
@@ -201,7 +207,7 @@ export function TaskAnalysisCard({
                     e.stopPropagation();
                     setStep(current, opt.value, true);
                   }}
-                  disabled={!sessionRunning}
+                  disabled={!sessionRunning || !canScore(current)}
                   aria-label={opt.label}
                   className={cn(
                     "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -310,7 +316,7 @@ export function TaskAnalysisCard({
                 icon={opt.icon}
                 variant={opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"}
                 selected={statuses[current] === opt.value}
-                disabled={!sessionRunning}
+                disabled={!sessionRunning || !canScore(current)}
                 ariaLabel={opt.label}
                 onClick={() => setStep(current, opt.value, true)}
               />
@@ -382,7 +388,7 @@ export function TaskAnalysisCard({
                     <motion.button
                       key={opt.value}
                       onClick={() => setStep(i, opt.value)}
-                      disabled={!sessionRunning}
+                      disabled={!sessionRunning || !canScore(i)}
                       whileTap={{ scale: 0.9 }}
                       aria-label={opt.value}
                       className={cn(
@@ -512,7 +518,7 @@ export function TaskAnalysisCard({
               <motion.button
                 key={opt.value}
                 onClick={() => setStep(current, opt.value, true)}
-                disabled={!sessionRunning}
+                disabled={!sessionRunning || !canScore(current)}
                 whileTap={{ scale: 0.96 }}
                 className={cn(
                   "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors disabled:opacity-40",

@@ -76,7 +76,11 @@ export function DataListRow({
       <div className="relative rounded-xl overflow-hidden">
       <div
         className={cn(
-          "flex items-start gap-1.5 pl-2 py-2",
+          // relative z-10: keeps this in-flow content painting above the
+          // progress bar below, which is deliberately an absolutely
+          // positioned background wash now (not a layout sibling the row
+          // grows to fit) — see that div's own comment.
+          "relative z-10 flex items-start gap-1.5 pl-2 py-2",
           reorderEditing ? "pr-3" : showActions ? "pr-32" : "pr-9",
         )}
       >
@@ -113,13 +117,18 @@ export function DataListRow({
           title above it wraps to one line or two — centered against the
           row's full height (not the header alone) so it reads as equal top
           and bottom margins within the box either way. */}
-      {showActions && <div className="absolute top-1/2 -translate-y-1/2 right-1.5">{actions}</div>}
+      {showActions && <div className="absolute z-10 top-1/2 -translate-y-1/2 right-1.5">{actions}</div>}
 
-      {/* Flush to the row's own bottom edge — a few px tall, no label. Only
-          rendered where a running percentage is meaningful for the data
-          type (Trial, Task Analysis); other kinds pass no `progress`. */}
+      {/* A background wash behind the row's own content rather than a
+          layout sibling it grows to fit — absolutely positioned and z-0 so
+          the title/actions above (both z-10) paint over it instead of the
+          row reserving extra height for it. Skinnier here than CardShell's
+          own labeled version, since there's no helper text to make room
+          for. Only rendered where a running percentage is meaningful for
+          the data type (Trial, Task Analysis); other kinds pass no
+          `progress`. */}
       {showProgress && (
-        <div className="h-1.5 bg-stone-200">
+        <div className="absolute inset-x-0 bottom-0 z-0 h-0.5 bg-stone-200/80">
           <div className={cn("h-full transition-[width]", barColor)} style={{ width: `${pct}%` }} />
         </div>
       )}

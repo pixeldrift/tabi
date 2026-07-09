@@ -264,7 +264,7 @@ export function DurationCard({
           }
         >
           <div
-            className={cn("mt-auto flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
+            className={cn("flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
             aria-hidden
           >
             {instances.map((ms, i) => {
@@ -282,13 +282,21 @@ export function DurationCard({
               );
             })}
           </div>
+          {/* No h-full here (unlike the old version) — that forced this
+              strip to claim the tile's entire remaining height, and its own
+              item wrapper then top-pinned the pill/label within that tall
+              box, leaving all the slack as empty space below instead of
+              actually centering. Sized to its own content instead, so the
+              dots-row + strip together form one natural-height block that
+              the tile's own centering wrapper (see MiniTileShell) can
+              center as a whole. */}
           <SwipeStrip
             count={instances.length}
             current={viewIdx}
             onCurrentChange={goTo}
             variant="paged"
-            className="w-full h-full"
-            itemWrapperClassName="w-full h-full flex flex-col items-center justify-start pt-1 gap-1"
+            className="w-full"
+            itemWrapperClassName="w-full flex flex-col items-center gap-1"
           >
             {(i) => {
               const running = isIdxRunning(i);
@@ -507,17 +515,22 @@ export function DurationCard({
           {instances.map((ms, i) => {
             const isRunning = isIdxRunning(i);
             const hasData = ms > 0;
+            // A never-started instance is just the trailing "next" slot the
+            // auto-push logic always keeps ready (see setInstanceMs/
+            // toggleInstance) — showing it a number implies it's actually
+            // in progress, so it stays hidden (not just dimmed) until it
+            // genuinely has one, at which point it fades in already
+            // colored (gray, or blue once/while actively running).
+            const started = hasData || isRunning;
             return (
               <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
                 <span
                   className={cn(
-                    "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-colors",
-                    isRunning
-                      ? "bg-blue-500 text-white"
-                      : hasData
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-stone-100 text-foreground/60",
+                    "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-opacity",
+                    isRunning ? "bg-blue-500 text-white" : "bg-stone-100 text-muted-foreground",
+                    started ? "opacity-100" : "opacity-0",
                   )}
+                  aria-hidden={!started}
                 >
                   {i + 1}
                 </span>
