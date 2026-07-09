@@ -297,7 +297,7 @@ function scrollCardFullyIntoView(el: HTMLElement, headerHeight: number) {
 const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
   // Tighter than card's gap-3 — a condensed list reads better with its rows
   // sitting close together rather than spaced like full cards.
-  list: "grid-cols-1 gap-1.5",
+  list: "grid-cols-1 gap-1",
   card: "grid-cols-1 sm:grid-cols-2 gap-3",
   // Quick-action tiles are deliberately mobile-first multi-column (unlike
   // list/card's single column on narrow viewports) — the whole point is
@@ -405,6 +405,26 @@ function IndexInner() {
     else scrollCardFullyIntoView(el, stickyTop + toolbarHeight);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, keepActiveCardCentered]);
+
+  // The effect above doesn't actually cover a display-mode switch — its own
+  // dependency array only watches activeId/keepActiveCardCentered, so a
+  // pure mode change (same active card, same setting) never re-checks
+  // visibility. The scroll-anchor effect below only stops the active card
+  // from silently drifting mid-morph; it doesn't guarantee the reflowed
+  // result lands anywhere visible. Delayed to match CARD_MORPH_TRANSITION
+  // (same settle window used elsewhere, e.g. the drawer-slide effect above)
+  // so this doesn't fight that anchor's own scroll compensation while it's
+  // still running.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const el = cardRefs.current.get(activeId);
+      if (!el) return;
+      if (keepActiveCardCentered) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
+      else scrollCardFullyIntoView(el, stickyTop + toolbarHeight);
+    }, CARD_MORPH_TRANSITION.duration * 1000 + 50);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayMode]);
 
   // Anchors the active card's on-screen top position while the display mode
   // switches — cards above it are mid-flight through their own MorphContent
@@ -645,8 +665,12 @@ function IndexInner() {
           <>
           {/* -mx-2 cancels 8px of the section's px-5, so the cards sit 12px
               from the viewport edge — the same as the gap-3 between them,
-              instead of the wider 20px inherited from the shared tab padding. */}
-          <div className="flex flex-col items-center -mx-2 mt-5">
+              instead of the wider 20px inherited from the shared tab padding.
+              The two quick-action grids get a touch less top margin than
+              list/card — their own tiles already sit close under the
+              toolbar with little breathing room built into the tile itself,
+              so the fuller list/card margin read as an oversized gap there. */}
+          <div className={cn("flex flex-col items-center -mx-2", isGridDisplayMode ? "mt-4" : "mt-5")}>
             <div
               className={cn(
                 "transition-[opacity,width] duration-300",
@@ -1120,7 +1144,7 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout={suppressCardLayout ? false : "position"}
+              layout="position"
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
@@ -1129,7 +1153,7 @@ const DataCardList = memo(function DataCardList({
                 center: { opacity: 1, x: 0, transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 } },
                 exit: { opacity: 0, x: 80, transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 } },
               }}
-              transition={{ layout: CARD_MORPH_TRANSITION }}
+              transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
             >
               <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
             </motion.div>
@@ -1153,8 +1177,8 @@ const DataCardList = memo(function DataCardList({
           {visibleCards.map((card) => (
             <motion.div
               key={card.id}
-              layout={suppressCardLayout ? false : "position"}
-              transition={{ layout: CARD_MORPH_TRANSITION }}
+              layout="position"
+              transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               className="w-full flex justify-center"
               style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
@@ -1193,8 +1217,8 @@ function EditableCardItem({
   return (
     <Reorder.Item
       value={card.id}
-      layout={(suppressCardLayout ? false : "position") as unknown as true}
-      transition={{ layout: CARD_MORPH_TRANSITION }}
+      layout="position"
+      transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
       ref={setCardRef(card.id)}
       dragListener={false}
       dragControls={dragControls}

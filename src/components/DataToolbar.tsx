@@ -121,8 +121,10 @@ export function DataToolbar({
       style={{ top: stickyTop }}
     >
       <div className="flex items-center gap-1.5 max-w-3xl mx-auto">
-        {/* View mode segmented toggle */}
-        <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+        {/* View mode segmented toggle — nudged left within the toolbar's own
+         *  px-4 padding, since its rounded pill reads with more empty edge
+         *  space than the toolbar's other controls at the same inset. */}
+        <div className="flex items-center -ml-1 rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
           {DISPLAY_MODES.map(({ mode, label, icon }) => (
             <button
               key={mode}

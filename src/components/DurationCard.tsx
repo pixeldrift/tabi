@@ -278,14 +278,6 @@ export function DurationCard({
               const accent = running || activated;
               return (
                 <>
-                  <span
-                    className={cn(
-                      "font-bold uppercase tracking-wide text-muted-foreground",
-                      large ? "text-[11px]" : "text-[9px]",
-                    )}
-                  >
-                    Instance {i + 1}
-                  </span>
                   <div
                     className={cn(
                       "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
@@ -327,6 +319,14 @@ export function DurationCard({
                       )}
                     </button>
                   </div>
+                  <span
+                    className={cn(
+                      "font-bold uppercase tracking-wide text-muted-foreground",
+                      large ? "text-[11px]" : "text-[9px]",
+                    )}
+                  >
+                    Instance {i + 1}
+                  </span>
                 </>
               );
             }}
@@ -736,15 +736,19 @@ function formatTime(ms: number) {
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-// Deliberately no leading-zero hour/minute padding (unlike formatTime's
-// 00:00:00) — the quick-action tile is much narrower than a full card, and
-// stopwatch-style "0:45" comfortably fits where "00:00:45" would overflow.
+// Deliberately no leading-zero HOUR padding (unlike formatTime's 00:00:00) —
+// the quick-action tile is much narrower than a full card, and stopwatch-
+// style "1:23:45" comfortably fits where "01:23:45" would overflow. Minutes
+// are always 2 digits though (00:45, not 0:45) — that place changes every
+// minute, so leaving it unpadded made the pill's own digit count (and the
+// button riding along with it) visibly hop by one character width on every
+// single-to-double-digit rollover, not just the rare hour-gain crossing.
 function formatCompactTime(ms: number) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  const mm = h > 0 ? m.toString().padStart(2, "0") : String(m);
+  const mm = m.toString().padStart(2, "0");
   return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 

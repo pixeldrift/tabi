@@ -413,7 +413,13 @@ export function TaskAnalysisCard({
           Step {current + 1} of {steps.length}
         </div>
 
-        <div className="mt-2 px-3 text-center">
+        {/* Left-aligned rather than centered: CardShell's own rounded-corner
+         *  overflow-hidden clips anything wider than this box, and a
+         *  centered line pushes half of that overflow past the left edge —
+         *  clipping the beginning of a too-long word along with the end.
+         *  Left alignment keeps the natural start of the text anchored in
+         *  view, so only the tail ever runs past the edge. */}
+        <div className="mt-2 px-3 text-left">
           <p className="text-base font-semibold leading-tight">{steps[current]}</p>
         </div>
 
