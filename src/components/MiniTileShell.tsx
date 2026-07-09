@@ -182,11 +182,15 @@ export function MiniTileShell({
           that wrapper's comment) rather than a layout sibling it shrinks to
           make room for — so scoring a trial doesn't nudge everything else
           up a few px. Skinnier than CardShell's own labeled version since
-          there's no helper text to make room for. Only rendered where a
-          running percentage is meaningful for the data type (Trial, Task
-          Analysis); Frequency/Rate/Duration/Rating pass no `progress`. */}
+          there's no helper text to make room for. Inset from the edges
+          (rather than flush corner-to-corner) and rounded-full so it reads
+          as sitting inside the tile's own border instead of touching/
+          merging into it — most visible once a selected tile's ring makes
+          that border more prominent. Only rendered where a running
+          percentage is meaningful for the data type (Trial, Task Analysis);
+          Frequency/Rate/Duration/Rating pass no `progress`. */}
       {showProgress && (
-        <div className="absolute inset-x-0 bottom-0 z-0 h-0.5 bg-stone-200/80">
+        <div className="absolute inset-x-2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80">
           <div
             className={cn("h-full transition-[width]", barColor)}
             style={{ width: `${pct}%` }}

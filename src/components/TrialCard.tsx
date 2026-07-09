@@ -860,11 +860,15 @@ export function TrialCard({
         </div>
       </div>
 
-      {/* Progress bar — flush to bottom of card */}
+      {/* Progress bar — inset from the card's own edges (not flush corner-
+          to-corner) so it reads as sitting inside the card's border rather
+          than touching/merging into it — most visible once a selected
+          card's blue ring makes that border more prominent. Same treatment
+          as CardShell's own version of this bar. */}
       {minTrials > 0 && (
-        <div className="relative mt-3">
-          {/* Bar background + fill — clipped to card corners */}
-          <div className="relative h-5">
+        <div className="relative mt-3 mx-4 mb-3">
+          {/* Bar background + fill */}
+          <div className="relative h-5 rounded-md overflow-hidden">
             <div className="absolute inset-0 bg-muted">
               <motion.div
                 className={cn(
@@ -881,7 +885,7 @@ export function TrialCard({
             </div>
 
             {/* Helper text inside the bar */}
-            <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center px-3 text-[11px] text-foreground/75 leading-none pointer-events-none">
               {isComplete ? (
                 isMaxReached
                   ? "Maximum trials reached! Congrats!"

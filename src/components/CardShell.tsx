@@ -244,9 +244,16 @@ export function CardShell({
         children
       )}
 
+      {/* mx-4 mb-3: this used to run edge-to-edge, its own rounded corners
+          tucked flush against the card's — which read as the bar merging
+          into the border frame rather than sitting inside it, especially
+          once a selected card's blue ring made that border more prominent.
+          Insetting it (with its own now-visible rounded-md corners) keeps a
+          clear margin of card background all the way around, so it reads as
+          content living inside the border instead of touching it. */}
       {showProgress && (
-        <div className="relative mt-3">
-          <div className="relative h-5">
+        <div className="relative mt-3 mx-4 mb-3">
+          <div className="relative h-5 rounded-md overflow-hidden">
             <div className="absolute inset-0 bg-stone-200">
               <motion.div
                 className={cn("absolute inset-y-0 left-0", barBg)}
@@ -254,7 +261,7 @@ export function CardShell({
                 transition={{ type: "spring", stiffness: 180, damping: 26 }}
               />
             </div>
-            <div className="absolute inset-0 flex items-center justify-center px-5 text-[11px] text-foreground/75 leading-none pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center px-3 text-[11px] text-foreground/75 leading-none pointer-events-none">
               {helperText}
             </div>
           </div>

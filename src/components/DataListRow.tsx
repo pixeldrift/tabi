@@ -124,11 +124,14 @@ export function DataListRow({
           the title/actions above (both z-10) paint over it instead of the
           row reserving extra height for it. Skinnier here than CardShell's
           own labeled version, since there's no helper text to make room
-          for. Only rendered where a running percentage is meaningful for
-          the data type (Trial, Task Analysis); other kinds pass no
-          `progress`. */}
+          for. Inset from the edges and rounded-full (rather than flush
+          corner-to-corner) so it reads as sitting inside the row's own
+          border instead of touching/merging into it — most visible once a
+          selected row's ring makes that border more prominent. Only
+          rendered where a running percentage is meaningful for the data
+          type (Trial, Task Analysis); other kinds pass no `progress`. */}
       {showProgress && (
-        <div className="absolute inset-x-0 bottom-0 z-0 h-0.5 bg-stone-200/80">
+        <div className="absolute inset-x-2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80">
           <div className={cn("h-full transition-[width]", barColor)} style={{ width: `${pct}%` }} />
         </div>
       )}
