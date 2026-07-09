@@ -10,6 +10,7 @@ import { ModelingPromptIcon } from "./icons/ModelingPromptIcon";
 import { PartialPhysicalPromptIcon } from "./icons/PartialPhysicalPromptIcon";
 import { FullPhysicalPromptIcon } from "./icons/FullPhysicalPromptIcon";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { DataListRow } from "./DataListRow";
@@ -432,6 +433,7 @@ export function TrialCard({
                 selected={trials[current] === "incorrect"}
                 disabled={isDisabled}
                 onPick={(level) => pickPromptLevel(current, level, true)}
+                topInset={stickyTop + toolbarHeight}
               />
             ) : (
               <ListActionButton
@@ -752,6 +754,7 @@ export function TrialCard({
                 selected={trials[current] === "incorrect"}
                 disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
                 onPick={(level) => pickPromptLevel(current, level, true)}
+                topInset={stickyTop + toolbarHeight}
               />
             ) : (
               <ActionButton
@@ -809,6 +812,7 @@ export function TrialCard({
                       selected={t === "incorrect"}
                       disabled={!sessionRunning}
                       onPick={(level) => pickPromptLevel(i, level, false)}
+                      topInset={stickyTop + toolbarHeight}
                     />
                   ) : (
                     <button
@@ -1026,18 +1030,28 @@ function PromptLevelButton({
   selected,
   disabled,
   onPick,
+  topInset = 0,
 }: {
   levels: string[];
   selectedLevel: string | null;
   selected: boolean;
   disabled?: boolean;
   onPick: (level: string) => void;
+  /** Sticky header + toolbar height above this card — passed through so
+   *  Radix's own collision detection treats that (visually opaque) band as
+   *  unavailable space too, not just the true viewport edge, and flips the
+   *  popover to the other side instead of rendering underneath it. */
+  topInset?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <motion.button
+          ref={anchorRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -1071,10 +1085,14 @@ function PromptLevelButton({
         </motion.button>
       </PopoverAnchor>
       <PopoverContent
+        ref={contentRef}
         side="top"
         align="center"
-        collisionPadding={8}
-        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        // z-[70]: matches NumberKeypad/DataToolbar's own popovers — the
+        // sticky toolbar (z-[60]) and details drawer (z-[62]) would
+        // otherwise paint over this once the trigger scrolls near them.
+        className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1118,15 +1136,21 @@ function PromptLevelButton({
           })}
         </div>
         {/* Arrow — points back at the button that opened this popup, same
-            idiom as NumberKeypad's own popover arrow. */}
+            idiom as NumberKeypad's own popover arrow. Its left offset
+            tracks the trigger's real position (see useSlidingArrowOffset)
+            rather than staying hard-centered, since Radix's own collision
+            avoidance can shift the popup sideways to stay on screen when
+            the trigger sits near a viewport edge — a fixed center would
+            then no longer line up with the button it's pointing at. */}
         <div
           className={cn(
-            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
             "-bottom-[7px] border-r-2 border-b-2",
             "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
             "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
             "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
           )}
+          style={{ left: arrowLeft ?? "50%" }}
         />
       </PopoverContent>
     </Popover>
@@ -1143,18 +1167,25 @@ function ListPromptLevelButton({
   selected,
   disabled,
   onPick,
+  topInset = 0,
 }: {
   levels: string[];
   selectedLevel: string | null;
   selected: boolean;
   disabled?: boolean;
   onPick: (level: string) => void;
+  /** See PromptLevelButton's own comment on this prop. */
+  topInset?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <button
+          ref={anchorRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -1177,10 +1208,11 @@ function ListPromptLevelButton({
         </button>
       </PopoverAnchor>
       <PopoverContent
+        ref={contentRef}
         side="top"
         align="center"
-        collisionPadding={8}
-        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1224,15 +1256,18 @@ function ListPromptLevelButton({
           })}
         </div>
         {/* Arrow — points back at the button that opened this popup, same
-            idiom as NumberKeypad's own popover arrow. */}
+            idiom as NumberKeypad's own popover arrow; left offset tracks
+            the trigger's real position (see PromptLevelButton's own
+            comment on this same idiom). */}
         <div
           className={cn(
-            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
             "-bottom-[7px] border-r-2 border-b-2",
             "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
             "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
             "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
           )}
+          style={{ left: arrowLeft ?? "50%" }}
         />
       </PopoverContent>
     </Popover>
@@ -1248,18 +1283,25 @@ function RowPromptLevelButton({
   selected,
   disabled,
   onPick,
+  topInset = 0,
 }: {
   levels: string[];
   selectedLevel: string | null;
   selected: boolean;
   disabled?: boolean;
   onPick: (level: string) => void;
+  /** See PromptLevelButton's own comment on this prop. */
+  topInset?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <button
+          ref={anchorRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -1280,10 +1322,11 @@ function RowPromptLevelButton({
         </button>
       </PopoverAnchor>
       <PopoverContent
+        ref={contentRef}
         side="top"
         align="center"
-        collisionPadding={8}
-        className="group w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">
           <button
@@ -1327,15 +1370,18 @@ function RowPromptLevelButton({
           })}
         </div>
         {/* Arrow — points back at the button that opened this popup, same
-            idiom as NumberKeypad's own popover arrow. */}
+            idiom as NumberKeypad's own popover arrow; left offset tracks
+            the trigger's real position (see PromptLevelButton's own
+            comment on this same idiom). */}
         <div
           className={cn(
-            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
             "-bottom-[7px] border-r-2 border-b-2",
             "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
             "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
             "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
           )}
+          style={{ left: arrowLeft ?? "50%" }}
         />
       </PopoverContent>
     </Popover>
