@@ -351,11 +351,21 @@ export function TaskAnalysisCard({
       isComplete={isComplete}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}
-      // No helperText here — it now sits right under "Step X of Y" inside
-      // the card's own body instead of overlaid on the progress bar at the
-      // card's bottom, so it reads next to the step count it's talking
-      // about rather than detached from it. The bar itself is still shown
-      // (via `progress` above) as a plain, textless indicator.
+      helperText={
+        isComplete ? (
+          <span>
+            All steps scored ·{" "}
+            <strong className="font-semibold">
+              {independent}/{steps.length} independent
+            </strong>
+          </span>
+        ) : (
+          <span>
+            Score <strong className="font-semibold">{remaining} more</strong>{" "}
+            {remaining === 1 ? "step" : "steps"}.
+          </span>
+        )
+      }
       details={
         <dl className="space-y-3">
           <Row label="Phase" value={phase} />
@@ -474,25 +484,6 @@ export function TaskAnalysisCard({
         </div>
         <div className="text-center text-xs text-muted-foreground">
           Step {current + 1} of {steps.length}
-        </div>
-        {/* Sits right under the step count it's talking about, rather than
-            overlaid on the progress bar down at the card's bottom (see the
-            CardShell call above) — reads as one connected caption instead
-            of two disconnected pieces of status. */}
-        <div className="text-center text-[11px] text-muted-foreground">
-          {isComplete ? (
-            <span>
-              All steps scored ·{" "}
-              <strong className="font-semibold">
-                {independent}/{steps.length} independent
-              </strong>
-            </span>
-          ) : (
-            <span>
-              Score <strong className="font-semibold">{remaining} more</strong>{" "}
-              {remaining === 1 ? "step" : "steps"}.
-            </span>
-          )}
         </div>
 
         {/* flex+justify-center on the row, rather than text-align:center on
