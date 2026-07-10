@@ -143,7 +143,12 @@ export function DataToolbar({
               ref={filterBtnRef}
               type="button"
               aria-label="Filter cards"
-              title="Filter cards"
+              title="Filter cards — double-tap to clear"
+              // Double-click/tap clears every active filter without having
+              // to open the popover first — the two intervening single
+              // clicks still toggle the popover open then closed, but that
+              // happens too fast to notice.
+              onDoubleClick={clearFilters}
               className={cn(
                 "relative grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
                 activeFilterCount > 0
