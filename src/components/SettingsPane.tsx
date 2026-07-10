@@ -25,7 +25,7 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
           type="button"
           onClick={open}
           className={cn(
-            "flex h-9 w-[110px] items-center justify-center rounded-full border-2 bg-white px-2 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors text-blue-700",
+            "flex h-9 w-[110px] items-center justify-center rounded-full border-2 bg-white px-2 text-sm tabular-nums shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors text-blue-700",
             isEditing ? "border-blue-500" : "border-blue-300",
           )}
         >

@@ -160,7 +160,13 @@ export function TimeOfDayKeypad({ value: _value, onChange, onEditingChange, chil
         sideOffset={8}
         align="center"
         collisionPadding={8}
-        className="group w-auto border-none bg-transparent p-0 shadow-none"
+        // z-[110]: this popover is opened from Start/End time fields inside
+        // Schedule's Add/Edit Activity and Add/Edit Appointment dialogs
+        // (ui/dialog.tsx's DialogContent sits at z-[100]) as well as
+        // standalone in Settings — without an explicit z-index here it fell
+        // back to Radix Popover's base z-50, rendering completely hidden
+        // behind the dialog whenever opened from inside one.
+        className="group z-[110] w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="relative w-[210px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">

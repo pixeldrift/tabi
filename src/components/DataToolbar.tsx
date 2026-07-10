@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Frown, Heart, EyeOff, Pencil, Search, Star, Target, X } from "lucide-react";
+import { CheckCircle2, CircleDashed, ClipboardCheck, ClipboardX, Frown, Heart, EyeOff, Pencil, Search, Star, Target, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
 import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
@@ -46,10 +46,8 @@ export function DataToolbar({
     filters,
     toggleKindFilter,
     togglePhaseFilter,
-    setWithData,
-    setNoData,
-    setTrialsReached,
-    setIncompleteTrials,
+    cycleDataFilter,
+    cycleCompletionFilter,
     setFavoritesOnly,
     setShowHidden,
     cycleBehaviorFilter,
@@ -75,7 +73,7 @@ export function DataToolbar({
     const update = () => {
       const btn = filterBtnRef.current;
       const content = filterContentRef.current;
-      const wrapper = content?.parentElement;
+      const wrapper = content?.parentElement as HTMLElement | null;
       if (!btn || !content || !wrapper) return;
       const currentTransform = new DOMMatrixReadOnly(getComputedStyle(wrapper).transform);
       const centeredLeft = window.innerWidth / 2 - content.offsetWidth / 2;
@@ -83,10 +81,28 @@ export function DataToolbar({
       const btnRect = btn.getBoundingClientRect();
       setFilterArrowLeft(btnRect.left + btnRect.width / 2 - centeredLeft);
     };
-    const raf = requestAnimationFrame(update);
+    // Two things make a single one-shot pass unreliable here: (1) Radix
+    // portals PopoverContent in asynchronously, so `filterContentRef.current`
+    // is often still null on this effect's very first run — refs are
+    // re-read fresh on every frame below instead of captured once; and (2)
+    // Radix/Floating UI keeps re-measuring and re-asserting its OWN position
+    // across the first several frames after mount (content size settling,
+    // the open animation), silently clobbering a write from a frame or two
+    // ago. Polling for a couple dozen frames plus a short settle timeout
+    // makes sure ours is both applied at all and the one that sticks.
+    const rafIds: number[] = [];
+    let frame = 0;
+    const loop = () => {
+      update();
+      frame += 1;
+      if (frame < 20) rafIds.push(requestAnimationFrame(loop));
+    };
+    rafIds.push(requestAnimationFrame(loop));
+    const settleId = window.setTimeout(update, 300);
     window.addEventListener("resize", update);
     return () => {
-      cancelAnimationFrame(raf);
+      rafIds.forEach(cancelAnimationFrame);
+      window.clearTimeout(settleId);
       window.removeEventListener("resize", update);
     };
   }, [filterOpen]);
@@ -94,10 +110,8 @@ export function DataToolbar({
   const activeFilterCount =
     filters.kinds.size +
     filters.phases.size +
-    // Each pair only counts as an active filter when exactly one side is
-    // selected — both or neither applies no constraint (see the popover).
-    (filters.withData !== filters.noData ? 1 : 0) +
-    (filters.trialsReached !== filters.incompleteTrials ? 1 : 0) +
+    (filters.dataFilter !== "all" ? 1 : 0) +
+    (filters.completionFilter !== "all" ? 1 : 0) +
     (filters.favoritesOnly ? 1 : 0) +
     (filters.showHidden ? 1 : 0) +
     (filters.behaviorFilter !== "both" ? 1 : 0);
@@ -143,7 +157,12 @@ export function DataToolbar({
               ref={filterBtnRef}
               type="button"
               aria-label="Filter cards"
-              title="Filter cards"
+              title="Filter cards — double-tap to clear"
+              // Double-click/tap clears every active filter without having
+              // to open the popover first — the two intervening single
+              // clicks still toggle the popover open then closed, but that
+              // happens too fast to notice.
+              onDoubleClick={clearFilters}
               className={cn(
                 "relative grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
                 activeFilterCount > 0
@@ -169,7 +188,7 @@ export function DataToolbar({
             side="bottom"
             align="center"
             sideOffset={8}
-            className="group z-[70] w-[308px] p-3"
+            className="group z-[70] w-64 p-3"
           >
             <FilterPopoverContent
               availableKinds={availableKinds}
@@ -177,13 +196,12 @@ export function DataToolbar({
               filters={filters}
               toggleKindFilter={toggleKindFilter}
               togglePhaseFilter={togglePhaseFilter}
-              setWithData={setWithData}
-              setNoData={setNoData}
-              setTrialsReached={setTrialsReached}
-              setIncompleteTrials={setIncompleteTrials}
+              cycleDataFilter={cycleDataFilter}
+              cycleCompletionFilter={cycleCompletionFilter}
               setFavoritesOnly={setFavoritesOnly}
               setShowHidden={setShowHidden}
               clearFilters={clearFilters}
+              onClose={() => setFilterOpen(false)}
             />
             {/* Arrow — points back at the filter button, same rotated-square
                 idiom as NumberKeypad's popup. Since the box is no longer
@@ -296,33 +314,46 @@ function FilterPopoverContent({
   filters,
   toggleKindFilter,
   togglePhaseFilter,
-  setWithData,
-  setNoData,
-  setTrialsReached,
-  setIncompleteTrials,
+  cycleDataFilter,
+  cycleCompletionFilter,
   setFavoritesOnly,
   setShowHidden,
   clearFilters,
+  onClose,
 }: {
   availableKinds: CardKind[];
   availablePhases: string[];
   filters: ReturnType<typeof useDataToolbar>["filters"];
   toggleKindFilter: (k: CardKind) => void;
   togglePhaseFilter: (p: string) => void;
-  setWithData: (v: boolean) => void;
-  setNoData: (v: boolean) => void;
-  setTrialsReached: (v: boolean) => void;
-  setIncompleteTrials: (v: boolean) => void;
+  cycleDataFilter: () => void;
+  cycleCompletionFilter: () => void;
   setFavoritesOnly: (v: boolean) => void;
   setShowHidden: (v: boolean) => void;
   clearFilters: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Filters</h3>
-        <button type="button" onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-700">
+      {/* Three equal-width columns so "Clear all" lands dead-center of the
+          row regardless of "Filters"/the close button's own widths, not
+          just centered between wherever those two happen to end. */}
+      <div className="grid grid-cols-3 items-center">
+        <h3 className="justify-self-start text-sm font-semibold">Filters</h3>
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="justify-self-center text-xs text-blue-600 hover:text-blue-700"
+        >
           Clear all
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close filters"
+          className="justify-self-end -mr-1 -mt-1 rounded-full p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+        >
+          <X className="size-4" />
         </button>
       </div>
 
@@ -341,32 +372,27 @@ function FilterPopoverContent({
         />
       </div>
 
-      {/* Each row below is two independent toggles, not a mutually exclusive
-          pair — selecting both or neither applies no constraint (shows
-          all), rather than one turning the other off. */}
+      {/* Single three-way cycling chips (all -> one state -> the other ->
+          all) — same idiom as the behaviorFilter button in the main toolbar
+          row, replacing what used to be two independent toggle pairs. */}
       <div className="flex gap-1.5">
         <ToggleChip
-          label="With Data"
-          selected={filters.withData}
-          onClick={() => setWithData(!filters.withData)}
+          icon={filters.dataFilter === "no-data" ? <ClipboardX className="size-3" /> : <ClipboardCheck className="size-3" />}
+          label={filters.dataFilter === "no-data" ? "No Data" : filters.dataFilter === "with-data" ? "With Data" : "Data"}
+          selected={filters.dataFilter !== "all"}
+          onClick={cycleDataFilter}
         />
         <ToggleChip
-          label="No Data"
-          selected={filters.noData}
-          onClick={() => setNoData(!filters.noData)}
-        />
-      </div>
-
-      <div className="flex gap-1.5">
-        <ToggleChip
-          label="Trials Reached"
-          selected={filters.trialsReached}
-          onClick={() => setTrialsReached(!filters.trialsReached)}
-        />
-        <ToggleChip
-          label="Incomplete Trials"
-          selected={filters.incompleteTrials}
-          onClick={() => setIncompleteTrials(!filters.incompleteTrials)}
+          icon={filters.completionFilter === "incomplete" ? <CircleDashed className="size-3" /> : <CheckCircle2 className="size-3" />}
+          label={
+            filters.completionFilter === "incomplete"
+              ? "Incomplete"
+              : filters.completionFilter === "reached"
+                ? "Reached"
+                : "Trials"
+          }
+          selected={filters.completionFilter !== "all"}
+          onClick={cycleCompletionFilter}
         />
       </div>
 

@@ -87,7 +87,8 @@ export function DataDetailsDrawer({
       const el = cardRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      setArrowTop(rect.top + rect.height / 2 - top);
+      const midY = rect.top + rect.height / 2 - top;
+      setArrowTop(midY);
       // A small positive gap (unlike Card/List's widthClassName fallback,
       // which deliberately reaches a bit past a card's own edge to cover its
       // now-redundant info button) — a tile is small enough that a body
@@ -99,8 +100,18 @@ export function DataDetailsDrawer({
       // tile a little, the same intentional, localized overlap Card/List's
       // fallback width has always accepted.
       if (hugCardRight) setHugWidth(window.innerWidth - rect.right - DRAWER_TILE_GAP_PX);
-      if (rect.bottom <= top) setOffDirection("above");
-      else if (rect.top >= window.innerHeight) setOffDirection("below");
+      // Same thresholds as clampedArrowTop below (minArrowTop/maxArrowTop) —
+      // switch to the scroll-to-card button as soon as the arrow's natural
+      // position would need clamping to the drawer's top (toolbar) or
+      // bottom edge, rather than waiting for the card to scroll fully out
+      // of view. A clamped-but-still-a-diamond arrow sitting pinned at that
+      // edge for a while first (while the card is still mostly visible)
+      // read as pointing at nothing in particular; this way the switch
+      // happens right as the arrow would have started sitting still.
+      const minTop = toolbarHeight + 24;
+      const maxTop = Math.max(minTop, window.innerHeight - top - 24);
+      if (midY < minTop) setOffDirection("above");
+      else if (midY > maxTop) setOffDirection("below");
       else setOffDirection(null);
     };
     // A grid-mode tile has already finished reflowing into its single left
@@ -118,7 +129,7 @@ export function DataDetailsDrawer({
       window.removeEventListener("resize", update);
       ro.disconnect();
     };
-  }, [open, top, cardRef, hugCardRight]);
+  }, [open, top, toolbarHeight, cardRef, hugCardRight]);
 
   useEffect(() => {
     if (!open) return;

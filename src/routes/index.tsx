@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
-import { User } from "lucide-react";
+import { PersonPill } from "@/components/StaffDirectory";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
@@ -132,6 +132,26 @@ const cards: CardConfig[] = [
     locked: true,
   },
   {
+    id: "property-destruction-throwing",
+    kind: "frequency",
+    title: "Property destruction/throwing",
+    behaviorRole: "interfering",
+    phase: "Baseline",
+    description:
+      "Tally each instance the learner throws or destroys property, including books, toys, or furniture.",
+    minCount: 3,
+  },
+  {
+    id: "self-injury-banging-head",
+    kind: "rate",
+    title: "Self Injury/Banging Head",
+    behaviorRole: "interfering",
+    phase: "Intervention",
+    description:
+      "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per minute.",
+    minDurationSec: 60,
+  },
+  {
     id: "tantruming",
     kind: "duration",
     title: "Tantruming",
@@ -182,6 +202,20 @@ const cards: CardConfig[] = [
       "Fully engaged and cooperative throughout the session.",
     ],
   },
+  {
+    id: "readiness-to-learn",
+    kind: "rating",
+    title: "Readiness to learn",
+    phase: "Intervention",
+    description:
+      "A quick end-of-session read on how available the learner was for instruction. Same single-score behavior as Overall session engagement — later interactions update this same rating rather than adding new entries.",
+    max: 3,
+    levelDescriptions: [
+      "Not ready — dysregulated or unresponsive to redirection for most of the session.",
+      "Partially ready — needed regulation support before engaging productively.",
+      "Fully ready — regulated and available for instruction from the start.",
+    ],
+  },
 ];
 
 // Data-submitted animation timing — TODO: surface in user settings.
@@ -207,6 +241,12 @@ function Index() {
 }
 
 const CARD_KINDS_IN_ORDER: CardKind[] = ["trial", "frequency", "rate", "duration", "task-analysis", "rating"];
+
+// Clinical progression order, not the cards' own declaration order — the
+// filter popover's Phase chips should read left-to-right the way a plan
+// actually moves through them. Any phase not in this list (typos, future
+// additions) sorts after, alphabetically, rather than silently vanishing.
+const PHASE_ORDER = ["Probing", "Baseline", "Intervention", "Maintenance"];
 
 function getVisibleCards(
   order: string[],
@@ -234,16 +274,10 @@ function getVisibleCards(
     if (filters.favoritesOnly && !favorites.has(card.id)) return false;
     if (filters.kinds.size > 0 && !filters.kinds.has(card.kind)) return false;
     if (filters.phases.size > 0 && !filters.phases.has(card.phase)) return false;
-    // Each pair below is two independent toggles, not a mutually exclusive
-    // choice — selecting both or neither applies no constraint (show all).
-    if (filters.withData !== filters.noData) {
-      if (filters.withData && !hasData[card.id]) return false;
-      if (filters.noData && hasData[card.id]) return false;
-    }
-    if (filters.trialsReached !== filters.incompleteTrials) {
-      if (filters.trialsReached && !completion[card.id]) return false;
-      if (filters.incompleteTrials && completion[card.id]) return false;
-    }
+    if (filters.dataFilter === "with-data" && !hasData[card.id]) return false;
+    if (filters.dataFilter === "no-data" && hasData[card.id]) return false;
+    if (filters.completionFilter === "reached" && !completion[card.id]) return false;
+    if (filters.completionFilter === "incomplete" && completion[card.id]) return false;
     if (filters.behaviorFilter !== "both") {
       const role = card.behaviorRole ?? "target";
       if (role !== filters.behaviorFilter) return false;
@@ -348,7 +382,12 @@ function IndexInner() {
     () => CARD_KINDS_IN_ORDER.filter((k) => cards.some((c) => c.kind === k)),
     [],
   );
-  const availablePhases = useMemo(() => Array.from(new Set(cards.map((c) => c.phase))), []);
+  const availablePhases = useMemo(() => {
+    const present = new Set(cards.map((c) => c.phase));
+    const known = PHASE_ORDER.filter((p) => present.has(p));
+    const rest = Array.from(present).filter((p) => !PHASE_ORDER.includes(p)).sort();
+    return [...known, ...rest];
+  }, []);
 
   const visibleCards = useMemo(
     () => getVisibleCards(order, filters, searchQuery, favorites, hidden, hasData, completion, editMode),
@@ -677,7 +716,12 @@ function IndexInner() {
               list/card — their own tiles already sit close under the
               toolbar with little breathing room built into the tile itself,
               so the fuller list/card margin read as an oversized gap there. */}
-          <div className={cn("flex flex-col items-center -mx-2", isGridDisplayMode ? "mt-4" : "mt-5")}>
+          {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
+              slides the whole card grid a full extra width off to the
+              side — without this, that briefly inflates the document's
+              scrollable width, which some mobile browsers respond to by
+              rescaling the visual viewport for an instant. */}
+          <div className={cn("flex flex-col items-center -mx-2 overflow-x-hidden", isGridDisplayMode ? "mt-4" : "mt-5")}>
             <div
               className={cn(
                 "transition-[opacity,width] duration-300",
@@ -1269,42 +1313,51 @@ function EditableCardItem({
   );
 }
 
+// Team roster pulls from the same show as the client/BCBA names already
+// used elsewhere in the header (Phineas Flynn, Perry Plat) — kept to one
+// consistent universe rather than mixing in generic placeholder names.
+const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"];
+
 function InfoPane() {
   const { lastUpdated } = useSession();
   return (
     <div className="max-w-2xl mx-auto mt-6 px-4">
-      <div className="space-y-2 text-sm text-muted-foreground">
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-          <span>For</span>
-          <UserLink name="Phineas Flynn" />
-          <span>by</span>
-          <UserLink name="Heinz Doofenshmirtz" />
-        </div>
-        <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-          <span>Last updated {formatUpdated(lastUpdated)} by</span>
-          <UserLink name="Perry Plat" />
-        </div>
+      <div className="space-y-3 text-sm">
+        <InfoRow label="Therapy plan for:">
+          <PersonPill name="Phineas Flynn" />
+        </InfoRow>
+        <InfoRow label="Lead BCBA:">
+          <PersonPill name="Heinz Doofenshmirtz" />
+        </InfoRow>
+        <InfoRow label="Team:">
+          {TEAM_MEMBERS.map((name) => (
+            <PersonPill key={name} name={name} />
+          ))}
+        </InfoRow>
       </div>
       <div className="mt-8 rounded-xl border border-dashed border-stone-300 bg-white p-8 text-center">
-        <h3 className="font-display text-xl">Session info</h3>
+        <h3 className="font-display text-xl">Client Info</h3>
         <p className="mt-2 text-sm text-muted-foreground">Goals, programs, and learner notes will live here.</p>
+      </div>
+      {/* Moved below the plan/team info and its own placeholder content —
+          this is metadata about the record, not the first thing a BCBA
+          needs when opening the tab. */}
+      <div className="mt-6 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
+        <span>Last updated {formatUpdated(lastUpdated)} by</span>
+        <PersonPill name="Perry Plat" />
       </div>
     </div>
   );
 }
 
-function UserLink({ name }: { name: string }) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 hover:bg-blue-100 hover:text-blue-700 transition-colors text-sm"
-    >
-      <User className="size-3" fill="currentColor" strokeWidth={0} />
-      <span>{name}</span>
-    </button>
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <span className="font-semibold text-foreground/80 shrink-0">{label}</span>
+      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+    </div>
   );
 }
-
 
 function formatUpdated(d: Date | null) {
   if (!d) return "—";

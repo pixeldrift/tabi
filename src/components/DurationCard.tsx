@@ -63,7 +63,21 @@ export function DurationCard({
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
   const { markDirty, resetSignal } = useCardSession();
-  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
+  useRegisterActiveTimer({
+    id: `duration:${title}`,
+    label: title,
+    active: running && sessionRunning,
+    elementRef: cardRef,
+    source: "duration",
+    // Jumping here from the header's timer indicator should bring the
+    // actual running instance into view — not whichever one the user last
+    // swiped to — since a multi-instance card can easily be showing a
+    // finished earlier instance instead of the live one.
+    onActivate: () => {
+      if (runningIdx !== null && runningIdx !== viewIdx) setViewIdx(runningIdx);
+      onActivate?.();
+    },
+  });
   // Holds a pending "start on the next full master second" timeout — see
   // `toggleInstance` below — so a quick pause (or a session reset) before it
   // fires can cancel it instead of starting the timer late anyway.
@@ -270,17 +284,41 @@ export function DurationCard({
             {instances.map((ms, i) => {
               const isCurrent = i === viewIdx;
               return (
-                <span
+                <motion.span
                   key={i}
+                  layout="position"
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                   className={cn(
-                    "rounded-full shrink-0 transition-[width,height]",
+                    "rounded-full shrink-0 transition-[width,height,background-color]",
                     isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
+                    // Color reflects this instance's own data/running state
+                    // only — being the "current" (viewed) instance no longer
+                    // forces blue on its own; a fresh, not-yet-started
+                    // instance stays gray even while it's the one in view.
                     isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
-                    isCurrent && !isIdxRunning(i) && "bg-blue-400",
                   )}
                 />
               );
             })}
+            {/* Preview of the next instance, before it formally exists —
+                appears once the last real instance has data or is running,
+                hinting "one more is coming" (matching toggleInstance's own
+                auto-advance-on-pause behavior). Smaller and plain gray, and
+                not interactive, so it doesn't read as a real, clickable
+                instance yet. */}
+            <AnimatePresence>
+              {isActivated(instances.length - 1) && (
+                <motion.span
+                  key="preview"
+                  layout="position"
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  className={cn("rounded-full shrink-0 bg-stone-300", large ? "size-1" : "size-[3px]")}
+                />
+              )}
+            </AnimatePresence>
           </div>
           {/* No h-full here (unlike the old version) — that forced this
               strip to claim the tile's entire remaining height, and its own
@@ -411,14 +449,12 @@ export function DurationCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={viewIdx}>
-              <ListActionBadge value={viewIdx + 1} />
-            </ListActionSlide>
-            {/* Same rounded pill/play-pause pattern as the grid tile's own
-                timer, just sized to match this row's other action buttons —
-                static, not part of the slide, same as every other kind's
-                buttons. */}
+          // Badge and pill travel together — the pill's time/play-pause is
+          // specific to THIS instance, so advancing to another one should
+          // read as the whole row moving on, not just the number changing
+          // while the same pill sits still.
+          <ListActionSlide actionKey={viewIdx}>
+            <ListActionBadge value={viewIdx + 1} />
             <div
               className={cn(
                 "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
@@ -462,7 +498,7 @@ export function DurationCard({
                 )}
               </button>
             </div>
-          </div>
+          </ListActionSlide>
         }
       />
     );

@@ -22,6 +22,7 @@ import {
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
 import { SmileyIcon } from "./icons/SmileyIcon";
+import { HandshakeIcon } from "./icons/HandshakeIcon";
 import {
   Select,
   SelectContent,
@@ -900,11 +901,11 @@ export function ScheduleView({
             // Same inset-field look as TimeField (pill border + inner
             // shadow), so it reads as an actual text entry rather than the
             // plain-text-with-hidden-border stand-in this used to be. Black
-            // text (not the trigger's blue) plus a stronger inset shadow
-            // than the smaller fields use — at this size and weight, the
-            // subtle 0.08 shadow read as decoration rather than a carved-in,
+            // text (not the trigger's blue) plus an even stronger inset
+            // shadow than the smaller fields use — at this size and weight,
+            // a lighter shadow reads as decoration rather than a carved-in,
             // clearly-editable well.
-            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.18)] transition-colors"
+            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-black shadow-[inset_0_3px_6px_rgba(0,0,0,0.26)] transition-colors"
             style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
           />
         ) : (
@@ -1282,7 +1283,7 @@ export function ScheduleView({
 
       {/* Schedule grid */}
       <div className="mt-3 mx-1 rounded-md border border-stone-200 relative">
-        <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground border-b border-stone-300 bg-stone-200 rounded-t-md">
+        <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 mb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-stone-200 rounded-full">
           <div className="text-right pr-1.5">Time</div>
           <div className="flex items-center gap-1.5">
             <span className="invisible text-sm leading-none shrink-0" aria-hidden>•</span>
@@ -1296,6 +1297,17 @@ export function ScheduleView({
         </div>
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
+          {arrowTop !== null && !editMode && (
+            // Between the item rows (z-10) and the appointment overlays
+            // (z-20) — reads as "now" cutting across the activity grid while
+            // still ducking under an appointment box the way a real
+            // schedule line would.
+            <div
+              className="absolute left-0 right-0 z-[15] pointer-events-none border-t-2 border-dashed"
+              style={{ top: arrowTop, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
+              aria-hidden
+            />
+          )}
           {arrowTop !== null && !editMode && (
             <div
               key={`arrow-${nowAnim}`}
@@ -1530,6 +1542,14 @@ export function ScheduleView({
               setCollapsedAppts((p) => ({ ...p, [a.id]: false }));
               setAllApptsCollapsed(false);
             };
+            // Same 5-minute divider lines an activity row shows, so an
+            // appointment's own duration reads at a glance too — only
+            // meaningful in proportional mode, where height actually tracks
+            // real duration (collapsed mode's uniform rows don't).
+            const apptGridLines =
+              layoutMode === "proportional"
+                ? Math.max(0, Math.floor((toMin(a.end) - toMin(a.start) - 1) / 5))
+                : 0;
             return (
               <motion.div
                 // Remounting on a layoutMode switch (rather than reusing the
@@ -1586,7 +1606,27 @@ export function ScheduleView({
                       aria-label="Collapse appointment (drag handle)"
                       className="absolute top-0 left-0 right-0 z-10 h-2 cursor-pointer"
                     />
-                    <div className="relative h-full grid grid-cols-[40px_1fr_30px] gap-1 px-1.5 pt-0.5 items-start">
+                    {/* Same 5-minute divider lines an activity row shows —
+                        see apptGridLines above. */}
+                    {Array.from({ length: apptGridLines }, (_, i) => (
+                      <div
+                        key={`ag-${i}`}
+                        className="absolute left-1 right-1 border-t border-green-200"
+                        style={{ top: (i + 1) * 5 * PX_PER_MIN }}
+                      />
+                    ))}
+                    {/* Top-right corner, aligned with the title text's own
+                        row — not centered on the box, which reads as
+                        disconnected from the title it belongs to. */}
+                    <button
+                      type="button"
+                      onClick={collapse}
+                      className="absolute top-1 right-1 z-10 size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
+                      aria-label="Collapse appointment"
+                    >
+                      <CollapseIcon className="size-3.5" />
+                    </button>
+                    <div className="relative h-full grid grid-cols-[40px_1fr] gap-1 pl-1.5 pr-8 pt-0.5 items-start">
                       <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
                         {fmt12(a.start)}
                       </div>
@@ -1606,14 +1646,6 @@ export function ScheduleView({
                           {a.provider}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={collapse}
-                        className="size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
-                        aria-label="Collapse appointment"
-                      >
-                        <CollapseIcon className="size-3.5" />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -2290,7 +2322,7 @@ function AppointmentDialog({
           </div>
           <TapToggle
             label="Co-Treat"
-            icon={<HandHelping className="size-3.5" />}
+            icon={<HandshakeIcon className="size-3.5" />}
             checked={coTreat}
             onChange={setCoTreat}
           />
@@ -2489,7 +2521,7 @@ function TimeField({
           type="button"
           onClick={open}
           className={cn(
-            "flex h-9 w-[84px] items-center justify-center border-2 bg-white px-1.5 text-sm tabular-nums shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] transition-colors",
+            "flex h-9 w-[84px] items-center justify-center border-2 bg-white px-1.5 text-sm tabular-nums shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors",
             !resetSide && "rounded-full",
             resetSide === "left" && "rounded-r-full",
             resetSide === "right" && "rounded-l-full",

@@ -222,20 +222,39 @@ export function TaskAnalysisCard({
           </div>
         }
       >
-        {/* Previous/current/next step status, in the same left-behind/
-            coming-up reading direction as the nav arrows elsewhere — large
-            density only ("if there is room"; small's own step text is
-            already fighting for space, see MiniTileShell's own clamp
-            comment). The current step's own dot sits bigger in the middle,
-            emphasizing it against its (smaller) neighbors — shifted up a
-            few px so it doesn't crowd the step text/nav directly below it. */}
-        {large && (
-          <div className="-mt-1 flex items-center gap-2.5" aria-hidden>
-            <span className={cn("rounded-full size-1.5", current > 0 ? statusDotColor(statuses[current - 1]) : "bg-transparent")} />
-            <span className={cn("rounded-full size-2.5", statusDotColor(statuses[current]))} />
-            <span className={cn("rounded-full size-1.5", current < steps.length - 1 ? statusDotColor(statuses[current + 1]) : "bg-transparent")} />
-          </div>
-        )}
+        {/* Every step's own dot, not just prev/current/next — a second
+            SwipeStrip bound to the same current/goTo state as the step text
+            below, so dragging either one moves both in lockstep and the
+            whole row visibly slides as `current` changes (the same native
+            smooth-scroll the text strip already uses). Distance from center
+            shrinks and fades each dot rather than a hard cutoff, reading as
+            "fading out to the edges" instead of a fixed 3-dot window. */}
+        <SwipeStrip
+          count={steps.length}
+          current={current}
+          onCurrentChange={goTo}
+          variant="centered"
+          className="-mt-1 w-full"
+          gapClassName={large ? "gap-2" : "gap-1.5"}
+          itemWrapperClassName="flex items-center justify-center"
+        >
+          {(i) => {
+            const dist = Math.abs(i - current);
+            const size = dist === 0 ? (large ? "size-2.5" : "size-2") : dist === 1 ? "size-2" : dist === 2 ? "size-1.5" : "size-1";
+            const opacity = dist === 0 ? 1 : dist === 1 ? 0.7 : dist === 2 ? 0.4 : 0.2;
+            return (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(i);
+                }}
+                className={cn("rounded-full transition-all duration-300", size, statusDotColor(statuses[i]))}
+                style={{ opacity }}
+                aria-hidden
+              />
+            );
+          }}
+        </SwipeStrip>
         <SwipeStrip
           count={steps.length}
           current={current}
@@ -317,10 +336,11 @@ export function TaskAnalysisCard({
         progress={progress}
         isComplete={isComplete}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={current}>
-              <ListActionBadge value={current + 1} />
-            </ListActionSlide>
+          // Badge and buttons slide together — each button scores THIS step
+          // specifically, so advancing to the next step should read as the
+          // whole row moving on, not just the number changing in place.
+          <ListActionSlide actionKey={current}>
+            <ListActionBadge value={current + 1} />
             {OPTIONS.map((opt) => (
               <ListActionButton
                 key={opt.value}
@@ -332,7 +352,7 @@ export function TaskAnalysisCard({
                 onClick={() => setStep(current, opt.value, true)}
               />
             ))}
-          </div>
+          </ListActionSlide>
         }
       />
     );

@@ -53,10 +53,10 @@ interface StatusBarProps {
 }
 
 const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { id: "info", label: "Info", icon: InfoIcon },
+  { id: "info", label: "Client Info", icon: InfoIcon },
   { id: "data", label: "Data", icon: ClipboardList },
   { id: "schedule", label: "Schedule", icon: CalendarDays },
-  { id: "notifications", label: "Alerts", icon: Bell },
+  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -90,7 +90,12 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     forceSync,
   } = useSession();
 
-  const durationTimers = activeTimers.filter((t) => t.source === "duration");
+  // Both sources — an unlocked Rate card's own timer runs independently of
+  // the session just like a Duration timer does (locked Rate timers always
+  // follow the session and never register as "active" in the first place,
+  // see RateCard's own `active: ticking && !locked`), so both belong in the
+  // same "something's running, tap to jump to it" indicator.
+  const runningTimers = activeTimers.filter((t) => t.source === "duration" || t.source === "rate");
 
   // Random previous session length between 1-5 hours, generated once on the client.
   const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
@@ -281,7 +286,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 
   return (
     <>
-      <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-stone-200">
+      <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -295,11 +300,10 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                 <ArrowLeft className="size-5" />
               </button>
               <h1 className="min-w-0 font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
-              {/* Short git hash, not the title's own text, so it stays
-                  visible (shrink-0) even once the title itself has to
-                  truncate on a narrow screen — a quick "am I on the
-                  latest build" check shouldn't be the first thing that
-                  gets clipped. */}
+              {/* Independent of the title's own text, so it stays visible
+                  (shrink-0) even once the title itself has to truncate on a
+                  narrow screen — a quick "am I on the latest build" check
+                  shouldn't be the first thing that gets clipped. */}
               <span className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm" title="Build version">
                 ({__APP_VERSION__})
               </span>
@@ -361,6 +365,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   pillVisible={bigPillVisible}
                   pillRef={bigPillRef}
                   dimmed={dimmed}
+                  startingNew={dimmed && transitionKind === "start-new"}
                   onPlay={requestPlay}
                   onStartNew={requestStartNew}
                   onEnd={() => setEndOpen(true)}
@@ -398,7 +403,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                           : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
                       )}
                     >
-                      <Icon className="size-4" />
+                      <Icon className={cn("size-4", !isActive && "opacity-60")} />
                       <span className="hidden sm:inline">{t.label}</span>
                       {isActive && (
                         <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
@@ -406,7 +411,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                     </button>
                   );
                 })}
-                <ActiveDurationIndicator timers={durationTimers} />
+                <ActiveDurationIndicator timers={runningTimers} activeTab={activeTab} onTabChange={onTabChange} />
               </div>
 
               <AnimatePresence initial={false}>
@@ -495,7 +500,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
               exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
               transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
               onAnimationComplete={() => setPillTraveling(false)}
-              className="fixed z-50 flex items-stretch rounded-full border-2 bg-white shadow-md pointer-events-none overflow-hidden"
+              className="fixed z-50 flex items-stretch rounded-full border-2 bg-white pointer-events-none overflow-hidden"
             >
               <motion.span
                 initial={{ fontSize: digitPx.from, color: digitColor.from }}
@@ -576,9 +581,37 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
 }
 
 
-function ActiveDurationIndicator({ timers }: { timers: { id: string; label: string; scrollTo: () => void; activate?: () => void }[] }) {
+function ActiveDurationIndicator({
+  timers,
+  activeTab,
+  onTabChange,
+}: {
+  timers: { id: string; label: string; scrollTo: () => void; activate?: () => void }[];
+  activeTab: StatusTab;
+  onTabChange: (t: StatusTab) => void;
+}) {
+  // Switching the Data tab's display mode (list/card/grid) remounts every
+  // card, which briefly unregisters and re-registers each running timer —
+  // without this grace window `timers` would bounce to empty and back for
+  // that one frame, flashing this indicator away and back instead of
+  // staying put the way the rest of the header does through that same
+  // transition.
+  const [displayedTimers, setDisplayedTimers] = useState(timers);
+  const timersRef = useRef(timers);
+  timersRef.current = timers;
+  useEffect(() => {
+    if (timers.length > 0) {
+      setDisplayedTimers(timers);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      if (timersRef.current.length === 0) setDisplayedTimers([]);
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [timers]);
+
   const [index, setIndex] = useState(0);
-  const count = timers.length;
+  const count = displayedTimers.length;
   const visible = count > 0;
 
   useEffect(() => {
@@ -587,9 +620,10 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
 
   const handleClick = () => {
     if (count === 0) return;
+    if (activeTab !== "data") onTabChange("data");
     const next = index % count;
-    timers[next]?.scrollTo();
-    timers[next]?.activate?.();
+    displayedTimers[next]?.scrollTo();
+    displayedTimers[next]?.activate?.();
     setIndex((i) => (count > 0 ? (i + 1) % count : 0));
   };
 
@@ -600,7 +634,7 @@ function ActiveDurationIndicator({ timers }: { timers: { id: string; label: stri
           key="duration-indicator"
           onClick={handleClick}
           aria-label={count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`}
-          title={count > 1 ? `${count} timers running — tap to cycle` : timers[0]?.label}
+          title={count > 1 ? `${count} timers running — tap to cycle` : displayedTimers[0]?.label}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
@@ -839,6 +873,7 @@ function ExpandedSessionBox({
   pillVisible = true,
   pillRef,
   dimmed = false,
+  startingNew = false,
   onPlay,
   onStartNew,
   onEnd,
@@ -851,13 +886,14 @@ function ExpandedSessionBox({
   pillVisible?: boolean;
   pillRef?: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
+  startingNew?: boolean;
   onPlay: () => void;
   onStartNew: () => void;
   onEnd: () => void;
   onRequestDiscard: () => void;
 }) {
   const isPaused = status === "paused";
-  const label = isPaused ? "Session Paused" : "Previous Session";
+  const label = isPaused ? "Session Paused:" : "Previous Session:";
   const ease = SESSION_MORPH_EASE;
   // Gray only while genuinely idle and showing a leftover previous-session
   // value — once paused (this session's own time) or once a start/resume has
@@ -893,14 +929,29 @@ function ExpandedSessionBox({
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
       <div className="flex flex-col items-center gap-1">
-        <motion.span
-          animate={{ opacity: dimmed ? 0 : 1 }}
-          initial={false}
-          transition={{ duration: 0.2 }}
-          className="text-[10px] uppercase tracking-wider text-muted-foreground"
-        >
-          {label}
-        </motion.span>
+        {/* Crossfades with the plain label below rather than just fading to
+            blank — gives the reset-to-zero spin (see OdometerDigits' `slow`
+            prop) something to read as "in progress" instead of a silent
+            pause. */}
+        <div className="relative">
+          <motion.span
+            animate={{ opacity: startingNew ? 1 : 0 }}
+            initial={false}
+            transition={{ duration: 0.2 }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wider text-blue-600 whitespace-nowrap"
+            aria-hidden={!startingNew}
+          >
+            Starting New Session
+          </motion.span>
+          <motion.span
+            animate={{ opacity: dimmed ? 0 : 1 }}
+            initial={false}
+            transition={{ duration: 0.2 }}
+            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
+            {label}
+          </motion.span>
+        </div>
 
         <motion.div
           animate={{ opacity: dimmed ? 0 : 1 }}
@@ -938,7 +989,7 @@ function ExpandedSessionBox({
               )}
               style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
-              <OdometerDigits text={formatTime(elapsedMs)} />
+              <OdometerDigits text={formatTime(elapsedMs)} slow={startingNew} />
             </span>
             <button
               onClick={onPlay}
@@ -1164,8 +1215,12 @@ function formatTime(ms: number) {
 
 /** Renders a fixed-format time string as an odometer: each character sits in
  * its own slot and rolls vertically only when that position's value changes
- * (colons never do), rather than the whole string just replacing itself. */
-function OdometerDigits({ text, className }: { text: string; className?: string }) {
+ * (colons never do), rather than the whole string just replacing itself.
+ * `slow` swaps the snappy per-tick spring for a slower, duration-based roll —
+ * used only for the reset-to-zero spin on a fresh session start, so that
+ * moment reads as an actual spin instead of the same quick flip a normal
+ * per-second tick gets. */
+function OdometerDigits({ text, className, slow = false }: { text: string; className?: string; slow?: boolean }) {
   return (
     <span className={cn("inline-flex tabular-nums", className)}>
       {text.split("").map((ch, i) => (
@@ -1176,7 +1231,11 @@ function OdometerDigits({ text, className }: { text: string; className?: string 
               initial={{ y: "70%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "-70%", opacity: 0 }}
-              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              transition={
+                slow
+                  ? { duration: DIGIT_SETTLE_MS / 1000, ease: [0.4, 0, 0.2, 1] }
+                  : { type: "spring", stiffness: 420, damping: 32 }
+              }
               className="inline-block"
             >
               {ch}

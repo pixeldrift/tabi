@@ -118,15 +118,17 @@ export function ListActionButton({
   );
 }
 
-/** Wraps just a List row's value/badge (NOT its buttons) so advancing to a
- *  new trial/instance/step/tally reads as one continuous relay instead of
- *  the number just snapping to its new value in place: the old value slides
- *  up and out while the new one slides in from below, keyed by whatever
- *  identifies "which one" (trial index, instance index, step index, tally
- *  count). The buttons stay put as plain siblings outside this wrapper —
- *  same pattern Card mode's own action buttons already follow (their
- *  selected/disabled state just updates in place, never remounting the
- *  button itself). Deliberately NOT forced to position: absolute here —
+/** Wraps a List row's value/badge, and — for kinds where the buttons act on
+ *  a specific trial/step/instance rather than firing a single repeatable
+ *  action (Percent Correct, Task Analysis, Duration) — the buttons too, so
+ *  advancing reads as one continuous relay instead of the number just
+ *  snapping to its new value in place while the same buttons sit still: the
+ *  old content slides up and out while the new one slides in from below,
+ *  keyed by whatever identifies "which one" (trial index, instance index,
+ *  step index, tally count). Frequency/Rate's plain tally-and-increment
+ *  keeps its button outside this wrapper instead, since the button's action
+ *  never changes from one count to the next. Deliberately NOT forced to
+ *  position: absolute here —
  *  with mode="popLayout", Motion already pulls only the EXITING copy out of
  *  flow on its own, leaving the entering one in normal flow so its content
  *  still sizes this wrapper's (and the floating parent's) width; forcing
