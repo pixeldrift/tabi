@@ -9,7 +9,10 @@ export type NotificationKind =
   | "alert-priming"
   | "goal-change"
   | "message"
-  | "announcement";
+  | "announcement"
+  | "appointment-new"
+  | "appointment-cancelled"
+  | "edit-approved";
 
 export type NotificationState = "live" | "snoozed" | "silenced" | "dismissed" | "archived";
 
@@ -30,7 +33,7 @@ export interface Notification {
   createdAt: number;
   autofadeMs?: number;        // undefined = persist until acted on
   allowSnooze?: boolean;      // alerts only
-  sourceRef?: { type: "activity" | "goal" | "thread"; id: string };
+  sourceRef?: { type: "activity" | "goal" | "thread" | "info"; id: string };
   state: NotificationState;
   // internal — when in 'snoozed' state, time at which it should re-fire as live
   snoozeUntil?: number;
@@ -101,6 +104,55 @@ export function useUserPrefs(): UserPrefs {
   };
 }
 
+// Demo seed data so the Notifications tab isn't empty on first load —
+// same idea as the static GUARDIANS/VEHICLES arrays elsewhere (ClientInfoPane),
+// not something a user action created. Seeded as "archived" (not "live") so
+// they show up in the persistent tab list but don't also burst onto screen
+// as fresh top-banner alerts, and staggered createdAt timestamps so the
+// relative "Xh/Xd ago" stamps read as a real history instead of four
+// identical "just now"s.
+const HOUR_MS = 60 * 60 * 1000;
+function seedNotifications(): Notification[] {
+  const now = Date.now();
+  return [
+    {
+      id: "seed-appt-new",
+      kind: "appointment-new",
+      title: "New Appointment: Dr. Lopez at 11:00 AM on Monday.",
+      icon: "bell",
+      createdAt: now - 2 * HOUR_MS,
+      sourceRef: { type: "activity", id: "ap1" },
+      state: "archived",
+    },
+    {
+      id: "seed-appt-cancelled",
+      kind: "appointment-cancelled",
+      title: "Cancellation: Sam Patel at 1:00 PM on Tuesday.",
+      icon: "bell",
+      createdAt: now - 5 * HOUR_MS,
+      sourceRef: { type: "activity", id: "ap2" },
+      state: "archived",
+    },
+    {
+      id: "seed-edit-approved",
+      kind: "edit-approved",
+      title: 'Edit Approved: "About Me" for Phineas Flynn by Heinz Doofenshmirtz',
+      icon: "message",
+      createdAt: now - 24 * HOUR_MS,
+      sourceRef: { type: "info", id: "section-about-me" },
+      state: "archived",
+    },
+    {
+      id: "seed-goal-change",
+      kind: "goal-change",
+      title: "Changes: New goal added to Phineas Flynn's treatment plan by Baljeet Tjinder.",
+      icon: "target",
+      createdAt: now - 48 * HOUR_MS,
+      state: "archived",
+    },
+  ];
+}
+
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
 export function useNotifications() {
@@ -113,7 +165,7 @@ const MAX_RETAINED = 50;
 
 export function NotificationProvider({ children, onActivate }: { children: ReactNode; onActivate?: (n: Notification) => void }) {
   const prefs = useUserPrefs();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>(seedNotifications);
   const dedupeRef = useRef<Map<string, string>>(new Map()); // dedupeKey -> id
   const onActivateRef = useRef(onActivate);
   useEffect(() => { onActivateRef.current = onActivate; }, [onActivate]);

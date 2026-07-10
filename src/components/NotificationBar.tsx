@@ -75,6 +75,24 @@ const KIND_STYLES: Record<NotificationKind, { ring: string; iconFg: string; acce
     accent: "bg-violet-500",
     button: "bg-violet-500 hover:bg-violet-600 active:bg-violet-700",
   },
+  "appointment-new": {
+    ring: "border-teal-300 bg-teal-50",
+    iconFg: "text-teal-700",
+    accent: "bg-teal-500",
+    button: "bg-teal-500 hover:bg-teal-600 active:bg-teal-700",
+  },
+  "appointment-cancelled": {
+    ring: "border-rose-300 bg-rose-50",
+    iconFg: "text-rose-700",
+    accent: "bg-rose-500",
+    button: "bg-rose-500 hover:bg-rose-600 active:bg-rose-700",
+  },
+  "edit-approved": {
+    ring: "border-indigo-300 bg-indigo-50",
+    iconFg: "text-indigo-700",
+    accent: "bg-indigo-500",
+    button: "bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700",
+  },
 };
 
 
@@ -391,6 +409,11 @@ function NotificationListRow({
   const silenced = n.state === "silenced";
   const Icon = silenced ? BellOff : ICON_MAP[n.icon];
   const styles = KIND_STYLES[n.kind];
+  // Names the actual destination (matches "(View Schedule)"/"(View Info)"
+  // phrasing) rather than a bare "View" — sourceRef.type is what
+  // handleNotificationActivate itself switches on to pick a tab.
+  const viewLabel =
+    n.sourceRef?.type === "activity" ? "View Schedule" : n.sourceRef?.type === "info" ? "View Info" : "View";
   return (
     <div className="flex items-start gap-3 p-3">
       <div className={cn("flex items-center justify-center size-8 shrink-0 rounded-full", styles.ring, styles.iconFg)}>
@@ -402,7 +425,7 @@ function NotificationListRow({
         <div className="mt-1 flex items-center gap-2">
           {n.sourceRef && (
             <button type="button" onClick={onActivate} className="text-xs font-medium text-blue-600 hover:text-blue-700">
-              View
+              {viewLabel}
             </button>
           )}
           <span className="text-[10px] text-stone-400">{formatRelativeTime(n.createdAt)}</span>

@@ -645,6 +645,8 @@ function IndexInner() {
     if (n.sourceRef?.type === "activity") {
       setTab("schedule");
       setScheduleScrollId(n.sourceRef.id);
+    } else if (n.sourceRef?.type === "info") {
+      setTab("info");
     } else {
       setTab("notifications");
     }
