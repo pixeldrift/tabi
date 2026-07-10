@@ -117,7 +117,7 @@ export function DataListRow({
           title above it wraps to one line or two — centered against the
           row's full height (not the header alone) so it reads as equal top
           and bottom margins within the box either way. */}
-      {showActions && <div className="absolute z-10 top-1/2 -translate-y-1/2 right-1.5">{actions}</div>}
+      {showActions && <div className="absolute z-10 top-1/2 -translate-y-1/2 right-0.5">{actions}</div>}
 
       {/* A background wash tucked under the title only — stops well short
           of the floated actions cluster (rather than running the row's
@@ -131,7 +131,11 @@ export function DataListRow({
       {showProgress && (
         <div
           className={cn(
-            "absolute left-2 bottom-1.5 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
+            // left-[30px]: lines up with the title's own left edge (pl-2's
+            // 8px + the data-type icon's 16px + the gap-1.5 between them),
+            // not the icon's — the bar reads as belonging to the title, not
+            // as a random line starting under an unrelated icon.
+            "absolute left-[30px] bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
             showActions ? "right-32" : "right-9",
           )}
         >
