@@ -63,7 +63,21 @@ export function DurationCard({
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
   const { markDirty, resetSignal } = useCardSession();
-  useRegisterActiveTimer({ id: `duration:${title}`, label: title, active: running && sessionRunning, elementRef: cardRef, source: "duration", onActivate });
+  useRegisterActiveTimer({
+    id: `duration:${title}`,
+    label: title,
+    active: running && sessionRunning,
+    elementRef: cardRef,
+    source: "duration",
+    // Jumping here from the header's timer indicator should bring the
+    // actual running instance into view — not whichever one the user last
+    // swiped to — since a multi-instance card can easily be showing a
+    // finished earlier instance instead of the live one.
+    onActivate: () => {
+      if (runningIdx !== null && runningIdx !== viewIdx) setViewIdx(runningIdx);
+      onActivate?.();
+    },
+  });
   // Holds a pending "start on the next full master second" timeout — see
   // `toggleInstance` below — so a quick pause (or a session reset) before it
   // fires can cancel it instead of starting the timer late anyway.
