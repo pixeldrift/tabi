@@ -156,5 +156,12 @@ features, not sized yet.
 - [ ] Custom mixed dashboard layout (standard/mini/expanded per card)
 - [ ] Pinned favorites for frequently-used targets
 - [ ] Edit mode: reorder cards/targets, filter by behavior/goal/data type
+- [ ] Per-field access levels on Info tab data (Editing Allowed / Editing Not
+      Allowed / Approval Required) plus a supervisor-side approve/deny action
+      on the notification an edit request generates. Today, the "About Me"
+      section's request-an-edit buttons only submit the request as a
+      notification — there's no access-level distinction or approve/deny
+      handling yet, so every submission behaves the same regardless of who's
+      submitting it.
 
-*Roadmap last updated: 2026-07-01*
+*Roadmap last updated: 2026-07-10*
