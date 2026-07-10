@@ -711,7 +711,12 @@ function IndexInner() {
               list/card — their own tiles already sit close under the
               toolbar with little breathing room built into the tile itself,
               so the fuller list/card margin read as an oversized gap there. */}
-          <div className={cn("flex flex-col items-center -mx-2", isGridDisplayMode ? "mt-4" : "mt-5")}>
+          {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
+              slides the whole card grid a full extra width off to the
+              side — without this, that briefly inflates the document's
+              scrollable width, which some mobile browsers respond to by
+              rescaling the visual viewport for an instant. */}
+          <div className={cn("flex flex-col items-center -mx-2 overflow-x-hidden", isGridDisplayMode ? "mt-4" : "mt-5")}>
             <div
               className={cn(
                 "transition-[opacity,width] duration-300",
