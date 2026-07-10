@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { defineConfig } from "vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -6,13 +7,22 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import svgr from "vite-plugin-svgr";
 
-// Shown in the header next to the data sheet title — bump manually per
-// release so it's obvious at a glance whether a given screen is current.
-const APP_VERSION = "v0.69";
+// Shown in the header next to the data sheet title — the repo's total
+// commit count, so it climbs on its own with every push instead of needing
+// a manual bump per release. Falls back to "dev" wherever git isn't
+// available (e.g. an archive/tarball build).
+function getAppVersion(): string {
+  try {
+    const count = execSync("git rev-list --count HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return `v${count}`;
+  } catch {
+    return "dev";
+  }
+}
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_VERSION__: JSON.stringify(getAppVersion()),
   },
   resolve: {
     // Avoid duplicate React/TanStack copies when multiple deps resolve
