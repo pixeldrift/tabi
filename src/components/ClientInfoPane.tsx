@@ -341,7 +341,7 @@ function RequestEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl">
-        <DialogHeader>
+        <DialogHeader className="text-left">
           <DialogTitle>Request Edit</DialogTitle>
           <DialogDescription>{label}</DialogDescription>
         </DialogHeader>
