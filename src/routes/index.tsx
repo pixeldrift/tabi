@@ -202,6 +202,20 @@ const cards: CardConfig[] = [
       "Fully engaged and cooperative throughout the session.",
     ],
   },
+  {
+    id: "readiness-to-learn",
+    kind: "rating",
+    title: "Readiness to learn",
+    phase: "Intervention",
+    description:
+      "A quick end-of-session read on how available the learner was for instruction. Same single-score behavior as Overall session engagement — later interactions update this same rating rather than adding new entries.",
+    max: 3,
+    levelDescriptions: [
+      "Not ready — dysregulated or unresponsive to redirection for most of the session.",
+      "Partially ready — needed regulation support before engaging productively.",
+      "Fully ready — regulated and available for instruction from the start.",
+    ],
+  },
 ];
 
 // Data-submitted animation timing — TODO: surface in user settings.
