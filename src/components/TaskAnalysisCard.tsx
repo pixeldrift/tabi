@@ -336,10 +336,11 @@ export function TaskAnalysisCard({
         progress={progress}
         isComplete={isComplete}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={current}>
-              <ListActionBadge value={current + 1} />
-            </ListActionSlide>
+          // Badge and buttons slide together — each button scores THIS step
+          // specifically, so advancing to the next step should read as the
+          // whole row moving on, not just the number changing in place.
+          <ListActionSlide actionKey={current}>
+            <ListActionBadge value={current + 1} />
             {OPTIONS.map((opt) => (
               <ListActionButton
                 key={opt.value}
@@ -351,7 +352,7 @@ export function TaskAnalysisCard({
                 onClick={() => setStep(current, opt.value, true)}
               />
             ))}
-          </div>
+          </ListActionSlide>
         }
       />
     );

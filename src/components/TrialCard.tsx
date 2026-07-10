@@ -422,10 +422,13 @@ export function TrialCard({
         progress={progress}
         isComplete={isComplete}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={current} direction={direction}>
-              <ListActionBadge value={current + 1} />
-            </ListActionSlide>
+          // The badge AND the buttons travel together here — unlike
+          // Frequency/Rate's tally-and-increment (one action, repeated), each
+          // button here scores THIS trial specifically, so advancing to the
+          // next trial should read as the whole row moving on to a new one,
+          // not just the number changing while the same buttons sit still.
+          <ListActionSlide actionKey={current} direction={direction}>
+            <ListActionBadge value={current + 1} />
             {promptLevels && promptLevels.length > 0 ? (
               <ListPromptLevelButton
                 levels={promptLevels}
@@ -463,7 +466,7 @@ export function TrialCard({
               ariaLabel="Correct"
               onClick={() => setResult("correct")}
             />
-          </div>
+          </ListActionSlide>
         }
       />
     );

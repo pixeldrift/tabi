@@ -449,14 +449,12 @@ export function DurationCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionSlide actionKey={viewIdx}>
-              <ListActionBadge value={viewIdx + 1} />
-            </ListActionSlide>
-            {/* Same rounded pill/play-pause pattern as the grid tile's own
-                timer, just sized to match this row's other action buttons —
-                static, not part of the slide, same as every other kind's
-                buttons. */}
+          // Badge and pill travel together — the pill's time/play-pause is
+          // specific to THIS instance, so advancing to another one should
+          // read as the whole row moving on, not just the number changing
+          // while the same pill sits still.
+          <ListActionSlide actionKey={viewIdx}>
+            <ListActionBadge value={viewIdx + 1} />
             <div
               className={cn(
                 "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
@@ -500,7 +498,7 @@ export function DurationCard({
                 )}
               </button>
             </div>
-          </div>
+          </ListActionSlide>
         }
       />
     );
