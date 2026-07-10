@@ -1298,12 +1298,16 @@ export function ScheduleView({
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
           {arrowTop !== null && !editMode && (
-            // Between the item rows (z-10) and the appointment overlays
-            // (z-20) — reads as "now" cutting across the activity grid while
-            // still ducking under an appointment box the way a real
-            // schedule line would.
+            // Above BOTH the item rows (z-10) and the appointment overlays
+            // (z-20) — including a flashing row's own temporary z-20 bump
+            // (see that row's className below), which used to permanently
+            // out-rank this line the instant "Now" was pressed once, since
+            // that bump never resets back down. Staying under the chevron
+            // marker (z-30) only. Faded (not full opacity) so it still reads
+            // as "now" cutting across the grid without the dashed line
+            // fighting the row's own text/time labels for legibility.
             <div
-              className="absolute left-0 right-0 z-[15] pointer-events-none border-t-2 border-dashed"
+              className="absolute left-0 right-0 z-[25] pointer-events-none border-t-2 border-dashed opacity-60"
               style={{ top: arrowTop, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
               aria-hidden
             />
@@ -1442,11 +1446,14 @@ export function ScheduleView({
                 }}
                 className={cn(
                   "absolute left-0 right-0 z-10",
-                  // Elevated only while its pulse is playing — the pulse's
-                  // thicker border needs to paint over neighboring rows
-                  // (which share z-10 and would otherwise occlude it, since
-                  // later siblings in the same stacking context paint on
-                  // top), but stays below the "now" chevron (z-30).
+                  // Elevated once flashed — the pulse's thicker border needs
+                  // to paint over neighboring rows (which share z-10 and
+                  // would otherwise occlude it, since later siblings in the
+                  // same stacking context paint on top). This bump doesn't
+                  // reset back down once the pulse animation finishes (it's
+                  // keyed on flashRowId/flashGen alone), which is fine now
+                  // that it stays below both the "now" line (z-25) and the
+                  // chevron marker (z-30) either way.
                   flashRowId === it.id && flashGen > 0 && "z-20",
                 )}
                 style={{ top, height }}

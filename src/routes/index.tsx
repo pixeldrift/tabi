@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
-import { PersonPill } from "@/components/StaffDirectory";
+import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
@@ -793,7 +793,7 @@ function IndexInner() {
           </>
         )}
 
-        {tab === "info" && <InfoPane />}
+        {tab === "info" && <ClientInfoPane />}
         {tab === "schedule" && (
           <ScheduleView
             scrollTargetId={scheduleScrollId}
@@ -1311,61 +1311,6 @@ function EditableCardItem({
       <MorphContent displayMode={displayMode}>{renderOne(card, dragControls)}</MorphContent>
     </Reorder.Item>
   );
-}
-
-// Team roster pulls from the same show as the client/BCBA names already
-// used elsewhere in the header (Phineas Flynn, Perry Plat) — kept to one
-// consistent universe rather than mixing in generic placeholder names.
-const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"];
-
-function InfoPane() {
-  const { lastUpdated } = useSession();
-  return (
-    <div className="max-w-2xl mx-auto mt-6 px-4">
-      <div className="space-y-3 text-sm">
-        <InfoRow label="Therapy plan for:">
-          <PersonPill name="Phineas Flynn" />
-        </InfoRow>
-        <InfoRow label="Lead BCBA:">
-          <PersonPill name="Heinz Doofenshmirtz" />
-        </InfoRow>
-        <InfoRow label="Team:">
-          {TEAM_MEMBERS.map((name) => (
-            <PersonPill key={name} name={name} />
-          ))}
-        </InfoRow>
-      </div>
-      <div className="mt-8 rounded-xl border border-dashed border-stone-300 bg-white p-8 text-center">
-        <h3 className="font-display text-xl">Client Info</h3>
-        <p className="mt-2 text-sm text-muted-foreground">Goals, programs, and learner notes will live here.</p>
-      </div>
-      {/* Moved below the plan/team info and its own placeholder content —
-          this is metadata about the record, not the first thing a BCBA
-          needs when opening the tab. */}
-      <div className="mt-6 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
-        <span>Last updated {formatUpdated(lastUpdated)} by</span>
-        <PersonPill name="Perry Plat" />
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-      <span className="font-semibold text-foreground/80 shrink-0">{label}</span>
-      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
-    </div>
-  );
-}
-
-function formatUpdated(d: Date | null) {
-  if (!d) return "—";
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `today at ${time}`;
-  return `${d.toLocaleDateString()} ${time}`;
 }
 
 function PlaceholderPane({ title, description }: { title: string; description: string }) {
