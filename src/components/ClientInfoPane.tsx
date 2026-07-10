@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, CheckCircle2, Pencil, X } from "lucide-react";
+import { Eye, CheckCircle2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PersonPill } from "@/components/StaffDirectory";
 import { PhoneIcon } from "./icons/PhoneIcon";
+import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { useSession } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useStickyTop } from "@/hooks/use-sticky-top";
@@ -286,16 +287,14 @@ function NoteRow({ label, value, children }: { label: string; value: string; chi
       <div className="mt-1 leading-snug text-foreground/90">{children ?? value}</div>
       {/* Bare icon, no button chrome — a passive "you can suggest a change
           here" hint, not a primary action, so it stays out of the way of
-          the actual content above it. The "?" marks it as a REQUEST (goes
-          to a supervisor for approval) rather than a direct edit. */}
+          the actual content above it. */}
       <button
         type="button"
         onClick={() => setRequestOpen(true)}
         aria-label={`Request an edit to ${label}`}
         className="absolute bottom-1.5 right-1.5 grid place-items-center size-6 text-blue-400/70 hover:text-blue-600 transition-colors"
       >
-        <Pencil className="size-3" />
-        <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none">?</span>
+        <RequestEditIcon className="size-4" />
       </button>
       <RequestEditDialog open={requestOpen} onOpenChange={setRequestOpen} label={label} currentValue={value} />
     </div>
