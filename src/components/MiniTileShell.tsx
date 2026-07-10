@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { GripVertical, Heart, EyeOff } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
@@ -28,6 +28,13 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
   progress?: number | null;
   isComplete?: boolean;
 }
+
+// Fixed per-density widths (rather than each card measuring its own actions
+// row) so every tile's bar lines up at the same width regardless of kind —
+// sized to the widest actions row that appears at each density (Task
+// Analysis's 3-button row), plus the same 16px the old measured version
+// added past the buttons.
+const PROGRESS_BAR_WIDTH = { large: 152, small: 112 } as const;
 
 /** Compact aspect-square counterpart to CardShell, used by every card kind
  *  when the toolbar's display mode is one of the two quick-action grids
@@ -59,27 +66,11 @@ export function MiniTileShell({
   isComplete = false,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
-  const actionsRef = useRef<HTMLDivElement | null>(null);
   const large = density === "large";
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
   const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
-
-  // Sized off the actions row's own rendered width (rather than a fixed
-  // guess) so it stays just a bit wider than whatever button cluster this
-  // card kind actually renders — 2 buttons for Trial, 3 for Task Analysis,
-  // large vs small density, etc. — instead of spanning near the tile's
-  // full width and catching in its rounded corners.
-  const [actionsWidth, setActionsWidth] = useState<number | null>(null);
-  useEffect(() => {
-    const el = actionsRef.current;
-    if (!el) return;
-    const update = () => setActionsWidth(el.offsetWidth);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const progressBarWidth = PROGRESS_BAR_WIDTH[density];
 
   return (
     <article
@@ -194,10 +185,9 @@ export function MiniTileShell({
 
       {actions && (
         // self-center (rather than the flex-col parent's default stretch)
-        // so this wrapper shrinks to the actions row's own natural width —
-        // actionsRef needs that real width, not the full stretched column
-        // width, to size the progress bar below.
-        <div className="shrink-0 self-center" ref={actionsRef}>
+        // so this wrapper shrinks to the actions row's own natural width
+        // instead of stretching to the full column width.
+        <div className="shrink-0 self-center">
           {actions}
         </div>
       )}
@@ -207,18 +197,19 @@ export function MiniTileShell({
           that wrapper's comment) rather than a layout sibling it shrinks to
           make room for — so scoring a trial doesn't nudge everything else
           up a few px. Skinnier than CardShell's own labeled version since
-          there's no helper text to make room for. Centered and sized off
-          the actions row's own measured width (see actionsWidth above)
-          rather than spanning near the tile's full width — just a bit
-          wider than whatever button cluster this card kind renders, so it
-          doesn't reach into the tile's rounded corners. Only rendered
-          where a running percentage is meaningful for the data type
-          (Trial, Task Analysis); Frequency/Rate/Duration/Rating pass no
-          `progress`. */}
+          there's no helper text to make room for. Fixed per-density width
+          (see PROGRESS_BAR_WIDTH) rather than each card measuring its own
+          actions row, so every tile's bar lines up at the same width
+          instead of varying by how many buttons that particular kind
+          renders — sized off Task Analysis's 3-button row, the widest at
+          each density, so it still clears the tile's rounded corners. Only
+          rendered where a running percentage is meaningful for the data
+          type (Trial, Task Analysis); Frequency/Rate/Duration/Rating pass
+          no `progress`. */}
       {showProgress && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 bottom-1 z-0 w-16 h-0.5 rounded-full overflow-hidden bg-stone-200/80"
-          style={actionsWidth != null ? { width: actionsWidth + 16 } : undefined}
+          className="absolute left-1/2 -translate-x-1/2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80"
+          style={{ width: progressBarWidth }}
         >
           <div
             className={cn("h-full transition-[width]", barColor)}
@@ -277,7 +268,12 @@ function MiniEditControls({
         </button>
       </div>
       <span
-        className={cn("cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing", size)}
+        // -mr-0.5: the grip glyph's own dot columns read as sitting a hair
+        // further from the tile's right edge than the title's left margin,
+        // even though the two touch-target boxes are mathematically
+        // centered the same distance in — nudging just this control right
+        // closes that optical gap without touching the favorite/hidden pair.
+        className={cn("-mr-0.5 cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing", size)}
         onPointerDown={(e) => {
           e.preventDefault();
           dragControls?.start(e);
