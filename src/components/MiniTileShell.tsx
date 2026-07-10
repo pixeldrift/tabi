@@ -32,9 +32,12 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
 // Fixed per-density widths (rather than each card measuring its own actions
 // row) so every tile's bar lines up at the same width regardless of kind —
 // sized to the widest actions row that appears at each density (Task
-// Analysis's 3-button row), plus the same 16px the old measured version
-// added past the buttons.
-const PROGRESS_BAR_WIDTH = { large: 152, small: 112 } as const;
+// Analysis's 3-button row). Large adds the same 16px the old measured
+// version added past the buttons; small tiles are narrow enough (~131px)
+// that the same extra padding left the bar within a few px of the card's
+// own rounded corners, reading as touching the edge — so small uses the
+// bare measured width (96px) with no extra padding.
+const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
 
 /** Compact aspect-square counterpart to CardShell, used by every card kind
  *  when the toolbar's display mode is one of the two quick-action grids

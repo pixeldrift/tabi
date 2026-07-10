@@ -90,12 +90,11 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
     forceSync,
   } = useSession();
 
-  // Both sources — an unlocked Rate card's own timer runs independently of
-  // the session just like a Duration timer does (locked Rate timers always
-  // follow the session and never register as "active" in the first place,
-  // see RateCard's own `active: ticking && !locked`), so both belong in the
-  // same "something's running, tap to jump to it" indicator.
-  const runningTimers = activeTimers.filter((t) => t.source === "duration" || t.source === "rate");
+  // Duration only — a Rate card's own timer just clocks the observation
+  // window behind a tally, not something the user manually started/stopped
+  // the way a Duration instance is, so it doesn't belong in "something's
+  // running, tap to jump to it."
+  const runningTimers = activeTimers.filter((t) => t.source === "duration");
 
   // Random previous session length between 1-5 hours, generated once on the client.
   const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
