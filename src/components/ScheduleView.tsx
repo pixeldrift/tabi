@@ -1298,6 +1298,17 @@ export function ScheduleView({
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
           {arrowTop !== null && !editMode && (
+            // Between the item rows (z-10) and the appointment overlays
+            // (z-20) — reads as "now" cutting across the activity grid while
+            // still ducking under an appointment box the way a real
+            // schedule line would.
+            <div
+              className="absolute left-0 right-0 z-[15] pointer-events-none border-t-2 border-dashed"
+              style={{ top: arrowTop, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
+              aria-hidden
+            />
+          )}
+          {arrowTop !== null && !editMode && (
             <div
               key={`arrow-${nowAnim}`}
               className={cn(
@@ -1531,6 +1542,14 @@ export function ScheduleView({
               setCollapsedAppts((p) => ({ ...p, [a.id]: false }));
               setAllApptsCollapsed(false);
             };
+            // Same 5-minute divider lines an activity row shows, so an
+            // appointment's own duration reads at a glance too — only
+            // meaningful in proportional mode, where height actually tracks
+            // real duration (collapsed mode's uniform rows don't).
+            const apptGridLines =
+              layoutMode === "proportional"
+                ? Math.max(0, Math.floor((toMin(a.end) - toMin(a.start) - 1) / 5))
+                : 0;
             return (
               <motion.div
                 // Remounting on a layoutMode switch (rather than reusing the
@@ -1587,7 +1606,30 @@ export function ScheduleView({
                       aria-label="Collapse appointment (drag handle)"
                       className="absolute top-0 left-0 right-0 z-10 h-2 cursor-pointer"
                     />
-                    <div className="relative h-full grid grid-cols-[40px_1fr_30px] gap-1 px-1.5 pt-0.5 items-start">
+                    {/* Same 5-minute divider lines an activity row shows —
+                        see apptGridLines above. */}
+                    {Array.from({ length: apptGridLines }, (_, i) => (
+                      <div
+                        key={`ag-${i}`}
+                        className="absolute left-1 right-1 border-t border-green-200"
+                        style={{ top: (i + 1) * 5 * PX_PER_MIN }}
+                      />
+                    ))}
+                    {/* Vertically centered on the box, not pinned to its top
+                        corner — the box's own height tracks the appointment's
+                        real duration, so a top-corner icon reads as adrift
+                        from the content on anything longer than a few
+                        minutes. Absolute (not a grid column) so it stays
+                        centered regardless of that height. */}
+                    <button
+                      type="button"
+                      onClick={collapse}
+                      className="absolute top-1/2 right-1 -translate-y-1/2 z-10 size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
+                      aria-label="Collapse appointment"
+                    >
+                      <CollapseIcon className="size-3.5" />
+                    </button>
+                    <div className="relative h-full grid grid-cols-[40px_1fr] gap-1 pl-1.5 pr-8 pt-0.5 items-start">
                       <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
                         {fmt12(a.start)}
                       </div>
@@ -1607,14 +1649,6 @@ export function ScheduleView({
                           {a.provider}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={collapse}
-                        className="size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
-                        aria-label="Collapse appointment"
-                      >
-                        <CollapseIcon className="size-3.5" />
-                      </button>
                     </div>
                   </div>
                 </div>
