@@ -1,9 +1,10 @@
 # ABA DaBa
 
-A demo of consistent, animated data-collection cards for ABA-style session
-tracking — percent correct, frequency, rate, duration, and task-analysis
-targets, plus a schedule view with alerts and a live session timer. Built to
-explore UX/UI patterns; not a production data system.
+A prototype platform for Applied Behavioral Analysis data colletion and
+session management. Focused on user experience and ease of information
+access and recording while working in a busy clinical environment.
+Many quality of life features for behavioral techs juggling client needs.
+
 
 ## Tech stack
 
