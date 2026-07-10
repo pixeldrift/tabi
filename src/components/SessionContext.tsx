@@ -32,7 +32,10 @@ export const BOX_COLLAPSE_MS = 200;
 // use PILL_LAND_MS to know when the pill has fully landed, so the new set
 // only enters once the clock has actually arrived, not the instant the old
 // set starts leaving.
-export const DIGIT_SETTLE_MS = 300;
+// 3x the plain per-tick digit roll (see OdometerDigits' `slow` prop) so the
+// reset-to-zero spin is actually watchable instead of a quick snap, with a
+// matching hold here so the pill doesn't start traveling mid-spin.
+export const DIGIT_SETTLE_MS = 900;
 export const PILL_TRAVEL_MS = HEADER_MORPH_MS;
 export const PILL_CROSSFADE_MS = 150;
 export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;

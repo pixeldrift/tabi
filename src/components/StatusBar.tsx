@@ -365,6 +365,7 @@ export function StatusBar({ activeTab, onTabChange, title = "Phineas Flynn's Dat
                   pillVisible={bigPillVisible}
                   pillRef={bigPillRef}
                   dimmed={dimmed}
+                  startingNew={dimmed && transitionKind === "start-new"}
                   onPlay={requestPlay}
                   onStartNew={requestStartNew}
                   onEnd={() => setEndOpen(true)}
@@ -872,6 +873,7 @@ function ExpandedSessionBox({
   pillVisible = true,
   pillRef,
   dimmed = false,
+  startingNew = false,
   onPlay,
   onStartNew,
   onEnd,
@@ -884,6 +886,7 @@ function ExpandedSessionBox({
   pillVisible?: boolean;
   pillRef?: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
+  startingNew?: boolean;
   onPlay: () => void;
   onStartNew: () => void;
   onEnd: () => void;
@@ -926,14 +929,29 @@ function ExpandedSessionBox({
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
       <div className="flex flex-col items-center gap-1">
-        <motion.span
-          animate={{ opacity: dimmed ? 0 : 1 }}
-          initial={false}
-          transition={{ duration: 0.2 }}
-          className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-        >
-          {label}
-        </motion.span>
+        {/* Crossfades with the plain label below rather than just fading to
+            blank — gives the reset-to-zero spin (see OdometerDigits' `slow`
+            prop) something to read as "in progress" instead of a silent
+            pause. */}
+        <div className="relative">
+          <motion.span
+            animate={{ opacity: startingNew ? 1 : 0 }}
+            initial={false}
+            transition={{ duration: 0.2 }}
+            className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wider text-blue-600 whitespace-nowrap"
+            aria-hidden={!startingNew}
+          >
+            Starting New Session
+          </motion.span>
+          <motion.span
+            animate={{ opacity: dimmed ? 0 : 1 }}
+            initial={false}
+            transition={{ duration: 0.2 }}
+            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
+            {label}
+          </motion.span>
+        </div>
 
         <motion.div
           animate={{ opacity: dimmed ? 0 : 1 }}
@@ -971,7 +989,7 @@ function ExpandedSessionBox({
               )}
               style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
-              <OdometerDigits text={formatTime(elapsedMs)} />
+              <OdometerDigits text={formatTime(elapsedMs)} slow={startingNew} />
             </span>
             <button
               onClick={onPlay}
@@ -1197,8 +1215,12 @@ function formatTime(ms: number) {
 
 /** Renders a fixed-format time string as an odometer: each character sits in
  * its own slot and rolls vertically only when that position's value changes
- * (colons never do), rather than the whole string just replacing itself. */
-function OdometerDigits({ text, className }: { text: string; className?: string }) {
+ * (colons never do), rather than the whole string just replacing itself.
+ * `slow` swaps the snappy per-tick spring for a slower, duration-based roll —
+ * used only for the reset-to-zero spin on a fresh session start, so that
+ * moment reads as an actual spin instead of the same quick flip a normal
+ * per-second tick gets. */
+function OdometerDigits({ text, className, slow = false }: { text: string; className?: string; slow?: boolean }) {
   return (
     <span className={cn("inline-flex tabular-nums", className)}>
       {text.split("").map((ch, i) => (
@@ -1209,7 +1231,11 @@ function OdometerDigits({ text, className }: { text: string; className?: string 
               initial={{ y: "70%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "-70%", opacity: 0 }}
-              transition={{ type: "spring", stiffness: 420, damping: 32 }}
+              transition={
+                slow
+                  ? { duration: DIGIT_SETTLE_MS / 1000, ease: [0.4, 0, 0.2, 1] }
+                  : { type: "spring", stiffness: 420, damping: 32 }
+              }
               className="inline-block"
             >
               {ch}
