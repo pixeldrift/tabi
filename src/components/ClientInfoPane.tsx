@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, Car, CheckCircle2 } from "lucide-react";
+import { Eye, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { PersonPill } from "@/components/StaffDirectory";
 import { PhoneIcon } from "./icons/PhoneIcon";
@@ -28,6 +28,7 @@ interface VehicleRecord {
   make: string;
   model: string;
   plate: string;
+  photo: string;
 }
 
 // Same show's universe as the BCBA/RBT names already used elsewhere
@@ -45,8 +46,8 @@ const GUARDIANS: GuardianRecord[] = [
 ];
 
 const VEHICLES: VehicleRecord[] = [
-  { id: "v1", guardianId: "linda", color: "Silver", make: "Honda", model: "Odyssey", plate: "BJY-4471" },
-  { id: "v2", guardianId: "lawrence", color: "Green", make: "Toyota", model: "Camry", plate: "HRT-2093" },
+  { id: "v1", guardianId: "linda", color: "Silver", make: "Honda", model: "Odyssey", plate: "BJY-4471", photo: "🚐" },
+  { id: "v2", guardianId: "lawrence", color: "Green", make: "Toyota", model: "Camry", plate: "HRT-2093", photo: "🚗" },
 ];
 
 const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"];
@@ -71,8 +72,8 @@ function formatUpdated(d: Date | null) {
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
   const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `today at ${time}`;
-  return `${d.toLocaleDateString()} ${time}`;
+  const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return sameDay ? `today (${date}) at ${time}` : `${date} at ${time}`;
 }
 
 export function ClientInfoPane() {
@@ -142,9 +143,12 @@ export function ClientInfoPane() {
             const guardian = GUARDIANS.find((g) => g.id === v.guardianId);
             return (
               <div key={v.id} className="flex items-center gap-3 p-3">
-                <span className="shrink-0 grid place-items-center size-10 rounded-full bg-stone-100 text-stone-500">
-                  <Car className="size-4" />
-                </span>
+                <PhotoZoomButton
+                  avatar={v.photo}
+                  label={`${v.color} ${v.make} ${v.model}`}
+                  size="size-10"
+                  textSize="text-xl"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">
                     {v.color} {v.make} {v.model}
@@ -263,9 +267,12 @@ function ClientAvatar() {
       >
         <span className={cn("transition-[filter] duration-300", !revealed && "blur-md")}>{CLIENT.avatar}</span>
         {!revealed && (
-          <span className="absolute bottom-0.5 right-0.5 grid place-items-center size-5 rounded-full bg-white/80 text-stone-500 shadow">
-            <Eye className="size-3" />
-          </span>
+          // Centered (not corner-pinned) and bare — a corner badge got
+          // clipped by the circle's own rounded edge (a square positioned
+          // near a circle's bounding-box corner sits mostly outside the
+          // circle itself), and the white pill/shadow behind it read as a
+          // button when it's only ever a passive hint.
+          <Eye className="absolute inset-0 m-auto size-6 text-white opacity-50" aria-hidden />
         )}
       </button>
       <PhotoZoomDialog
