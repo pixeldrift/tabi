@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup, Reorder, useDragControls, type DragControls } from "motion/react";
-import { User } from "lucide-react";
+import { PersonPill } from "@/components/StaffDirectory";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
 import { RateCard } from "@/components/RateCard";
@@ -1324,14 +1324,14 @@ function InfoPane() {
     <div className="max-w-2xl mx-auto mt-6 px-4">
       <div className="space-y-3 text-sm">
         <InfoRow label="Therapy plan for:">
-          <UserLink name="Phineas Flynn" />
+          <PersonPill name="Phineas Flynn" />
         </InfoRow>
         <InfoRow label="Lead BCBA:">
-          <UserLink name="Heinz Doofenshmirtz" />
+          <PersonPill name="Heinz Doofenshmirtz" />
         </InfoRow>
         <InfoRow label="Team:">
           {TEAM_MEMBERS.map((name) => (
-            <UserLink key={name} name={name} />
+            <PersonPill key={name} name={name} />
           ))}
         </InfoRow>
       </div>
@@ -1344,7 +1344,7 @@ function InfoPane() {
           needs when opening the tab. */}
       <div className="mt-6 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
         <span>Last updated {formatUpdated(lastUpdated)} by</span>
-        <UserLink name="Perry Plat" />
+        <PersonPill name="Perry Plat" />
       </div>
     </div>
   );
@@ -1358,19 +1358,6 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
     </div>
   );
 }
-
-function UserLink({ name }: { name: string }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 hover:bg-blue-100 hover:text-blue-700 transition-colors text-sm"
-    >
-      <User className="size-3" fill="currentColor" strokeWidth={0} />
-      <span>{name}</span>
-    </button>
-  );
-}
-
 
 function formatUpdated(d: Date | null) {
   if (!d) return "—";
