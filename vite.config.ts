@@ -7,17 +7,24 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import svgr from "vite-plugin-svgr";
 
+// Current PR number, prefixed onto the version string below — update (or
+// clear) this alongside whichever PR is currently open, since there's no
+// git-only way to derive it at build time.
+const CURRENT_PR = "68";
+
 // Short git commit hash, baked in at build time — shown in the header next
 // to the data sheet title so it's obvious at a glance whether a given
 // screen is running the latest build, with zero manual version bumping to
 // remember. Falls back to "dev" wherever git isn't available (e.g. an
 // archive/tarball build).
 function getAppVersion(): string {
+  let sha: string;
   try {
-    return execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
-    return "dev";
+    sha = "dev";
   }
+  return CURRENT_PR ? `PR${CURRENT_PR} - ${sha}` : sha;
 }
 
 export default defineConfig({
