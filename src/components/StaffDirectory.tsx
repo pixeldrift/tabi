@@ -106,7 +106,12 @@ export function PersonPill({ name }: { name: string }) {
             <span>{name}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent side="bottom" align="start" sideOffset={4} className="w-48 p-1">
+        <PopoverContent
+          side="bottom"
+          align="center"
+          sideOffset={8}
+          className="group w-48 rounded-xl border-2 border-blue-300 bg-card p-1 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        >
           <MenuButton
             icon={<User className="size-3.5" />}
             label="Profile"
@@ -120,6 +125,19 @@ export function PersonPill({ name }: { name: string }) {
           {/* No chat surface exists in this app yet — closes the menu rather
               than linking anywhere real. */}
           <MenuButton icon={<ChatIcon className="size-3.5" />} label="Chat" onClick={() => setMenuOpen(false)} />
+          {/* Arrow — same rotated-square idiom as every other popup in the
+              app (NumberKeypad, the filter popover, the rating picker),
+              flipping which edge is drawn depending on which side Radix
+              actually placed the content. */}
+          <div
+            className={cn(
+              "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
+              "-top-[7px] border-l-2 border-t-2",
+              "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+              "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+              "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+            )}
+          />
         </PopoverContent>
       </Popover>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />

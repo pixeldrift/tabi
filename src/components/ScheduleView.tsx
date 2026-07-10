@@ -1615,16 +1615,13 @@ export function ScheduleView({
                         style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                       />
                     ))}
-                    {/* Vertically centered on the box, not pinned to its top
-                        corner — the box's own height tracks the appointment's
-                        real duration, so a top-corner icon reads as adrift
-                        from the content on anything longer than a few
-                        minutes. Absolute (not a grid column) so it stays
-                        centered regardless of that height. */}
+                    {/* Top-right corner, aligned with the title text's own
+                        row — not centered on the box, which reads as
+                        disconnected from the title it belongs to. */}
                     <button
                       type="button"
                       onClick={collapse}
-                      className="absolute top-1/2 right-1 -translate-y-1/2 z-10 size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
+                      className="absolute top-1 right-1 z-10 size-6 grid place-items-center rounded-full text-green-700 hover:bg-green-100"
                       aria-label="Collapse appointment"
                     >
                       <CollapseIcon className="size-3.5" />

@@ -73,7 +73,7 @@ export function DataToolbar({
     const update = () => {
       const btn = filterBtnRef.current;
       const content = filterContentRef.current;
-      const wrapper = content?.parentElement;
+      const wrapper = content?.parentElement as HTMLElement | null;
       if (!btn || !content || !wrapper) return;
       const currentTransform = new DOMMatrixReadOnly(getComputedStyle(wrapper).transform);
       const centeredLeft = window.innerWidth / 2 - content.offsetWidth / 2;
@@ -81,10 +81,28 @@ export function DataToolbar({
       const btnRect = btn.getBoundingClientRect();
       setFilterArrowLeft(btnRect.left + btnRect.width / 2 - centeredLeft);
     };
-    const raf = requestAnimationFrame(update);
+    // Two things make a single one-shot pass unreliable here: (1) Radix
+    // portals PopoverContent in asynchronously, so `filterContentRef.current`
+    // is often still null on this effect's very first run — refs are
+    // re-read fresh on every frame below instead of captured once; and (2)
+    // Radix/Floating UI keeps re-measuring and re-asserting its OWN position
+    // across the first several frames after mount (content size settling,
+    // the open animation), silently clobbering a write from a frame or two
+    // ago. Polling for a couple dozen frames plus a short settle timeout
+    // makes sure ours is both applied at all and the one that sticks.
+    const rafIds: number[] = [];
+    let frame = 0;
+    const loop = () => {
+      update();
+      frame += 1;
+      if (frame < 20) rafIds.push(requestAnimationFrame(loop));
+    };
+    rafIds.push(requestAnimationFrame(loop));
+    const settleId = window.setTimeout(update, 300);
     window.addEventListener("resize", update);
     return () => {
-      cancelAnimationFrame(raf);
+      rafIds.forEach(cancelAnimationFrame);
+      window.clearTimeout(settleId);
       window.removeEventListener("resize", update);
     };
   }, [filterOpen]);
