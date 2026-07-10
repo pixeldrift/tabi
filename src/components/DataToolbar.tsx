@@ -201,6 +201,7 @@ export function DataToolbar({
               setFavoritesOnly={setFavoritesOnly}
               setShowHidden={setShowHidden}
               clearFilters={clearFilters}
+              onClose={() => setFilterOpen(false)}
             />
             {/* Arrow — points back at the filter button, same rotated-square
                 idiom as NumberKeypad's popup. Since the box is no longer
@@ -318,6 +319,7 @@ function FilterPopoverContent({
   setFavoritesOnly,
   setShowHidden,
   clearFilters,
+  onClose,
 }: {
   availableKinds: CardKind[];
   availablePhases: string[];
@@ -329,13 +331,29 @@ function FilterPopoverContent({
   setFavoritesOnly: (v: boolean) => void;
   setShowHidden: (v: boolean) => void;
   clearFilters: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Filters</h3>
-        <button type="button" onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-700">
+      {/* Three equal-width columns so "Clear all" lands dead-center of the
+          row regardless of "Filters"/the close button's own widths, not
+          just centered between wherever those two happen to end. */}
+      <div className="grid grid-cols-3 items-center">
+        <h3 className="justify-self-start text-sm font-semibold">Filters</h3>
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="justify-self-center text-xs text-blue-600 hover:text-blue-700"
+        >
           Clear all
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close filters"
+          className="justify-self-end -mr-1 -mt-1 rounded-full p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+        >
+          <X className="size-4" />
         </button>
       </div>
 
