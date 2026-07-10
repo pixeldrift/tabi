@@ -132,6 +132,26 @@ const cards: CardConfig[] = [
     locked: true,
   },
   {
+    id: "property-destruction-throwing",
+    kind: "frequency",
+    title: "Property destruction/throwing",
+    behaviorRole: "interfering",
+    phase: "Baseline",
+    description:
+      "Tally each instance the learner throws or destroys property, including books, toys, or furniture.",
+    minCount: 3,
+  },
+  {
+    id: "self-injury-banging-head",
+    kind: "rate",
+    title: "Self Injury/Banging Head",
+    behaviorRole: "interfering",
+    phase: "Intervention",
+    description:
+      "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per minute.",
+    minDurationSec: 60,
+  },
+  {
     id: "tantruming",
     kind: "duration",
     title: "Tantruming",
