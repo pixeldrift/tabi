@@ -32,12 +32,12 @@ export interface RatingCardProps extends CardEditAndDrawerProps {
 // Each star is a little larger than the one before it, ascending left to
 // right, so the scale itself reads as "small praise -> big praise" without
 // needing a legend.
-const BASE_STAR_SIZE = 26;
-const STAR_SIZE_STEP = 7;
+const BASE_STAR_SIZE = 32;
+const STAR_SIZE_STEP = 9;
 // Expanded-list rows use one uniform size (no ascending scale needed in a
 // vertical list) — the same RatingStar component, just with maxSize equal
 // to its own size so its margin-top offset comes out to zero.
-const ROW_STAR_SIZE = 30;
+const ROW_STAR_SIZE = 36;
 
 export function RatingCard({
   id,
@@ -115,7 +115,7 @@ export function RatingCard({
           </dl>
         }
       >
-        <div className={cn("flex items-center", large ? "gap-1" : "gap-[3px]")}>
+        <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const filled = rating >= value;
@@ -137,8 +137,8 @@ export function RatingCard({
               >
                 <Star
                   className={cn(
-                    large ? "size-[23px]" : "size-[17px]",
-                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/5 stroke-foreground/20",
+                    large ? "size-[26px]" : "size-[19px]",
+                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/10 stroke-foreground/25",
                   )}
                   strokeWidth={1.5}
                 />
@@ -214,14 +214,14 @@ export function RatingCard({
         </dl>
       }
       expandedView={
-        <ol className="px-4 pt-1 pb-3 space-y-1">
+        <ol className="px-4 pt-1 pb-3 space-y-2">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
             const filled = rating >= value;
             const isTop = filled && value === rating;
             return (
-              <li key={value} className="flex items-start gap-2.5">
+              <li key={value} className="flex items-start gap-3">
                 <RatingStar
                   value={value}
                   size={ROW_STAR_SIZE}
@@ -240,8 +240,8 @@ export function RatingCard({
         </ol>
       }
     >
-      <div className="px-5 pt-3 pb-4 flex flex-col items-center gap-2">
-        <div className="flex items-start justify-center gap-1.5">
+      <div className="px-5 pt-4 pb-4 flex flex-col items-center gap-3">
+        <div className="flex items-start justify-center gap-2.5">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const size = BASE_STAR_SIZE + i * STAR_SIZE_STEP;
@@ -390,7 +390,7 @@ function ListRatingButton({
         collisionPadding={8}
         className="group w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
             const filled = rating >= value;
@@ -412,8 +412,8 @@ function ListRatingButton({
               >
                 <Star
                   className={cn(
-                    "size-6",
-                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/5 stroke-foreground/20",
+                    "size-7",
+                    filled ? "fill-blue-500 stroke-blue-600" : "fill-foreground/10 stroke-foreground/25",
                   )}
                   strokeWidth={1.5}
                 />
@@ -505,9 +505,12 @@ function RatingStar({
             ? "fill-blue-500 stroke-blue-600"
             : filled
               ? "fill-blue-100 stroke-blue-300"
-              // Light gray fill at rest, matching the % Correct bubbles'
-              // unselected state, rather than a hollow outline.
-              : "fill-foreground/5 stroke-foreground/10",
+              // Fill and stroke now matched in weight to the number sitting
+              // on top of it (both foreground/25) — previously the fill was
+              // far fainter than the number, so an unrated star read as a
+              // gray digit floating with barely a star shape under it rather
+              // than one uniformly grayed-out unit.
+              : "fill-foreground/10 stroke-foreground/25",
         )}
       >
         <path
@@ -524,7 +527,7 @@ function RatingStar({
           !isTop && (filled ? "text-blue-700" : "text-foreground/40"),
         )}
         style={{
-          fontSize: Math.max(10, size * 0.32),
+          fontSize: Math.max(11, size * 0.36),
           top: `${DIGIT_LINE_FRACTION * 100}%`,
           transform: "translateY(-50%)",
         }}
