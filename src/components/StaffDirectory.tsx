@@ -13,8 +13,6 @@ import isabellaPhoto from "@/assets/images/people/isabella.jpeg";
 import baljeetPhoto from "@/assets/images/people/baljeet.jpeg";
 import vanessaPhoto from "@/assets/images/people/vanessa.jpeg";
 import jeremyPhoto from "@/assets/images/people/jeremy.jpeg";
-import bufordPhoto from "@/assets/images/people/buford.jpeg";
-import stacyPhoto from "@/assets/images/people/stacy.jpeg";
 
 interface StaffRecord {
   name: string;
@@ -109,15 +107,6 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     email: "jeremy@midtownpediatricot.com",
     assignedClients: ["Phineas Flynn"],
   },
-};
-
-// Photo lookup for clients that appear in a staff member's Assigned Clients
-// list but (unlike Phineas) don't have their own ClientInfoPane record — a
-// small, separate map rather than folding them into CLIENT since they're
-// only ever referenced by name here.
-const CLIENT_AVATARS: Record<string, string> = {
-  "Buford Van Stomm": bufordPhoto,
-  "Stacy Hirano": stacyPhoto,
 };
 
 /** A person's name, styled as a pill — same look everywhere it appears
@@ -262,24 +251,21 @@ function StaffProfileDialog({
           </button>
           {clientsOpen && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {staff.assignedClients.map((client) => {
-                const photo = CLIENT_AVATARS[client];
-                return (
-                  <span
-                    key={client}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm"
-                  >
-                    {photo ? (
-                      <span className="size-4 shrink-0 overflow-hidden rounded-full">
-                        <Avatar value={photo} />
-                      </span>
-                    ) : (
-                      <User className="size-3" fill="currentColor" strokeWidth={0} />
-                    )}
-                    <span>{client}</span>
-                  </span>
-                );
-              })}
+              {/* Never a photo here, even for a client that has one
+                  elsewhere — a client's photo is PHI, and this list is just
+                  a passive caseload roster inside a staff member's own
+                  profile popup, not a place anyone intentionally asked to
+                  see a face. Only ClientAvatar's own tap-to-reveal flow on
+                  the Info tab is an intentional-enough action for that. */}
+              {staff.assignedClients.map((client) => (
+                <span
+                  key={client}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm"
+                >
+                  <User className="size-3" fill="currentColor" strokeWidth={0} />
+                  <span>{client}</span>
+                </span>
+              ))}
             </div>
           )}
         </div>
