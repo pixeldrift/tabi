@@ -733,7 +733,7 @@ export function TrialCard({
 
         {/* Helper text under bubbles */}
         <div className="text-center text-xs text-muted-foreground">
-          Trial {current + 1}, of {minTrials} minimum required. {maxTrials ? `${maxTrials} max.` : "No max."}
+          Trial {current + 1} (of {target} {maxTrials ? "max" : "required"})
         </div>
       </div>
 
