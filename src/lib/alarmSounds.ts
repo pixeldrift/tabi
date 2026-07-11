@@ -1,12 +1,12 @@
 import type { AlarmSoundStyle } from "@/components/SettingsContext";
-import alarmGentle from "@/assets/audio/alarm_gentle.wav";
-import alarmNormal from "@/assets/audio/alarm_normal.wav";
-import alarmHeavy from "@/assets/audio/alarm_heavy.wav";
+import chime01 from "@/assets/audio/chime01.wav";
+import alert01 from "@/assets/audio/alert01.wav";
+import alarm01 from "@/assets/audio/alarm01.wav";
 
 const ALARM_SOUND_FILES: Record<AlarmSoundStyle, string> = {
-  gentle: alarmGentle,
-  normal: alarmNormal,
-  heavy: alarmHeavy,
+  chime: chime01,
+  alert: alert01,
+  alarm: alarm01,
 };
 
 /** Plays the given alarm style's audio file — used both by the Settings

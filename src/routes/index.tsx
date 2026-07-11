@@ -31,11 +31,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Data collection — multi-format demo" },
       {
         name: "description",
         content:
-          "Demo of consistent cards for collecting % correct, frequency, rate, duration, and task analysis data.",
+          "A prototype front-end platform for Applied Behavioral Analysis data collection and session management.",
       },
     ],
   }),

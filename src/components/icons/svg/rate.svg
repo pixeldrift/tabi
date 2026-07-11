@@ -1,25 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24">
-  <!-- Generator: Adobe Illustrator 30.0.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 123)  -->
-  <defs>
-    <style>
-      .st0 {
-        stroke-dasharray: 0 3.15;
-      }
-
-      .st0, .st1 {
-        fill: none;
-        stroke: #000;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 2px;
-      }
-    </style>
-  </defs>
-  <line class="st1" x1="10" y1="2" x2="14" y2="2"/>
-  <line class="st1" x1="12" y1="2" x2="12" y2="5.8"/>
-  <path class="st1" d="M12,6c4.42,0,8,3.58,8,8s-3.58,8-8,8-8-3.58-8-8"/>
-  <path class="st0" d="M4,14c0-4.42,3.58-8,8-8"/>
-  <line class="st1" x1="12" y1="14" x2="12" y2="9.5"/>
-  <line class="st1" x1="12" y1="14" x2="15.5" y2="16.5"/>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <line x1="10" y1="2" x2="14" y2="2" />
+  <line x1="12" y1="2" x2="12" y2="4.5" />
+  <!-- Solid three quarters, 12 o'clock clockwise around to 9 o'clock. -->
+  <path d="M12,6 A8,8 0 1 1 4,14" />
+  <!-- Last quarter, 9 o'clock to 12 o'clock, as dots. -->
+  <path d="M4,14 A8,8 0 0 1 12,6" stroke-dasharray="0.01 3.15" />
+  <line x1="12" y1="14" x2="12" y2="9.5" />
+  <line x1="12" y1="14" x2="15.5" y2="16.5" />
 </svg>

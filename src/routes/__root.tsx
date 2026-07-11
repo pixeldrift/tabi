@@ -7,10 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -37,9 +36,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -78,17 +74,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ABA DaBa" },
-      { name: "description", content: "Interactive Feedback Hub enables dynamic data collection with animated user feedback and action confirmation." },
-      { name: "author", content: "Lovable" },
+      { name: "description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
       { property: "og:title", content: "ABA DaBa" },
-      { property: "og:description", content: "Interactive Feedback Hub enables dynamic data collection with animated user feedback and action confirmation." },
+      { property: "og:description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "ABA DaBa" },
-      { name: "twitter:description", content: "Interactive Feedback Hub enables dynamic data collection with animated user feedback and action confirmation." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b2ead57-7430-49f3-a252-56b7028ffe13/id-preview-d24b7d61--e34a3158-9986-4808-ae5b-b700413c78b2.lovable.app-1782882133731.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b2ead57-7430-49f3-a252-56b7028ffe13/id-preview-d24b7d61--e34a3158-9986-4808-ae5b-b700413c78b2.lovable.app-1782882133731.png" },
+      { name: "twitter:description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

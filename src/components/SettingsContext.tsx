@@ -41,15 +41,15 @@ export const SETTINGS: SettingDef[] = [
 
 export type SettingsValues = Record<string, number>;
 
-export type AlarmSoundStyle = "gentle" | "normal" | "heavy";
+export type AlarmSoundStyle = "chime" | "alert" | "alarm";
 
 export const ALARM_SOUND_OPTIONS: { value: AlarmSoundStyle; label: string }[] = [
-  { value: "gentle", label: "Gentle" },
-  { value: "normal", label: "Normal" },
-  { value: "heavy", label: "Heavy" },
+  { value: "chime", label: "Chime" },
+  { value: "alert", label: "Alert" },
+  { value: "alarm", label: "Alarm" },
 ];
 
-const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "normal";
+const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "alert";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 

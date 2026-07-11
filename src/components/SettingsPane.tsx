@@ -136,8 +136,8 @@ export function SettingsPane() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setAlarmSound("normal")}
-                        disabled={alarmSound === "normal"}
+                        onClick={() => setAlarmSound("alert")}
+                        disabled={alarmSound === "alert"}
                         aria-label="Reset Alarm sound to default"
                         className="text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none"
                       >
@@ -154,7 +154,7 @@ export function SettingsPane() {
                       const style = v as AlarmSoundStyle;
                       setAlarmSound(style);
                       // Auto-preview on selection — the whole point of
-                      // choosing between "gentle"/"normal"/"heavy" is how
+                      // choosing between "chime"/"alert"/"alarm" is how
                       // they actually sound, not their labels, so playing
                       // it immediately saves a separate confirm-then-play
                       // step.

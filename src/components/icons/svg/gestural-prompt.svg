@@ -1,19 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24">
-  <!-- Generator: Adobe Illustrator 30.0.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 123)  -->
-  <defs>
-    <style>
-      .st0 {
-        fill: none;
-        stroke: #000;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 2px;
-      }
-    </style>
-  </defs>
-  <path class="st0" d="M9.86,19.73"/>
-  <path class="st0" d="M12.86,15.73h1c1.1,0,2-.9,2-2s-.9-2-2-2"/>
-  <path class="st0" d="M14.36,11.71h5.5c1.1,0,2-.9,2-2s-.9-2-2-2h-10"/>
-  <path class="st0" d="M12.86,15.73c1.1,0,2,.9,2,2s-.9,2-2,2h-3C-.57,19.73,1.88,10.04,4.2,7.72l3.6-3.6c.82-.74,2.08-.68,2.82.14.69.76.69,1.92,0,2.69l-1.76,1.76"/>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <g transform="rotate(90 12 12)">
+    <path d="M22 14a8 8 0 0 1-8 8" />
+    <path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+    <path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10" />
+    <path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+  </g>
 </svg>
