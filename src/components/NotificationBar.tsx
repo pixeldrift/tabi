@@ -110,8 +110,6 @@ const KNOWN_NAMES = [
   "Baljeet Tjinder",
   "Vanessa Doofenshmirtz",
   "Jeremy Johnson",
-  "Dr. Lopez",
-  "Sam Patel",
 ];
 const NAME_PATTERN = new RegExp(
   `(${KNOWN_NAMES.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,

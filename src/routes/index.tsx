@@ -11,6 +11,7 @@ import { RatingCard } from "@/components/RatingCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import { SessionProvider, useSession, PILL_LAND_MS, type TransitionKind } from "@/components/SessionContext";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";
+import { ScheduleProvider } from "@/components/ScheduleContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
 import { NotificationProvider } from "@/components/NotificationContext";
@@ -231,7 +232,15 @@ function Index() {
               remounts that MorphContent's display-mode crossfade causes
               below it (see CardDataStore's own comment). */}
           <CardDataStoreProvider>
-            <IndexInner />
+            {/* Outside the Schedule tab's own conditional render (which
+                mounts/unmounts ScheduleView on every tab switch) so
+                Phineas' Schedule's appointments survive leaving the tab —
+                ClientInfoPane's Related Service Times row reads them too,
+                and would otherwise flash back to the seed data every time
+                Schedule wasn't the active tab. */}
+            <ScheduleProvider>
+              <IndexInner />
+            </ScheduleProvider>
           </CardDataStoreProvider>
         </DataToolbarProvider>
       </SessionProvider>
@@ -794,7 +803,7 @@ function IndexInner() {
           </>
         )}
 
-        {tab === "info" && <ClientInfoPane />}
+        {tab === "info" && <ClientInfoPane onViewSchedule={() => setTab("schedule")} />}
         {tab === "schedule" && (
           <ScheduleView
             scrollTargetId={scheduleScrollId}

@@ -8,6 +8,8 @@ import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { useSession } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
+import { useScheduleData } from "@/components/ScheduleContext";
+import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { cn } from "@/lib/utils";
 import phineasPhoto from "@/assets/images/people/phineas.jpeg";
@@ -92,10 +94,6 @@ const ABOUT_ME = {
     "Follows multi-step verbal instructions independently. Benefits from a visual schedule ahead of any transition away from a build.",
   transitions:
     'Show the "next activity" picture card 2 minutes before transitioning away from a build. If he protests, let him finish the current step first.',
-  relatedServices: [
-    { discipline: "Speech", provider: "Vanessa Doofenshmirtz", schedule: "Tuesdays 12:00p" },
-    { discipline: "OT", provider: "Jeremy Johnson", schedule: "Wed 3:30–4:00p, Fri 1:30–2:00p" },
-  ],
 };
 
 const JUMP_SECTIONS = [
@@ -123,8 +121,17 @@ function formatUpdated(d: Date | null) {
   return sameDay ? `today (${date}) at ${time}` : `${date} at ${time}`;
 }
 
-export function ClientInfoPane() {
+// Same "HH:MMa/p" convention as the Schedule tab's own grid (formatTimeOfDay)
+// — one start/end applies to every day an appointment recurs on, unlike the
+// old hand-written relatedServices copy that could (inaccurately) give each
+// day its own time.
+function formatApptSchedule(appt: { days: string[]; start: string; end: string }): string {
+  return `${appt.days.join(", ")} ${formatTimeOfDay(appt.start)}–${formatTimeOfDay(appt.end)}`;
+}
+
+export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void }) {
   const { lastUpdated } = useSession();
+  const { phineasAppointments } = useScheduleData();
   // The fixed header (previous-session banner + tabs) varies in height by
   // session state — a fixed scroll-margin guess undershoots it whenever the
   // banner's expanded, leaving a jumped-to section's heading tucked out of
@@ -178,19 +185,31 @@ export function ClientInfoPane() {
           <NoteRow label="Transitions" value={ABOUT_ME.transitions} />
           <NoteRow
             label="Related Service Times"
-            value={ABOUT_ME.relatedServices.map((s) => `${s.discipline}: ${s.provider} · ${s.schedule}`).join("\n")}
+            value={phineasAppointments
+              .map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a)}`)
+              .join("\n")}
           >
             <div className="space-y-1">
-              {ABOUT_ME.relatedServices.map((s) => (
-                <div key={s.discipline} className="flex flex-wrap items-baseline gap-x-1.5">
-                  <span className="font-semibold">{s.discipline}:</span>
-                  <PersonPill name={s.provider} />
-                  <span>&middot; {s.schedule}</span>
-                </div>
-              ))}
+              {phineasAppointments.length === 0 ? (
+                <p className="text-foreground/60">No related services on the schedule.</p>
+              ) : (
+                phineasAppointments.map((a) => (
+                  <div key={a.id} className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="font-semibold">{a.type}:</span>
+                    <PersonPill name={a.provider} />
+                    <span>&middot; {formatApptSchedule(a)}</span>
+                  </div>
+                ))
+              )}
+              <button
+                type="button"
+                onClick={onViewSchedule}
+                className="text-blue-600 hover:text-blue-700 underline underline-offset-2"
+              >
+                View schedule
+              </button>
             </div>
           </NoteRow>
-          <NoteRow label="Session Structure/Schedule" value="See the Schedule tab." />
         </div>
       </Section>
 

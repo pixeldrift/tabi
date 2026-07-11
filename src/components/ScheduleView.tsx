@@ -48,6 +48,17 @@ import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useSettings, DEFAULT_DAY_START, DEFAULT_DAY_END } from "@/components/SettingsContext";
+import {
+  useScheduleData,
+  PHINEAS_APPTS,
+  DAYS,
+  type Day,
+  type AlertMode,
+  type AlertSettings,
+  type PrimingSettings,
+  type ApptTag,
+  type Appointment,
+} from "@/components/ScheduleContext";
 
 
 const LOCATIONS = [
@@ -128,18 +139,6 @@ const APPOINTMENT_TYPE_ICONS: Record<string, string> = {
   "Parent Meeting": "🤝",
 };
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
-type Day = (typeof DAYS)[number];
-
-type AlertMode = "off" | "visual" | "audio";
-
-type AlertSettings = {
-  mode: AlertMode;
-  allowSnooze: boolean;
-  autofade: boolean;
-};
-type PrimingSettings = AlertSettings & { minutesPrior: number };
-
 const DEFAULT_ALERT: AlertSettings = {
   mode: "visual",
   allowSnooze: true,
@@ -161,20 +160,6 @@ type ScheduleItem = {
   customIcon?: string;
   location: string;
   alert: AlertMode;
-  alertCfg?: AlertSettings;
-  priming?: PrimingSettings;
-};
-
-type ApptTag = "Co-Treat" | "Handoff Session";
-
-type Appointment = {
-  id: string;
-  start: string;
-  end: string;
-  days: Day[];
-  type: string;
-  provider: string;
-  tag?: ApptTag;
   alertCfg?: AlertSettings;
   priming?: PrimingSettings;
 };
@@ -275,11 +260,6 @@ const PHINEAS: ScheduleItem[] = [
   { id: "p15", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
 ];
 
-const PHINEAS_APPTS: Appointment[] = [
-  { id: "ap1", start: "11:00", end: "11:30", days: ["Mon", "Wed"], type: "Speech Therapy", provider: "Dr. Lopez", tag: "Co-Treat" },
-  { id: "ap2", start: "13:00", end: "13:30", days: ["Tue", "Thu"], type: "Occupational Therapy", provider: "Sam Patel", tag: "Handoff Session" },
-];
-
 const PRESETS: Schedule[] = [
   { name: "Phineas' Schedule", items: PHINEAS, appointments: PHINEAS_APPTS },
   { name: "Group A", items: GROUP_A, appointments: [], locked: true },
@@ -367,6 +347,16 @@ export function ScheduleView({
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const isLocked = !!active.locked;
+
+  // Keeps ClientInfoPane's Related Service Times row in sync with whatever
+  // is actually on Phineas' Schedule here — looked up by name rather than
+  // just using `active` since the Schedule tab's own dropdown can have a
+  // different preset (Group A/B/C) selected at any given moment.
+  const { setPhineasAppointments } = useScheduleData();
+  useEffect(() => {
+    const phineasSchedule = schedules.find((s) => s.name === "Phineas' Schedule");
+    if (phineasSchedule) setPhineasAppointments(phineasSchedule.appointments);
+  }, [schedules, setPhineasAppointments]);
 
   const [editMode, setEditMode] = useState(false);
   const [layoutMode, setLayoutMode] = useState<"proportional" | "collapsed">("proportional");
