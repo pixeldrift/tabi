@@ -5,7 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { EmailIcon } from "./icons/EmailIcon";
 import { ChatIcon } from "./icons/ChatIcon";
+import { Avatar } from "@/components/Avatar";
 import { cn } from "@/lib/utils";
+import doofenshmirtzPhoto from "@/assets/images/people/doofenshmirtz.jpeg";
+import perryPhoto from "@/assets/images/people/perry.jpeg";
 
 interface StaffRecord {
   name: string;
@@ -32,7 +35,7 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     npi: "1720394856",
     location: "Nashville Clinic",
     bio: "Designs and oversees the treatment plan, with a flair for elaborate, multi-step interventions that — much to his own surprise — usually work on the first try.",
-    avatar: "🧪",
+    avatar: doofenshmirtzPhoto,
     phone: "+16155550142",
     email: "h.doofenshmirtz@abadaba.clinic",
     assignedClients: ["Phineas Flynn"],
@@ -44,7 +47,7 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     npi: "2938471650",
     location: "Nashville Clinic",
     bio: "Quiet, focused, and unflappable in session — the kind of technician who somehow always turns up exactly where the treatment plan needs him.",
-    avatar: "🕵️",
+    avatar: perryPhoto,
     phone: "+16155550198",
     email: "p.plat@abadaba.clinic",
     assignedClients: ["Phineas Flynn"],
@@ -184,8 +187,8 @@ function StaffProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl">
         <DialogHeader className="items-center text-center sm:text-center">
-          <div className="size-16 rounded-full bg-blue-100 border-2 border-blue-300 grid place-items-center text-3xl">
-            {staff.avatar}
+          <div className="size-16 overflow-hidden rounded-full bg-blue-100 border-2 border-blue-300 grid place-items-center text-3xl">
+            <Avatar value={staff.avatar} />
           </div>
           <DialogTitle className="mt-1">{staff.name}</DialogTitle>
           <p className="text-sm text-muted-foreground">{staff.title}</p>

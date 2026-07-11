@@ -3,12 +3,18 @@ import { Eye, CheckCircle2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PersonPill } from "@/components/StaffDirectory";
+import { Avatar } from "@/components/Avatar";
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { useSession } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { cn } from "@/lib/utils";
+import phineasPhoto from "@/assets/images/people/phineas.jpeg";
+import lindaPhoto from "@/assets/images/people/linda.jpeg";
+import lawrencePhoto from "@/assets/images/people/lawrence.jpeg";
+import hondaOdysseyPhoto from "@/assets/images/vehicles/honda-odyssey.webp";
+import toyotaCamryPhoto from "@/assets/images/vehicles/toyota-camry.jpeg";
 
 // How long a revealed client photo stays unblurred before hiding itself
 // again — long enough to actually register a face, short enough that the
@@ -48,17 +54,17 @@ const CLIENT = {
   firstName: "Phineas",
   lastName: "Flynn",
   dob: "2016-06-16",
-  avatar: "👦",
+  avatar: phineasPhoto,
 };
 
 const GUARDIANS: GuardianRecord[] = [
-  { id: "linda", name: "Linda Flynn-Fletcher", relationship: "Mother", phone: "+16155550111", avatar: "👩", pickupAuthorized: true },
-  { id: "lawrence", name: "Lawrence Fletcher", relationship: "Stepfather", phone: "+16155550122", avatar: "👨", pickupAuthorized: true },
+  { id: "linda", name: "Linda Flynn-Fletcher", relationship: "Mother", phone: "+16155550111", avatar: lindaPhoto, pickupAuthorized: true },
+  { id: "lawrence", name: "Lawrence Fletcher", relationship: "Stepfather", phone: "+16155550122", avatar: lawrencePhoto, pickupAuthorized: true },
 ];
 
 const VEHICLES: VehicleRecord[] = [
-  { id: "v1", guardianId: "linda", color: "Silver", make: "Honda", model: "Odyssey", plate: "BJY-4471", photo: "🚐" },
-  { id: "v2", guardianId: "lawrence", color: "Green", make: "Toyota", model: "Camry", plate: "HRT-2093", photo: "🚗" },
+  { id: "v1", guardianId: "linda", color: "Silver", make: "Honda", model: "Odyssey", plate: "BJY-4471", photo: hondaOdysseyPhoto },
+  { id: "v2", guardianId: "lawrence", color: "Green", make: "Toyota", model: "Camry", plate: "HRT-2093", photo: toyotaCamryPhoto },
 ];
 
 const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"];
@@ -477,7 +483,7 @@ function ClientAvatar() {
         aria-label={revealed ? `${CLIENT.firstName}'s photo — tap to enlarge` : `Tap to reveal ${CLIENT.firstName}'s photo`}
         className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-blue-300 bg-blue-100 grid place-items-center text-4xl"
       >
-        <span className={cn("transition-[filter] duration-300", !revealed && "blur-md")}>{CLIENT.avatar}</span>
+        <Avatar value={CLIENT.avatar} className={cn("transition-[filter] duration-300", !revealed && "blur-md")} />
         {!revealed && (
           // Centered (not corner-pinned) and bare — a corner badge got
           // clipped by the circle's own rounded edge (a square positioned
@@ -520,9 +526,13 @@ function PhotoZoomButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Enlarge photo of ${label}`}
-        className={cn("shrink-0 rounded-full border border-stone-200 bg-blue-50 grid place-items-center", size, textSize)}
+        className={cn(
+          "shrink-0 overflow-hidden rounded-full border border-stone-200 bg-blue-50 grid place-items-center",
+          size,
+          textSize,
+        )}
       >
-        {avatar}
+        <Avatar value={avatar} />
       </button>
       <PhotoZoomDialog open={open} onOpenChange={setOpen} avatar={avatar} label={label} />
     </>
@@ -551,9 +561,9 @@ function PhotoZoomDialog({
           type="button"
           onClick={() => onOpenChange(false)}
           aria-label="Shrink photo"
-          className="grid aspect-square w-[min(85vw,320px)] place-items-center rounded-full border-4 border-white bg-blue-100 text-[100px] leading-none shadow-2xl"
+          className="grid aspect-square w-[min(85vw,320px)] place-items-center overflow-hidden rounded-full border-4 border-white bg-blue-100 text-[100px] leading-none shadow-2xl"
         >
-          {avatar}
+          <Avatar value={avatar} />
         </button>
       </DialogContent>
     </Dialog>
