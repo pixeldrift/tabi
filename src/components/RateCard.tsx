@@ -440,7 +440,7 @@ export function RateCard({
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                <span>{count === 1 ? "Time in" : "Times in"}</span>
+                <span>Instances in</span>
                 <span className="inline-flex items-center">
                   {locked ? (
                     <>
@@ -448,7 +448,7 @@ export function RateCard({
                         aria-label="Elapsed time (linked to session)"
                         className="inline-flex items-center border border-stone-300 bg-stone-100 pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full text-muted-foreground"
                       >
-                        {formatTime(elapsed)}
+                        {formatCompactTime(elapsed)}
                       </span>
                       <span
                         aria-label="Timer is linked to session"
@@ -478,7 +478,7 @@ export function RateCard({
                               running ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
-                            {formatTime(elapsed)}
+                            {formatCompactTime(elapsed)}
                           </button>
                         )}
                       </TimeKeypad>
@@ -540,4 +540,19 @@ function formatTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+// The pill sitting next to the play/pause button is much tighter on space
+// than a details row — no session ever runs anywhere near 10 hours, so the
+// leading hour digit never needs its own padding, and the "h:" segment is
+// dropped entirely below the 1-hour mark (that's still the overwhelming
+// majority of the time) while staying available for the rare meltdown that
+// does run long.
+function formatCompactTime(ms: number) {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = m.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
 }

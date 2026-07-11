@@ -699,7 +699,7 @@ export function DurationCard({
 
         <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
           <span>
-            Time{" "}
+            Instance{" "}
             <span className="normal-case tracking-normal tabular-nums text-foreground">
               {viewIdx + 1}
             </span>{" "}
@@ -707,7 +707,7 @@ export function DurationCard({
             <span className="normal-case tracking-normal tabular-nums text-foreground">
               {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
             </span>
-            , total{" "}
+            {" | Total: "}
             <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
               {formatShortTime(totalMs)}
             </strong>

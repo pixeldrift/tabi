@@ -366,7 +366,7 @@ export function FrequencyCard({
                   isEditing ? "text-blue-500" : "text-muted-foreground",
                 )}
               >
-                {count === 1 ? "Time" : "Times"}
+                Instances
               </span>
             </button>
           )}

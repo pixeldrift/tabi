@@ -265,7 +265,7 @@ export function RatingCard({
         <span className="text-xs text-muted-foreground">
           {rating > 0 ? (
             <>
-              Rated <strong className="font-semibold text-foreground">{rating}</strong> of {max}.
+              Rated as <strong className="font-semibold text-foreground">{rating}</strong> out of {max}.
             </>
           ) : (
             "Tap a star to rate."
