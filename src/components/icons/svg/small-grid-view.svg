@@ -1,11 +1,11 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="3" width="5" height="5" rx="1" />
-  <rect x="9.5" y="3" width="5" height="5" rx="1" />
-  <rect x="16" y="3" width="5" height="5" rx="1" />
-  <rect x="3" y="9.5" width="5" height="5" rx="1" />
-  <rect x="9.5" y="9.5" width="5" height="5" rx="1" />
-  <rect x="16" y="9.5" width="5" height="5" rx="1" />
-  <rect x="3" y="16" width="5" height="5" rx="1" />
-  <rect x="9.5" y="16" width="5" height="5" rx="1" />
-  <rect x="16" y="16" width="5" height="5" rx="1" />
+  <path d="M4.86,3.76h4.4v5.49H3.76v-4.4c0-.61.49-1.1,1.1-1.1Z" />
+  <rect x="9.25" y="3.76" width="5.49" height="5.49" />
+  <path d="M14.75,3.76h4.4c.61,0,1.1.49,1.1,1.1v4.4h-5.49V3.76h0Z" />
+  <rect x="3.76" y="9.25" width="5.49" height="5.49" />
+  <rect x="9.25" y="9.25" width="5.49" height="5.49" />
+  <rect x="14.75" y="9.25" width="5.49" height="5.49" />
+  <path d="M3.76,14.75h5.49v5.49h-4.4c-.61,0-1.1-.49-1.1-1.1v-4.4h0Z" />
+  <rect x="9.25" y="14.75" width="5.49" height="5.49" />
+  <path d="M14.75,14.75h5.49v4.4c0,.61-.49,1.1-1.1,1.1h-4.4v-5.49h0Z" />
 </svg>

@@ -1,10 +1,10 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
   <line x1="10" y1="2" x2="14" y2="2" />
-  <line x1="12" y1="2" x2="12" y2="4.5" />
+  <line x1="12" y1="2" x2="12" y2="5.8" />
   <!-- Solid three quarters, 12 o'clock clockwise around to 9 o'clock. -->
-  <path d="M12,6 A8,8 0 1 1 4,14" />
+  <path d="M12,6c4.42,0,8,3.58,8,8s-3.58,8-8,8-8-3.58-8-8" />
   <!-- Last quarter, 9 o'clock to 12 o'clock, as dots. -->
-  <path d="M4,14 A8,8 0 0 1 12,6" stroke-dasharray="0.01 3.15" />
+  <path d="M4,14c0-4.42,3.58-8,8-8" stroke-dasharray="0.01 3.15" />
   <line x1="12" y1="14" x2="12" y2="9.5" />
   <line x1="12" y1="14" x2="15.5" y2="16.5" />
 </svg>
