@@ -12,11 +12,18 @@ export function PhotoZoomButton({
   kind,
   label,
   size,
+  ringClassName = "border border-stone-200 bg-blue-50",
 }: {
   avatar?: string;
   kind?: "person" | "vehicle";
   label: string;
   size: string;
+  /** Border/background for the thumbnail's own ring — override this
+   *  instead of wrapping the button in a second bordered circle. Two
+   *  concentric rounded-full elements never quite share a center (padding
+   *  rounding, sub-pixel layout), which reads as the photo not lining up
+   *  with its own frame; one ring on one element sidesteps that entirely. */
+  ringClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -25,7 +32,7 @@ export function PhotoZoomButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Enlarge photo of ${label}`}
-        className={cn("shrink-0 overflow-hidden rounded-full border border-stone-200 bg-blue-50", size)}
+        className={cn("shrink-0 overflow-hidden rounded-full [clip-path:circle(50%)]", ringClassName, size)}
       >
         <Avatar value={avatar} kind={kind} className="h-full w-full object-cover" />
       </button>

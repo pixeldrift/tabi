@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, CheckCircle2, X } from "lucide-react";
+import { Eye, CheckCircle2, X, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PersonPill } from "@/components/StaffDirectory";
@@ -9,7 +9,7 @@ import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { useSession } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
-import { useScheduleData } from "@/components/ScheduleContext";
+import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
 import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,22 @@ const ABOUT_ME = {
     'Show the "next activity" picture card 2 minutes before transitioning away from a build. If he protests, let him finish the current step first.',
 };
 
+// One id per NoteRow rendered inside About Me, in display order — used to
+// drive per-row collapse state and to know what "collapse all" covers.
+const ABOUT_ME_ROW_IDS = [
+  "seizure",
+  "allergies",
+  "toys",
+  "behaviors",
+  "environment",
+  "meal",
+  "successTips",
+  "toileting",
+  "communication",
+  "transitions",
+  "relatedServices",
+];
+
 const JUMP_SECTIONS = [
   { id: "section-about-me", label: "About Me" },
   { id: "section-guardians", label: "Guardians" },
@@ -160,59 +176,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
         ))}
       </div>
 
-      <Section id="section-about-me" title="About Me (Coverage Notes)">
-        <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
-          <NoteRow label="Seizure Action Plan?" value={ABOUT_ME.seizureActionPlan} />
-          <NoteRow label="Allergies" value={ABOUT_ME.allergies} />
-          <NoteRow label="Favorite Toys/Activities" value={ABOUT_ME.favoriteActivities} />
-          <NoteRow label="Interfering Behaviors" value={ABOUT_ME.interferingBehaviors} />
-          <NoteRow label="Environment" value={ABOUT_ME.environment} />
-          <NoteRow label="Meal Time/Snack" value={ABOUT_ME.mealTime} />
-          <NoteRow label="Session Success Tips/Pairing" value={ABOUT_ME.successTips} />
-          <NoteRow label="Toileting" value={ABOUT_ME.toileting} />
-          <NoteRow
-            label="Mode of Communication"
-            value={`Expressive: ${ABOUT_ME.communicationExpressive}\n\nReceptive: ${ABOUT_ME.communicationReceptive}`}
-          >
-            <p>
-              <span className="font-semibold">Expressive: </span>
-              {ABOUT_ME.communicationExpressive}
-            </p>
-            <p className="mt-1.5">
-              <span className="font-semibold">Receptive: </span>
-              {ABOUT_ME.communicationReceptive}
-            </p>
-          </NoteRow>
-          <NoteRow label="Transitions" value={ABOUT_ME.transitions} />
-          <NoteRow
-            label="Related Service Times"
-            value={phineasAppointments
-              .map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a)}`)
-              .join("\n")}
-          >
-            <div className="space-y-1">
-              {phineasAppointments.length === 0 ? (
-                <p className="text-foreground/60">No related services on the schedule.</p>
-              ) : (
-                phineasAppointments.map((a) => (
-                  <div key={a.id} className="flex flex-wrap items-baseline gap-x-1.5">
-                    <span className="font-semibold">{a.type}:</span>
-                    <PersonPill name={a.provider} />
-                    <span>&middot; {formatApptSchedule(a)}</span>
-                  </div>
-                ))
-              )}
-              <button
-                type="button"
-                onClick={onViewSchedule}
-                className="text-blue-600 hover:text-blue-700 underline underline-offset-2"
-              >
-                View schedule
-              </button>
-            </div>
-          </NoteRow>
-        </div>
-      </Section>
+      <AboutMeSection phineasAppointments={phineasAppointments} onViewSchedule={onViewSchedule} />
 
       <Section id="section-guardians" title="Guardians">
         <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden">
@@ -305,30 +269,214 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
+// About Me's own section, rather than a generic <Section>, so it can own
+// per-row collapse state and put an expand/collapse-all toggle next to its
+// own title — collapsing 11 subsections into a single flat boolean set that
+// both individual chevrons and the all-at-once toggle read/write.
+function AboutMeSection({
+  phineasAppointments,
+  onViewSchedule,
+}: {
+  phineasAppointments: Appointment[];
+  onViewSchedule: () => void;
+}) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const allCollapsed = collapsedIds.size === ABOUT_ME_ROW_IDS.length;
+
+  const toggleRow = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setCollapsedIds(allCollapsed ? new Set() : new Set(ABOUT_ME_ROW_IDS));
+  };
+
+  return (
+    <section id="section-about-me">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">About Me (Coverage Notes)</h2>
+        <button
+          type="button"
+          onClick={toggleAll}
+          aria-label={allCollapsed ? "Expand all" : "Collapse all"}
+          className="grid place-items-center size-6 -mr-1 text-stone-400 hover:text-stone-600 transition-colors"
+        >
+          {allCollapsed ? <ChevronsUpDown className="size-4" /> : <ChevronsDownUp className="size-4" />}
+        </button>
+      </div>
+      <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
+        <NoteRow
+          id="seizure"
+          label="Seizure Action Plan?"
+          value={ABOUT_ME.seizureActionPlan}
+          collapsed={collapsedIds.has("seizure")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="allergies"
+          label="Allergies"
+          value={ABOUT_ME.allergies}
+          collapsed={collapsedIds.has("allergies")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="toys"
+          label="Favorite Toys/Activities"
+          value={ABOUT_ME.favoriteActivities}
+          collapsed={collapsedIds.has("toys")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="behaviors"
+          label="Interfering Behaviors"
+          value={ABOUT_ME.interferingBehaviors}
+          collapsed={collapsedIds.has("behaviors")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="environment"
+          label="Environment"
+          value={ABOUT_ME.environment}
+          collapsed={collapsedIds.has("environment")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="meal"
+          label="Meal Time/Snack"
+          value={ABOUT_ME.mealTime}
+          collapsed={collapsedIds.has("meal")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="successTips"
+          label="Session Success Tips/Pairing"
+          value={ABOUT_ME.successTips}
+          collapsed={collapsedIds.has("successTips")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="toileting"
+          label="Toileting"
+          value={ABOUT_ME.toileting}
+          collapsed={collapsedIds.has("toileting")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="communication"
+          label="Mode of Communication"
+          value={`Expressive: ${ABOUT_ME.communicationExpressive}\n\nReceptive: ${ABOUT_ME.communicationReceptive}`}
+          collapsed={collapsedIds.has("communication")}
+          onToggle={toggleRow}
+        >
+          <p>
+            <span className="font-semibold">Expressive: </span>
+            {ABOUT_ME.communicationExpressive}
+          </p>
+          <p className="mt-1.5">
+            <span className="font-semibold">Receptive: </span>
+            {ABOUT_ME.communicationReceptive}
+          </p>
+        </NoteRow>
+        <NoteRow
+          id="transitions"
+          label="Transitions"
+          value={ABOUT_ME.transitions}
+          collapsed={collapsedIds.has("transitions")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="relatedServices"
+          label="Related Service Times"
+          value={phineasAppointments.map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a)}`).join("\n")}
+          collapsed={collapsedIds.has("relatedServices")}
+          onToggle={toggleRow}
+        >
+          <div className="space-y-1">
+            {phineasAppointments.length === 0 ? (
+              <p className="text-foreground/60">No related services on the schedule.</p>
+            ) : (
+              phineasAppointments.map((a) => (
+                <div key={a.id} className="flex flex-wrap items-baseline gap-x-1.5">
+                  <span className="font-semibold">{a.type}:</span>
+                  <PersonPill name={a.provider} />
+                  <span>&middot; {formatApptSchedule(a)}</span>
+                </div>
+              ))
+            )}
+            <button
+              type="button"
+              onClick={onViewSchedule}
+              className="text-blue-600 hover:text-blue-700 underline underline-offset-2"
+            >
+              View schedule
+            </button>
+          </div>
+        </NoteRow>
+      </div>
+    </section>
+  );
+}
+
 // Label-over-value row for About Me — unlike InfoRow's inline label
 // (fine for a short pill list), these values run to full paragraphs, so
 // label and value need their own stacked lines rather than fighting for
 // space side by side. `value` is the plain-text version a covering tech's
 // edit request preloads into its textarea; `children`, when given, is a
 // richer rendering of the same fact (e.g. Mode of Communication's two
-// paragraphs) — otherwise `value` itself is rendered directly.
-function NoteRow({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
+// paragraphs) — otherwise `value` itself is rendered directly. The row
+// itself twirls open/closed independently of its neighbors — tapping the
+// chevron or the label toggles it, `content` (children ?? value) unmounts
+// rather than just hiding so a long collapsed list is actually short.
+function NoteRow({
+  id,
+  label,
+  value,
+  collapsed,
+  onToggle,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  collapsed: boolean;
+  onToggle: (id: string) => void;
+  children?: React.ReactNode;
+}) {
   const [requestOpen, setRequestOpen] = useState(false);
   return (
-    <div className="relative p-3 pr-9">
-      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</p>
-      <div className="mt-1 leading-snug text-foreground/90">{children ?? value}</div>
-      {/* Bare icon, no button chrome — a passive "you can suggest a change
-          here" hint, not a primary action, so it stays out of the way of
-          the actual content above it. */}
+    <div className={cn("relative p-3", !collapsed && "pr-9")}>
       <button
         type="button"
-        onClick={() => setRequestOpen(true)}
-        aria-label={`Request an edit to ${label}`}
-        className="absolute bottom-1.5 right-1.5 grid place-items-center size-6 text-blue-400/70 hover:text-blue-600 transition-colors"
+        onClick={() => onToggle(id)}
+        aria-expanded={!collapsed}
+        className="flex w-full items-center gap-1 text-left"
       >
-        <RequestEditIcon className="size-4" />
+        <ChevronDown
+          className={cn("size-3.5 shrink-0 text-stone-400 transition-transform", collapsed && "-rotate-90")}
+        />
+        <span className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</span>
       </button>
+      {!collapsed && (
+        <>
+          <div className="mt-1 pl-[18px] leading-snug text-foreground/90">{children ?? value}</div>
+          {/* Bare icon, no button chrome — a passive "you can suggest a change
+              here" hint, not a primary action, so it stays out of the way of
+              the actual content above it. */}
+          <button
+            type="button"
+            onClick={() => setRequestOpen(true)}
+            aria-label={`Request an edit to ${label}`}
+            className="absolute bottom-1.5 right-1.5 grid place-items-center size-6 text-blue-400/70 hover:text-blue-600 transition-colors"
+          >
+            <RequestEditIcon className="size-4" />
+          </button>
+        </>
+      )}
       <RequestEditDialog open={requestOpen} onOpenChange={setRequestOpen} label={label} currentValue={value} />
     </div>
   );
@@ -500,7 +648,7 @@ function ClientAvatar() {
         type="button"
         onClick={handleClick}
         aria-label={revealed ? `${CLIENT.firstName}'s photo — tap to enlarge` : `Tap to reveal ${CLIENT.firstName}'s photo`}
-        className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-blue-300 bg-blue-100 grid place-items-center text-4xl"
+        className="relative size-20 shrink-0 overflow-hidden rounded-full [clip-path:circle(50%)] border-2 border-blue-300 bg-blue-100 grid place-items-center text-4xl"
       >
         <Avatar
           value={CLIENT.avatar}

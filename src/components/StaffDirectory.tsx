@@ -218,9 +218,12 @@ function StaffProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl">
         <DialogHeader className="items-center text-center sm:text-center">
-          <div className="rounded-full border-2 border-blue-300 bg-blue-100 p-0.5">
-            <PhotoZoomButton avatar={staff.avatar} label={staff.name} size="size-16" />
-          </div>
+          <PhotoZoomButton
+            avatar={staff.avatar}
+            label={staff.name}
+            size="size-16"
+            ringClassName="border-2 border-blue-300 bg-blue-100"
+          />
           <DialogTitle className="mt-1">{staff.name}</DialogTitle>
           <p className="text-sm text-muted-foreground">{staff.title}</p>
         </DialogHeader>
