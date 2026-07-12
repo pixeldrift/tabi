@@ -320,7 +320,7 @@ function AboutMeSection({
         <NoteRow
           id="safetyPlan"
           emoji="🚨"
-          label="Safety Plan"
+          label="Safety Action Plan"
           value={ABOUT_ME.safetyPlan}
           collapsed={collapsedIds.has("safetyPlan")}
           onToggle={toggleRow}
@@ -328,7 +328,7 @@ function AboutMeSection({
         <NoteRow
           id="seizure"
           emoji="🚑"
-          label="Seizure Action Plan?"
+          label="Seizure Action Plan"
           value={ABOUT_ME.seizureActionPlan}
           collapsed={collapsedIds.has("seizure")}
           onToggle={toggleRow}
@@ -376,7 +376,7 @@ function AboutMeSection({
         <NoteRow
           id="successTips"
           emoji="💡"
-          label="Session Success Tips/Pairing"
+          label="Session & Pairing Tips"
           value={ABOUT_ME.successTips}
           collapsed={collapsedIds.has("successTips")}
           onToggle={toggleRow}

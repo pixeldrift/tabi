@@ -649,6 +649,19 @@ function IndexInner() {
     return () => window.clearTimeout(id);
   }, [status, transitionKind]);
 
+  // Switching tabs is handled by the tab bar itself; tapping the tab
+  // that's *already* active doesn't switch anything, so without this it
+  // was a dead click. Scrolling back to the top instead gives it a
+  // purpose — the same "get back to the start of this pane" shortcut a
+  // long scroll down any tab's content can otherwise strand you without.
+  const handleTabChange = (t: StatusTab) => {
+    if (t === tab) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setTab(t);
+  };
+
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
       setTab("schedule");
@@ -669,7 +682,7 @@ function IndexInner() {
           see LayoutGroup's docs on coordinating layout detection across
           separate components. */}
       <LayoutGroup id="session-bar">
-      <StatusBar activeTab={tab} onTabChange={setTab} suppressNavLayout={suppressCardLayout} />
+      <StatusBar activeTab={tab} onTabChange={handleTabChange} suppressNavLayout={suppressCardLayout} />
 
       {/* Rendered as a sibling of (not nested inside) the motion.section
           below — that section's own `layout="position"` tracking applies a
