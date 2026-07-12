@@ -294,6 +294,16 @@ function fromMin(m: number) {
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+// Absolute epoch ms for a minutes-of-day value on the same calendar day as
+// `base` — lets a pushed alert carry the activity's real start time so the
+// banner's own relative-time label (see NotificationBar) keeps counting
+// accurately instead of freezing at whatever it said when the alert fired.
+function minToTimestamp(min: number, base: Date): number {
+  const d = new Date(base);
+  d.setHours(Math.floor(min / 60), min % 60, 0, 0);
+  return d.getTime();
+}
+
 // Abbreviated to save room next to the time-entry boxes — "30mins",
 // "1hr 15mins" — matching the boxes' own no-space "10:30a" convention.
 function formatDuration(min: number): string {
@@ -452,6 +462,7 @@ export function ScheduleView({
           autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
           allowSnooze: alertCfg.allowSnooze,
           sourceRef: { type: "activity", id: it.id },
+          activityAt: minToTimestamp(startMin, now),
         });
       }
       // alert-priming
@@ -467,6 +478,7 @@ export function ScheduleView({
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
             allowSnooze: priming.allowSnooze,
             sourceRef: { type: "activity", id: it.id },
+            activityAt: minToTimestamp(startMin, now),
           });
         }
       }
@@ -490,6 +502,7 @@ export function ScheduleView({
           autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
           allowSnooze: alertCfg.allowSnooze,
           sourceRef: { type: "activity", id: appt.id },
+          activityAt: minToTimestamp(startMin, now),
         });
       }
       // alert-priming
@@ -505,6 +518,7 @@ export function ScheduleView({
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
             allowSnooze: priming.allowSnooze,
             sourceRef: { type: "activity", id: appt.id },
+            activityAt: minToTimestamp(startMin, now),
           });
         }
       }

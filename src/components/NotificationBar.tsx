@@ -1,8 +1,7 @@
-import { useEffect, useRef, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Volume2, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, isAlert, vibrate, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
-import type { AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
@@ -147,13 +146,41 @@ function NotificationTitle({ title, className }: { title: string; className?: st
 }
 
 export function NotificationBar() {
-  const { live, dismiss, snooze, silence, activate } = useNotifications();
+  const { live, dismiss, snooze, silence, unsilence, activate } = useNotifications();
   const { prefs } = useNotifications();
 
   // Newest on top — show up to maxStackVisible.
   const ordered = [...live].sort((a, b) => b.createdAt - a.createdAt);
   const visible = ordered.slice(0, prefs.maxStackVisible);
   const overflow = ordered.length - visible.length;
+
+  // Only one alarm audibly plays at a time. Each chime-capable alert still
+  // ticks/vibrates independently (see NotificationRow's own effect), but
+  // the actual repeating sound is owned by whichever eligible (live, not
+  // silenced) one has been waiting longest — muting the current owner or
+  // dismissing it hands the shared "audio slot" to the next-oldest one
+  // instead of everything going quiet.
+  const chiming = live.filter((n) => isAlert(n.kind) && n.icon === "bell-chime" && n.state === "live");
+  const activeAlarm = chiming.reduce<Notification | null>(
+    (oldest, n) => (!oldest || n.createdAt < oldest.createdAt ? n : oldest),
+    null,
+  );
+  useEffect(() => {
+    if (!activeAlarm) return;
+    playAlarmSound(prefs.alarmSound);
+    const id = window.setInterval(() => playAlarmSound(prefs.alarmSound), 2000);
+    return () => window.clearInterval(id);
+  }, [activeAlarm?.id, prefs.alarmSound]);
+
+  // Drives the live "In 5 minutes" / "Now" / "3 minutes ago" label next to
+  // an alert's location (see formatActivityRelativeTime) — coarse enough
+  // that a single shared interval for the whole stack is plenty, rather
+  // than every row running its own.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     // Full viewport width (not the centered max-w column) so a row has room
@@ -174,11 +201,12 @@ export function NotificationBar() {
             <NotificationRow
               key={n.id}
               n={n}
-              alarmSound={prefs.alarmSound}
+              nowMs={nowMs}
               onActivate={() => activate(n)}
               onDismiss={() => dismiss(n.id)}
               onSnooze={() => snooze(n.id)}
               onSilence={() => silence(n.id)}
+              onUnsilence={() => unsilence(n.id)}
             />
           ))}
           {overflow > 0 && (
@@ -202,18 +230,20 @@ export function NotificationBar() {
 
 function NotificationRow({
   n,
-  alarmSound,
+  nowMs,
   onActivate,
   onDismiss,
   onSnooze,
   onSilence,
+  onUnsilence,
 }: {
   n: Notification;
-  alarmSound: AlarmSoundStyle;
+  nowMs: number;
   onActivate: () => void;
   onDismiss: () => void;
   onSnooze: () => void;
   onSilence: () => void;
+  onUnsilence: () => void;
 }) {
   const silenced = n.state === "silenced";
   // Once silenced the row stays but reads as muted, regardless of the
@@ -223,21 +253,27 @@ function NotificationRow({
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
   const hasChime = n.icon === "bell-chime" && !silenced;
-  const showSilence = alert && hasChime;
+  // Whether this alert HAS a chime at all — unlike hasChime, doesn't drop
+  // out once silenced, so the mute button stays put as a toggle instead of
+  // vanishing the moment it's pressed (see the RowButton below).
+  const isChimeCapable = n.icon === "bell-chime";
+  const showSilence = alert && isChimeCapable;
   const canSwipeRight = showSnooze || showSilence;
-  const rightAction = showSnooze ? onSnooze : showSilence ? onSilence : undefined;
+  const rightAction = showSnooze ? onSnooze : showSilence ? (silenced ? onUnsilence : onSilence) : undefined;
 
-  // Chime + vibrate every 2s while an alert with chime is visible.
+  // Vibrate every 2s while an alert with chime is visible — the actual
+  // repeating alarm SOUND is owned centrally (see NotificationBar), so at
+  // most one plays at a time even with several chiming alerts on screen.
   useEffect(() => {
     if (!alert || !hasChime) return;
-    playAlarmSound(alarmSound);
     vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
     const id = window.setInterval(() => {
-      playAlarmSound(alarmSound);
       vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
     }, 2000);
     return () => window.clearInterval(id);
-  }, [alert, hasChime, n.kind, alarmSound]);
+  }, [alert, hasChime, n.kind]);
+
+  const relativeTime = n.activityAt != null ? formatActivityRelativeTime(n.activityAt, nowMs) : null;
 
   const threshold = SWIPE_THRESHOLD_PX;
   const dragX = useMotionValue(0);
@@ -370,7 +406,15 @@ function NotificationRow({
           <div className="flex-1 min-w-0">
             <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
             {n.body && (
-              <div className="text-xs text-stone-600 truncate">{n.body}</div>
+              <div className="text-xs text-stone-600 truncate">
+                {n.body}
+                {relativeTime && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold">{relativeTime}</span>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -387,8 +431,27 @@ function NotificationRow({
         {alert ? (
           <>
             {showSilence && (
-              <RowButton label="Silence" colorClass={styles.button} style={{ opacity: silenceOpacity, scale: silenceScale }} onClick={() => silenceInPlace(onSilence)}>
-                <VolumeX className="size-4" />
+              <RowButton
+                label={silenced ? "Unmute alarm" : "Mute alarm"}
+                colorClass={styles.button}
+                style={{ opacity: silenceOpacity, scale: silenceScale }}
+                onClick={() => silenceInPlace(silenced ? onUnsilence : onSilence)}
+              >
+                {/* Crossfades rather than swapping instantly — a toggle, not
+                    a one-shot action, so it needs to read as flipping a
+                    state rather than the button itself changing identity. */}
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={silenced ? "muted" : "unmuted"}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="grid"
+                  >
+                    {silenced ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                  </motion.span>
+                </AnimatePresence>
               </RowButton>
             )}
             {showSnooze && (
@@ -566,6 +629,18 @@ function formatRelativeTime(ts: number) {
   const days = Math.floor(hr / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Live countdown/countup to an alert's own activity, shown next to its
+// location (see NotificationRow) — distinct from formatRelativeTime above
+// (which only ever counts backward from when a notification was created)
+// since this one also has to read naturally before the activity starts.
+function formatActivityRelativeTime(activityAt: number, nowMs: number) {
+  const diffMin = Math.round((activityAt - nowMs) / 60_000);
+  if (diffMin === 0) return "Now";
+  if (diffMin > 0) return `In ${diffMin} minute${diffMin === 1 ? "" : "s"}`;
+  const past = -diffMin;
+  return `${past} minute${past === 1 ? "" : "s"} ago`;
 }
 
 function RowButton({
