@@ -77,6 +77,8 @@ const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"
 // covered by its own dedicated section elsewhere on this page (DOB/age,
 // caregivers/vehicles, lead BCBA) is left out rather than repeated here.
 const ABOUT_ME = {
+  safetyPlan:
+    "1:1 supervision during any build session; elopement risk — keep the yard gate latched. No independent use of power tools or the rollercoaster scaffolding.",
   seizureActionPlan: "No",
   allergies: "No known allergies.",
   favoriteActivities:
@@ -100,6 +102,7 @@ const ABOUT_ME = {
 // One id per NoteRow rendered inside About Me, in display order — used to
 // drive per-row collapse state and to know what "collapse all" covers.
 const ABOUT_ME_ROW_IDS = [
+  "safetyPlan",
   "seizure",
   "allergies",
   "toys",
@@ -315,8 +318,16 @@ function AboutMeSection({
       </div>
       <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
         <NoteRow
-          id="seizure"
+          id="safetyPlan"
           emoji="🚨"
+          label="Safety Plan"
+          value={ABOUT_ME.safetyPlan}
+          collapsed={collapsedIds.has("safetyPlan")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="seizure"
+          emoji="🚑"
           label="Seizure Action Plan?"
           value={ABOUT_ME.seizureActionPlan}
           collapsed={collapsedIds.has("seizure")}
@@ -324,7 +335,7 @@ function AboutMeSection({
         />
         <NoteRow
           id="allergies"
-          emoji="🤧"
+          emoji="🥜"
           label="Allergies"
           value={ABOUT_ME.allergies}
           collapsed={collapsedIds.has("allergies")}
@@ -332,15 +343,15 @@ function AboutMeSection({
         />
         <NoteRow
           id="toys"
-          emoji="🧸"
-          label="Favorite Toys/Activities"
+          emoji="⚽️"
+          label="Toys & Activities"
           value={ABOUT_ME.favoriteActivities}
           collapsed={collapsedIds.has("toys")}
           onToggle={toggleRow}
         />
         <NoteRow
           id="behaviors"
-          emoji="⚠️"
+          emoji="😡"
           label="Interfering Behaviors"
           value={ABOUT_ME.interferingBehaviors}
           collapsed={collapsedIds.has("behaviors")}
@@ -356,7 +367,7 @@ function AboutMeSection({
         />
         <NoteRow
           id="meal"
-          emoji="🍽️"
+          emoji="🍕"
           label="Meal Time/Snack"
           value={ABOUT_ME.mealTime}
           collapsed={collapsedIds.has("meal")}
@@ -380,7 +391,7 @@ function AboutMeSection({
         />
         <NoteRow
           id="communication"
-          emoji="💬"
+          emoji="🗣️"
           label="Mode of Communication"
           value={`Expressive: ${ABOUT_ME.communicationExpressive}\n\nReceptive: ${ABOUT_ME.communicationReceptive}`}
           collapsed={collapsedIds.has("communication")}
