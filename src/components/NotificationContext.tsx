@@ -39,6 +39,12 @@ export interface Notification {
   state: NotificationState;
   // internal — when in 'snoozed' state, time at which it should re-fire as live
   snoozeUntil?: number;
+  // Absolute epoch ms of the underlying activity/appointment's own start
+  // time (alerts only) — lets the banner show a live "In 5 minutes" / "Now"
+  // / "3 minutes ago" next to the location that keeps counting as real time
+  // passes, instead of a string frozen at whatever it said the moment the
+  // alert fired.
+  activityAt?: number;
 }
 
 interface PushInput {
@@ -53,6 +59,7 @@ interface PushInput {
   autofadeMs?: number;
   allowSnooze?: boolean;
   sourceRef?: Notification["sourceRef"];
+  activityAt?: number;
 }
 
 interface NotificationContextValue {
@@ -62,6 +69,14 @@ interface NotificationContextValue {
   dismiss: (id: string) => void;
   snooze: (id: string, ms?: number) => void;
   silence: (id: string) => void;
+  // Reverses silence() — the alarm's own mute button toggles between the
+  // two rather than silence being a one-way action (see NotificationBar).
+  unsilence: (id: string) => void;
+  // Upgrades a visual-only alert (icon "bell") into a chiming one (icon
+  // "bell-chime") — the audio button shows (dimmed) even for alerts that
+  // weren't originally configured audible, so this lets a user opt one in
+  // on the spot instead of the button just being absent.
+  enableChime: (id: string) => void;
   archive: (id: string) => void;
   // Distinct from dismiss/archive: those just stop a notification from
   // showing in the transient top banner (see NotificationBar) — it still
@@ -194,6 +209,18 @@ export function NotificationProvider({ children, onActivate }: { children: React
     );
   }, []);
 
+  const unsilence = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, state: "live" } : n)),
+    );
+  }, []);
+
+  const enableChime = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, icon: "bell-chime" } : n)),
+    );
+  }, []);
+
   const snooze = useCallback(
     (id: string, ms?: number) => {
       const until = Date.now() + (ms ?? prefs.snoozeMs);
@@ -241,6 +268,7 @@ export function NotificationProvider({ children, onActivate }: { children: React
       autofadeMs: input.autofadeMs,
       allowSnooze: input.allowSnooze,
       sourceRef: input.sourceRef,
+      activityAt: input.activityAt,
       state: "live",
     };
     if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
@@ -292,8 +320,8 @@ export function NotificationProvider({ children, onActivate }: { children: React
   );
 
   const value = useMemo<NotificationContextValue>(
-    () => ({ notifications, live, push, dismiss, snooze, silence, archive, clear, clearAll, activate, prefs }),
-    [notifications, live, push, dismiss, snooze, silence, archive, clear, clearAll, activate, prefs],
+    () => ({ notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, activate, prefs }),
+    [notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, activate, prefs],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

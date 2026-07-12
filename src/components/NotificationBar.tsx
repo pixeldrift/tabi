@@ -1,8 +1,7 @@
-import { useEffect, useRef, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, VolumeX, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Volume2, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, isAlert, vibrate, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
-import type { AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
@@ -147,13 +146,41 @@ function NotificationTitle({ title, className }: { title: string; className?: st
 }
 
 export function NotificationBar() {
-  const { live, dismiss, snooze, silence, activate } = useNotifications();
+  const { live, dismiss, snooze, silence, unsilence, enableChime, activate } = useNotifications();
   const { prefs } = useNotifications();
 
   // Newest on top — show up to maxStackVisible.
   const ordered = [...live].sort((a, b) => b.createdAt - a.createdAt);
   const visible = ordered.slice(0, prefs.maxStackVisible);
   const overflow = ordered.length - visible.length;
+
+  // Only one alarm audibly plays at a time. Each chime-capable alert still
+  // ticks/vibrates independently (see NotificationRow's own effect), but
+  // the actual repeating sound is owned by whichever eligible (live, not
+  // silenced) one has been waiting longest — muting the current owner or
+  // dismissing it hands the shared "audio slot" to the next-oldest one
+  // instead of everything going quiet.
+  const chiming = live.filter((n) => isAlert(n.kind) && n.icon === "bell-chime" && n.state === "live");
+  const activeAlarm = chiming.reduce<Notification | null>(
+    (oldest, n) => (!oldest || n.createdAt < oldest.createdAt ? n : oldest),
+    null,
+  );
+  useEffect(() => {
+    if (!activeAlarm) return;
+    playAlarmSound(prefs.alarmSound);
+    const id = window.setInterval(() => playAlarmSound(prefs.alarmSound), 2000);
+    return () => window.clearInterval(id);
+  }, [activeAlarm?.id, prefs.alarmSound]);
+
+  // Drives the live "In 5 minutes" / "Now" / "3 minutes ago" label next to
+  // an alert's location (see formatActivityRelativeTime) — coarse enough
+  // that a single shared interval for the whole stack is plenty, rather
+  // than every row running its own.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     // Full viewport width (not the centered max-w column) so a row has room
@@ -174,11 +201,13 @@ export function NotificationBar() {
             <NotificationRow
               key={n.id}
               n={n}
-              alarmSound={prefs.alarmSound}
+              nowMs={nowMs}
               onActivate={() => activate(n)}
               onDismiss={() => dismiss(n.id)}
               onSnooze={() => snooze(n.id)}
               onSilence={() => silence(n.id)}
+              onUnsilence={() => unsilence(n.id)}
+              onEnableChime={() => enableChime(n.id)}
             />
           ))}
           {overflow > 0 && (
@@ -202,18 +231,22 @@ export function NotificationBar() {
 
 function NotificationRow({
   n,
-  alarmSound,
+  nowMs,
   onActivate,
   onDismiss,
   onSnooze,
   onSilence,
+  onUnsilence,
+  onEnableChime,
 }: {
   n: Notification;
-  alarmSound: AlarmSoundStyle;
+  nowMs: number;
   onActivate: () => void;
   onDismiss: () => void;
   onSnooze: () => void;
   onSilence: () => void;
+  onUnsilence: () => void;
+  onEnableChime: () => void;
 }) {
   const silenced = n.state === "silenced";
   // Once silenced the row stays but reads as muted, regardless of the
@@ -222,22 +255,31 @@ function NotificationRow({
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
-  const hasChime = n.icon === "bell-chime" && !silenced;
-  const showSilence = alert && hasChime;
-  const canSwipeRight = showSnooze || showSilence;
-  const rightAction = showSnooze ? onSnooze : showSilence ? onSilence : undefined;
+  const isChimeCapable = n.icon === "bell-chime";
+  const hasChime = isChimeCapable && !silenced;
+  // "off": never configured audible — button shows dimmed, tapping it opts
+  // the alert into audio rather than the button just being absent, so
+  // there's still a way to turn one on that wasn't originally set to be.
+  // "on"/"muted" behave as the existing mute toggle once chime-capable.
+  const audioState: "off" | "on" | "muted" = !isChimeCapable ? "off" : silenced ? "muted" : "on";
+  const showAudioButton = alert;
+  const audioAction = audioState === "off" ? onEnableChime : audioState === "muted" ? onUnsilence : onSilence;
+  const canSwipeRight = showSnooze || showAudioButton;
+  const rightAction = showSnooze ? onSnooze : showAudioButton ? audioAction : undefined;
 
-  // Chime + vibrate every 2s while an alert with chime is visible.
+  // Vibrate every 2s while an alert with chime is visible — the actual
+  // repeating alarm SOUND is owned centrally (see NotificationBar), so at
+  // most one plays at a time even with several chiming alerts on screen.
   useEffect(() => {
     if (!alert || !hasChime) return;
-    playAlarmSound(alarmSound);
     vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
     const id = window.setInterval(() => {
-      playAlarmSound(alarmSound);
       vibrate(n.kind === "alert-now" ? [60, 40, 60] : 50);
     }, 2000);
     return () => window.clearInterval(id);
-  }, [alert, hasChime, n.kind, alarmSound]);
+  }, [alert, hasChime, n.kind]);
+
+  const relativeTime = n.activityAt != null ? formatActivityRelativeTime(n.activityAt, nowMs) : null;
 
   const threshold = SWIPE_THRESHOLD_PX;
   const dragX = useMotionValue(0);
@@ -246,20 +288,25 @@ function NotificationRow({
   // invisible well before the (larger) offscreen travel finishes.
   const bubbleOpacity = useTransform(dragX, [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5], [0, 1, 1, 1, 0]);
 
-  // Three points: home (dragX 0, everything full size), and a trigger point
-  // in each direction where only that direction's action stays — everything
-  // else recedes to 0 by the time you reach it, so the row buttons visually
-  // narrow down to just the one about to fire.
   const rightIsSnooze = showSnooze;
-  const rightIsSilence = !showSnooze && showSilence;
-  const dismissOpacity = useTransform(dragX, [-threshold, 0, threshold], [1, 1, 0]);
-  const dismissScale = useTransform(dragX, [-threshold, 0, threshold], [1, 1, 0.5]);
-  const snoozeOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, rightIsSnooze ? 1 : 0]);
-  const snoozeScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, rightIsSnooze ? 1 : 0.5]);
-  const silenceOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, rightIsSilence ? 1 : 0]);
-  const silenceScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, rightIsSilence ? 1 : 0.5]);
-  const openOpacity = useTransform(dragX, [-threshold, 0, threshold], [0, 1, 0]);
-  const openScale = useTransform(dragX, [-threshold, 0, threshold], [0.5, 1, 0.5]);
+  const rightIsAudio = !showSnooze && showAudioButton;
+  // The background layer's own labels — plain words revealed in the gap the
+  // bubble opens up as it slides away from that side (see the backdrop div
+  // below), rather than the buttons themselves shrinking/growing. Clamped
+  // by default past the threshold, so they hold at full opacity through the
+  // rest of a commit fling and only actually fade once the row's own exit
+  // transition takes over (see the outer motion.div's `exit`).
+  const rightLabelOpacity = useTransform(dragX, [-threshold, 0], [1, 0]);
+  const leftLabelOpacity = useTransform(dragX, [0, threshold], [0, 1]);
+  const leftLabel = rightIsSnooze
+    ? "Snooze"
+    : rightIsAudio
+      ? audioState === "off"
+        ? "Turn On"
+        : audioState === "muted"
+          ? "Unmute"
+          : "Mute"
+      : "";
 
   // Shared by both a completed drag-past-threshold and a direct button tap —
   // either way the row should fling off in the matching direction the same
@@ -277,13 +324,10 @@ function NotificationRow({
     }).then(action);
   };
 
-  // Silencing doesn't remove the notification from the list (it stays,
-  // just muted — see NotificationContext's silence()), so unlike the other
-  // actions the row must settle back to its resting position instead of
-  // flinging off: committing it off-screen left the row's own content gone
-  // but its action-button layer (which isn't part of the draggable bubble,
-  // and clamps to full opacity past the drag threshold) stranded in view.
-  const silenceInPlace = (action: () => void) => {
+  // The audio button's own actions (mute/unmute/turn-on) don't remove the
+  // notification from the list — unlike the other actions, the row must
+  // settle back to its resting position instead of flinging off.
+  const settleInPlace = (action: () => void) => {
     action();
     animate(dragX, 0, {
       type: "spring",
@@ -300,8 +344,8 @@ function NotificationRow({
     if (commitLeft) {
       commit(-1, onDismiss, vx);
     } else if (commitRight) {
-      if (rightIsSilence) {
-        silenceInPlace(rightAction!);
+      if (rightIsAudio) {
+        settleInPlace(rightAction!);
       } else {
         commit(1, rightAction!, vx);
       }
@@ -333,6 +377,29 @@ function NotificationRow({
       }}
       className="pointer-events-auto relative"
     >
+      {/* Sits behind the draggable bubble — as it slides away from one
+          side, this shows through in the gap it leaves, with a word naming
+          what letting go there would do. Plain text on the page's own
+          background, not a filled panel: the bubble itself still fades as
+          it clears the drag threshold (see bubbleOpacity), and a solid
+          color back there showed through as a muddy blend during that
+          fade. Matches NotificationListRow's own swipe-to-dismiss below,
+          which is likewise just a plain slide+fade with no reveal panel
+          of its own. Each label's opacity is a direct function of dragX (not a
+          fixed fade-in/out), so it reads as the bubble's own motion
+          uncovering it rather than a separately-timed animation, and it
+          only actually disappears once the row itself exits (see the outer
+          motion.div's `exit` above) — a commit fling keeps it lit the whole
+          way off rather than fading early. */}
+      <div className="absolute inset-0 flex items-center justify-between px-5">
+        <motion.span style={{ opacity: leftLabelOpacity }} className={cn("text-sm font-semibold", styles.iconFg)}>
+          {leftLabel}
+        </motion.span>
+        <motion.span style={{ opacity: rightLabelOpacity }} className={cn("text-sm font-semibold", styles.iconFg)}>
+          Dismiss
+        </motion.span>
+      </div>
+
       <motion.div
         drag="x"
         dragConstraints={
@@ -370,42 +437,68 @@ function NotificationRow({
           <div className="flex-1 min-w-0">
             <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
             {n.body && (
-              <div className="text-xs text-stone-600 truncate">{n.body}</div>
+              <div className="text-xs text-stone-600 truncate">
+                {n.body}
+                {relativeTime && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold">{relativeTime}</span>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
-      </motion.div>
 
-      {/* Action buttons sit fixed in place — NOT part of the draggable
-          bubble above — so they read as a stable preview of "what will
-          happen" that shrinks away rather than something that slides off
-          with the gesture. */}
-      <div
-        className="absolute inset-y-0 right-2 flex items-center gap-0.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {alert ? (
-          <>
-            {showSilence && (
-              <RowButton label="Silence" colorClass={styles.button} style={{ opacity: silenceOpacity, scale: silenceScale }} onClick={() => silenceInPlace(onSilence)}>
-                <VolumeX className="size-4" />
-              </RowButton>
-            )}
-            {showSnooze && (
-              <RowButton label="Snooze" colorClass={styles.button} style={{ opacity: snoozeOpacity, scale: snoozeScale }} onClick={() => commit(1, onSnooze)}>
-                <ZzIcon className="size-4" />
-              </RowButton>
-            )}
-          </>
-        ) : (
-          <RowButton label="Open" colorClass={styles.button} style={{ opacity: openOpacity, scale: openScale }} onClick={() => commit(1, onActivate)}>
-            <ArrowRight className="size-4" />
+        {/* Action buttons now live inside the draggable bubble itself, so
+            they ride along with it as it's dragged instead of sitting fixed
+            while the bubble slides underneath — the background labels above
+            are what communicate "what will happen" during the gesture now. */}
+        <div
+          className="absolute inset-y-0 right-2 flex items-center gap-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {alert ? (
+            <>
+              {showAudioButton && (
+                <RowButton
+                  label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
+                  colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
+                  onClick={() => settleInPlace(audioAction)}
+                >
+                  {/* Crossfades rather than swapping instantly — a toggle,
+                      not a one-shot action, so it needs to read as flipping
+                      a state rather than the button itself changing identity. */}
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={audioState}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="grid"
+                    >
+                      {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                    </motion.span>
+                  </AnimatePresence>
+                </RowButton>
+              )}
+              {showSnooze && (
+                <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
+                  <ZzIcon className="size-4" />
+                </RowButton>
+              )}
+            </>
+          ) : (
+            <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
+              <ArrowRight className="size-4" />
+            </RowButton>
+          )}
+          <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
+            <X className="size-4" />
           </RowButton>
-        )}
-        <RowButton label="Dismiss" colorClass={styles.button} style={{ opacity: dismissOpacity, scale: dismissScale }} onClick={() => commit(-1, onDismiss)}>
-          <X className="size-4" />
-        </RowButton>
-      </div>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -566,6 +659,18 @@ function formatRelativeTime(ts: number) {
   const days = Math.floor(hr / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Live countdown/countup to an alert's own activity, shown next to its
+// location (see NotificationRow) — distinct from formatRelativeTime above
+// (which only ever counts backward from when a notification was created)
+// since this one also has to read naturally before the activity starts.
+function formatActivityRelativeTime(activityAt: number, nowMs: number) {
+  const diffMin = Math.round((activityAt - nowMs) / 60_000);
+  if (diffMin === 0) return "Now";
+  if (diffMin > 0) return `In ${diffMin} minute${diffMin === 1 ? "" : "s"}`;
+  const past = -diffMin;
+  return `${past} minute${past === 1 ? "" : "s"} ago`;
 }
 
 function RowButton({

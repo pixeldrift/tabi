@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
@@ -100,6 +100,25 @@ export function TaskAnalysisCard({
   const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal, sessionRunning } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
+
+  // Real, measured width of the grid tile's own content area — the step
+  // text strip below needs a genuine pixel width (not a percentage: its
+  // scroll-snap container is padded 50% on each side so any step can
+  // center, and with box-sizing: border-box that padding alone already
+  // consumes the container's whole reported width, so a percentage here
+  // resolves against zero). A hardcoded guess previously clipped the
+  // leading step number on any tile even a few px narrower than assumed —
+  // measuring the actual rendered space instead makes this correct at
+  // every density and viewport rather than one specific guessed size.
+  const tileContentRef = useRef<HTMLDivElement>(null);
+  const [tileContentWidth, setTileContentWidth] = useState(0);
+  useEffect(() => {
+    const el = tileContentRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setTileContentWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!shouldReset) return;
@@ -222,6 +241,12 @@ export function TaskAnalysisCard({
           </div>
         }
       >
+        {/* Measures the tile's own real content width (see tileContentWidth
+            above) — plain w-full here, no scroll-snap padding trick, so the
+            percentage resolves against genuine available space. Wraps both
+            strips below purely so ResizeObserver has a stable element to
+            watch; it isn't otherwise part of either strip's own layout. */}
+        <div ref={tileContentRef} className="w-full flex flex-col items-center gap-0.5">
         {/* Every step's own dot, not just prev/current/next — a second
             SwipeStrip bound to the same current/goTo state as the step text
             below, so dragging either one moves both in lockstep and the
@@ -292,19 +317,27 @@ export function TaskAnalysisCard({
                   "line-clamp-2 text-left font-semibold leading-[1.15] transition-[font-size]",
                   isCenter ? color : "invisible",
                 )}
-                // A real `width` (not just `maxWidth`) so text-left has room
-                // to work with — sized to the tile's own actual available
-                // content width (measured against the rendered tile, minus
-                // its padding) rather than the old, narrower guess that
-                // clipped anything longer than a couple words. line-clamp-2
-                // (rather than a single nowrap line + ellipsis) is the other
-                // half of "no clipping": even at a smaller font, the
-                // longest step names (e.g. "Scrub for 20 seconds") don't
-                // fit on one line in a tile this narrow — wrapping to a
-                // second line reads the whole thing instead of truncating
-                // it.
+                // A real, MEASURED `width` (see tileContentWidth) — not a
+                // percentage, and not a hardcoded guess. Not a percentage
+                // because this strip's own scroll container is padded 50%
+                // on each side so any step can center, and with
+                // box-sizing: border-box that padding alone already
+                // consumes the container's whole reported width, leaving
+                // nothing for a percentage to resolve against (the text
+                // vanishes entirely). Not a hardcoded guess (even one
+                // borrowed from another element measured elsewhere in this
+                // same tile, e.g. the progress bar) because a mismatch of
+                // even a few px still clips this box's left edge once
+                // scroll-snap centers it — its text-left content starts
+                // flush against that edge, so the step number/colon are
+                // exactly what goes missing. line-clamp-2 (rather than a
+                // single nowrap line + ellipsis) is the other half of "no
+                // clipping": even at a smaller font, the longest step names
+                // (e.g. "Scrub for 20 seconds") don't fit on one line in a
+                // tile this narrow — wrapping to a second line reads the
+                // whole thing instead of truncating it.
                 style={{
-                  width: isCenter ? (large ? 160 : 102) : large ? 160 : 102,
+                  width: tileContentWidth || undefined,
                   fontSize: isCenter ? (large ? 13 : 10) : large ? 13 : 10,
                 }}
               >
@@ -313,6 +346,7 @@ export function TaskAnalysisCard({
             );
           }}
         </SwipeStrip>
+        </div>
       </MiniTileShell>
     );
   }
