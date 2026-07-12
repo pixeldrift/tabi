@@ -131,6 +131,7 @@ export function StatusBar({
 
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  const [showCommitSha, setShowCommitSha] = useState(false);
   // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
   // when the box collapses — except for discard, where the box was already
   // expanded (paused) and stays that way; only its displayed value swaps.
@@ -361,10 +362,29 @@ export function StatusBar({
               {/* Independent of the title's own text, so it stays visible
                   (shrink-0) even once the title itself has to truncate on a
                   narrow screen — a quick "am I on the latest build" check
-                  shouldn't be the first thing that gets clipped. */}
-              <span className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm" title="Build version">
-                ({__APP_VERSION__})
-              </span>
+                  shouldn't be the first thing that gets clipped. The commit
+                  count alone answers "is this newer than that other
+                  screenshot" at a glance; the full SHA behind the tap is for
+                  the rarer case of pinning a bug to one exact build. */}
+              <button
+                type="button"
+                onClick={() => setShowCommitSha((v) => !v)}
+                title={showCommitSha ? "Tap to show version" : "Tap to show commit SHA"}
+                className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm overflow-hidden"
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={showCommitSha ? "sha" : "version"}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    transition={{ duration: 0.15 }}
+                    className="inline-block"
+                  >
+                    ({showCommitSha ? __APP_COMMIT_SHA__ : __APP_VERSION__})
+                  </motion.span>
+                </AnimatePresence>
+              </button>
             </div>
 
             <div className="pt-1">

@@ -10,19 +10,23 @@ import svgr from "vite-plugin-svgr";
 // Shown in the header next to the data sheet title — the repo's total
 // commit count, so it climbs on its own with every push instead of needing
 // a manual bump per release. Falls back to "dev" wherever git isn't
-// available (e.g. an archive/tarball build).
-function getAppVersion(): string {
+// available (e.g. an archive/tarball build). The short SHA is exact-build
+// detail a glance at the count doesn't give you — tucked behind a tap in
+// the UI (see StatusBar) rather than shown by default.
+function gitOutput(command: string, fallback: string): string {
   try {
-    const count = execSync("git rev-list --count HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
-    return `v${count}`;
+    return execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
-    return "dev";
+    return fallback;
   }
 }
+const APP_VERSION = `v${gitOutput("git rev-list --count HEAD", "0")}`;
+const APP_COMMIT_SHA = gitOutput("git rev-parse --short HEAD", "dev");
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(getAppVersion()),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_COMMIT_SHA__: JSON.stringify(APP_COMMIT_SHA),
   },
   resolve: {
     // Avoid duplicate React/TanStack copies when multiple deps resolve
