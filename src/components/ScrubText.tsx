@@ -9,9 +9,11 @@ import { cn } from "@/lib/utils";
 export function ScrubText({
   text,
   className,
+  style,
 }: {
   text: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLSpanElement>(null);
@@ -94,6 +96,7 @@ export function ScrubText({
       style={{
         touchAction: dragging ? "none" : "pan-y",
         ...(mask ? { WebkitMaskImage: mask, maskImage: mask } : {}),
+        ...style,
       }}
     >
 
