@@ -12,6 +12,7 @@ export type NotificationKind =
   | "announcement"
   | "appointment-new"
   | "appointment-cancelled"
+  | "edit-request"
   | "edit-approved";
 
 export type NotificationState = "live" | "snoozed" | "silenced" | "dismissed" | "archived";

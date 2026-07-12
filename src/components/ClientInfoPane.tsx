@@ -528,7 +528,7 @@ function RequestEditDialog({
   label: string;
   currentValue: string;
 }) {
-  const { push } = useNotifications();
+  const { push, prefs } = useNotifications();
   const [text, setText] = useState(currentValue);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -568,10 +568,16 @@ function RequestEditDialog({
 
   const handleSave = () => {
     push({
-      kind: "message",
+      kind: "edit-request",
       icon: "edit-request",
       title: `Edit requested: ${label}`,
       body: text.trim(),
+      // Just the one chime a plain (non-alert) push already gets on its
+      // own — no ongoing alarm to silence — and it clears itself from the
+      // banner after the same Settings-configured duration every other
+      // auto-fading notification uses, rather than sitting there until
+      // someone dismisses it by hand.
+      autofadeMs: prefs.notificationDurationMs,
     });
     onOpenChange(false);
   };

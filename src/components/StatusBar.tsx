@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
+import { useNotifications } from "@/components/NotificationContext";
 
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
@@ -101,6 +102,23 @@ export function StatusBar({
   // the way a Duration instance is, so it doesn't belong in "something's
   // running, tap to jump to it."
   const runningTimers = activeTimers.filter((t) => t.source === "duration");
+
+  // Notifications tab badge — count of everything currently live (still
+  // showing in the transient banner, whether silenced or not; matches
+  // NotificationBar's own idea of "live"). Hops once per net increase
+  // (a new one arriving), not on every render or on a decrease from
+  // dismissing one — prevCountRef starts at the initial count rather than
+  // 0, so mounting with some already live doesn't itself read as "new."
+  const { live: liveNotifications } = useNotifications();
+  const notifCount = liveNotifications.length;
+  const prevNotifCountRef = useRef(notifCount);
+  const [notifHopGen, setNotifHopGen] = useState(0);
+  useEffect(() => {
+    if (notifCount > prevNotifCountRef.current) {
+      setNotifHopGen((g) => g + 1);
+    }
+    prevNotifCountRef.current = notifCount;
+  }, [notifCount]);
 
   // Random previous session length between 1-5 hours, generated once on the client.
   const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
@@ -507,6 +525,14 @@ export function StatusBar({
                     >
                       <Icon className={cn("size-4", !isActive && "opacity-60")} />
                       <span className="hidden sm:inline">{t.label}</span>
+                      {t.id === "notifications" && notifCount > 0 && (
+                        <span
+                          key={notifHopGen}
+                          className="absolute -top-1 -right-1 grid place-items-center size-3.5 rounded-full bg-blue-500 text-white text-[9px] font-semibold leading-none animate-bubble-hop"
+                        >
+                          {notifCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
