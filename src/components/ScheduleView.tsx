@@ -178,6 +178,12 @@ const COLLAPSED_ROW_PX = 36;  // uniform row height in collapsed mode
 // Activity" affordance renders, capped well below its real (often much
 // larger) span — just enough to hold the button, not the whole gap.
 const EDGE_ADD_ACTIVITY_PX = 48;
+// Opacity for the "now" line wherever it crosses a row's own text (the gap
+// line, and the in-row line below) — compared 100/60/50/20% against real
+// row text (e.g. "Potty Time"): anything above 20% still read as visual
+// noise competing with the letters for attention, while 20% keeps the line
+// recognizable as a guide without hurting text legibility.
+const NOW_LINE_OPACITY = "opacity-20";
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
 // Defaults — TODO: surface in user settings.
@@ -1301,17 +1307,24 @@ export function ScheduleView({
         </div>
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
-          {arrowTop !== null && !editMode && (
-            // Above BOTH the item rows (z-10) and the appointment overlays
-            // (z-20) — including a flashing row's own temporary z-20 bump
-            // (see that row's className below), which used to permanently
-            // out-rank this line the instant "Now" was pressed once, since
-            // that bump never resets back down. Staying under the chevron
-            // marker (z-30) only. Faded (not full opacity) so it still reads
-            // as "now" cutting across the grid without the dashed line
-            // fighting the row's own text/time labels for legibility.
+          {arrowTop !== null && !editMode && !currentItem && (
+            // Only for the blank-gap / outside-hours case — when "now"
+            // falls inside an activity, the line renders as that row's own
+            // child instead (see NOW_LINE_OPACITY below), positioned by
+            // plain DOM order between its background box and its icon/text
+            // content so it ducks fully behind an emoji (opaque, so nothing
+            // of the line shows through it) while staying faintly visible
+            // behind text. Above BOTH the item rows (z-10) and the
+            // appointment overlays (z-20) — including a flashing row's own
+            // temporary z-20 bump (see that row's className below), which
+            // used to permanently out-rank this line the instant "Now" was
+            // pressed once, since that bump never resets back down. Staying
+            // under the chevron marker (z-30) only.
             <div
-              className="absolute left-0 right-0 z-[25] pointer-events-none border-t-2 border-dashed opacity-60"
+              className={cn(
+                "absolute left-0 right-0 z-[25] pointer-events-none border-t-2 border-dashed",
+                NOW_LINE_OPACITY,
+              )}
               style={{ top: arrowTop, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
               aria-hidden
             />
@@ -1496,6 +1509,25 @@ export function ScheduleView({
                   <div
                     key={`pulse-${flashGen}`}
                     className="absolute inset-0 rounded-md pointer-events-none border-blue-500 animate-now-pulse"
+                    aria-hidden
+                  />
+                )}
+                {isCurrent && arrowTop !== null && (
+                  // "Now" cutting across THIS row specifically, rendered as
+                  // its own child (not the shared list-level line above)
+                  // purely so plain DOM order does the layering: it paints
+                  // after the box/gridlines/pulse above (so it still shows
+                  // crossing the white box) but before the icon/text content
+                  // below, so an emoji — opaque — fully covers its own
+                  // stretch of the line, while text only partly does (letting
+                  // the dimmed line still read through the gaps between
+                  // glyphs without competing with it for legibility).
+                  <div
+                    className={cn(
+                      "absolute left-0 right-0 pointer-events-none border-t-2 border-dashed",
+                      NOW_LINE_OPACITY,
+                    )}
+                    style={{ top: arrowTop - top, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
                     aria-hidden
                   />
                 )}
