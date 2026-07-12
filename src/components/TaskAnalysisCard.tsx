@@ -8,6 +8,7 @@ import { SwipeStrip } from "./SwipeStrip";
 import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TaskAnalysisIcon } from "./icons/TaskAnalysisIcon";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,7 @@ export function TaskAnalysisCard({
   toolbarHeight,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: TaskAnalysisCardProps) {
   const cardKey = id ?? title;
   const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
@@ -205,13 +207,20 @@ export function TaskAnalysisCard({
         progress={progress}
         isComplete={isComplete}
         details={
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Task analysis (I / P / E)" />
-            <Row label="Steps" value={String(steps.length)} />
-            <Row label="Scored" value={`${completed} / ${steps.length}`} />
-            <Row label="Independent" value={`${independent} / ${steps.length}`} />
-          </dl>
+          <>
+            <dl className="space-y-3">
+              <Row label="Phase" value={phase} />
+              <Row label="Data type" value="Task analysis (I / P / E)" />
+              <Row label="Steps" value={String(steps.length)} />
+              <Row label="Scored" value={`${completed} / ${steps.length}`} />
+              <Row label="Independent" value={`${independent} / ${steps.length}`} />
+            </dl>
+            {teachingProcedure && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion data={teachingProcedure} />
+              </div>
+            )}
+          </>
         }
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2" : "gap-1.5")}>
@@ -435,13 +444,20 @@ export function TaskAnalysisCard({
         )
       }
       details={
-        <dl className="space-y-3">
-          <Row label="Phase" value={phase} />
-          <Row label="Data type" value="Task analysis (I / P / E)" />
-          <Row label="Steps" value={String(steps.length)} />
-          <Row label="Scored" value={`${completed} / ${steps.length}`} />
-          <Row label="Independent" value={`${independent} / ${steps.length}`} />
-        </dl>
+        <>
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Task analysis (I / P / E)" />
+            <Row label="Steps" value={String(steps.length)} />
+            <Row label="Scored" value={`${completed} / ${steps.length}`} />
+            <Row label="Independent" value={`${independent} / ${steps.length}`} />
+          </dl>
+          {teachingProcedure && (
+            <div className="mt-4">
+              <TeachingProcedureAccordion data={teachingProcedure} />
+            </div>
+          )}
+        </>
       }
       expandedView={
         <ol className="px-3 pt-1 pb-3 space-y-1">

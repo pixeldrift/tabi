@@ -90,6 +90,12 @@ const KIND_STYLES: Record<NotificationKind, { ring: string; iconFg: string; acce
     accent: "bg-rose-500",
     button: "bg-rose-500 hover:bg-rose-600 active:bg-rose-700",
   },
+  "edit-request": {
+    ring: "border-orange-300 bg-orange-50",
+    iconFg: "text-orange-700",
+    accent: "bg-orange-500",
+    button: "bg-orange-500 hover:bg-orange-600 active:bg-orange-700",
+  },
   "edit-approved": {
     ring: "border-indigo-300 bg-indigo-50",
     iconFg: "text-indigo-700",

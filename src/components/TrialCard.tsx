@@ -13,6 +13,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
@@ -89,6 +90,7 @@ export function TrialCard({
   promptLevels,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const cardKey = id ?? title;
@@ -278,26 +280,33 @@ export function TrialCard({
         progress={progress}
         isComplete={isComplete}
         details={
-          <dl className="space-y-3">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Phase</dt>
-              <dd className="font-medium">{phase}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Data type</dt>
-              <dd className="font-medium">{dataType}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Minimum trials</dt>
-              <dd className="font-medium">{minTrials}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Correct so far</dt>
-              <dd className="font-medium">
-                {correctCount} / {completedCount || 0}
-              </dd>
-            </div>
-          </dl>
+          <>
+            <dl className="space-y-3">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Phase</dt>
+                <dd className="font-medium">{phase}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Data type</dt>
+                <dd className="font-medium">{dataType}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Minimum trials</dt>
+                <dd className="font-medium">{minTrials}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Correct so far</dt>
+                <dd className="font-medium">
+                  {correctCount} / {completedCount || 0}
+                </dd>
+              </div>
+            </dl>
+            {teachingProcedure && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion data={teachingProcedure} />
+              </div>
+            )}
+          </>
         }
         actions={
           <div className={cn("flex items-center justify-center", noResponse ? "gap-1.5" : "gap-2", large && (noResponse ? "gap-2.5" : "gap-3.5"))}>
@@ -548,32 +557,39 @@ export function TrialCard({
           title={title}
           description={description}
           details={
-            <dl className="space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Phase</dt>
-                <dd className="font-medium">{phase}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Data type</dt>
-                <dd className="font-medium">{dataType}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Minimum trials</dt>
-                <dd className="font-medium">{minTrials}</dd>
-              </div>
-              {maxTrials && (
+            <>
+              <dl className="space-y-3">
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Maximum trials</dt>
-                  <dd className="font-medium">{maxTrials}</dd>
+                  <dt className="text-muted-foreground">Phase</dt>
+                  <dd className="font-medium">{phase}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Data type</dt>
+                  <dd className="font-medium">{dataType}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Minimum trials</dt>
+                  <dd className="font-medium">{minTrials}</dd>
+                </div>
+                {maxTrials && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Maximum trials</dt>
+                    <dd className="font-medium">{maxTrials}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Correct so far</dt>
+                  <dd className="font-medium">
+                    {correctCount} / {completedCount || 0}
+                  </dd>
+                </div>
+              </dl>
+              {teachingProcedure && (
+                <div className="mt-4">
+                  <TeachingProcedureAccordion data={teachingProcedure} />
                 </div>
               )}
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Correct so far</dt>
-                <dd className="font-medium">
-                  {correctCount} / {completedCount || 0}
-                </dd>
-              </div>
-            </dl>
+            </>
           }
           top={stickyTop}
           toolbarHeight={toolbarHeight}

@@ -9,6 +9,7 @@ import { useCardState, useResetGuard } from "./CardDataStore";
 import { FrequencyIcon } from "./icons/FrequencyIcon";
 import { NumberPadIcon } from "./icons/NumberPadIcon";
 import { NumberKeypad } from "./NumberKeypad";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ export function FrequencyCard({
   toolbarHeight,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: FrequencyCardProps) {
   const cardKey = id ?? title;
   const [count, setCount] = useCardState(cardKey, "count", 0);
@@ -118,12 +120,19 @@ export function FrequencyCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         details={
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Frequency (count)" />
-            <Row label="Minimum count" value={String(minCount)} />
-            <Row label="Recorded so far" value={String(count)} />
-          </dl>
+          <>
+            <dl className="space-y-3">
+              <Row label="Phase" value={phase} />
+              <Row label="Data type" value="Frequency (count)" />
+              <Row label="Minimum count" value={String(minCount)} />
+              <Row label="Recorded so far" value={String(count)} />
+            </dl>
+            {teachingProcedure && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion data={teachingProcedure} />
+              </div>
+            )}
+          </>
         }
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
@@ -299,12 +308,19 @@ export function FrequencyCard({
         )
       }
       details={
-        <dl className="space-y-3">
-          <Row label="Phase" value={phase} />
-          <Row label="Data type" value="Frequency (count)" />
-          <Row label="Minimum count" value={String(minCount)} />
-          <Row label="Recorded so far" value={String(count)} />
-        </dl>
+        <>
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Frequency (count)" />
+            <Row label="Minimum count" value={String(minCount)} />
+            <Row label="Recorded so far" value={String(count)} />
+          </dl>
+          {teachingProcedure && (
+            <div className="mt-4">
+              <TeachingProcedureAccordion data={teachingProcedure} />
+            </div>
+          )}
+        </>
       }
     >
       <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, CheckCircle2, X, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Eye, CheckCircle2, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PersonPill } from "@/components/StaffDirectory";
@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { PhotoZoomButton, PhotoZoomDialog } from "@/components/PhotoZoom";
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
+import { AccordionRow } from "./AccordionRow";
 import { useSession } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
@@ -477,25 +478,17 @@ function NoteRow({
 }) {
   const [requestOpen, setRequestOpen] = useState(false);
   return (
-    <div className={cn("relative p-3", !collapsed && "pr-9")}>
-      <button
-        type="button"
-        onClick={() => onToggle(id)}
-        aria-expanded={!collapsed}
-        className="flex w-full items-center gap-1 text-left"
-      >
-        <ChevronDown
-          className={cn("size-3.5 shrink-0 text-stone-400 transition-transform", collapsed && "-rotate-90")}
-        />
-        <span aria-hidden>{emoji}</span>
-        <span className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</span>
-      </button>
-      {!collapsed && (
-        <>
-          <div className="mt-1 pl-[18px] leading-snug text-foreground/90">{children ?? value}</div>
-          {/* Bare icon, no button chrome — a passive "you can suggest a change
-              here" hint, not a primary action, so it stays out of the way of
-              the actual content above it. */}
+    <>
+      <AccordionRow
+        id={id}
+        emoji={emoji}
+        label={label}
+        collapsed={collapsed}
+        onToggle={onToggle}
+        // Bare icon, no button chrome — a passive "you can suggest a change
+        // here" hint, not a primary action, so it stays out of the way of
+        // the actual content above it.
+        action={
           <button
             type="button"
             onClick={() => setRequestOpen(true)}
@@ -504,10 +497,12 @@ function NoteRow({
           >
             <RequestEditIcon className="size-4" />
           </button>
-        </>
-      )}
+        }
+      >
+        {children ?? value}
+      </AccordionRow>
       <RequestEditDialog open={requestOpen} onOpenChange={setRequestOpen} label={label} currentValue={value} />
-    </div>
+    </>
   );
 }
 
@@ -528,7 +523,7 @@ function RequestEditDialog({
   label: string;
   currentValue: string;
 }) {
-  const { push } = useNotifications();
+  const { push, prefs } = useNotifications();
   const [text, setText] = useState(currentValue);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -568,10 +563,16 @@ function RequestEditDialog({
 
   const handleSave = () => {
     push({
-      kind: "message",
+      kind: "edit-request",
       icon: "edit-request",
       title: `Edit requested: ${label}`,
       body: text.trim(),
+      // Just the one chime a plain (non-alert) push already gets on its
+      // own — no ongoing alarm to silence — and it clears itself from the
+      // banner after the same Settings-configured duration every other
+      // auto-fading notification uses, rather than sitting there until
+      // someone dismisses it by hand.
+      autofadeMs: prefs.notificationDurationMs,
     });
     onOpenChange(false);
   };

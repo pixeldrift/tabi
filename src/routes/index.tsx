@@ -27,6 +27,7 @@ import {
   type DisplayMode,
 } from "@/components/DataToolbarContext";
 import { CardDataStoreProvider } from "@/components/CardDataStore";
+import type { TeachingProcedure } from "@/components/TeachingProcedureAccordion";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/")({
 // stable identity for drag-reorder, favoriting, hiding, and active-card
 // tracking, independent of array position (which filtering/reordering
 // otherwise makes an unreliable key).
-type CardConfig = { id: string; behaviorRole?: "interfering" } & (
+type CardConfig = { id: string; behaviorRole?: "interfering"; teachingProcedure?: TeachingProcedure } & (
   | {
       kind: "trial";
       title: string;
@@ -83,6 +84,26 @@ const cards: CardConfig[] = [
     description:
       "Score correct if the learner reaches for and maintains hand-hold from the start of the transition through arrival at the destination.",
     minTrials: 5,
+    teachingProcedure: {
+      goal:
+        "Phineas will hold an adult's hand throughout each room-to-room transition without prompting, across 4 of 5 consecutive opportunities.",
+      rationale:
+        "Elopement risk during transitions is a safety priority; a reliable hand-hold keeps him within arm's reach in hallways and other unsecured spaces until independent safety awareness is established.",
+      procedure:
+        "As the transition begins, offer an open hand at his side (not directly in front of him) and pair it with the SD. Walk at his pace. If he reaches and holds, continue the transition and deliver praise once you arrive. If he doesn't take your hand within 3 seconds, move to the correction procedure.",
+      sd: "\"Take my hand, let's go to [destination].\"",
+      measurement: {
+        markCorrect:
+          "He reaches for and maintains the hand-hold independently from the start of the transition through arrival, with no more than a momentary release (under 1 second).",
+        markError:
+          "He does not reach for the hand within 3 seconds of the SD, pulls away and does not reinitiate within 3 seconds, or requires a physical prompt to reconnect the hold.",
+      },
+      correction:
+        "Model the hand-hold by gently guiding his hand to yours (partial physical), narrate \"hand together,\" and continue the transition. Do not repeat the SD — the transition continues either way, just with support.",
+      materials: "None — this target is embedded in naturally occurring transitions throughout the day.",
+      instructionalNotes:
+        "Fades from full physical guidance to a gestural offer as he becomes more reliable; note which prompt level he needed in your session notes even though this card only scores correct/error.",
+    },
   },
   {
     id: "requests-preferred-item",
@@ -93,6 +114,25 @@ const cards: CardConfig[] = [
       "Score correct if the learner independently requests using a full phrase within 5 seconds of the item being visible. Score No Response if the learner does not attempt within the window.",
     minTrials: 8,
     noResponse: true,
+    teachingProcedure: {
+      goal:
+        "Phineas will independently request a preferred item using a full phrase (\"I want ___\") within 5 seconds of the item being visible, across 8 of 10 opportunities per baseline probe.",
+      rationale:
+        "Functional communication reduces reliance on grabbing or protesting to access preferred items, and a full-phrase request generalizes better across communication partners than a single-word mand.",
+      procedure:
+        "Present a preferred item just out of reach so it's clearly visible. Wait silently for up to 5 seconds. If he requests using a full phrase, deliver the item immediately. If the window elapses with no attempt, score No Response and move on — this is a baseline probe, so no prompting or correction is delivered.",
+      sd: "The preferred item itself, visible but out of reach — no verbal prompt is given during baseline.",
+      measurement: {
+        markCorrect: "A full-phrase request (\"I want [item]\") within 5 seconds of the item becoming visible.",
+        markError:
+          "An unclear or partial attempt (single word, gesture only, or an unintelligible approximation) within the window; if there is no attempt at all, score No Response instead.",
+      },
+      correction:
+        "None during baseline — this card is being probed to establish a starting point, not taught in the moment. If probes show minimal spontaneous requesting, the team will introduce a prompting procedure in a future phase.",
+      materials: "2-3 known preferred items (rotate to prevent satiation), identified via the most recent preference assessment.",
+      instructionalNotes:
+        "Keep your own language minimal during the window — resist the urge to prompt \"What do you want?\"; the point of baseline is to see what he does without support.",
+    },
   },
   {
     id: "follows-one-step-direction",
@@ -103,6 +143,25 @@ const cards: CardConfig[] = [
       "Score correct if the learner completes the direction independently. If an error occurs, record the least-to-most prompt level required.",
     minTrials: 8,
     promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
+    teachingProcedure: {
+      goal:
+        "Phineas will follow a novel one-step direction independently, needing no more than a gestural prompt, across 8 of 10 trials during probing.",
+      rationale:
+        "Direction-following is a foundational skill for group instruction and classroom routines; probing the current prompt level needed tells us exactly where to start formal teaching.",
+      procedure:
+        "Give the direction once, using natural tone and pacing, then wait 3-5 seconds. If he completes it, mark Independent. If he does not respond or responds incorrectly, deliver the least intrusive prompt in the hierarchy (Verbal, Gestural, Modeling, Partial Physical, Full Physical) just sufficient to get a correct response, and record that level.",
+      sd: "A one-step direction using vocabulary and objects already in his receptive repertoire (e.g., \"Give me the block,\" \"Stand up,\" \"Touch your nose\").",
+      measurement: {
+        markCorrect: "Completes the full direction within 3-5 seconds with no prompt beyond the original SD.",
+        markError:
+          "Does not respond within the window, or responds incorrectly — record the least-intrusive prompt level required to occasion the correct response.",
+      },
+      correction:
+        "Not applicable in the traditional sense during probing — the prompt-level picker on this card IS the correction record. Deliver only the amount of help needed, then return to an independent SD on the next trial rather than staying at the prompted level.",
+      materials: "A few familiar small objects for object-directed steps (a block, a cup, a favorite toy); none needed for body-directed steps like \"stand up.\"",
+      instructionalNotes:
+        "Vary the specific direction between trials so he's generalizing \"follow a one-step direction\" and not just memorizing one script.",
+    },
   },
   {
     id: "giggles-laughs",
@@ -111,6 +170,24 @@ const cards: CardConfig[] = [
     phase: "Intervention",
     description: "Tally each instance the learner giggles or laughs during therapist-led play.",
     minCount: 5,
+    teachingProcedure: {
+      goal:
+        "Increase Phineas's spontaneous giggling/laughing during therapist-led play to at least 5 instances per session, as an index of engagement and rapport.",
+      rationale:
+        "Laughter during play is a naturalistic marker of positive affect and engagement — tracking it helps confirm sessions are reinforcing, not just compliant, and flags when an activity has stopped being fun.",
+      procedure:
+        "Tally each spontaneous giggle or laugh that occurs during therapist-led play (not during data-collection trials themselves). No prompting is used — this is an observational count of a naturally occurring behavior, not a taught skill.",
+      sd: "None — this is passively observed during ongoing play, not evoked by a specific instruction.",
+      measurement: {
+        markCorrect: "Any audible giggle or laugh clearly directed at or arising from the shared play interaction.",
+        markError: "Not applicable — there is no \"incorrect\" laugh; only tally occurrences.",
+      },
+      correction:
+        "None — nothing to correct. If the count is consistently low across sessions, that's a signal to revisit the activity choice or pacing, not the child's response.",
+      materials: "Whatever the chosen play activity calls for (see the day's activity plan) — no dedicated materials for the tally itself.",
+      instructionalNotes:
+        "If laughter seems forced or scripted rather than spontaneous, use clinical judgment and don't tally it — the goal is genuine engagement, not a performance.",
+    },
   },
   {
     id: "flopping-dropping",
@@ -121,6 +198,24 @@ const cards: CardConfig[] = [
     description:
       "During a timed observation, tally each flop/drop. Rate is reported as occurrences per minute.",
     minDurationSec: 60,
+    teachingProcedure: {
+      goal:
+        "Reduce Phineas's flopping/dropping-to-floor behavior to fewer than 1 occurrence per minute across a timed observation, as it currently interferes with transitions and participation.",
+      rationale:
+        "Flopping is believed to function as escape from task demands or transitions; tracking rate (not just raw count) lets us compare across sessions of different lengths and see if antecedent strategies are reducing it.",
+      procedure:
+        "During the timed observation window, do not stop data collection when a flop occurs — tally it and continue. If a flop happens during a demand, briefly wait it out (planned ignoring for the behavior itself) while keeping the original expectation active, then represent the demand once he's up.",
+      sd: "Typically evoked by a transition cue or a non-preferred task demand — note the antecedent in session notes when possible, even though this card only tracks rate.",
+      measurement: {
+        markCorrect: "Counts as an instance: he goes limp or intentionally drops to the floor, refusing to remain upright.",
+        markError: "Does not count: an accidental stumble/trip, or sitting down normally when instructed to do so.",
+      },
+      correction:
+        "Do not deliver attention or comment in the moment (planned ignoring for the behavior itself). Keep the original demand or transition expectation active and calmly restate it once he's back up, rather than dropping it.",
+      materials: "Stopwatch or the session timer; no other materials.",
+      instructionalNotes:
+        "This card's timer is a plain observation window, not linked to the session clock — start/stop it to bound a specific block you want rate data for, not necessarily the whole session.",
+    },
   },
   {
     id: "uses-aac-to-request",
@@ -130,6 +225,24 @@ const cards: CardConfig[] = [
     description: "Tally each independent AAC request. This timer is linked to the session timer.",
     minDurationSec: 60,
     locked: true,
+    teachingProcedure: {
+      goal:
+        "Increase Phineas's independent AAC-mediated requests to at least 1 per minute across the session, as his primary functional communication mode.",
+      rationale:
+        "Consistent AAC use is the foundation for reducing frustration-driven behavior and building a communication repertoire that will scale as vocabulary grows.",
+      procedure:
+        "Throughout the session, tally each independent, unprompted use of the AAC device to request an item, activity, or break. This timer is linked to the session clock, so it's always running whenever a session is — there's no separate start/stop for it.",
+      sd: "Naturally occurring motivation across the session — a desired item in view, a preferred activity ending, or a demand he'd like a break from — rather than a single scripted prompt.",
+      measurement: {
+        markCorrect: "An independent tap/selection on the AAC device that functions as a request, with no verbal or physical prompt beforehand.",
+        markError: "A prompted or modeled selection (hand-over-hand, or after a verbal model of the exact request) — valuable, but not counted toward the independent rate.",
+      },
+      correction:
+        "If he doesn't initiate but seems to want something, model the request on the device without requiring him to imitate it, then wait — don't tally that instance, but do reinforce access to what he wanted.",
+      materials: "His AAC device, charged and within reach at all times.",
+      instructionalNotes:
+        "Because this timer tracks the whole session, rate naturally dips during highly structured discrete-trial blocks — that's expected, not a regression.",
+    },
   },
   {
     id: "property-destruction-throwing",
@@ -140,6 +253,23 @@ const cards: CardConfig[] = [
     description:
       "Tally each instance the learner throws or destroys property, including books, toys, or furniture.",
     minCount: 3,
+    teachingProcedure: {
+      goal: "Reduce Phineas's property destruction/throwing to fewer than 3 instances per session.",
+      rationale:
+        "Throwing and destroying materials disrupts sessions, poses a safety risk to peers and staff, and is believed to serve an escape or attention function that a replacement behavior can address instead.",
+      procedure:
+        "Tally each instance as it occurs. Do not stop data collection to address the behavior — score it, then respond per the correction procedure and continue the session.",
+      sd: "Most often evoked by a non-preferred task being presented or a preferred item/activity being removed or denied.",
+      measurement: {
+        markCorrect: "Counts as an instance: any throw, sweep, or forceful destruction of materials directed away from his own body.",
+        markError: "Does not count: normal manipulation of materials during play (e.g., building then knocking down blocks as part of the game itself).",
+      },
+      correction:
+        "Block the trajectory or move materials out of reach if safety requires it, but avoid extended verbal attention. Once calm, represent the original task/demand rather than letting the throw successfully end it.",
+      materials: "None specific to this card, but keep breakable/valuable items out of easy reach during high-risk activities.",
+      instructionalNotes:
+        "If throwing reliably follows removal of a specific preferred item, flag it for the team — a scheduled, predictable transition warning may reduce the antecedent altogether.",
+    },
   },
   {
     id: "self-injury-banging-head",
@@ -150,6 +280,24 @@ const cards: CardConfig[] = [
     description:
       "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per minute.",
     minDurationSec: 60,
+    teachingProcedure: {
+      goal:
+        "Reduce Phineas's head-banging to fewer than 1 occurrence per minute across a timed observation, prioritized as a safety-critical target.",
+      rationale:
+        "Head-banging carries immediate physical risk and is tracked by rate (not just count) so intensity/frequency changes are visible across observations of different lengths.",
+      procedure:
+        "Tally each instance during the timed window. If intensity poses immediate risk of injury, prioritize safety (see Correction) over waiting to observe — data accuracy never overrides safety.",
+      sd: "Review the BCBA's current hypothesis in the full behavior plan before running this card — antecedents vary and matter for intervention, even though this card only tracks rate.",
+      measurement: {
+        markCorrect: "Counts as an instance: any forceful contact of the head against a person, object, or surface.",
+        markError: "Does not count: gentle self-stimulatory head movement with no forceful contact.",
+      },
+      correction:
+        "Follow the safety plan's protective procedure immediately (protective equipment/blocking as trained) — do not wait for a natural pause to intervene. Log the instance once safe to do so.",
+      materials: "Any protective equipment specified in the Safety Plan (see the Client Info tab's About Me section).",
+      instructionalNotes:
+        "This is one of the few targets where safety response always takes precedence over data-collection precision — under-count rather than delay intervention.",
+    },
   },
   {
     id: "tantruming",
@@ -160,6 +308,23 @@ const cards: CardConfig[] = [
     description:
       "Track each tantrum instance separately. Start a new instance with the plus button; pause/resume the current instance with the play/pause button.",
     minDurationSec: 30,
+    teachingProcedure: {
+      goal: "Reduce the total duration of Phineas's tantrums to less than 2 cumulative minutes per session.",
+      rationale:
+        "Duration (not just count) captures both how often tantrums occur and how long they last — useful since intervention can shorten episodes even before it reduces their frequency.",
+      procedure:
+        "Start a new instance with the plus button at the first sign of a tantrum (crying, dropping, refusal escalating into distress). Pause/resume the timer if there's a brief lull, but start a new instance if he fully recovers and a new episode begins later.",
+      sd: "Commonly follows a denied request, an ended preferred activity, or an unexpected transition.",
+      measurement: {
+        markCorrect: "Counts as the same instance: continuous or briefly interrupted crying/distress/refusal without a full recovery in between.",
+        markError: "Does not count: brief frustration (a whine or protest) that resolves within a few seconds without escalating.",
+      },
+      correction:
+        "Keep instructions minimal and avoid negotiating during the episode. Once he's calm for a sustained moment, redirect to the original expectation rather than dropping it.",
+      materials: "None.",
+      instructionalNotes:
+        "Resist the urge to end the timer the instant crying stops — a brief pause-then-resume within the same episode is normal; only start a new instance after a genuine recovery.",
+    },
   },
   {
     id: "tolerates-sitting-social-group",
@@ -169,6 +334,24 @@ const cards: CardConfig[] = [
     description:
       "Track each interval the learner remains seated with the social group. Start a new instance when they rejoin.",
     minDurationSec: 60,
+    teachingProcedure: {
+      goal:
+        "Increase the duration Phineas remains seated with the social group to a full 10-minute activity without leaving the seated area.",
+      rationale:
+        "Tolerating group seating is a prerequisite for participating in classroom circle time and other group instruction settings he'll encounter outside of 1:1 sessions.",
+      procedure:
+        "Start the timer when the group activity begins and he is seated. If he gets up and leaves the seated area, pause the timer; start a new instance once he rejoins and is seated again.",
+      sd: "The group activity starting, with a seat available and the group already gathered (e.g., \"Let's sit down for circle time\").",
+      measurement: {
+        markCorrect: "Remains within the designated seated area, even if shifting position or briefly standing and immediately re-sitting.",
+        markError: "Fully leaves the seated area (stands and walks away) rather than staying within it.",
+      },
+      correction:
+        "If he gets up, calmly guide him back to the seated area and represent the activity rather than ending it. Avoid making the return trip more engaging than the group activity itself.",
+      materials: "Whatever the group activity requires (see the day's activity plan); a designated seat or mat to define \"the seated area.\"",
+      instructionalNotes:
+        "Reinforcement should come from the group activity itself where possible (praise, a preferred song, a turn) rather than an unrelated reward, so sitting stays connected to the activity's own value.",
+    },
   },
   {
     id: "washing-hands",
@@ -185,6 +368,25 @@ const cards: CardConfig[] = [
       "Turn off water",
       "Dry hands",
     ],
+    teachingProcedure: {
+      goal:
+        "Phineas will complete the 7-step hand-washing sequence with no more than 1 prompted step, across 3 consecutive probes.",
+      rationale:
+        "Hand-washing is a daily-living skill needed for hygiene and increasing independence at school and home; task analysis lets us pinpoint exactly which step(s) still need support.",
+      procedure:
+        "Present each step in sequence, waiting 3-5 seconds for a response before scoring or prompting. Score each step Independent (I), Prompted (P), or Error (E) as you go, and move to the next step regardless of how the current one was scored.",
+      sd: "\"Wash your hands\" at the sink, given once at the start of the sequence — no further verbal SD is given per step; each step's own natural cue (e.g., water now running) should occasion the next action.",
+      measurement: {
+        markCorrect: "Independent (I): completes the step within the window with no prompt beyond the initial SD.",
+        markError:
+          "Error (E): does not attempt the step, or attempts it incorrectly, within the window with no prompt given in that moment (contrast with Prompted, used when help was given).",
+      },
+      correction:
+        "For a Prompted score, use the least intrusive prompt that gets the step done (a gesture toward the soap, a verbal reminder, or physical guidance for a step like scrubbing) and move on to the next step — don't repeat the whole sequence from the start.",
+      materials: "Accessible sink, soap, and a towel within reach; step stool if needed for sink height.",
+      instructionalNotes:
+        "Steps often regress in the same order they were mastered under stress/fatigue — if a normally-independent step slips to Prompted, note it rather than assuming it's a one-off.",
+    },
   },
   {
     id: "overall-session-engagement",
@@ -897,6 +1099,7 @@ function renderCard(
      *  floating action buttons) from the same component instance, rather
      *  than a separate generic component that has no access to that state. */
     listMode?: boolean;
+    teachingProcedure?: TeachingProcedure;
   },
 ): React.ReactNode {
   switch (card.kind) {
@@ -1236,6 +1439,7 @@ const DataCardList = memo(function DataCardList({
       dragControls,
       tileDensity: displayMode === "grid-large" ? "large" : displayMode === "grid-small" ? "small" : undefined,
       listMode: displayMode === "list",
+      teachingProcedure: card.teachingProcedure,
     });
 
   // Edit mode is its own render path — drag-to-reorder (via Motion's
