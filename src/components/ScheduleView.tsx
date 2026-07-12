@@ -178,27 +178,18 @@ const COLLAPSED_ROW_PX = 36;  // uniform row height in collapsed mode
 // Activity" affordance renders, capped well below its real (often much
 // larger) span — just enough to hold the button, not the whole gap.
 const EDGE_ADD_ACTIVITY_PX = 48;
-// The "now" line stays at full strength everywhere EXCEPT the stretch that
-// actually crosses a row's own text — dimmed only there, not uniformly, so
-// it still reads as a strong, confident line where there's nothing to
-// compete with (the Time column, the Alert column, blank gaps). Compared
-// 100/60/50/20% against real row text (e.g. "Potty Time"): anything above
-// 20% still read as visual noise competing with the letters for attention.
-const NOW_LINE_OPACITY = "opacity-20";
-// Fixed pixel offsets (from the row's own left/right edges) marking where
-// each grid's own TEXT-bearing columns start/end — derived from the grid's
-// own static template (column widths + gaps + padding are all fixed
-// Tailwind values, not runtime-variable), not measured or guessed, so
-// there's no risk of the mismatch that once clipped the Task Analysis
-// grid tile's step text (see that fix's own history).
-// Item row: grid-cols-[40px_1fr_84px_34px] gap-1 px-2 — text starts after
-// the Time column + its gap (8 + 40 + 4), and the trailing Alert column +
-// its gap (8 + 34 + 4) has no text of its own.
-const ITEM_ROW_TEXT_ZONE = { left: 52, right: 46 } as const;
-// Appointment overlay: grid-cols-[40px_1fr] gap-1 pl-1.5 pr-8 — text starts
-// after the Time column + its gap (6 + 40 + 4); the trailing pr-8 is
-// reserved space for the corner collapse button, not text.
-const APPT_TEXT_ZONE = { left: 50, right: 32 } as const;
+// The "now" line always renders at full opacity — legibility over text is
+// handled the other way around, by giving the row's own text a halo (see
+// textHalo below) matching its background, rather than fading the line
+// itself. That keeps the line reading as a strong, confident guide
+// everywhere it crosses blank space, and only "cuts out" locally, right
+// where a run of text actually sits, regardless of that text's own height
+// or position within the row.
+// The appointment overlay's own expanded-state background (bg-green-50) —
+// its text only ever shows in that state (collapsed hides it entirely), so
+// unlike an item row's text (which needs isCurrent's blue-50 vs. white),
+// this one has no second case to account for.
+const APPT_HALO_COLOR = "#f0fdf4";
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
 // Defaults — TODO: surface in user settings.
@@ -1331,42 +1322,26 @@ export function ScheduleView({
         </div>
 
         <div ref={listRef} className="relative" style={{ height: totalHeight }}>
-          {arrowTop !== null && !editMode && !currentItem && !currentAppt && (
-            // Blank-gap / outside-hours case only — genuinely nothing here
-            // to read, so the line stays at full strength the whole way
-            // across rather than the segmented treatment below. Above the
-            // item rows (z-10) and the appointment overlays (z-20) —
-            // including a flashing row's own temporary z-20 bump (see that
-            // row's className below), which used to permanently out-rank
-            // this line the instant "Now" was pressed once, since that bump
-            // never resets back down. Staying under the chevron marker
-            // (z-30) only.
-            <div
-              className="absolute left-0 right-0 z-[25] pointer-events-none border-t-2 border-dashed"
-              style={{ top: arrowTop, borderColor: arrowGray ? "#a8a29e" : "#2563eb" }}
-              aria-hidden
-            />
-          )}
-          {arrowTop !== null && !editMode && currentAppt && (
-            // Whenever an appointment overlay currently covers "now" — when
-            // "now" falls inside a plain activity with no appointment on
-            // top of it, the line renders as that row's own child instead
-            // (see the isCurrent block below), positioned by plain DOM
-            // order between its background box and its icon/text content.
-            // An appointment paints above (z-20) whatever regular item is
-            // underneath it, so that in-row treatment would just get
-            // hidden below it — this list-level line stays instead, at
-            // z-25, so "now" still visibly crosses the appointment bubble
-            // itself, using the same full/dimmed/full segmenting (against
-            // the appointment's own text columns, not the item row's) so it
-            // still gives the appointment's own type/provider text room to
-            // read.
-            <NowLineSegments
-              top={arrowTop}
-              color={arrowGray ? "#a8a29e" : "#2563eb"}
-              zClassName="z-[25]"
-              textZone={APPT_TEXT_ZONE}
-            />
+          {arrowTop !== null && !editMode && (!currentItem || currentAppt) && (
+            // For the blank-gap / outside-hours case, and whenever an
+            // appointment overlay currently covers "now" — when "now" falls
+            // inside a plain activity with no appointment on top of it, the
+            // line renders as that row's own child instead (see the
+            // isCurrent block below). An appointment paints above (z-20)
+            // whatever regular item is underneath it, so that in-row
+            // treatment would just get hidden below it — this list-level
+            // line stays instead, at z-25, so "now" still visibly crosses
+            // the appointment bubble itself. Legibility over any text
+            // underneath (the appointment's own type/provider, if this is
+            // the appointment case) comes from that text's own halo (see
+            // textHalo), not from fading this line — it always renders at
+            // full opacity. Above the item rows (z-10) and the appointment
+            // overlays (z-20) — including a flashing row's own temporary
+            // z-20 bump (see that row's className below), which used to
+            // permanently out-rank this line the instant "Now" was pressed
+            // once, since that bump never resets back down. Staying under
+            // the chevron marker (z-30) only.
+            <NowLine top={arrowTop} color={arrowGray ? "#a8a29e" : "#2563eb"} zClassName="z-[25]" />
           )}
           {arrowTop !== null && !editMode && (
             <div
@@ -1481,6 +1456,10 @@ export function ScheduleView({
             }
             const it = row.item;
             const isCurrent = !editMode && currentItem?.id === it.id;
+            // Matches this row's own background (see the box div below) —
+            // the color the "now" line's halo needs to match to hide it
+            // locally behind this row's own text (see textHalo).
+            const rowHaloColor = isCurrent ? "#eff6ff" : "#fff";
             const displayName =
               it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
             const displayIcon =
@@ -1558,31 +1537,32 @@ export function ScheduleView({
                   // after the box/gridlines/pulse above (so it still shows
                   // crossing the white box) but before the icon/text content
                   // below, so an emoji — opaque — fully covers its own
-                  // stretch of the line regardless of the line's own
-                  // opacity there. Only the middle (Activity+Location text)
-                  // segment is dimmed; the Time and Alert columns have no
-                  // text of their own, so the line stays at full strength
-                  // there. Skipped when an appointment is also covering
-                  // "now" — that appointment paints above (z-20) this row
-                  // entirely, so this in-row line would just render
-                  // invisibly underneath it; the shared list-level line (see
-                  // above) handles that case instead, at a z that clears
-                  // the appointment.
-                  <NowLineSegments
-                    top={arrowTop - top}
-                    color={arrowGray ? "#a8a29e" : "#2563eb"}
-                    textZone={ITEM_ROW_TEXT_ZONE}
-                  />
+                  // stretch of the line, while text stays legible via its
+                  // own halo (see textHalo) rather than this line fading.
+                  // Skipped when an appointment is also covering "now" —
+                  // that appointment paints above (z-20) this row entirely,
+                  // so this in-row line would just render invisibly
+                  // underneath it; the shared list-level line (see above)
+                  // handles that case instead, at a z that clears the
+                  // appointment.
+                  <NowLine top={arrowTop - top} color={arrowGray ? "#a8a29e" : "#2563eb"} />
                 )}
                 <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
-                  <div className="text-[11px] tabular-nums leading-tight text-right pr-1.5 pt-0.5">
+                  <div
+                    className="text-[11px] tabular-nums leading-tight text-right pr-1.5 pt-0.5"
+                    style={textHalo(rowHaloColor)}
+                  >
                     {fmt12(it.start)}
                   </div>
                   <div className="flex items-start gap-1.5 min-w-0">
                     {showIcons && (
                       <span className="text-sm leading-none shrink-0">{displayIcon}</span>
                     )}
-                    <ScrubText text={displayName} className="text-xs font-medium flex-1 leading-tight" />
+                    <ScrubText
+                      text={displayName}
+                      className="text-xs font-medium flex-1 leading-tight"
+                      style={textHalo(rowHaloColor)}
+                    />
                   </div>
                   <div className="flex items-start gap-1 min-w-0">
                     {showIcons && (
@@ -1590,7 +1570,11 @@ export function ScheduleView({
                         {LOCATION_ICONS[it.location] ?? "📍"}
                       </span>
                     )}
-                    <ScrubText text={it.location} className="text-xs flex-1 leading-tight" />
+                    <ScrubText
+                      text={it.location}
+                      className="text-xs flex-1 leading-tight"
+                      style={textHalo(rowHaloColor)}
+                    />
                   </div>
                   <div className="flex items-start justify-center gap-0.5 -mt-1">
                     {editMode ? (
@@ -1720,7 +1704,10 @@ export function ScheduleView({
                       <CollapseIcon className="size-3.5" />
                     </button>
                     <div className="relative h-full grid grid-cols-[40px_1fr] gap-1 pl-1.5 pr-8 pt-0.5 items-start">
-                      <div className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5">
+                      <div
+                        className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5"
+                        style={textHalo(APPT_HALO_COLOR)}
+                      >
                         {fmt12(a.start)}
                       </div>
                       <div className="min-w-0">
@@ -1728,6 +1715,7 @@ export function ScheduleView({
                           <ScrubText
                             text={a.type}
                             className="text-xs font-semibold text-green-800 leading-tight truncate"
+                            style={textHalo(APPT_HALO_COLOR)}
                           />
                           {a.tag && (
                             <span className="shrink-0 inline-flex items-center rounded-full bg-green-600 text-white text-[9px] uppercase tracking-wide px-1.5 py-px font-semibold">
@@ -1735,7 +1723,10 @@ export function ScheduleView({
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] italic text-green-700/90 leading-tight truncate">
+                        <div
+                          className="text-[10px] italic text-green-700/90 leading-tight truncate"
+                          style={textHalo(APPT_HALO_COLOR)}
+                        >
                           {a.provider}
                         </div>
                       </div>
@@ -1852,29 +1843,24 @@ export function ScheduleView({
 // total width, so this doesn't care how wide the row actually renders),
 // full opacity again from there to the right edge. Only the middle segment
 // ever crosses real text, so only it needs to give the text room to read.
-function NowLineSegments({
-  top,
-  color,
-  zClassName,
-  textZone,
-}: {
-  top: number;
-  color: string;
-  zClassName?: string;
-  textZone: { left: number; right: number };
-}) {
-  const base = cn("absolute pointer-events-none border-t-2 border-dashed", zClassName);
+function NowLine({ top, color, zClassName }: { top: number; color: string; zClassName?: string }) {
   return (
-    <>
-      <div className={base} style={{ top, left: 0, width: textZone.left, borderColor: color }} aria-hidden />
-      <div
-        className={cn(base, NOW_LINE_OPACITY)}
-        style={{ top, left: textZone.left, right: textZone.right, borderColor: color }}
-        aria-hidden
-      />
-      <div className={base} style={{ top, right: 0, width: textZone.right, borderColor: color }} aria-hidden />
-    </>
+    <div
+      className={cn("absolute left-0 right-0 pointer-events-none border-t-2 border-dashed", zClassName)}
+      style={{ top, borderColor: color }}
+      aria-hidden
+    />
   );
+}
+
+// A halo the same color as whatever's behind a piece of text — repeated a
+// few times to fully opaque-out (not just soften) anything passing behind
+// the glyphs themselves, e.g. the "now" line above. Only needs to reach as
+// far as that text's own natural footprint, so unlike fading the line
+// itself, this never affects blank space the text doesn't occupy.
+function textHalo(color: string): React.CSSProperties {
+  const shadow = `0 0 2px ${color}`;
+  return { textShadow: [shadow, shadow, shadow, shadow].join(", ") };
 }
 
 function AlertCycle({ mode, onChange }: { mode: AlertMode; onChange: (m: AlertMode) => void }) {
