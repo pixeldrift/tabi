@@ -3,7 +3,7 @@ import { motion, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
-import { MiniTileShell } from "./MiniTileShell";
+import { MiniTileShell, PROGRESS_BAR_WIDTH } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
 import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
@@ -292,19 +292,31 @@ export function TaskAnalysisCard({
                   "line-clamp-2 text-left font-semibold leading-[1.15] transition-[font-size]",
                   isCenter ? color : "invisible",
                 )}
-                // A real `width` (not just `maxWidth`) so text-left has room
-                // to work with — sized to the tile's own actual available
-                // content width (measured against the rendered tile, minus
-                // its padding) rather than the old, narrower guess that
-                // clipped anything longer than a couple words. line-clamp-2
-                // (rather than a single nowrap line + ellipsis) is the other
-                // half of "no clipping": even at a smaller font, the
+                // A real `width` (not just `maxWidth`, and not a percentage)
+                // so text-left has room to work with. Must be a fixed pixel
+                // value, not e.g. w-full: this strip's own scroll container
+                // is padded px-[50%] on each side specifically so any item
+                // (including the first/last) can scroll to dead-center —
+                // with box-sizing: border-box that padding alone already
+                // consumes the container's entire reported width, so a
+                // percentage width here resolves against zero and the text
+                // vanishes. PROGRESS_BAR_WIDTH is MiniTileShell's own
+                // verified real content-area width for each density (it's
+                // what the progress bar itself is sized to, confirmed to
+                // clear the tile's rounded corners) — reusing it here
+                // (rather than a separate guessed constant) is what
+                // previously clipped the leading step number/colon on
+                // narrower tiles: a box wider than the real tile gets
+                // centered by scroll-snap, and its own left edge (where
+                // text-left starts) scrolls out of view. line-clamp-2
+                // (rather than a single nowrap line + ellipsis) is the
+                // other half of "no clipping": even at a smaller font, the
                 // longest step names (e.g. "Scrub for 20 seconds") don't
                 // fit on one line in a tile this narrow — wrapping to a
                 // second line reads the whole thing instead of truncating
                 // it.
                 style={{
-                  width: isCenter ? (large ? 160 : 102) : large ? 160 : 102,
+                  width: PROGRESS_BAR_WIDTH[large ? "large" : "small"],
                   fontSize: isCenter ? (large ? 13 : 10) : large ? 13 : 10,
                 }}
               >

@@ -37,7 +37,7 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
 // that the same extra padding left the bar within a few px of the card's
 // own rounded corners, reading as touching the edge — so small uses the
 // bare measured width (96px) with no extra padding.
-const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
+export const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
 
 /** Compact aspect-square counterpart to CardShell, used by every card kind
  *  when the toolbar's display mode is one of the two quick-action grids
