@@ -149,9 +149,13 @@
     50% { opacity: 0.3; transform: scale(1.3); }
   }
   @keyframes lv-bounce-x {
+    /* Inward (toward the row) first, then outward — timed so the inward
+       dart lands near the same midpoint the row's own border-pulse (see
+       lv-now-pulse) peaks at, instead of the two animations moving in
+       unrelated directions when "Now" is pressed. */
     0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-8px); }
-    75% { transform: translateX(8px); }
+    25% { transform: translateX(8px); }
+    75% { transform: translateX(-8px); }
   }
   @keyframes lv-now-pulse {
     0%, 100% { border-width: 2px; }

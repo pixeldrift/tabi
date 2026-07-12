@@ -263,8 +263,23 @@ export function StatusBar({
     const toEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
     const fromRect = pillTravelFromRef.current;
     if (!toEl || !fromRect) return;
-    setPillTravelRect({ from: fromRect, to: toEl.getBoundingClientRect() });
-  }, [pillTraveling, pillTravelRect, pillView]);
+    const rawTo = toEl.getBoundingClientRect();
+    // Landing in "mini" happens before the session box collapses (see
+    // boxCollapsed's own delay above — deliberately, so the two read as
+    // sequential beats). But the mini slot's rect right now still reflects
+    // the box being open; travelling straight there lands the pill well
+    // below the tab bar, into the content pane, and only THEN does the box
+    // collapse and drag it back up to where it actually belongs — a visible
+    // dip past its own final resting spot. Collapsing the box frees exactly
+    // boxNaturalHeight of vertical space above the nav, so predicting that
+    // shift now and landing there directly skips the detour without
+    // touching the "land, then collapse" sequencing itself.
+    const willCollapseAfterLanding = pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
+    const to = willCollapseAfterLanding
+      ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
+      : rawTo;
+    setPillTravelRect({ from: fromRect, to });
+  }, [pillTraveling, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
 
   const renderBigPill = pillView === "big" || pillTraveling;
   const renderMiniPill = pillView === "mini" || pillTraveling;
@@ -289,9 +304,47 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
+  // The content pane below gets its own border-t (routes/index.tsx) so it
+  // reads as a real seam under every OTHER tab and in the gaps between
+  // pills — the active tab is meant to be the one exception, its own
+  // background painting over that same 1px so it blends into the pane it
+  // owns, the same way a browser's own selected tab does. That blend patch
+  // has to render as a sibling *outside* data-status-bar's overflow-hidden:
+  // it necessarily sits 1px past the active tab's own box (same reasoning
+  // as the pill-travel overlay below), and being absolutely positioned it
+  // never contributes to this container's own auto height either way — so
+  // giving the container extra room here would just push the seam it's
+  // supposed to sit on down with it, never actually closing the gap.
+  const statusBarRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [tabBlend, setTabBlend] = useState<{ top: number; left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const barEl = statusBarRef.current;
+    const tabEl = tabButtonRefs.current.get(activeTab);
+    if (!barEl || !tabEl) return;
+    const measure = () => {
+      const barRect = barEl.getBoundingClientRect();
+      const tabRect = tabEl.getBoundingClientRect();
+      setTabBlend({ top: barRect.bottom, left: tabRect.left, width: tabRect.width });
+    };
+    measure();
+    // A ResizeObserver on the bar itself (not the tab) catches every case
+    // that actually moves this seam — the session box collapsing/expanding,
+    // the mini-session slot rolling in, the pill landing — since all of
+    // those change the bar's own rendered height, which is exactly what a
+    // ResizeObserver reports, unlike a plain position shift.
+    const ro = new ResizeObserver(measure);
+    ro.observe(barEl);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [activeTab]);
+
   return (
     <>
-      <div data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <div ref={statusBarRef} data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -418,6 +471,10 @@ export function StatusBar({
                   return (
                     <button
                       key={t.id}
+                      ref={(el) => {
+                        if (el) tabButtonRefs.current.set(t.id, el);
+                        else tabButtonRefs.current.delete(t.id);
+                      }}
                       role="tab"
                       aria-selected={isActive}
                       onClick={() => onTabChange(t.id)}
@@ -430,9 +487,6 @@ export function StatusBar({
                     >
                       <Icon className={cn("size-4", !isActive && "opacity-60")} />
                       <span className="hidden sm:inline">{t.label}</span>
-                      {isActive && (
-                        <span className="absolute -bottom-px left-0 right-0 h-px bg-background" aria-hidden />
-                      )}
                     </button>
                   );
                 })}
@@ -490,6 +544,17 @@ export function StatusBar({
           </>
         </div>
       </div>
+      {/* Blends the content pane's own border-t (routes/index.tsx) under
+          whichever tab is active — see the tabBlend effect above for why
+          this has to live outside data-status-bar's overflow-hidden rather
+          than as a child of the active tab itself. */}
+      {tabBlend && (
+        <div
+          aria-hidden
+          className="fixed z-40 h-px bg-background pointer-events-none"
+          style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
+        />
+      )}
       {/* The pill's own travel shape — carries real digits (not an empty
           outline) so the clock reads as the same object shrinking and
           moving, not a blank placeholder. Animated with real numeric

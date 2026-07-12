@@ -223,6 +223,9 @@ const DATA_SUBMIT_STAGGER_MS = 90;
 const DATA_SUBMIT_ENTER_DURATION_MS = 550;
 const DATA_SUBMIT_EXIT_DURATION_MS = 550;
 
+// Duration for the "Start session to record data" banner's own exit below.
+const DATA_BANNER_EXIT_MS = 400;
+
 function Index() {
   return (
     <SettingsProvider>
@@ -362,6 +365,25 @@ function IndexInner() {
   // sliding in and the cards dropping to half-opacity added an extra,
   // unrelated layout shift on top of the box's own expand animation.
   const sessionActive = status !== "idle";
+
+  // Motion's `layout="position"` snapshots this pane's rect once per React
+  // render and commits to it as the FLIP's final target — it has no idea
+  // the snapshot it just took is itself mid-flight, still being pushed by
+  // the header box's own real (non-`layout`) height `animate()` a beat
+  // later. A render that lands after the box's target has logically
+  // updated but before its real height has actually finished tweening
+  // hands Motion a target that's already (visually) the fully-collapsed
+  // position, so it commits and finishes the pane's FLIP well before the
+  // box (and the tab bar riding directly on its real height, needing no
+  // FLIP at all) actually gets there — the pane visibly arrives early.
+  // Turning `layout` off for the whole staged-transition window sidesteps
+  // this: with no FLIP running, the pane just follows native reflow like
+  // any other block, which can't ever be out of step with what's really
+  // above it. `layout="position"` comes back once the transition (and the
+  // real reflow it drives) is over, for the discrete-jump cases (tab
+  // switches, notification changes) it's actually meant for.
+  const suppressPaneLayout = transitionStage === 2 && transitionKind !== "discard";
+
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
   // so it slides out on top of the toolbar, not just the pane below it —
@@ -702,7 +724,7 @@ function IndexInner() {
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{
-                  height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
+                  height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
                   opacity: { duration: 0.25 },
                 }}
                 className="overflow-hidden border-t border-stone-200/70"
@@ -711,7 +733,7 @@ function IndexInner() {
                   initial={{ y: -16 }}
                   animate={{ y: 0 }}
                   exit={{ y: -16 }}
-                  transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                  transition={{ duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
                   className="py-1.5 px-8 text-center"
                 >
                   <span className="text-sm text-muted-foreground">Start session to record data.</span>
@@ -723,10 +745,18 @@ function IndexInner() {
       )}
 
       <motion.section
-        layout="position"
+        layout={suppressPaneLayout ? false : "position"}
         transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
         className={cn(
-          "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px",
+          "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
+          // Only the Data tab has a toolbar directly above this pane, with
+          // its own border-b — -mt-px there merges the two lines into one
+          // instead of a visible double line. Every other tab sits directly
+          // below the (sticky, higher-stacked) tabs row itself, so pulling
+          // the border under it here instead erased it completely across
+          // the whole width — not just blended under the active tab the way
+          // its own -bottom-px overlay (see StatusBar) is meant to.
+          tab === "data" && "-mt-px",
           tab === "schedule" ? "pt-2" : tab === "data" ? "pt-0" : "pt-5",
         )}
       >
@@ -743,8 +773,15 @@ function IndexInner() {
               slides the whole card grid a full extra width off to the
               side — without this, that briefly inflates the document's
               scrollable width, which some mobile browsers respond to by
-              rescaling the visual viewport for an instant. */}
-          <div className={cn("flex flex-col items-center -mx-2 overflow-x-hidden", isGridDisplayMode ? "pt-4" : "pt-5")}>
+              rescaling the visual viewport for an instant. Needs `relative`
+              too: popLayout makes that exiting grid `position: absolute`
+              against its nearest positioned ancestor, and overflow-hidden
+              only clips paint on an element that's also the containing
+              block. Without `relative` here, that ancestor search skips
+              right past this div (still `static`) and the exit keeps
+              inflating scrollWidth even though nothing is visibly seen
+              sticking out. */}
+          <div className={cn("relative flex flex-col items-center -mx-2 overflow-x-hidden", isGridDisplayMode ? "pt-4" : "pt-5")}>
             <div
               className={cn(
                 "transition-[opacity,width] duration-300",

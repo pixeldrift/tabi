@@ -308,7 +308,7 @@ function AboutMeSection({
           onClick={toggleAll}
           className="flex items-center gap-1 -mr-1 text-xs font-medium text-stone-400 hover:text-stone-600 transition-colors"
         >
-          {allCollapsed ? "Expand" : "Collapse"}
+          {allCollapsed ? "Expand All" : "Collapse All"}
           {allCollapsed ? (
             <ChevronsUpDown className="size-4" aria-hidden />
           ) : (
