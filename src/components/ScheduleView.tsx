@@ -1457,7 +1457,14 @@ export function ScheduleView({
                 {Array.from({ length: gridLines }, (_, i) => (
                   <div
                     key={`g-${i}`}
-                    className="absolute left-1 right-1 border-t border-stone-100"
+                    className={cn(
+                      "absolute left-1 right-1 border-t",
+                      // border-stone-100 is nearly invisible against this
+                      // row's own !bg-blue-50 (both are pale, and warm-gray
+                      // vs. light-blue barely differ in luminance) — needs
+                      // its own tint to actually show up once highlighted.
+                      isCurrent ? "border-blue-200" : "border-stone-100",
+                    )}
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}

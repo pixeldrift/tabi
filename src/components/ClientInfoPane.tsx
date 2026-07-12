@@ -105,14 +105,14 @@ const ABOUT_ME_ROW_IDS = [
   "safetyPlan",
   "seizure",
   "allergies",
-  "toys",
   "behaviors",
-  "environment",
-  "meal",
-  "successTips",
   "toileting",
   "communication",
+  "toys",
+  "environment",
+  "meal",
   "transitions",
+  "successTips",
   "relatedServices",
 ];
 
@@ -308,7 +308,7 @@ function AboutMeSection({
           onClick={toggleAll}
           className="flex items-center gap-1 -mr-1 text-xs font-medium text-stone-400 hover:text-stone-600 transition-colors"
         >
-          {allCollapsed ? "Expand" : "Collapse"}
+          {allCollapsed ? "Expand All" : "Collapse All"}
           {allCollapsed ? (
             <ChevronsUpDown className="size-4" aria-hidden />
           ) : (
@@ -320,7 +320,7 @@ function AboutMeSection({
         <NoteRow
           id="safetyPlan"
           emoji="🚨"
-          label="Safety Action Plan"
+          label="Safety Plan"
           value={ABOUT_ME.safetyPlan}
           collapsed={collapsedIds.has("safetyPlan")}
           onToggle={toggleRow}
@@ -328,7 +328,7 @@ function AboutMeSection({
         <NoteRow
           id="seizure"
           emoji="🚑"
-          label="Seizure Action Plan"
+          label="Seizure Plan"
           value={ABOUT_ME.seizureActionPlan}
           collapsed={collapsedIds.has("seizure")}
           onToggle={toggleRow}
@@ -342,43 +342,11 @@ function AboutMeSection({
           onToggle={toggleRow}
         />
         <NoteRow
-          id="toys"
-          emoji="⚽️"
-          label="Toys & Activities"
-          value={ABOUT_ME.favoriteActivities}
-          collapsed={collapsedIds.has("toys")}
-          onToggle={toggleRow}
-        />
-        <NoteRow
           id="behaviors"
           emoji="😡"
-          label="Interfering Behaviors"
+          label="Behaviors"
           value={ABOUT_ME.interferingBehaviors}
           collapsed={collapsedIds.has("behaviors")}
-          onToggle={toggleRow}
-        />
-        <NoteRow
-          id="environment"
-          emoji="🏠"
-          label="Environment"
-          value={ABOUT_ME.environment}
-          collapsed={collapsedIds.has("environment")}
-          onToggle={toggleRow}
-        />
-        <NoteRow
-          id="meal"
-          emoji="🍕"
-          label="Meal Time/Snack"
-          value={ABOUT_ME.mealTime}
-          collapsed={collapsedIds.has("meal")}
-          onToggle={toggleRow}
-        />
-        <NoteRow
-          id="successTips"
-          emoji="💡"
-          label="Session & Pairing Tips"
-          value={ABOUT_ME.successTips}
-          collapsed={collapsedIds.has("successTips")}
           onToggle={toggleRow}
         />
         <NoteRow
@@ -392,7 +360,7 @@ function AboutMeSection({
         <NoteRow
           id="communication"
           emoji="🗣️"
-          label="Mode of Communication"
+          label="Communication"
           value={`Expressive: ${ABOUT_ME.communicationExpressive}\n\nReceptive: ${ABOUT_ME.communicationReceptive}`}
           collapsed={collapsedIds.has("communication")}
           onToggle={toggleRow}
@@ -407,6 +375,30 @@ function AboutMeSection({
           </p>
         </NoteRow>
         <NoteRow
+          id="toys"
+          emoji="⚽️"
+          label="Toys & Activities"
+          value={ABOUT_ME.favoriteActivities}
+          collapsed={collapsedIds.has("toys")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="environment"
+          emoji="🏠"
+          label="Environment"
+          value={ABOUT_ME.environment}
+          collapsed={collapsedIds.has("environment")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
+          id="meal"
+          emoji="🍕"
+          label="Meal & Snacks"
+          value={ABOUT_ME.mealTime}
+          collapsed={collapsedIds.has("meal")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
           id="transitions"
           emoji="🔄"
           label="Transitions"
@@ -415,9 +407,17 @@ function AboutMeSection({
           onToggle={toggleRow}
         />
         <NoteRow
+          id="successTips"
+          emoji="💡"
+          label="Session Tips"
+          value={ABOUT_ME.successTips}
+          collapsed={collapsedIds.has("successTips")}
+          onToggle={toggleRow}
+        />
+        <NoteRow
           id="relatedServices"
-          emoji="📅"
-          label="Related Service Times"
+          emoji="🤝"
+          label="Related Services"
           value={phineasAppointments.map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a)}`).join("\n")}
           collapsed={collapsedIds.has("relatedServices")}
           onToggle={toggleRow}
