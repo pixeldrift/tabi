@@ -10,6 +10,7 @@ import { NumberPadIcon } from "./icons/NumberPadIcon";
 import { RateIcon } from "./icons/RateIcon";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export function RateCard({
   locked = false,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: RateCardProps) {
   const cardKey = id ?? title;
   const [count, setCount] = useCardState(cardKey, "count", 0);
@@ -188,13 +190,20 @@ export function RateCard({
           stickyTop={stickyTop}
           toolbarHeight={toolbarHeight}
           details={
-            <dl className="space-y-3">
-              <Row label="Phase" value={phase} />
-              <Row label="Data type" value="Rate (per minute)" />
-              <Row label="Required window" value={`${minDurationSec}s`} />
-              <Row label="Count" value={String(count)} />
-              <Row label="Elapsed" value={formatTime(elapsed)} />
-            </dl>
+            <>
+              <dl className="space-y-3">
+                <Row label="Phase" value={phase} />
+                <Row label="Data type" value="Rate (per minute)" />
+                <Row label="Required window" value={`${minDurationSec}s`} />
+                <Row label="Count" value={String(count)} />
+                <Row label="Elapsed" value={formatTime(elapsed)} />
+              </dl>
+              {teachingProcedure && (
+                <div className="mt-4">
+                  <TeachingProcedureAccordion data={teachingProcedure} />
+                </div>
+              )}
+            </>
           }
           actions={
             <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
@@ -372,13 +381,20 @@ export function RateCard({
       progress={null}
       editing={editing}
       details={
-        <dl className="space-y-3">
-          <Row label="Phase" value={phase} />
-          <Row label="Data type" value="Rate (per minute)" />
-          <Row label="Required window" value={`${minDurationSec}s`} />
-          <Row label="Count" value={String(count)} />
-          <Row label="Elapsed" value={formatTime(elapsed)} />
-        </dl>
+        <>
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Rate (per minute)" />
+            <Row label="Required window" value={`${minDurationSec}s`} />
+            <Row label="Count" value={String(count)} />
+            <Row label="Elapsed" value={formatTime(elapsed)} />
+          </dl>
+          {teachingProcedure && (
+            <div className="mt-4">
+              <TeachingProcedureAccordion data={teachingProcedure} />
+            </div>
+          )}
+        </>
       }
     >
       <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">

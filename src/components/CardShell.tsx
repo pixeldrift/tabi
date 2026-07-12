@@ -5,6 +5,7 @@ import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { CardEditControls, type CardEditControlsProps } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
+import type { TeachingProcedure } from "./TeachingProcedureAccordion";
 import { cn } from "@/lib/utils";
 
 /** Shared by every card kind so the toolbar's edit mode (reorder/favorite/
@@ -44,6 +45,10 @@ export interface CardEditAndDrawerProps {
    *  this card's own markup for a DataListRow rendering the same
    *  underlying state, with this kind's own compact floating actions. */
   listMode?: boolean;
+  /** Goal/rationale/procedure reference shown as a twirldown accordion in
+   *  this card's own details drawer — optional since not every mock card
+   *  has one filled in yet. */
+  teachingProcedure?: TeachingProcedure;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {

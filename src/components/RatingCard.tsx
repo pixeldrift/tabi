@@ -6,6 +6,7 @@ import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardState, useResetGuard } from "./CardDataStore";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ export function RatingCard({
   toolbarHeight,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -107,12 +109,19 @@ export function RatingCard({
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
         details={
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Rating (quality)" />
-            <Row label="Range" value={`${min}–${max}`} />
-            <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
-          </dl>
+          <>
+            <dl className="space-y-3">
+              <Row label="Phase" value={phase} />
+              <Row label="Data type" value="Rating (quality)" />
+              <Row label="Range" value={`${min}–${max}`} />
+              <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
+            </dl>
+            {teachingProcedure && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion data={teachingProcedure} />
+              </div>
+            )}
+          </>
         }
       >
         <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
@@ -206,12 +215,19 @@ export function RatingCard({
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}
       details={
-        <dl className="space-y-3">
-          <Row label="Phase" value={phase} />
-          <Row label="Data type" value="Rating (quality)" />
-          <Row label="Range" value={`${min}–${max}`} />
-          <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
-        </dl>
+        <>
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Rating (quality)" />
+            <Row label="Range" value={`${min}–${max}`} />
+            <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
+          </dl>
+          {teachingProcedure && (
+            <div className="mt-4">
+              <TeachingProcedureAccordion data={teachingProcedure} />
+            </div>
+          )}
+        </>
       }
       expandedView={
         <ol className="px-4 pt-1 pb-3 space-y-2">

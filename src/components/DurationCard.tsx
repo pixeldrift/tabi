@@ -9,6 +9,7 @@ import { SwipeStrip } from "./SwipeStrip";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { DurationIcon } from "./icons/DurationIcon";
 import { TimeKeypad } from "./TimeKeypad";
+import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function DurationCard({
   toolbarHeight,
   tileDensity,
   listMode,
+  teachingProcedure,
 }: DurationCardProps) {
   const cardKey = id ?? title;
   const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
@@ -268,13 +270,20 @@ export function DurationCard({
           stickyTop={stickyTop}
           toolbarHeight={toolbarHeight}
           details={
-            <dl className="space-y-3">
-              <Row label="Phase" value={phase} />
-              <Row label="Data type" value="Frequency / Duration" />
-              <Row label="Minimum" value={`${minDurationSec}s`} />
-              <Row label="Times" value={String(instances.length)} />
-              <Row label="Total" value={formatTime(totalMs)} />
-            </dl>
+            <>
+              <dl className="space-y-3">
+                <Row label="Phase" value={phase} />
+                <Row label="Data type" value="Frequency / Duration" />
+                <Row label="Minimum" value={`${minDurationSec}s`} />
+                <Row label="Times" value={String(instances.length)} />
+                <Row label="Total" value={formatTime(totalMs)} />
+              </dl>
+              {teachingProcedure && (
+                <div className="mt-4">
+                  <TeachingProcedureAccordion data={teachingProcedure} />
+                </div>
+              )}
+            </>
           }
         >
           <div
@@ -538,13 +547,20 @@ export function DurationCard({
         </span>
       }
       details={
-        <dl className="space-y-3">
-          <Row label="Phase" value={phase} />
-          <Row label="Data type" value="Frequency / Duration" />
-          <Row label="Minimum" value={`${minDurationSec}s`} />
-          <Row label="Times" value={String(instances.length)} />
-          <Row label="Total" value={formatTime(totalMs)} />
-        </dl>
+        <>
+          <dl className="space-y-3">
+            <Row label="Phase" value={phase} />
+            <Row label="Data type" value="Frequency / Duration" />
+            <Row label="Minimum" value={`${minDurationSec}s`} />
+            <Row label="Times" value={String(instances.length)} />
+            <Row label="Total" value={formatTime(totalMs)} />
+          </dl>
+          {teachingProcedure && (
+            <div className="mt-4">
+              <TeachingProcedureAccordion data={teachingProcedure} />
+            </div>
+          )}
+        </>
       }
       expandedView={
         <ol className="px-3 pt-2 pb-3 space-y-1">
