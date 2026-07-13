@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -9,6 +9,13 @@ import { cn } from "@/lib/utils";
  *  tile's own right edge — enough to read as a gap, not so much that it eats
  *  into the panel's already-tight body width. */
 const DRAWER_TILE_GAP_PX = 6;
+
+/** How long the outgoing card's content plays its exit slide before the
+ *  real prev/next callback fires (see triggerPrev/triggerNext) — the
+ *  parent doesn't actually switch `activeId` until this elapses, so the
+ *  still-mounted outgoing instance has time to animate out before it's
+ *  replaced by a freshly-mounted one for the new card. */
+const EXIT_MS = 180;
 
 export interface DataDetailsDrawerProps {
   open: boolean;
@@ -95,6 +102,25 @@ export function DataDetailsDrawer({
   // is replaced by a button indicating which way to scroll to bring the
   // card back into view.
   const [offDirection, setOffDirection] = useState<"above" | "below" | null>(null);
+  // Which nav button is mid-press — set the instant it's clicked so THIS
+  // (still-mounted, about-to-be-replaced) instance can play its own exit
+  // slide immediately, rather than just vanishing the moment the parent's
+  // real callback swaps activeId. The real onPrevCard/onNextCard only
+  // fires after EXIT_MS, once that exit has actually played out.
+  const [exitDir, setExitDir] = useState<"prev" | "next" | null>(null);
+  const exitTimeoutRef = useRef<number | null>(null);
+  useEffect(() => () => window.clearTimeout(exitTimeoutRef.current ?? undefined), []);
+
+  const triggerPrev = () => {
+    if (!onPrevCard || exitDir) return;
+    setExitDir("prev");
+    exitTimeoutRef.current = window.setTimeout(() => onPrevCard(), EXIT_MS);
+  };
+  const triggerNext = () => {
+    if (!onNextCard || exitDir) return;
+    setExitDir("next");
+    exitTimeoutRef.current = window.setTimeout(() => onNextCard(), EXIT_MS);
+  };
 
   useEffect(() => setMounted(true), []);
 
@@ -295,27 +321,44 @@ export function DataDetailsDrawer({
       </button>
 
       <div className="h-full overflow-y-auto p-4">
-        <div className="flex items-center gap-1 pr-8">
+        <div className="flex items-start gap-1 pr-8">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onPrevCard?.();
+              triggerPrev();
             }}
-            disabled={!onPrevCard}
+            disabled={!onPrevCard || exitDir !== null}
             aria-label="Previous card"
             className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
           >
             <ChevronLeft className="size-4" />
           </button>
-          <h2 className="font-display text-lg leading-[1.05] flex-1 min-w-0 truncate text-center">{title}</h2>
+          {/* The title's own vertical reel — a plain "cards flowing left/
+              right" slide would read oddly on multi-line text, so it moves
+              vertically instead (like an odometer digit), matching the
+              same "prev/next" direction as the horizontal content slide
+              below: prev reels upward (this exits up, the incoming title
+              rises up from below), next reels downward (opposite). */}
+          <motion.h2
+            className="font-display text-lg leading-[1.05] flex-1 min-w-0 text-center"
+            initial={slideFrom ? { y: slideFrom === "right" ? -16 : 16, opacity: 0 } : false}
+            animate={
+              exitDir ? { y: exitDir === "next" ? 16 : -16, opacity: 0 } : { y: 0, opacity: 1 }
+            }
+            transition={
+              exitDir ? { duration: EXIT_MS / 1000, ease: "easeIn" } : { type: "spring", stiffness: 380, damping: 32 }
+            }
+          >
+            {title}
+          </motion.h2>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onNextCard?.();
+              triggerNext();
             }}
-            disabled={!onNextCard}
+            disabled={!onNextCard || exitDir !== null}
             aria-label="Next card"
             className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
           >
@@ -324,8 +367,12 @@ export function DataDetailsDrawer({
         </div>
         <motion.div
           initial={slideFrom ? { x: slideFrom === "right" ? 24 : -24, opacity: 0 } : false}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          animate={
+            exitDir ? { x: exitDir === "next" ? -24 : 24, opacity: 0 } : { x: 0, opacity: 1 }
+          }
+          transition={
+            exitDir ? { duration: EXIT_MS / 1000, ease: "easeIn" } : { type: "spring", stiffness: 380, damping: 32 }
+          }
         >
           {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
           {details && <div className="mt-4 text-sm">{details}</div>}
