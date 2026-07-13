@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -15,7 +15,111 @@ const DRAWER_TILE_GAP_PX = 6;
  *  parent doesn't actually switch `activeId` until this elapses, so the
  *  still-mounted outgoing instance has time to animate out before it's
  *  replaced by a freshly-mounted one for the new card. */
-const EXIT_MS = 180;
+const EXIT_MS = 220;
+
+/** Shared by both the outgoing (exit) and incoming (enter) title/content
+ *  slides so the two halves read as one continuous motion instead of two
+ *  mismatched animations stitched together — same duration, same curve,
+ *  on both sides of the swap. */
+const SLIDE_TRANSITION = { duration: EXIT_MS / 1000, ease: "easeInOut" } as const;
+
+/** Whether an entering instance has cleared its "just mounted, still at the
+ *  off-screen starting position" frame yet. An ancestor `<AnimatePresence
+ *  initial={false}>` (see routes/index.tsx's card list) propagates that
+ *  `initial={false}` down through context to every descendant motion
+ *  component, no matter how deeply nested or how much later it mounts —
+ *  so a plain `initial`-to-`animate` prop pair on these title/content
+ *  elements never actually animates on mount, it just pops straight to
+ *  the `animate` target. Framer *does* still animate a plain value change
+ *  on an already-mounted instance regardless of that context, so the
+ *  entrance is driven the same way the exit already is: render the first
+ *  frame already sitting at the off-screen position (no transition), then
+ *  flip a state field a tick later so the following render's `animate`
+ *  change actually plays as a real, observable transition. */
+function useEnterPhase(slideFrom: "left" | "right" | null | undefined) {
+  const [entered, setEntered] = useState(!slideFrom);
+  useEffect(() => {
+    if (!slideFrom) return;
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [slideFrom]);
+  return entered;
+}
+
+/** The title's own vertical reel, split into its own memoized component so
+ *  the panel's own arrowTop/hugWidth/offDirection state (which updates on
+ *  every scroll/resize tick while the drawer is open) doesn't re-render —
+ *  and thereby restart — this mid-flight slide/fade tween. */
+const DrawerTitle = memo(function DrawerTitle({
+  title,
+  slideFrom,
+  exitDir,
+  onClick,
+}: {
+  title: string;
+  slideFrom?: "left" | "right" | null;
+  exitDir: "prev" | "next" | null;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const entered = useEnterPhase(slideFrom);
+  const entering = slideFrom && !entered;
+  return (
+    // The title's own vertical reel — a plain "cards flowing left/right"
+    // slide would read oddly on multi-line text, so it moves vertically
+    // instead (like an odometer digit), matching the same "prev/next"
+    // direction as the horizontal content slide below: prev reels upward
+    // (this exits up, the incoming title rises up from below), next reels
+    // downward (opposite). Clickable — scrolls the (now-sticky) body back
+    // to top.
+    <motion.h2
+      onClick={onClick}
+      className="font-display text-base leading-[1.15] flex-1 min-w-0 cursor-pointer select-none text-center"
+      animate={
+        exitDir
+          ? { y: exitDir === "next" ? 16 : -16, opacity: 0 }
+          : entering
+            ? { y: slideFrom === "right" ? -16 : 16, opacity: 0 }
+            : { y: 0, opacity: 1 }
+      }
+      transition={entering ? { duration: 0 } : SLIDE_TRANSITION}
+    >
+      {title}
+    </motion.h2>
+  );
+});
+
+/** Same reasoning as DrawerTitle above — kept separate from the panel's
+ *  own frequently re-rendering state. */
+const DrawerContent = memo(function DrawerContent({
+  details,
+  slideFrom,
+  exitDir,
+  contentScrollRef,
+}: {
+  details?: ReactNode;
+  slideFrom?: "left" | "right" | null;
+  exitDir: "prev" | "next" | null;
+  contentScrollRef: RefObject<HTMLDivElement | null>;
+}) {
+  const entered = useEnterPhase(slideFrom);
+  const entering = slideFrom && !entered;
+  return (
+    <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto p-4">
+      <motion.div
+        animate={
+          exitDir
+            ? { x: exitDir === "next" ? -24 : 24, opacity: 0 }
+            : entering
+              ? { x: slideFrom === "right" ? 24 : -24, opacity: 0 }
+              : { x: 0, opacity: 1 }
+        }
+        transition={entering ? { duration: 0 } : SLIDE_TRANSITION}
+      >
+        {details && <div className="text-sm">{details}</div>}
+      </motion.div>
+    </div>
+  );
+});
 
 export interface DataDetailsDrawerProps {
   open: boolean;
@@ -95,6 +199,7 @@ export function DataDetailsDrawer({
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
   const [hugWidth, setHugWidth] = useState<number | null>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   // Set once the card has scrolled fully out of the visible pane (not just
   // clamped near an edge — clampedArrowTop below already handles "close to
   // the edge" by sliding the diamond to it). While this is set, the arrow —
@@ -124,7 +229,12 @@ export function DataDetailsDrawer({
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) — this runs before the browser paints,
+  // so a freshly-mounted instance (after a prev/next card switch) measures
+  // and settles arrowTop/hugWidth in the same frame it first renders,
+  // instead of painting once at their zeroed defaults and visibly
+  // snapping into place a frame later.
+  useLayoutEffect(() => {
     if (!open) return;
     const update = () => {
       const el = cardRef.current;
@@ -187,6 +297,15 @@ export function DataDetailsDrawer({
   const scrollToCard = () => {
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+
+  // Tapping the (now-sticky) title jumps its scrolled content back to top —
+  // a quick way back after digging into a long teaching-procedure section.
+  // Wrapped in useCallback (stable identity) so it doesn't defeat
+  // DrawerTitle's memoization below.
+  const onTitleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   if (!mounted) return null;
 
@@ -303,79 +422,55 @@ export function DataDetailsDrawer({
         </button>
       )}
 
-      {/* Semi-transparent circular backdrop (not just on hover) — the body
-          below scrolls underneath this fixed corner, and a bare glyph with
-          no fill of its own was getting lost against dark or busy text
-          passing behind it. backdrop-blur softens whatever's behind it
-          further still, on top of the /80 fill. */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenChange(false);
-        }}
-        aria-label="Close"
-        className="absolute right-3 top-3 z-10 grid place-items-center size-7 rounded-full bg-background/80 shadow-sm backdrop-blur-sm text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
-      >
-        <X className="size-4" />
-      </button>
-
-      <div className="h-full overflow-y-auto p-4">
-        <div className="flex items-start gap-1 pr-8">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerPrev();
-            }}
-            disabled={!onPrevCard || exitDir !== null}
-            aria-label="Previous card"
-            className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          {/* The title's own vertical reel — a plain "cards flowing left/
-              right" slide would read oddly on multi-line text, so it moves
-              vertically instead (like an odometer digit), matching the
-              same "prev/next" direction as the horizontal content slide
-              below: prev reels upward (this exits up, the incoming title
-              rises up from below), next reels downward (opposite). */}
-          <motion.h2
-            className="font-display text-base leading-[1.15] flex-1 min-w-0 text-center"
-            initial={slideFrom ? { y: slideFrom === "right" ? -16 : 16, opacity: 0 } : false}
-            animate={
-              exitDir ? { y: exitDir === "next" ? 16 : -16, opacity: 0 } : { y: 0, opacity: 1 }
-            }
-            transition={
-              exitDir ? { duration: EXIT_MS / 1000, ease: "easeIn" } : { type: "spring", stiffness: 380, damping: 32 }
-            }
-          >
-            {title}
-          </motion.h2>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              triggerNext();
-            }}
-            disabled={!onNextCard || exitDir !== null}
-            aria-label="Next card"
-            className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
-          >
-            <ChevronRight className="size-4" />
-          </button>
+      <div className="flex h-full flex-col">
+        {/* Sticky header — stays put while the content below scrolls under
+            it. bg-background keeps scrolled content from showing through;
+            the border gives scrolled content a clear edge to disappear
+            behind instead of just clipping invisibly. Close now lives here
+            too (rather than floating absolutely over the body) so it, the
+            arrows, and the title's own top line all sit in one flex row and
+            align naturally instead of needing separately-matched offsets. */}
+        <div className="shrink-0 border-b border-stone-200/70 bg-background p-4 pb-3">
+          <div className="flex items-start gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerPrev();
+              }}
+              disabled={!onPrevCard || exitDir !== null}
+              aria-label="Previous card"
+              className="-mt-[5px] grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <DrawerTitle title={title} slideFrom={slideFrom} exitDir={exitDir} onClick={onTitleClick} />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerNext();
+              }}
+              disabled={!onNextCard || exitDir !== null}
+              aria-label="Next card"
+              className="-mt-[5px] grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChange(false);
+              }}
+              aria-label="Close"
+              className="-mt-[5px] grid shrink-0 place-items-center size-7 rounded-full text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
-        <motion.div
-          initial={slideFrom ? { x: slideFrom === "right" ? 24 : -24, opacity: 0 } : false}
-          animate={
-            exitDir ? { x: exitDir === "next" ? -24 : 24, opacity: 0 } : { x: 0, opacity: 1 }
-          }
-          transition={
-            exitDir ? { duration: EXIT_MS / 1000, ease: "easeIn" } : { type: "spring", stiffness: 380, damping: 32 }
-          }
-        >
-          {details && <div className="mt-1 text-sm">{details}</div>}
-        </motion.div>
+        <DrawerContent details={details} slideFrom={slideFrom} exitDir={exitDir} contentScrollRef={contentScrollRef} />
       </div>
     </motion.div>,
     document.body,
