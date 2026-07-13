@@ -67,6 +67,9 @@ export function MiniTileShell({
   actions,
   progress,
   isComplete = false,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const large = density === "large";
@@ -178,6 +181,9 @@ export function MiniTileShell({
           title={title}
           description={description}
           details={details}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={articleRef}

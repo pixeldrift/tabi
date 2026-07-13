@@ -95,6 +95,9 @@ export function TaskAnalysisCard({
   tileDensity,
   listMode,
   teachingProcedure,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: TaskAnalysisCardProps) {
   const cardKey = id ?? title;
   const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () => steps.map(() => null));
@@ -206,6 +209,9 @@ export function TaskAnalysisCard({
         toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         details={
           <>
             <dl className="space-y-3">
@@ -381,6 +387,9 @@ export function TaskAnalysisCard({
         toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         actions={
           // Badge and buttons slide together — each button scores THIS step
           // specifically, so advancing to the next step should read as the
@@ -424,6 +433,9 @@ export function TaskAnalysisCard({
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
       toolbarHeight={toolbarHeight}
+      onPrevCard={onPrevCard}
+      onNextCard={onNextCard}
+      slideFrom={slideFrom}
       progress={progress}
       isComplete={isComplete}
       expanded={expanded}

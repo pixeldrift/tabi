@@ -54,6 +54,9 @@ export function DurationCard({
   tileDensity,
   listMode,
   teachingProcedure,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: DurationCardProps) {
   const cardKey = id ?? title;
   const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
@@ -269,6 +272,9 @@ export function DurationCard({
           onOpenDetails={onOpenDetails}
           stickyTop={stickyTop}
           toolbarHeight={toolbarHeight}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           details={
             <>
               <dl className="space-y-3">
@@ -457,6 +463,9 @@ export function DurationCard({
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         actions={
           // Badge and pill travel together — the pill's time/play-pause is
           // specific to THIS instance, so advancing to another one should
@@ -534,6 +543,9 @@ export function DurationCard({
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
       toolbarHeight={toolbarHeight}
+      onPrevCard={onPrevCard}
+      onNextCard={onNextCard}
+      slideFrom={slideFrom}
       progress={null}
       isComplete={isComplete}
       expanded={expanded}

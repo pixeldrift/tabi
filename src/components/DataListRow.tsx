@@ -51,6 +51,9 @@ export function DataListRow({
   actions,
   progress,
   isComplete = false,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: DataListRowProps) {
   const rowRef = useRef<HTMLElement | null>(null);
   const showActions = actions && !reorderEditing;
@@ -150,6 +153,9 @@ export function DataListRow({
           onOpenChange={onDetailsOpenChange ?? (() => {})}
           title={title}
           description={description}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={rowRef}

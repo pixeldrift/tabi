@@ -64,6 +64,9 @@ export function RatingCard({
   tileDensity,
   listMode,
   teachingProcedure,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: RatingCardProps) {
   const numStars = max - min;
   // A single subjective score for the whole session — unlike the other card
@@ -108,6 +111,9 @@ export function RatingCard({
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         details={
           <>
             <dl className="space-y-3">
@@ -178,6 +184,9 @@ export function RatingCard({
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         actions={
           <ListRatingButton
             rating={rating}
@@ -211,6 +220,9 @@ export function RatingCard({
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
       toolbarHeight={toolbarHeight}
+      onPrevCard={onPrevCard}
+      onNextCard={onNextCard}
+      slideFrom={slideFrom}
       progress={null}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}

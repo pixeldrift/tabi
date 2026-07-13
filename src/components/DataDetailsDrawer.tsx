@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
-import { X, ChevronUp, ChevronDown } from "lucide-react";
+import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,20 @@ export interface DataDetailsDrawerProps {
   title: string;
   description?: string;
   details?: ReactNode;
+  /** Skip to the previous/next card in display order without closing the
+   *  drawer — rendered as small circular arrows flanking the title. Omit
+   *  (leave undefined) when there's nowhere to go — e.g. only one visible
+   *  card — the corresponding arrow renders disabled. */
+  onPrevCard?: () => void;
+  onNextCard?: () => void;
+  /** Set by the parent for exactly the one mount that follows a prev/next
+   *  click, so this freshly-mounted card's drawer knows to slide its
+   *  content in from that side instead of just appearing in place. Since
+   *  the whole component remounts fresh per active-card change (see
+   *  CardShell/MiniTileShell/DataListRow's own `{isActive && ...}` gating),
+   *  a plain `initial` offset read once at mount is enough — no
+   *  AnimatePresence needed. */
+  slideFrom?: "left" | "right" | null;
   /** Viewport-relative pixel offset where the sticky toolbar begins — the
    *  drawer starts here (not below the toolbar) so it slides out on top of
    *  the toolbar's filter/sort/search row, not just the pane below it. */
@@ -62,6 +76,9 @@ export function DataDetailsDrawer({
   title,
   description,
   details,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
   top,
   toolbarHeight,
   cardRef,
@@ -195,7 +212,10 @@ export function DataDetailsDrawer({
           that border, not the outside). */}
       <button
         type="button"
-        onClick={() => onOpenChange(!open)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenChange(!open);
+        }}
         aria-label={open ? "Close details drawer" : "Open details drawer"}
         aria-expanded={open}
         className={cn(
@@ -242,7 +262,10 @@ export function DataDetailsDrawer({
       {open && offDirection && (
         <button
           type="button"
-          onClick={scrollToCard}
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToCard();
+          }}
           aria-label={offDirection === "above" ? "Active card is above — scroll to it" : "Active card is below — scroll to it"}
           title="Scroll to active card"
           className={cn(
@@ -254,19 +277,59 @@ export function DataDetailsDrawer({
         </button>
       )}
 
+      {/* Semi-transparent circular backdrop (not just on hover) — the body
+          below scrolls underneath this fixed corner, and a bare glyph with
+          no fill of its own was getting lost against dark or busy text
+          passing behind it. backdrop-blur softens whatever's behind it
+          further still, on top of the /80 fill. */}
       <button
         type="button"
-        onClick={() => onOpenChange(false)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenChange(false);
+        }}
         aria-label="Close"
-        className="absolute right-3 top-3 grid place-items-center size-7 rounded-full text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
+        className="absolute right-3 top-3 z-10 grid place-items-center size-7 rounded-full bg-background/80 shadow-sm backdrop-blur-sm text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
       >
         <X className="size-4" />
       </button>
 
-      <div className="h-full overflow-y-auto p-6">
-        <h2 className="font-display text-lg leading-[1.05] pr-8">{title}</h2>
-        {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
-        {details && <div className="mt-6 text-sm">{details}</div>}
+      <div className="h-full overflow-y-auto p-4">
+        <div className="flex items-center gap-1 pr-8">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrevCard?.();
+            }}
+            disabled={!onPrevCard}
+            aria-label="Previous card"
+            className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <h2 className="font-display text-lg leading-[1.05] flex-1 min-w-0 truncate text-center">{title}</h2>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNextCard?.();
+            }}
+            disabled={!onNextCard}
+            aria-label="Next card"
+            className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+        <motion.div
+          initial={slideFrom ? { x: slideFrom === "right" ? 24 : -24, opacity: 0 } : false}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+        >
+          {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+          {details && <div className="mt-4 text-sm">{details}</div>}
+        </motion.div>
       </div>
     </motion.div>,
     document.body,

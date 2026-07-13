@@ -49,6 +49,12 @@ export interface CardEditAndDrawerProps {
    *  this card's own details drawer — optional since not every mock card
    *  has one filled in yet. */
   teachingProcedure?: TeachingProcedure;
+  /** Skip to the previous/next card in display order, forwarded straight
+   *  through to the shared drawer — see DataDetailsDrawer's own props for
+   *  the full explanation. */
+  onPrevCard?: () => void;
+  onNextCard?: () => void;
+  slideFrom?: "left" | "right" | null;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {
@@ -107,6 +113,9 @@ export function CardShell({
   onToggleExpanded,
   expandedView,
   children,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: CardShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
@@ -220,6 +229,9 @@ export function CardShell({
           title={title}
           description={description}
           details={details}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={articleRef}

@@ -1100,6 +1100,11 @@ function renderCard(
      *  than a separate generic component that has no access to that state. */
     listMode?: boolean;
     teachingProcedure?: TeachingProcedure;
+    /** Skip to the previous/next card in display order without closing the
+     *  drawer — see DataDetailsDrawer's own props for the full explanation. */
+    onPrevCard?: () => void;
+    onNextCard?: () => void;
+    slideFrom?: "left" | "right" | null;
   },
 ): React.ReactNode {
   switch (card.kind) {
@@ -1389,6 +1394,36 @@ const DataCardList = memo(function DataCardList({
     else cardRefs.current.delete(id);
   };
 
+  // Which side the newly-active card's drawer content should slide in
+  // from — set only by the prev/next arrows themselves (see goToPrevCard/
+  // goToNextCard below) and cleared by every OTHER path that also changes
+  // activeId (a direct card click, or its own details button), so a plain
+  // "select a different card" never replays a stale slide from an earlier
+  // nav click.
+  const [slideFrom, setSlideFrom] = useState<"left" | "right" | null>(null);
+  const activeIdx = visibleCards.findIndex((c) => c.id === activeId);
+  const hasMultipleCards = visibleCards.length > 1;
+  // Wraps around at either end rather than clamping — with the arrows
+  // always live once there's more than one card, disabling them right at
+  // the ends would be the only time they ever go inert, which reads as
+  // broken more than as a boundary.
+  const prevCard = hasMultipleCards
+    ? visibleCards[(activeIdx - 1 + visibleCards.length) % visibleCards.length]
+    : undefined;
+  const nextCard = hasMultipleCards ? visibleCards[(activeIdx + 1) % visibleCards.length] : undefined;
+  const goToPrevCard = prevCard
+    ? () => {
+        setSlideFrom("left");
+        setActiveId(prevCard.id);
+      }
+    : undefined;
+  const goToNextCard = nextCard
+    ? () => {
+        setSlideFrom("right");
+        setActiveId(nextCard.id);
+      }
+    : undefined;
+
   // Card mode's own template collapses to one column when the drawer opens
   // (see IndexInner) — safe there since a card's own max-w-md already caps
   // its size regardless of its grid track's width, so the template change
@@ -1411,7 +1446,10 @@ const DataCardList = memo(function DataCardList({
     renderCard(card, displayMode, {
       id: card.id,
       isActive: card.id === activeId,
-      onActivate: () => setActiveId(card.id),
+      onActivate: () => {
+        setSlideFrom(null);
+        setActiveId(card.id);
+      },
       detailsOpen: card.id === activeId && drawerSlideOpen,
       onDetailsOpenChange: onDrawerOpenChange,
       onOpenDetails: () => {
@@ -1426,6 +1464,7 @@ const DataCardList = memo(function DataCardList({
         // closed first, so the slide-open plays as a normal, already-mounted
         // prop change — the same way toggling the drawer's own pull tab
         // (which never remounts) already animates correctly.
+        setSlideFrom(null);
         setActiveId(card.id);
         requestAnimationFrame(() => onDrawerOpenChange(true));
       },
@@ -1440,6 +1479,12 @@ const DataCardList = memo(function DataCardList({
       tileDensity: displayMode === "grid-large" ? "large" : displayMode === "grid-small" ? "small" : undefined,
       listMode: displayMode === "list",
       teachingProcedure: card.teachingProcedure,
+      // Only wired for the card that's actually active — the newly-active
+      // card's own fresh drawer instance is the only one that will ever
+      // read slideFrom (see its own comment above).
+      onPrevCard: card.id === activeId ? goToPrevCard : undefined,
+      onNextCard: card.id === activeId ? goToNextCard : undefined,
+      slideFrom: card.id === activeId ? slideFrom : null,
     });
 
   // Edit mode is its own render path — drag-to-reorder (via Motion's

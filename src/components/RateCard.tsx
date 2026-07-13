@@ -51,6 +51,9 @@ export function RateCard({
   tileDensity,
   listMode,
   teachingProcedure,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: RateCardProps) {
   const cardKey = id ?? title;
   const [count, setCount] = useCardState(cardKey, "count", 0);
@@ -189,6 +192,9 @@ export function RateCard({
           onOpenDetails={onOpenDetails}
           stickyTop={stickyTop}
           toolbarHeight={toolbarHeight}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           details={
             <>
               <dl className="space-y-3">
@@ -312,6 +318,9 @@ export function RateCard({
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
         toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         actions={
           <div className="flex items-center gap-1">
             <NumberKeypad
@@ -378,6 +387,9 @@ export function RateCard({
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
       toolbarHeight={toolbarHeight}
+      onPrevCard={onPrevCard}
+      onNextCard={onNextCard}
+      slideFrom={slideFrom}
       progress={null}
       editing={editing}
       details={

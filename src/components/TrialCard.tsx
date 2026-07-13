@@ -91,6 +91,9 @@ export function TrialCard({
   tileDensity,
   listMode,
   teachingProcedure,
+  onPrevCard,
+  onNextCard,
+  slideFrom,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const cardKey = id ?? title;
@@ -279,6 +282,9 @@ export function TrialCard({
         toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         details={
           <>
             <dl className="space-y-3">
@@ -430,6 +436,9 @@ export function TrialCard({
         toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
         actions={
           // The badge AND the buttons travel together here — unlike
           // Frequency/Rate's tally-and-increment (one action, repeated), each
@@ -556,6 +565,9 @@ export function TrialCard({
           onOpenChange={onDetailsOpenChange ?? (() => {})}
           title={title}
           description={description}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
           details={
             <>
               <dl className="space-y-3">
