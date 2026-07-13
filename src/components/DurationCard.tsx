@@ -10,6 +10,7 @@ import { useCardState, useResetGuard } from "./CardDataStore";
 import { DurationIcon } from "./icons/DurationIcon";
 import { TimeKeypad } from "./TimeKeypad";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -277,13 +278,16 @@ export function DurationCard({
           slideFrom={slideFrom}
           details={
             <>
-              <dl className="space-y-3">
-                <Row label="Phase" value={phase} />
-                <Row label="Data type" value="Frequency / Duration" />
-                <Row label="Minimum" value={`${minDurationSec}s`} />
-                <Row label="Times" value={String(instances.length)} />
-                <Row label="Total" value={formatTime(totalMs)} />
-              </dl>
+              <DrawerQuickFacts
+                icon={<DurationIcon />}
+                dataTypeLabel="Frequency / Duration"
+                phase={phase}
+                stats={[
+                  { label: "Minimum", value: `${minDurationSec}s` },
+                  { label: "Times", value: instances.length },
+                  { label: "Total", value: formatTime(totalMs) },
+                ]}
+              />
               {teachingProcedure && (
                 <div className="mt-4">
                   <TeachingProcedureAccordion data={teachingProcedure} />
@@ -560,13 +564,16 @@ export function DurationCard({
       }
       details={
         <>
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Frequency / Duration" />
-            <Row label="Minimum" value={`${minDurationSec}s`} />
-            <Row label="Times" value={String(instances.length)} />
-            <Row label="Total" value={formatTime(totalMs)} />
-          </dl>
+          <DrawerQuickFacts
+            icon={<DurationIcon />}
+            dataTypeLabel="Frequency / Duration"
+            phase={phase}
+            stats={[
+              { label: "Minimum", value: `${minDurationSec}s` },
+              { label: "Times", value: instances.length },
+              { label: "Total", value: formatTime(totalMs) },
+            ]}
+          />
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} />
@@ -921,15 +928,6 @@ function TriangleNav({
         )}
       </svg>
     </motion.button>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
   );
 }
 

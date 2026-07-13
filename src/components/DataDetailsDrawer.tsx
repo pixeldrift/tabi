@@ -341,7 +341,7 @@ export function DataDetailsDrawer({
               below: prev reels upward (this exits up, the incoming title
               rises up from below), next reels downward (opposite). */}
           <motion.h2
-            className="font-display text-lg leading-[1.05] flex-1 min-w-0 text-center"
+            className="font-display text-base leading-[1.15] flex-1 min-w-0 text-center"
             initial={slideFrom ? { y: slideFrom === "right" ? -16 : 16, opacity: 0 } : false}
             animate={
               exitDir ? { y: exitDir === "next" ? 16 : -16, opacity: 0 } : { y: 0, opacity: 1 }
@@ -374,8 +374,7 @@ export function DataDetailsDrawer({
             exitDir ? { duration: EXIT_MS / 1000, ease: "easeIn" } : { type: "spring", stiffness: 380, damping: 32 }
           }
         >
-          {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
-          {details && <div className="mt-4 text-sm">{details}</div>}
+          {details && <div className="mt-1 text-sm">{details}</div>}
         </motion.div>
       </div>
     </motion.div>,

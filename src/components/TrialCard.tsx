@@ -14,6 +14,7 @@ import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
@@ -287,26 +288,17 @@ export function TrialCard({
         slideFrom={slideFrom}
         details={
           <>
-            <dl className="space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Phase</dt>
-                <dd className="font-medium">{phase}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Data type</dt>
-                <dd className="font-medium">{dataType}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Minimum trials</dt>
-                <dd className="font-medium">{minTrials}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Correct so far</dt>
-                <dd className="font-medium">
-                  {correctCount} / {completedCount || 0}
-                </dd>
-              </div>
-            </dl>
+            <DrawerQuickFacts
+              icon={<PercentCorrectIcon />}
+              dataTypeLabel={dataType}
+              phase={phase}
+              stats={[
+                { label: "Minimum trials", value: minTrials },
+                ...(maxTrials ? [{ label: "Maximum trials", value: maxTrials }] : []),
+                { label: "Correct so far", value: `${correctCount} / ${completedCount || 0}` },
+                { label: "Percent correct", value: `${progress}%` },
+              ]}
+            />
             {teachingProcedure && (
               <div className="mt-4">
                 <TeachingProcedureAccordion data={teachingProcedure} />
@@ -570,32 +562,17 @@ export function TrialCard({
           slideFrom={slideFrom}
           details={
             <>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Phase</dt>
-                  <dd className="font-medium">{phase}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Data type</dt>
-                  <dd className="font-medium">{dataType}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Minimum trials</dt>
-                  <dd className="font-medium">{minTrials}</dd>
-                </div>
-                {maxTrials && (
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Maximum trials</dt>
-                    <dd className="font-medium">{maxTrials}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Correct so far</dt>
-                  <dd className="font-medium">
-                    {correctCount} / {completedCount || 0}
-                  </dd>
-                </div>
-              </dl>
+              <DrawerQuickFacts
+                icon={<PercentCorrectIcon />}
+                dataTypeLabel={dataType}
+                phase={phase}
+                stats={[
+                  { label: "Minimum trials", value: minTrials },
+                  ...(maxTrials ? [{ label: "Maximum trials", value: maxTrials }] : []),
+                  { label: "Correct so far", value: `${correctCount} / ${completedCount || 0}` },
+                  { label: "Percent correct", value: `${progress}%` },
+                ]}
+              />
               {teachingProcedure && (
                 <div className="mt-4">
                   <TeachingProcedureAccordion data={teachingProcedure} />

@@ -11,6 +11,7 @@ import { RateIcon } from "./icons/RateIcon";
 import { NumberKeypad } from "./NumberKeypad";
 import { TimeKeypad } from "./TimeKeypad";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession, useRegisterActiveTimer, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -197,13 +198,16 @@ export function RateCard({
           slideFrom={slideFrom}
           details={
             <>
-              <dl className="space-y-3">
-                <Row label="Phase" value={phase} />
-                <Row label="Data type" value="Rate (per minute)" />
-                <Row label="Required window" value={`${minDurationSec}s`} />
-                <Row label="Count" value={String(count)} />
-                <Row label="Elapsed" value={formatTime(elapsed)} />
-              </dl>
+              <DrawerQuickFacts
+                icon={<RateIcon />}
+                dataTypeLabel="Rate (per minute)"
+                phase={phase}
+                stats={[
+                  { label: "Required window", value: `${minDurationSec}s` },
+                  { label: "Count", value: count },
+                  { label: "Elapsed", value: formatTime(elapsed) },
+                ]}
+              />
               {teachingProcedure && (
                 <div className="mt-4">
                   <TeachingProcedureAccordion data={teachingProcedure} />
@@ -394,13 +398,16 @@ export function RateCard({
       editing={editing}
       details={
         <>
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Rate (per minute)" />
-            <Row label="Required window" value={`${minDurationSec}s`} />
-            <Row label="Count" value={String(count)} />
-            <Row label="Elapsed" value={formatTime(elapsed)} />
-          </dl>
+          <DrawerQuickFacts
+            icon={<RateIcon />}
+            dataTypeLabel="Rate (per minute)"
+            phase={phase}
+            stats={[
+              { label: "Required window", value: `${minDurationSec}s` },
+              { label: "Count", value: count },
+              { label: "Elapsed", value: formatTime(elapsed) },
+            ]}
+          />
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} />
@@ -549,15 +556,6 @@ export function RateCard({
         </motion.button>
       </div>
     </CardShell>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
     </div>
   );
 }

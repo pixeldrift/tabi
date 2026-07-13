@@ -7,6 +7,7 @@ import { MiniTileShell } from "./MiniTileShell";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -116,12 +117,15 @@ export function RatingCard({
         slideFrom={slideFrom}
         details={
           <>
-            <dl className="space-y-3">
-              <Row label="Phase" value={phase} />
-              <Row label="Data type" value="Rating (quality)" />
-              <Row label="Range" value={`${min}–${max}`} />
-              <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
-            </dl>
+            <DrawerQuickFacts
+              icon={<Star />}
+              dataTypeLabel="Rating (quality)"
+              phase={phase}
+              stats={[
+                { label: "Range", value: `${min}–${max}` },
+                { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
+              ]}
+            />
             {teachingProcedure && (
               <div className="mt-4">
                 <TeachingProcedureAccordion data={teachingProcedure} />
@@ -228,12 +232,15 @@ export function RatingCard({
       onToggleExpanded={() => setExpanded((v) => !v)}
       details={
         <>
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Rating (quality)" />
-            <Row label="Range" value={`${min}–${max}`} />
-            <Row label="Current rating" value={rating > 0 ? String(rating) : "Not yet rated"} />
-          </dl>
+          <DrawerQuickFacts
+            icon={<Star />}
+            dataTypeLabel="Rating (quality)"
+            phase={phase}
+            stats={[
+              { label: "Range", value: `${min}–${max}` },
+              { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
+            ]}
+          />
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} />
@@ -563,14 +570,5 @@ function RatingStar({
         {value}
       </span>
     </motion.button>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
   );
 }

@@ -9,6 +9,7 @@ import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowAct
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TaskAnalysisIcon } from "./icons/TaskAnalysisIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -214,13 +215,16 @@ export function TaskAnalysisCard({
         slideFrom={slideFrom}
         details={
           <>
-            <dl className="space-y-3">
-              <Row label="Phase" value={phase} />
-              <Row label="Data type" value="Task analysis (I / P / E)" />
-              <Row label="Steps" value={String(steps.length)} />
-              <Row label="Scored" value={`${completed} / ${steps.length}`} />
-              <Row label="Independent" value={`${independent} / ${steps.length}`} />
-            </dl>
+            <DrawerQuickFacts
+              icon={<TaskAnalysisIcon />}
+              dataTypeLabel="Task analysis (I / P / E)"
+              phase={phase}
+              stats={[
+                { label: "Steps", value: steps.length },
+                { label: "Scored", value: `${completed} / ${steps.length}` },
+                { label: "Independent", value: `${independent} / ${steps.length}` },
+              ]}
+            />
             {teachingProcedure && (
               <div className="mt-4">
                 <TeachingProcedureAccordion data={teachingProcedure} />
@@ -457,13 +461,16 @@ export function TaskAnalysisCard({
       }
       details={
         <>
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Task analysis (I / P / E)" />
-            <Row label="Steps" value={String(steps.length)} />
-            <Row label="Scored" value={`${completed} / ${steps.length}`} />
-            <Row label="Independent" value={`${independent} / ${steps.length}`} />
-          </dl>
+          <DrawerQuickFacts
+            icon={<TaskAnalysisIcon />}
+            dataTypeLabel="Task analysis (I / P / E)"
+            phase={phase}
+            stats={[
+              { label: "Steps", value: steps.length },
+              { label: "Scored", value: `${completed} / ${steps.length}` },
+              { label: "Independent", value: `${independent} / ${steps.length}` },
+            ]}
+          />
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} />
@@ -666,14 +673,5 @@ function TriangleNav({
         )}
       </svg>
     </motion.button>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
   );
 }

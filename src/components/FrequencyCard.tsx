@@ -10,6 +10,7 @@ import { FrequencyIcon } from "./icons/FrequencyIcon";
 import { NumberPadIcon } from "./icons/NumberPadIcon";
 import { NumberKeypad } from "./NumberKeypad";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
+import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -127,12 +128,15 @@ export function FrequencyCard({
         slideFrom={slideFrom}
         details={
           <>
-            <dl className="space-y-3">
-              <Row label="Phase" value={phase} />
-              <Row label="Data type" value="Frequency (count)" />
-              <Row label="Minimum count" value={String(minCount)} />
-              <Row label="Recorded so far" value={String(count)} />
-            </dl>
+            <DrawerQuickFacts
+              icon={<FrequencyIcon />}
+              dataTypeLabel="Frequency (count)"
+              phase={phase}
+              stats={[
+                { label: "Minimum count", value: minCount },
+                { label: "Recorded so far", value: count },
+              ]}
+            />
             {teachingProcedure && (
               <div className="mt-4">
                 <TeachingProcedureAccordion data={teachingProcedure} />
@@ -321,12 +325,15 @@ export function FrequencyCard({
       }
       details={
         <>
-          <dl className="space-y-3">
-            <Row label="Phase" value={phase} />
-            <Row label="Data type" value="Frequency (count)" />
-            <Row label="Minimum count" value={String(minCount)} />
-            <Row label="Recorded so far" value={String(count)} />
-          </dl>
+          <DrawerQuickFacts
+            icon={<FrequencyIcon />}
+            dataTypeLabel="Frequency (count)"
+            phase={phase}
+            stats={[
+              { label: "Minimum count", value: minCount },
+              { label: "Recorded so far", value: count },
+            ]}
+          />
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} />
@@ -414,14 +421,5 @@ export function FrequencyCard({
         </motion.button>
       </div>
     </CardShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </div>
   );
 }
