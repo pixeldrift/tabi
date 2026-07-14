@@ -83,10 +83,20 @@ type CardConfig = {
       title: string;
       phase: string;
       description: string;
-      minDurationSec: number;
+      /** Omit for interfering behaviors — there's no minimum window; every
+       *  instance counts regardless. */
+      minDurationSec?: number;
       locked?: boolean;
     }
-  | { kind: "duration"; title: string; phase: string; description: string; minDurationSec: number }
+  | {
+      kind: "duration";
+      title: string;
+      phase: string;
+      description: string;
+      /** Omit for interfering behaviors — there's no minimum; every
+       *  instance counts regardless. */
+      minDurationSec?: number;
+    }
   | {
       kind: "task-analysis";
       title: string;
@@ -240,7 +250,6 @@ const cards: CardConfig[] = [
     phase: "Baseline",
     description:
       "During a timed observation, tally each flop/drop. Rate is reported as occurrences per minute.",
-    minDurationSec: 60,
     teachingProcedure: {
       goal: "Reduce Phineas's flopping/dropping-to-floor behavior to fewer than 1 occurrence per minute across a timed observation, as it currently interferes with transitions and participation.",
       rationale:
@@ -326,24 +335,25 @@ const cards: CardConfig[] = [
     phase: "Intervention",
     description:
       "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per minute.",
-    minDurationSec: 60,
     teachingProcedure: {
       goal: "Reduce Phineas's head-banging to fewer than 1 occurrence per minute across a timed observation, prioritized as a safety-critical target.",
       rationale:
         "Head-banging carries immediate physical risk and is tracked by rate (not just count) so intensity/frequency changes are visible across observations of different lengths.",
       procedure:
-        "Tally each instance during the timed window. If intensity poses immediate risk of injury, prioritize safety (see Correction) over waiting to observe — data accuracy never overrides safety.",
+        "Tally a new instance once forceful head contact has continued for at least 10 seconds — a single isolated bang that doesn't repeat or continue isn't tallied on its own. If intensity poses immediate risk of injury, prioritize safety (see Correction) over waiting to observe — data accuracy never overrides safety.",
       sd: "Review the BCBA's current hypothesis in the full behavior plan before running this card — antecedents vary and matter for intervention, even though this card only tracks rate.",
       measurement: {
-        markCorrect: "Any forceful contact of the head against a person, object, or surface.",
-        markError: "Gentle self-stimulatory head movement with no forceful contact.",
+        markCorrect:
+          "Forceful head contact sustained for at least 10 seconds (onset) — count it as one instance regardless of how many individual bangs occur within that stretch, or within a following gap shorter than 60 continuous seconds.",
+        markError:
+          "A single forceful contact that doesn't repeat or continue for 10 seconds, or a resumption after a full 60-second gap with no head-banging has already closed the instance out (offset) — that's a new instance, not a continuation of the last one.",
       },
       correction:
         "Follow the safety plan's protective procedure immediately (protective equipment/blocking as trained) — do not wait for a natural pause to intervene. Log the instance once safe to do so.",
       materials:
         "Any protective equipment specified in the Safety Plan (see the Client Info tab's About Me section).",
       instructionalNotes:
-        "This is one of the few targets where safety response always takes precedence over data-collection precision — under-count rather than delay intervention.",
+        "Onset/offset thresholds: 10 continuous seconds before an instance counts, 60 continuous quiet seconds before it closes out — a recurrence within that 60-second window is still the same instance, not a new tally. Never delay the safety response to make this judgment call, though — under-count rather than wait.",
     },
   },
   {
@@ -354,25 +364,24 @@ const cards: CardConfig[] = [
     phase: "Intervention",
     description:
       "Track each tantrum instance separately. Start a new instance with the plus button; pause/resume the current instance with the play/pause button.",
-    minDurationSec: 30,
     teachingProcedure: {
       goal: "Reduce the total duration of Phineas's tantrums to less than 2 cumulative minutes per session.",
       rationale:
         "Duration (not just count) captures both how often tantrums occur and how long they last — useful since intervention can shorten episodes even before it reduces their frequency.",
       procedure:
-        "Start a new instance with the plus button at the first sign of a tantrum (crying, dropping, refusal escalating into distress). Pause/resume the timer if there's a brief lull, but start a new instance if he fully recovers and a new episode begins later.",
+        "Start the timer with the plus button once crying, dropping, or refusal has continued for at least 10 seconds (onset) — don't start it for a brief flash of protest. Pause/resume through any lull shorter than 60 continuous seconds; only start a NEW instance if a full 60 seconds passes with no tantrum behavior (offset) and it resumes afterward.",
       sd: "Commonly follows a denied request, an ended preferred activity, or an unexpected transition.",
       measurement: {
         markCorrect:
-          "Continuous or briefly interrupted crying/distress/refusal without a full recovery in between.",
+          "Crying/distress/refusal sustained for at least 10 continuous seconds — the same instance keeps running through any gap shorter than 60 continuous seconds.",
         markError:
-          "Brief frustration (a whine or protest) that resolves within a few seconds without escalating.",
+          "A protest that never reaches 10 continuous seconds, or a resumption after a full 60-second gap has already closed the instance out — that starts a new instance instead of extending the old one.",
       },
       correction:
         "Keep instructions minimal and avoid negotiating during the episode. Once he's calm for a sustained moment, redirect to the original expectation rather than dropping it.",
       materials: "None.",
       instructionalNotes:
-        "Resist the urge to end the timer the instant crying stops — a brief pause-then-resume within the same episode is normal; only start a new instance after a genuine recovery.",
+        "Onset/offset thresholds: 10 continuous seconds before starting the timer, 60 continuous quiet seconds before the instance is considered over. If a tantrum resumes within that 60-second window, keep the same instance running (pause/resume) instead of closing it out and starting a new one.",
     },
   },
   {

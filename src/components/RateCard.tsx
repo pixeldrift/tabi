@@ -21,7 +21,8 @@ export interface RateCardProps extends CardEditAndDrawerProps {
   title: string;
   phase?: string;
   description?: string;
-  /** Required observation window, in seconds. */
+  /** Required observation window, in seconds — omit for interfering
+   *  behaviors, which have no minimum and log every instance regardless. */
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
@@ -34,7 +35,7 @@ export function RateCard({
   title,
   phase = "Intervention",
   description,
-  minDurationSec = 60,
+  minDurationSec,
   isActive = true,
   onActivate,
   reorderEditing,
@@ -103,7 +104,10 @@ export function RateCard({
     source: "rate",
     onActivate,
   });
-  useReportCardStatus(cardKey, count > 0 || elapsed > 0, elapsed / 1000 >= minDurationSec);
+  // No minimum window means every instance already counts — ready to graph
+  // as soon as there's any data, rather than gated behind a threshold.
+  const isComplete = minDurationSec !== undefined ? elapsed / 1000 >= minDurationSec : count > 0 || elapsed > 0;
+  useReportCardStatus(cardKey, count > 0 || elapsed > 0, isComplete);
 
   useEffect(() => {
     if (!ticking) return;
@@ -203,9 +207,11 @@ export function RateCard({
                 dataTypeLabel="Rate (per minute)"
                 phase={phase}
                 stats={[
-                  { label: "Required window", value: `${minDurationSec}s` },
+                  ...(minDurationSec !== undefined
+                    ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                    : []),
                   { label: "Count", value: count },
-                  { label: "Elapsed", value: formatTime(elapsed) },
+                  { label: "Period", value: formatTime(elapsed) },
                 ]}
               />
               {teachingProcedure && (
@@ -403,9 +409,11 @@ export function RateCard({
             dataTypeLabel="Rate (per minute)"
             phase={phase}
             stats={[
-              { label: "Required window", value: `${minDurationSec}s` },
+              ...(minDurationSec !== undefined
+                ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                : []),
               { label: "Count", value: count },
-              { label: "Elapsed", value: formatTime(elapsed) },
+              { label: "Period", value: formatTime(elapsed) },
             ]}
           />
           {teachingProcedure && (

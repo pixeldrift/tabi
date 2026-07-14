@@ -134,7 +134,7 @@ export function FrequencyCard({
               phase={phase}
               stats={[
                 { label: "Minimum count", value: minCount },
-                { label: "Recorded", value: count },
+                { label: "Tally", value: count },
               ]}
             />
             {teachingProcedure && (
@@ -331,7 +331,7 @@ export function FrequencyCard({
             phase={phase}
             stats={[
               { label: "Minimum count", value: minCount },
-              { label: "Recorded", value: count },
+              { label: "Tally", value: count },
             ]}
           />
           {teachingProcedure && (

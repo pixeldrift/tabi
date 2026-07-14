@@ -322,9 +322,9 @@ export function TrialCard({
               dataTypeLabel={dataType}
               phase={phase}
               stats={[
-                { label: "Minimum trials", value: minTrials ?? "No Min" },
-                { label: "Maximum trials", value: maxTrials ?? "No Max" },
-                { label: "Percent Correct", value: percentCorrectDisplay },
+                { label: "Minimum", value: minTrials ?? "No Min" },
+                { label: "Maximum", value: maxTrials ?? "No Max" },
+                { label: "Correct", value: percentCorrectDisplay },
               ]}
             />
             {teachingProcedure && (
@@ -611,9 +611,9 @@ export function TrialCard({
                   dataTypeLabel={dataType}
                   phase={phase}
                   stats={[
-                    { label: "Minimum trials", value: minTrials ?? "No Min" },
-                    { label: "Maximum trials", value: maxTrials ?? "No Max" },
-                    { label: "Percent Correct", value: percentCorrectDisplay },
+                    { label: "Minimum", value: minTrials ?? "No Min" },
+                    { label: "Maximum", value: maxTrials ?? "No Max" },
+                    { label: "Correct", value: percentCorrectDisplay },
                   ]}
                 />
                 {teachingProcedure && (

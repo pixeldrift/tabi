@@ -22,7 +22,8 @@ export interface DurationCardProps extends CardEditAndDrawerProps {
   title: string;
   phase?: string;
   description?: string;
-  /** Minimum cumulative duration, in seconds. */
+  /** Minimum cumulative duration, in seconds — omit for interfering
+   *  behaviors, which have no minimum and log every instance regardless. */
   minDurationSec?: number;
   isActive?: boolean;
   onActivate?: () => void;
@@ -38,7 +39,7 @@ export function DurationCard({
   title,
   phase = "Intervention",
   description,
-  minDurationSec = 30,
+  minDurationSec,
   isActive = true,
   onActivate,
   reorderEditing,
@@ -139,8 +140,11 @@ export function DurationCard({
 
   const totalMs = instances.reduce((a, b) => a + b, 0) + (running ? liveMs : 0);
   const totalSec = totalMs / 1000;
-  const isComplete = totalSec >= minDurationSec;
-  const remaining = Math.max(0, Math.ceil(minDurationSec - totalSec));
+  // No minimum means every instance already counts — ready to graph as soon
+  // as there's any data, rather than gated behind a threshold.
+  const isComplete = minDurationSec !== undefined ? totalSec >= minDurationSec : totalMs > 0;
+  const remaining =
+    minDurationSec !== undefined ? Math.max(0, Math.ceil(minDurationSec - totalSec)) : 0;
   useReportCardStatus(cardKey, totalMs > 0, isComplete);
 
   const flushLive = () => {
@@ -283,9 +287,11 @@ export function DurationCard({
                 dataTypeLabel="Frequency / Duration"
                 phase={phase}
                 stats={[
-                  { label: "Minimum", value: `${minDurationSec}s` },
-                  { label: "Times", value: instances.length },
-                  { label: "Total", value: formatTime(totalMs) },
+                  ...(minDurationSec !== undefined
+                    ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                    : []),
+                  { label: "Instances", value: instances.length },
+                  { label: "Total Time", value: formatTime(totalMs) },
                 ]}
               />
               {teachingProcedure && (
@@ -569,9 +575,11 @@ export function DurationCard({
             dataTypeLabel="Frequency / Duration"
             phase={phase}
             stats={[
-              { label: "Minimum", value: `${minDurationSec}s` },
-              { label: "Times", value: instances.length },
-              { label: "Total", value: formatTime(totalMs) },
+              ...(minDurationSec !== undefined
+                ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                : []),
+              { label: "Instances", value: instances.length },
+              { label: "Total Time", value: formatTime(totalMs) },
             ]}
           />
           {teachingProcedure && (
