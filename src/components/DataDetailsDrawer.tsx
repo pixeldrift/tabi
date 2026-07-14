@@ -12,6 +12,7 @@ import {
 import { motion } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
+import { useElementHeight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
 
 /** Breathing room left between a hugCardRight drawer's panel edge and the
@@ -205,6 +206,13 @@ export function DataDetailsDrawer({
   widthClassName = "w-[88%] sm:w-[calc(50%+14px)]",
   hugCardRight = false,
 }: DataDetailsDrawerProps) {
+  // Just the toolbar row's own collapsed height — not `toolbarHeight` (which
+  // also grows by the "Start session" banner's variable height below it).
+  // The pull tab and sticky header should track "the filter bar" itself at
+  // its normal height, not balloon whenever that banner happens to be
+  // showing — measured directly here (rather than threaded down as a prop)
+  // since it's a different element than whatever positions this drawer.
+  const toolbarRowHeight = useElementHeight("[data-toolbar-row]");
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
   const [hugWidth, setHugWidth] = useState<number | null>(null);
@@ -351,19 +359,18 @@ export function DataDetailsDrawer({
       {/* Pull tab — attached to the panel's own left edge (a child of the
           same animated element) so it rides along with the slide instead of
           staying fixed in the toolbar while the panel moves out from under
-          it. Sized to the toolbar's own primary row (its py-1.5/size-7
-          bounds: 6px + 28px + 6px = 40px = h-10), not `toolbarHeight` —
-          that also includes the "Start session" banner's variable height
-          below the row, which isn't part of "the filter bar" this tab
-          should span. No border on the right so it blends seamlessly into
-          the drawer — `border-r-0` has to come after the border-color/width
-          utilities below (not just after `border-r-0` in this string) or
-          `cn`'s tailwind-merge treats `border-2`/`border` as the later,
-          winning declaration for every side, right included. -top-0.5
-          shifts it up by the panel's own 2px border width, so the tab's
-          outer top edge lines up with the panel's outer top edge instead of
-          sitting a couple pixels below it (top-0 aligns with the inside of
-          that border, not the outside). */}
+          it. Sized to toolbarRowHeight (the toolbar's own primary row, not
+          `toolbarHeight`, which also includes the "Start session" banner's
+          variable height below the row — that isn't part of "the filter
+          bar" this tab should span). No border on the right so it blends
+          seamlessly into the drawer — `border-r-0` has to come after the
+          border-color/width utilities below (not just after `border-r-0` in
+          this string) or `cn`'s tailwind-merge treats `border-2`/`border` as
+          the later, winning declaration for every side, right included.
+          -top-0.5 shifts it up by the panel's own 2px border width, so the
+          tab's outer top edge lines up with the panel's outer top edge
+          instead of sitting a couple pixels below it (top-0 aligns with the
+          inside of that border, not the outside). */}
       <button
         type="button"
         onClick={(e) => {
@@ -377,12 +384,7 @@ export function DataDetailsDrawer({
           open ? "border-2 border-blue-400/80" : "border border-stone-200/70",
           "border-r-0",
         )}
-        // Matches the toolbar's own real rendered height (see toolbarHeight's
-        // own comment) rather than a hardcoded h-10 guess — the two used to
-        // be off by a few px (the toolbar row's border/padding add up to a
-        // hair over 40px) so the tab read as slightly shorter than the bar
-        // it's straddling.
-        style={{ height: toolbarHeight }}
+        style={{ height: toolbarRowHeight }}
       >
         {/* Base orientation points right; always faces the direction the
             drawer will slide if pressed again — left (toward opening) while
@@ -462,7 +464,7 @@ export function DataDetailsDrawer({
             align naturally instead of needing separately-matched offsets. */}
         <div
           className="shrink-0 border-b border-stone-200/70 bg-background p-4 pb-3"
-          style={{ minHeight: toolbarHeight }}
+          style={{ minHeight: toolbarRowHeight }}
         >
           <div className="flex items-start gap-1">
             <button

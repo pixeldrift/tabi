@@ -8,8 +8,8 @@ import {
   HandHelping,
   Package,
   Lightbulb,
-  CircleCheck,
-  CircleX,
+  Check,
+  X,
 } from "lucide-react";
 import { AccordionRow } from "./AccordionRow";
 import type { CardKind } from "./DataToolbarContext";
@@ -129,17 +129,31 @@ export function TeachingProcedureAccordion({
       >
         {/* Correct/error live together under one twirl rather than each
             getting its own — you almost always want both at once when
-            checking how to score something, not one at a time. */}
+            checking how to score something, not one at a time. Each badge
+            below is a small copy of the actual scoring button it refers to
+            (same Check/X glyph, same green/red circle), not a generic
+            checkmark/cross, so the instructions visually point at the exact
+            button they describe. */}
         <div className="space-y-2">
           <p className="flex gap-1.5">
-            <CircleCheck className="size-4 shrink-0 mt-0.5 text-green-600" aria-hidden />
+            <span
+              aria-hidden
+              className="shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px] border-green-300 bg-green-50 text-green-700"
+            >
+              <Check className="size-2.5" strokeWidth={3} />
+            </span>
             <span>
               <span className="font-semibold">{measurementLabels.positive}: </span>
               {data.measurement.markCorrect}
             </span>
           </p>
           <p className="flex gap-1.5">
-            <CircleX className="size-4 shrink-0 mt-0.5 text-red-600" aria-hidden />
+            <span
+              aria-hidden
+              className="shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px] border-red-300 bg-red-50 text-red-700"
+            >
+              <X className="size-2.5" strokeWidth={3} />
+            </span>
             <span>
               <span className="font-semibold">{measurementLabels.negative}: </span>
               {data.measurement.markError}
