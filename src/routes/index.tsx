@@ -489,7 +489,7 @@ const cards: CardConfig[] = [
     title: "Overall session engagement",
     phase: "Intervention",
     description:
-      "A holistic, end-of-session quality rating capturing overall engagement and cooperation. Unlike the other cards, this is scored once — later interactions simply update the same score rather than adding new entries.",
+      "A holistic, end-of-session quality score capturing overall engagement and cooperation. Unlike the other cards, this is scored once — later interactions simply update the same score rather than adding new entries.",
     max: 5,
     levelDescriptions: [
       "Highly resistant; required significant redirection throughout the session.",
@@ -505,7 +505,7 @@ const cards: CardConfig[] = [
     title: "Readiness to learn",
     phase: "Intervention",
     description:
-      "A quick end-of-session read on how available the learner was for instruction. Same single-score behavior as Overall session engagement — later interactions update this same rating rather than adding new entries.",
+      "A quick end-of-session read on how available the learner was for instruction. Same single-score behavior as Overall session engagement — later interactions update this same score rather than adding new entries.",
     max: 3,
     levelDescriptions: [
       "Not ready — dysregulated or unresponsive to redirection for most of the session.",
@@ -517,13 +517,13 @@ const cards: CardConfig[] = [
       rationale:
         "A learner who isn't regulated can't access instruction no matter how good the teaching procedure is — this score gives the team an at-a-glance signal for whether a low session total reflects the plan or the state the learner arrived in.",
       procedure:
-        "Score once, at the end of the session, based on your overall impression of how available Phineas was for instruction — not tied to any single trial or activity. Updating the rating later in the session simply overwrites the current score rather than adding a new entry.",
+        "Score once, at the end of the session, based on your overall impression of how available Phineas was for instruction — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
       sd: "None — this is a holistic end-of-session judgment call, not a response to a specific instruction.",
       // Overridden by the card's own level descriptions at render time —
       // this placeholder only exists to satisfy the shared type.
       measurement: { scale: [] },
       correction:
-        "Not applicable — there's nothing to correct on a rating; a consistently low score across sessions is a cue to loop in the BCBA about antecedent strategies, not something to fix in the moment.",
+        "Not applicable — there's nothing to correct on a score; a consistently low score across sessions is a cue to loop in the BCBA about antecedent strategies, not something to fix in the moment.",
       materials: "None.",
       instructionalNotes:
         'Rate what you observed, not what you hoped for — a generous "Fully ready" on a rough session makes the data less useful for spotting real patterns.',

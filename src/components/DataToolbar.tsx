@@ -32,7 +32,7 @@ const KIND_META: Record<
   rate: { label: "Rate", icon: (p) => <RateIcon {...p} /> },
   duration: { label: "Duration", icon: (p) => <DurationIcon {...p} /> },
   "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
-  rating: { label: "Rating", icon: (p) => <Star {...p} /> },
+  rating: { label: "Score", icon: (p) => <Star {...p} /> },
 };
 
 export interface DataToolbarProps {

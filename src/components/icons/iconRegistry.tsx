@@ -72,7 +72,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Duration", "Duration card kind", DurationIcon),
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
-      lucide("Star", "Rating card kind + rating selector", Star),
+      lucide("Star", "Score card kind + score selector", Star),
     ],
   },
   {

@@ -151,7 +151,7 @@ export function TeachingProcedureAccordion({
                   <Star className="size-2.5" strokeWidth={3} />
                 </span>
                 <span>
-                  <span className="font-semibold">Rating {level.value}: </span>
+                  <span className="font-semibold">Score {level.value}: </span>
                   {level.description}
                 </span>
               </p>

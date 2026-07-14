@@ -78,7 +78,7 @@ export function RatingCard({
     const value = min + i + 1;
     return {
       value,
-      description: levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`,
+      description: levelDescriptions?.[i] ?? `Describe what a score of ${value} looks like.`,
     };
   });
   // A single subjective score for the whole session — unlike the other card
@@ -130,11 +130,11 @@ export function RatingCard({
           <>
             <DrawerQuickFacts
               icon={<Star />}
-              dataTypeLabel="Rating (quality)"
+              dataTypeLabel="Score (quality)"
               phase={phase}
               stats={[
                 { label: "Range", value: `${min}–${max}` },
-                { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
+                { label: "Current score", value: rating > 0 ? String(rating) : "Not yet scored" },
               ]}
             />
             {teachingProcedure && (
@@ -164,7 +164,7 @@ export function RatingCard({
                 whileTap={{ scale: 0.88 }}
                 animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
                 transition={{ duration: 0.3 }}
-                aria-label={`Rate ${value}`}
+                aria-label={`Score ${value}`}
                 aria-pressed={filled}
                 className="shrink-0 disabled:opacity-40"
               >
@@ -189,7 +189,7 @@ export function RatingCard({
         title={title}
         description={description}
         dataTypeIcon={<Star />}
-        dataTypeLabel="Rating"
+        dataTypeLabel="Score"
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -222,7 +222,7 @@ export function RatingCard({
     <CardShell
       title={title}
       phase={phase}
-      dataType="Rating"
+      dataType="Score"
       dataTypeIcon={<Star />}
       description={description}
       isActive={isActive}
@@ -248,11 +248,11 @@ export function RatingCard({
         <>
           <DrawerQuickFacts
             icon={<Star />}
-            dataTypeLabel="Rating (quality)"
+            dataTypeLabel="Score (quality)"
             phase={phase}
             stats={[
               { label: "Range", value: `${min}–${max}` },
-              { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
+              { label: "Current score", value: rating > 0 ? String(rating) : "Not yet scored" },
             ]}
           />
           {teachingProcedure && (
@@ -269,7 +269,7 @@ export function RatingCard({
         <ol className="px-4 pt-1 pb-3 space-y-2">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
-            const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
+            const desc = levelDescriptions?.[i] ?? `Describe what a score of ${value} looks like.`;
             const filled = rating >= value;
             const isTop = filled && value === rating;
             return (
@@ -317,10 +317,10 @@ export function RatingCard({
         <span className="text-xs text-muted-foreground">
           {rating > 0 ? (
             <>
-              Rated as <strong className="font-semibold text-foreground">{rating}</strong> out of {max}.
+              Scored <strong className="font-semibold text-foreground">{rating}</strong> out of {max}.
             </>
           ) : (
-            "Tap a star to rate."
+            "Tap a star to score."
           )}
         </span>
       </div>
@@ -400,7 +400,7 @@ function ListRatingButton({
             setOpen((o) => !o);
           }}
           disabled={disabled}
-          aria-label={rating > 0 ? `Rated ${rating}` : "Rate"}
+          aria-label={rating > 0 ? `Scored ${rating}` : "Score"}
           aria-haspopup
           className={cn(
             "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -458,7 +458,7 @@ function ListRatingButton({
                 whileTap={{ scale: 0.88 }}
                 animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
                 transition={{ duration: 0.3 }}
-                aria-label={`Rate ${value}`}
+                aria-label={`Score ${value}`}
                 aria-pressed={filled}
                 className="shrink-0 disabled:opacity-40"
               >
@@ -536,7 +536,7 @@ function RatingStar({
       whileTap={{ scale: 0.88 }}
       animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
       transition={{ duration: 0.3 }}
-      aria-label={`Rate ${value}`}
+      aria-label={`Score ${value}`}
       aria-pressed={filled}
       className={cn(
         "relative shrink-0 disabled:opacity-40",
