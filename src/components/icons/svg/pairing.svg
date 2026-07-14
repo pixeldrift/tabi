@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="a" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.19 17.5">
-  <circle cx="6.5" cy="4" r="3" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="M1,16.5v-1c-.03-3.04,2.4-5.53,5.44-5.56,1.3-.01,2.56.43,3.56,1.26.66.58,1.18,1.41,1.18,1.41" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <circle cx="14.35" cy="6.38" r="2.22" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="M10.5,16.5v-1.28c0-2.12,1.72-3.84,3.84-3.84s3.84,1.72,3.84,3.84v1.28" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(2 2.88) scale(1.0422)">
+    <circle cx="6.5" cy="4" r="3" />
+    <path d="M1,16.5v-1c-.03-3.04,2.4-5.53,5.44-5.56,1.3-.01,2.56.43,3.56,1.26.66.58,1.18,1.41,1.18,1.41" />
+    <circle cx="14.35" cy="6.38" r="2.22" />
+    <path d="M10.5,16.5v-1.28c0-2.12,1.72-3.84,3.84-3.84s3.84,1.72,3.84,3.84v1.28" />
+  </g>
 </svg>
