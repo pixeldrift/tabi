@@ -339,7 +339,7 @@ export function TaskAnalysisCard({
             />
             {teachingProcedure && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} />
+                <TeachingProcedureAccordion data={teachingProcedure} kind="task-analysis" />
               </div>
             )}
           </>
@@ -609,7 +609,7 @@ export function TaskAnalysisCard({
           />
           {teachingProcedure && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} />
+              <TeachingProcedureAccordion data={teachingProcedure} kind="task-analysis" />
             </div>
           )}
         </>

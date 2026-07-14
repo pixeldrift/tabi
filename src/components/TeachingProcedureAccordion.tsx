@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AccordionRow } from "./AccordionRow";
+import type { CardKind } from "./DataToolbarContext";
 
 export interface TeachingProcedure {
   goal: string;
@@ -15,7 +16,29 @@ export interface TeachingProcedure {
   instructionalNotes: string;
 }
 
-const ROW_IDS = ["goal", "rationale", "procedure", "sd", "measurement", "correction", "materials", "notes"] as const;
+const ROW_IDS = [
+  "goal",
+  "rationale",
+  "procedure",
+  "sd",
+  "measurement",
+  "correction",
+  "materials",
+  "notes",
+] as const;
+
+// The two measurement fields always describe the same underlying "counts /
+// doesn't count" distinction, but each card kind scores it with different
+// buttons — label the row after whichever one the card actually shows, so
+// the instructions never say "correct" when the button says "Independent".
+const MEASUREMENT_LABELS: Record<CardKind, { positive: string; negative: string }> = {
+  trial: { positive: "Mark Correct if", negative: "Mark Error if" },
+  "task-analysis": { positive: "Mark Independent if", negative: "Mark Error if" },
+  frequency: { positive: "Counts as an instance if", negative: "Does not count if" },
+  rate: { positive: "Counts as an instance if", negative: "Does not count if" },
+  duration: { positive: "Counts as the same instance if", negative: "Does not count if" },
+  rating: { positive: "Mark Correct if", negative: "Mark Error if" },
+};
 
 // Procedure and Measurement are what staff actually reach for mid-session —
 // default those open, leave the rest (context you'd check once, not per
@@ -26,10 +49,17 @@ const DEFAULT_EXPANDED = new Set<string>(["procedure", "measurement"]);
  *  drawer — same flat twirldown-row pattern as About Me, so a tech running
  *  a session can jump straight to just the row they need (usually
  *  Procedure or Measurement) instead of scrolling a wall of text. */
-export function TeachingProcedureAccordion({ data }: { data: TeachingProcedure }) {
+export function TeachingProcedureAccordion({
+  data,
+  kind,
+}: {
+  data: TeachingProcedure;
+  kind: CardKind;
+}) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(
     () => new Set(ROW_IDS.filter((id) => !DEFAULT_EXPANDED.has(id))),
   );
+  const measurementLabels = MEASUREMENT_LABELS[kind];
 
   const toggleRow = (id: string) => {
     setCollapsedIds((prev) => {
@@ -42,7 +72,13 @@ export function TeachingProcedureAccordion({ data }: { data: TeachingProcedure }
 
   return (
     <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
-      <AccordionRow id="goal" emoji="🎯" label="Goal" collapsed={collapsedIds.has("goal")} onToggle={toggleRow}>
+      <AccordionRow
+        id="goal"
+        emoji="🎯"
+        label="Goal"
+        collapsed={collapsedIds.has("goal")}
+        onToggle={toggleRow}
+      >
         {data.goal}
       </AccordionRow>
       <AccordionRow
@@ -63,7 +99,13 @@ export function TeachingProcedureAccordion({ data }: { data: TeachingProcedure }
       >
         {data.procedure}
       </AccordionRow>
-      <AccordionRow id="sd" emoji="👉" label="SD" collapsed={collapsedIds.has("sd")} onToggle={toggleRow}>
+      <AccordionRow
+        id="sd"
+        emoji="👉"
+        label="SD"
+        collapsed={collapsedIds.has("sd")}
+        onToggle={toggleRow}
+      >
         {data.sd}
       </AccordionRow>
       <AccordionRow
@@ -78,11 +120,11 @@ export function TeachingProcedureAccordion({ data }: { data: TeachingProcedure }
             checking how to score something, not one at a time. */}
         <div className="space-y-2">
           <p>
-            <span className="font-semibold">✅ Mark correct if: </span>
+            <span className="font-semibold">✅ {measurementLabels.positive}: </span>
             {data.measurement.markCorrect}
           </p>
           <p>
-            <span className="font-semibold">❌ Mark error if: </span>
+            <span className="font-semibold">❌ {measurementLabels.negative}: </span>
             {data.measurement.markError}
           </p>
         </div>

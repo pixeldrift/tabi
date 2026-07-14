@@ -128,7 +128,7 @@ export function RatingCard({
             />
             {teachingProcedure && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} />
+                <TeachingProcedureAccordion data={teachingProcedure} kind="rating" />
               </div>
             )}
           </>
@@ -243,7 +243,7 @@ export function RatingCard({
           />
           {teachingProcedure && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} />
+              <TeachingProcedureAccordion data={teachingProcedure} kind="rating" />
             </div>
           )}
         </>

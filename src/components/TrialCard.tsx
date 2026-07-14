@@ -328,7 +328,7 @@ export function TrialCard({
             />
             {teachingProcedure && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} />
+                <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
               </div>
             )}
           </>
@@ -615,7 +615,7 @@ export function TrialCard({
                 />
                 {teachingProcedure && (
                   <div className="mt-4">
-                    <TeachingProcedureAccordion data={teachingProcedure} />
+                    <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
                   </div>
                 )}
               </>

@@ -139,7 +139,7 @@ export function FrequencyCard({
             />
             {teachingProcedure && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} />
+                <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
               </div>
             )}
           </>
@@ -336,7 +336,7 @@ export function FrequencyCard({
           />
           {teachingProcedure && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} />
+              <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
             </div>
           )}
         </>

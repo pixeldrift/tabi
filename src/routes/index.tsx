@@ -250,9 +250,8 @@ const cards: CardConfig[] = [
       sd: "Typically evoked by a transition cue or a non-preferred task demand — note the antecedent in session notes when possible, even though this card only tracks rate.",
       measurement: {
         markCorrect:
-          "Counts as an instance: he goes limp or intentionally drops to the floor, refusing to remain upright.",
-        markError:
-          "Does not count: an accidental stumble/trip, or sitting down normally when instructed to do so.",
+          "He goes limp or intentionally drops to the floor, refusing to remain upright.",
+        markError: "An accidental stumble/trip, or sitting down normally when instructed to do so.",
       },
       correction:
         "Do not deliver attention or comment in the moment (planned ignoring for the behavior itself). Keep the original demand or transition expectation active and calmly restate it once he's back up, rather than dropping it.",
@@ -307,9 +306,9 @@ const cards: CardConfig[] = [
       sd: "Most often evoked by a non-preferred task being presented or a preferred item/activity being removed or denied.",
       measurement: {
         markCorrect:
-          "Counts as an instance: any throw, sweep, or forceful destruction of materials directed away from his own body.",
+          "Any throw, sweep, or forceful destruction of materials directed away from his own body.",
         markError:
-          "Does not count: normal manipulation of materials during play (e.g., building then knocking down blocks as part of the game itself).",
+          "Normal manipulation of materials during play (e.g., building then knocking down blocks as part of the game itself).",
       },
       correction:
         "Block the trajectory or move materials out of reach if safety requires it, but avoid extended verbal attention. Once calm, represent the original task/demand rather than letting the throw successfully end it.",
@@ -336,10 +335,8 @@ const cards: CardConfig[] = [
         "Tally each instance during the timed window. If intensity poses immediate risk of injury, prioritize safety (see Correction) over waiting to observe — data accuracy never overrides safety.",
       sd: "Review the BCBA's current hypothesis in the full behavior plan before running this card — antecedents vary and matter for intervention, even though this card only tracks rate.",
       measurement: {
-        markCorrect:
-          "Counts as an instance: any forceful contact of the head against a person, object, or surface.",
-        markError:
-          "Does not count: gentle self-stimulatory head movement with no forceful contact.",
+        markCorrect: "Any forceful contact of the head against a person, object, or surface.",
+        markError: "Gentle self-stimulatory head movement with no forceful contact.",
       },
       correction:
         "Follow the safety plan's protective procedure immediately (protective equipment/blocking as trained) — do not wait for a natural pause to intervene. Log the instance once safe to do so.",
@@ -367,9 +364,9 @@ const cards: CardConfig[] = [
       sd: "Commonly follows a denied request, an ended preferred activity, or an unexpected transition.",
       measurement: {
         markCorrect:
-          "Counts as the same instance: continuous or briefly interrupted crying/distress/refusal without a full recovery in between.",
+          "Continuous or briefly interrupted crying/distress/refusal without a full recovery in between.",
         markError:
-          "Does not count: brief frustration (a whine or protest) that resolves within a few seconds without escalating.",
+          "Brief frustration (a whine or protest) that resolves within a few seconds without escalating.",
       },
       correction:
         "Keep instructions minimal and avoid negotiating during the episode. Once he's calm for a sustained moment, redirect to the original expectation rather than dropping it.",
@@ -444,10 +441,9 @@ const cards: CardConfig[] = [
         "Present each step in sequence, waiting 3-5 seconds for a response before scoring or prompting. Score each step Independent (I), Prompted (P), or Error (E) as you go, and move to the next step regardless of how the current one was scored.",
       sd: '"Wash your hands" at the sink, given once at the start of the sequence — no further verbal SD is given per step; each step\'s own natural cue (e.g., water now running) should occasion the next action.',
       measurement: {
-        markCorrect:
-          "Independent (I): completes the step within the window with no prompt beyond the initial SD.",
+        markCorrect: "Completes the step within the window with no prompt beyond the initial SD.",
         markError:
-          "Error (E): does not attempt the step, or attempts it incorrectly, within the window with no prompt given in that moment (contrast with Prompted, used when help was given).",
+          "Does not attempt the step, or attempts it incorrectly, within the window with no prompt given in that moment (contrast with Prompted, used when help was given).",
       },
       correction:
         "For a Prompted score, use the least intrusive prompt that gets the step done (a gesture toward the soap, a verbal reminder, or physical guidance for a step like scrubbing) and move on to the next step — don't repeat the whole sequence from the start.",

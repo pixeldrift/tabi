@@ -290,7 +290,7 @@ export function DurationCard({
               />
               {teachingProcedure && (
                 <div className="mt-4">
-                  <TeachingProcedureAccordion data={teachingProcedure} />
+                  <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
                 </div>
               )}
             </>
@@ -576,7 +576,7 @@ export function DurationCard({
           />
           {teachingProcedure && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} />
+              <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
             </div>
           )}
         </>
