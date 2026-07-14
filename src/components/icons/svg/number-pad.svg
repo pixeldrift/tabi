@@ -1,20 +1,21 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="a" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16.06 19.72">
-  <rect x="1.2" y="1.2" width="13.66" height="17.32" rx="2.27" ry="2.27" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-  <line x1="5.07" y1="4.78" x2="10.99" y2="4.78" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-  <g>
-    <line x1="8.03" y1="8.24" x2="8.03" y2="8.24" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="11.03" y1="8.24" x2="11.03" y2="8.24" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="5.03" y1="8.24" x2="5.03" y2="8.24" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-  </g>
-  <g>
-    <line x1="8.03" y1="11.38" x2="8.03" y2="11.38" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="11.03" y1="11.38" x2="11.03" y2="11.38" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="5.03" y1="11.38" x2="5.03" y2="11.38" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-  </g>
-  <g>
-    <line x1="8.03" y1="14.53" x2="8.03" y2="14.53" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="11.03" y1="14.53" x2="11.03" y2="14.53" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
-    <line x1="5.03" y1="14.53" x2="5.03" y2="14.53" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(3.86 2) scale(1.0142)">
+    <rect x="1.2" y="1.2" width="13.66" height="17.32" rx="2.27" ry="2.27" />
+    <line x1="5.07" y1="4.78" x2="10.99" y2="4.78" />
+    <g>
+      <line x1="8.03" y1="8.24" x2="8.03" y2="8.24" />
+      <line x1="11.03" y1="8.24" x2="11.03" y2="8.24" />
+      <line x1="5.03" y1="8.24" x2="5.03" y2="8.24" />
+    </g>
+    <g>
+      <line x1="8.03" y1="11.38" x2="8.03" y2="11.38" />
+      <line x1="11.03" y1="11.38" x2="11.03" y2="11.38" />
+      <line x1="5.03" y1="11.38" x2="5.03" y2="11.38" />
+    </g>
+    <g>
+      <line x1="8.03" y1="14.53" x2="8.03" y2="14.53" />
+      <line x1="11.03" y1="14.53" x2="11.03" y2="14.53" />
+      <line x1="5.03" y1="14.53" x2="5.03" y2="14.53" />
+    </g>
   </g>
 </svg>

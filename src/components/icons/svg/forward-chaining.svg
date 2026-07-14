@@ -1,7 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="a" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.24 18.31">
-  <path d="M1,3.83h6.46" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="M4.63,1l2.83,2.83-2.83,2.83" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="M11.9,5.61l.76-.76c1.28-1.28,3.34-1.28,4.62,0h0c1.28,1.28,1.28,3.34,0,4.62l-2.31,2.31c-1.28,1.28-3.34,1.28-4.62,0h0" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-  <path d="M11.34,15.37l-.98.98c-1.28,1.28-3.34,1.28-4.62,0h0c-1.28-1.28-1.28-3.34,0-4.62l2.31-2.31c1.28-1.28,3.34-1.28,4.62,0h0" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(2 2.48) scale(1.0395)">
+    <path d="M1,3.83h6.46" />
+    <path d="M4.63,1l2.83,2.83-2.83,2.83" />
+    <path d="M11.9,5.61l.76-.76c1.28-1.28,3.34-1.28,4.62,0h0c1.28,1.28,1.28,3.34,0,4.62l-2.31,2.31c-1.28,1.28-3.34,1.28-4.62,0h0" />
+    <path d="M11.34,15.37l-.98.98c-1.28,1.28-3.34,1.28-4.62,0h0c-1.28-1.28-1.28-3.34,0-4.62l2.31-2.31c1.28-1.28,3.34-1.28,4.62,0h0" />
+  </g>
 </svg>
