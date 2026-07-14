@@ -142,6 +142,9 @@ type CardConfig = {
       /** Button + measurement-row label for the negative outcome — defaults
        *  to "Incorrect" when omitted. */
       negativeLabel?: string;
+      /** TEMPORARY test hook — unlocks the elapsed-time pill for manual
+       *  entry instead of following the session clock. Defaults to locked. */
+      locked?: boolean;
     }
 );
 
@@ -570,6 +573,9 @@ const cards: CardConfig[] = [
     intervalMin: 30,
     positiveLabel: "Dry",
     negativeLabel: "Wet/Soiled",
+    // TEMPORARY — unlocked so elapsed time can be typed in directly to test
+    // the timeline at arbitrary points; revert to locked (or omit) once done.
+    locked: false,
     teachingProcedure: {
       goal: "Phineas will remain dry through every 30-minute check across 3 consecutive sessions.",
       rationale:
@@ -1406,6 +1412,7 @@ function renderCard(
           defaultWindowHours={card.defaultWindowHours}
           positiveLabel={card.positiveLabel}
           negativeLabel={card.negativeLabel}
+          locked={card.locked}
           {...common}
         />
       );

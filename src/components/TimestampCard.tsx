@@ -11,6 +11,7 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
+import { TimeKeypad } from "./TimeKeypad";
 import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
@@ -35,6 +36,11 @@ export interface TimestampCardProps extends CardEditAndDrawerProps {
   positiveLabel?: string;
   /** Button + measurement-row label for the negative outcome. */
   negativeLabel?: string;
+  /** Whether the elapsed-time pill is locked to the session clock (the
+   *  normal case) or editable via a tap-to-enter keypad — TEMPORARILY
+   *  exposed so elapsed time can be typed in directly for testing;
+   *  defaults to locked. */
+  locked?: boolean;
   isActive?: boolean;
   onActivate?: () => void;
 }
@@ -103,6 +109,7 @@ export function TimestampCard({
   defaultWindowHours = 4,
   positiveLabel = "Correct",
   negativeLabel = "Incorrect",
+  locked = true,
   isActive = true,
   onActivate,
   reorderEditing,
@@ -394,14 +401,43 @@ export function TimestampCard({
       <div className="px-5 pt-2 pb-4 flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm font-semibold tabular-nums">{intervalLabel(currentIndex, intervalMin)}</div>
-          <span
-            aria-label="Locked to session time"
-            title="Locked to session time"
-            className="inline-flex items-center shrink-0 rounded-full border border-stone-300 bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
-          >
-            {formatCompactTime(elapsed)}
-            <Link2 className="ml-1 size-3 rotate-45" strokeWidth={2.5} />
-          </span>
+          {locked ? (
+            <span
+              aria-label="Locked to session time"
+              title="Locked to session time"
+              className="inline-flex items-center shrink-0 rounded-full border border-stone-300 bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
+            >
+              {formatCompactTime(elapsed)}
+              <Link2 className="ml-1 size-3 rotate-45" strokeWidth={2.5} />
+            </span>
+          ) : (
+            <TimeKeypad
+              valueMs={elapsed}
+              onReplace={(ms) => {
+                setElapsed(Math.max(0, ms));
+                markDirty();
+              }}
+              onAdd={(ms) => {
+                setElapsed(Math.max(0, elapsed + ms));
+                markDirty();
+              }}
+            >
+              {({ open }) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    open();
+                  }}
+                  disabled={!sessionRunning}
+                  aria-label="Edit elapsed time (testing)"
+                  className="inline-flex items-center shrink-0 rounded-full border border-blue-500 bg-white pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-foreground cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {formatCompactTime(elapsed)}
+                </button>
+              )}
+            </TimeKeypad>
+          )}
         </div>
 
         <IntervalTimeline
@@ -468,8 +504,10 @@ function IntervalTimeline({
   currentIndex: number;
   statuses: IntervalStatus[];
 }) {
-  const BUBBLE = 20;
-  const BUBBLE_CURRENT = 34;
+  // Every period is an equal length of time, so its bubble is the same size
+  // as every other's — only the border weight and (once scored) color set
+  // the current one apart, not a bigger diameter.
+  const BUBBLE = 24;
   // Every interval before `currentIndex` is fully elapsed; `currentIndex`
   // itself is partially filled; nothing after it is filled at all — a
   // single continuous fill width follows directly from that, rather than a
@@ -483,29 +521,28 @@ function IntervalTimeline({
     <div className="pt-1">
       {/* Period bubbles — parked in place above their own segment (not a
           draggable/swipeable strip like Percent Correct's trial bubbles),
-          same "current is biggest" idiom, gray until scored then colored
-          to match the button that scored it. */}
-      <div className="relative overflow-hidden" style={{ height: BUBBLE_CURRENT, ...HORIZONTAL_FADE_MASK }}>
+          all the same size (equal-length intervals), gray until scored
+          then colored to match the button that scored it. */}
+      <div className="relative overflow-hidden" style={{ height: BUBBLE, ...HORIZONTAL_FADE_MASK }}>
         <motion.div
           className="absolute left-1/2 top-0"
-          style={{ height: BUBBLE_CURRENT }}
+          style={{ height: BUBBLE }}
           animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
             const isCurrent = i === currentIndex;
             const { bg, text } = statusColors(statuses[i], isCurrent);
-            const size = isCurrent ? BUBBLE_CURRENT : BUBBLE;
             return (
               <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: i * SEG_W + SEG_W / 2 }}>
                 <div
                   className={cn(
-                    "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-all duration-200",
+                    "rounded-full flex items-center justify-center font-display font-bold tabular-nums text-[11px] transition-all duration-200",
                     isCurrent ? "border-2" : "border",
                     bg,
                     text,
                   )}
-                  style={{ width: size, height: size, fontSize: isCurrent ? 15 : 10 }}
+                  style={{ width: BUBBLE, height: BUBBLE }}
                 >
                   {i + 1}
                 </div>
