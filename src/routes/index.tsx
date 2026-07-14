@@ -129,8 +129,13 @@ type CardConfig = {
       description: string;
       /** Length of each scored interval, in minutes (e.g. 30 or 60). */
       intervalMin: number;
-      /** Total number of intervals across the whole observation window. */
-      intervalCount: number;
+      /** Total number of intervals across the whole observation window —
+       *  omit for an open-ended card that just keeps showing (and scoring)
+       *  intervals for as long as the session runs. */
+      intervalCount?: number;
+      /** Only relevant when `intervalCount` is omitted — how many hours of
+       *  intervals to show by default (defaults to 4). */
+      defaultWindowHours?: number;
       /** Button + measurement-row label for the positive outcome — defaults
        *  to "Correct" when omitted. */
       positiveLabel?: string;
@@ -558,16 +563,15 @@ const cards: CardConfig[] = [
   {
     id: "remains-dry",
     kind: "timestamp",
-    title: "Remains dry for 1-1.5hrs",
+    title: "Remains dry",
     phase: "Intervention",
     description:
-      "Score the current interval Correct if he was dry at the check, Incorrect if there was an accident. The interval shown is locked to session time — you can only score whichever one is happening right now.",
+      "Score the current interval Dry if he was dry at the check, Wet/Soiled if there was an accident. The interval shown is locked to session time — you can only score whichever one is happening right now. Runs the whole session on a 30-minute check schedule.",
     intervalMin: 30,
-    intervalCount: 3,
     positiveLabel: "Dry",
     negativeLabel: "Wet/Soiled",
     teachingProcedure: {
-      goal: "Phineas will remain dry through 3 consecutive 30-minute checks (90 minutes total) across 3 consecutive sessions.",
+      goal: "Phineas will remain dry through every 30-minute check across 3 consecutive sessions.",
       rationale:
         "Time-sampling at fixed intervals (rather than only logging accidents) gives a true dry/wet rate instead of just an accident count, since a session with no logged accident could still mean nobody checked.",
       procedure:
@@ -1399,6 +1403,7 @@ function renderCard(
           description={card.description}
           intervalMin={card.intervalMin}
           intervalCount={card.intervalCount}
+          defaultWindowHours={card.defaultWindowHours}
           positiveLabel={card.positiveLabel}
           negativeLabel={card.negativeLabel}
           {...common}

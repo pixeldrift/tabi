@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { Check, X, Link2 } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -21,8 +22,15 @@ export interface TimestampCardProps extends CardEditAndDrawerProps {
   description?: string;
   /** Length of each scored interval, in minutes (e.g. 30 or 60). */
   intervalMin: number;
-  /** Total number of intervals across the whole observation window. */
-  intervalCount: number;
+  /** Total number of intervals across the whole observation window — omit
+   *  for an open-ended card (e.g. a toileting check that runs the whole
+   *  session): it then defaults to showing `defaultWindowHours` worth of
+   *  intervals, growing to always show one more than the current elapsed
+   *  time if the session runs past that. */
+  intervalCount?: number;
+  /** Only relevant when `intervalCount` is omitted — how many hours of
+   *  intervals to show by default. */
+  defaultWindowHours?: number;
   /** Button + measurement-row label for the positive outcome. */
   positiveLabel?: string;
   /** Button + measurement-row label for the negative outcome. */
@@ -92,6 +100,7 @@ export function TimestampCard({
   description,
   intervalMin,
   intervalCount,
+  defaultWindowHours = 4,
   positiveLabel = "Correct",
   negativeLabel = "Incorrect",
   isActive = true,
@@ -115,9 +124,6 @@ export function TimestampCard({
   slideFrom,
 }: TimestampCardProps) {
   const cardKey = id ?? title;
-  const [statuses, setStatuses] = useCardState<IntervalStatus[]>(cardKey, "statuses", () =>
-    Array(intervalCount).fill(null),
-  );
   // Session-linked elapsed time — always ticking with the session (no local
   // play/pause of its own, unlike Rate/Duration's unlocked mode) so "which
   // interval is current" is a pure function of session time, not something
@@ -127,11 +133,35 @@ export function TimestampCard({
   const { sessionRunning, subscribeTick } = useSession();
   const { markDirty, resetSignal } = useCardSession();
 
+  const intervalMs = intervalMin * 60 * 1000;
+  // With no fixed intervalCount, the card is open-ended: show at least
+  // `defaultWindowHours` worth of intervals, growing to always keep one
+  // extra (unscored, upcoming) interval past whichever one is current —
+  // rather than a hard total that either runs out or gets cramped thinner
+  // and thinner the longer the session runs.
+  const defaultWindowIntervalCount = Math.max(1, Math.ceil((defaultWindowHours * 60) / intervalMin));
+  const uncappedIndex = Math.floor(elapsed / intervalMs);
+  const displayIntervalCount =
+    intervalCount !== undefined ? intervalCount : Math.max(defaultWindowIntervalCount, uncappedIndex + 2);
+  const currentIndex = intervalCount !== undefined ? Math.min(intervalCount - 1, uncappedIndex) : uncappedIndex;
+
+  const [statuses, setStatuses] = useCardState<IntervalStatus[]>(cardKey, "statuses", () =>
+    Array(displayIntervalCount).fill(null),
+  );
+  // Grows the persisted statuses array as the open-ended window grows —
+  // only ever extends (never truncates), so nothing already scored is lost.
+  useEffect(() => {
+    setStatuses((prev) => {
+      if (prev.length >= displayIntervalCount) return prev;
+      return [...prev, ...Array(displayIntervalCount - prev.length).fill(null)];
+    });
+  }, [displayIntervalCount]);
+
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
   useEffect(() => {
     if (!shouldReset) return;
     markResetHandled();
-    setStatuses(Array(intervalCount).fill(null));
+    setStatuses(Array(intervalCount ?? defaultWindowIntervalCount).fill(null));
     setElapsed(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
@@ -141,12 +171,9 @@ export function TimestampCard({
     return subscribeTick((d) => setElapsed((e) => e + d));
   }, [sessionRunning, subscribeTick]);
 
-  const intervalMs = intervalMin * 60 * 1000;
-  const totalMs = intervalCount * intervalMs;
-  const currentIndex = Math.min(intervalCount - 1, Math.floor(elapsed / intervalMs));
   const currentStatus = statuses[currentIndex];
   const scoredCount = statuses.filter((s) => s !== null).length;
-  const isComplete = scoredCount === intervalCount;
+  const isComplete = scoredCount === displayIntervalCount;
   useReportCardStatus(cardKey, scoredCount > 0, isComplete);
 
   // Generalized to an arbitrary index (not just `currentIndex`) — the
@@ -174,7 +201,7 @@ export function TimestampCard({
         phase={phase}
         stats={[
           { label: "Interval", value: `${intervalMin}m` },
-          { label: "Scored", value: `${scoredCount} / ${intervalCount}` },
+          { label: "Scored", value: `${scoredCount} / ${displayIntervalCount}` },
         ]}
       />
       {teachingProcedure && (
@@ -213,7 +240,7 @@ export function TimestampCard({
         onNextCard={onNextCard}
         slideFrom={slideFrom}
         details={details}
-        progress={(scoredCount / intervalCount) * 100}
+        progress={(scoredCount / displayIntervalCount) * 100}
         isComplete={isComplete}
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
@@ -263,7 +290,7 @@ export function TimestampCard({
             </span>
             <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>/</span>
             <span className={cn("font-display leading-none tabular-nums text-foreground/50", large ? "text-lg" : "text-sm")}>
-              {intervalCount}
+              {displayIntervalCount}
             </span>
           </div>
           <span className={cn("text-muted-foreground tabular-nums", large ? "text-[11px]" : "text-[9px]")}>
@@ -296,7 +323,7 @@ export function TimestampCard({
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
-        progress={(scoredCount / intervalCount) * 100}
+        progress={(scoredCount / displayIntervalCount) * 100}
         isComplete={isComplete}
         actions={
           <div className="flex items-center gap-1">
@@ -351,12 +378,12 @@ export function TimestampCard({
       onToggleExpanded={() => setExpanded((v) => !v)}
       expandedView={
         <TimestampExpandedView
-          intervalCount={intervalCount}
+          intervalCount={displayIntervalCount}
           intervalMin={intervalMin}
+          intervalMs={intervalMs}
           statuses={statuses}
           currentIndex={currentIndex}
           elapsedMs={elapsed}
-          totalMs={totalMs}
           sessionRunning={sessionRunning}
           positiveLabel={positiveLabel}
           negativeLabel={negativeLabel}
@@ -378,9 +405,9 @@ export function TimestampCard({
         </div>
 
         <IntervalTimeline
-          intervalCount={intervalCount}
+          intervalCount={displayIntervalCount}
           elapsedMs={elapsed}
-          totalMs={totalMs}
+          intervalMs={intervalMs}
           currentIndex={currentIndex}
           statuses={statuses}
         />
@@ -413,80 +440,125 @@ export function TimestampCard({
 // view's own vertical bar, where it already points the right way as-is.
 const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z";
 
+// Fixed px per interval segment (both timelines) — keeps each interval a
+// comfortable, constant size no matter how many total intervals exist,
+// rather than getting squeezed thinner the longer an open-ended card's
+// window grows. The track is free to run wider/taller than its own
+// viewport; each viewport auto-scrolls (a spring transform, not real
+// scroll) to keep the current interval centered and fades its own edges,
+// the same idiom as Percent Correct's own draggable trial-bubble strip.
+const SEG_W = 64;
+const BAR_H = 10;
+const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as const;
+const HORIZONTAL_FADE_MASK = {
+  WebkitMaskImage: "linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%)",
+  maskImage: "linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%)",
+} as const;
+
 function IntervalTimeline({
   intervalCount,
   elapsedMs,
-  totalMs,
+  intervalMs,
   currentIndex,
   statuses,
 }: {
   intervalCount: number;
   elapsedMs: number;
-  totalMs: number;
+  intervalMs: number;
   currentIndex: number;
   statuses: IntervalStatus[];
 }) {
-  const pct = totalMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
   const BUBBLE = 20;
   const BUBBLE_CURRENT = 34;
+  // Every interval before `currentIndex` is fully elapsed; `currentIndex`
+  // itself is partially filled; nothing after it is filled at all — a
+  // single continuous fill width follows directly from that, rather than a
+  // percentage of some fixed (and, for an open-ended card, nonexistent)
+  // total duration.
+  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
+  const fillPx = currentIndex * SEG_W + segFillFrac * SEG_W;
+  const trackOffsetPx = -(currentIndex * SEG_W + SEG_W / 2);
+
   return (
     <div className="pt-1">
       {/* Period bubbles — parked in place above their own segment (not a
           draggable/swipeable strip like Percent Correct's trial bubbles),
           same "current is biggest" idiom, gray until scored then colored
           to match the button that scored it. */}
-      <div className="flex items-end justify-between" style={{ height: BUBBLE_CURRENT }}>
-        {Array.from({ length: intervalCount }, (_, i) => {
-          const isCurrent = i === currentIndex;
-          const { bg, text } = statusColors(statuses[i], isCurrent);
-          const size = isCurrent ? BUBBLE_CURRENT : BUBBLE;
-          return (
-            <div key={i} className="flex-1 flex justify-center">
-              <div
-                className={cn(
-                  "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-all duration-200",
-                  isCurrent ? "border-2" : "border",
-                  bg,
-                  text,
-                )}
-                style={{ width: size, height: size, fontSize: isCurrent ? 15 : 10 }}
-              >
-                {i + 1}
+      <div className="relative overflow-hidden" style={{ height: BUBBLE_CURRENT, ...HORIZONTAL_FADE_MASK }}>
+        <motion.div
+          className="absolute left-1/2 top-0"
+          style={{ height: BUBBLE_CURRENT }}
+          animate={{ x: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
+          {Array.from({ length: intervalCount }, (_, i) => {
+            const isCurrent = i === currentIndex;
+            const { bg, text } = statusColors(statuses[i], isCurrent);
+            const size = isCurrent ? BUBBLE_CURRENT : BUBBLE;
+            return (
+              <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: i * SEG_W + SEG_W / 2 }}>
+                <div
+                  className={cn(
+                    "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-all duration-200",
+                    isCurrent ? "border-2" : "border",
+                    bg,
+                    text,
+                  )}
+                  style={{ width: size, height: size, fontSize: isCurrent ? 15 : 10 }}
+                >
+                  {i + 1}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </motion.div>
       </div>
       {/* The single combined progress indicator: the gray track fills light
           blue as the session clock advances, and the chevron below marks
           exactly how far the fill has reached — no separate "percent
           scored" bar duplicating this one. */}
-      <div className="relative h-2.5 rounded-full bg-stone-200 overflow-hidden mt-0.5">
-        <div
-          className="absolute inset-y-0 left-0 bg-blue-200 transition-[width]"
-          style={{ width: `${pct}%` }}
-          aria-hidden
-        />
-        {Array.from({ length: intervalCount - 1 }, (_, i) => (
+      <div
+        className="relative overflow-hidden rounded-full bg-stone-200 mt-0.5"
+        style={{ height: BAR_H, ...HORIZONTAL_FADE_MASK }}
+      >
+        <motion.div
+          className="absolute left-1/2 top-0"
+          animate={{ x: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
           <div
-            key={i}
-            className="absolute inset-y-0 w-px bg-white"
-            style={{ left: `${((i + 1) / intervalCount) * 100}%` }}
+            className="absolute bg-blue-200 transition-[width]"
+            style={{ top: 0, left: 0, height: BAR_H, width: fillPx }}
             aria-hidden
           />
-        ))}
+          {Array.from({ length: intervalCount - 1 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute w-px bg-white"
+              style={{ top: 0, height: BAR_H, left: (i + 1) * SEG_W }}
+              aria-hidden
+            />
+          ))}
+        </motion.div>
       </div>
-      <div className="relative h-4" aria-hidden>
-        <div className="absolute top-0 -translate-x-1/2" style={{ left: `${pct}%` }}>
-          <svg
-            width="14"
-            height="18"
-            viewBox="0 0 16 20"
-            style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
-          >
-            <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
-          </svg>
-        </div>
+      <div className="relative overflow-hidden h-4" style={HORIZONTAL_FADE_MASK} aria-hidden>
+        <motion.div
+          className="absolute left-1/2 top-0"
+          animate={{ x: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
+          <div className="absolute top-0 -translate-x-1/2" style={{ left: fillPx }}>
+            <svg
+              width="14"
+              height="18"
+              viewBox="0 0 16 20"
+              style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
+            >
+              <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
+            </svg>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -494,19 +566,28 @@ function IntervalTimeline({
 
 const ROW_H = 28; // matches h-7 row buttons
 const ROW_GAP = 6; // matches space-y-1.5
+const ROW_SLOT = ROW_H + ROW_GAP;
+const VISIBLE_ROWS = 4; // how many intervals fit in the scrollable viewport at once
+const VERTICAL_FADE_MASK = {
+  WebkitMaskImage: "linear-gradient(to bottom, transparent 0, black 8%, black 92%, transparent 100%)",
+  maskImage: "linear-gradient(to bottom, transparent 0, black 8%, black 92%, transparent 100%)",
+} as const;
 
 /** Twirl-down alternative to the standard view's horizontal timeline — same
  *  progress fill and "now" indicator, just running vertically alongside a
  *  list of every interval, each with its own working score buttons (not
  *  gated to only the current one), mirroring Task Analysis's own expanded
- *  per-step editing. */
+ *  per-step editing. Only `VISIBLE_ROWS` show at once, auto-scrolled
+ *  (spring transform) to keep the current interval in view and fading its
+ *  own top/bottom edges — same idiom as the standard view's own horizontal
+ *  strip, just running the other way. */
 function TimestampExpandedView({
   intervalCount,
   intervalMin,
+  intervalMs,
   statuses,
   currentIndex,
   elapsedMs,
-  totalMs,
   sessionRunning,
   positiveLabel,
   negativeLabel,
@@ -514,87 +595,105 @@ function TimestampExpandedView({
 }: {
   intervalCount: number;
   intervalMin: number;
+  intervalMs: number;
   statuses: IntervalStatus[];
   currentIndex: number;
   elapsedMs: number;
-  totalMs: number;
   sessionRunning: boolean;
   positiveLabel: string;
   negativeLabel: string;
   onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
 }) {
-  const pct = totalMs > 0 ? Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100)) : 0;
-  const totalHeight = intervalCount * ROW_H + (intervalCount - 1) * ROW_GAP;
+  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
+  const fillPx = currentIndex * ROW_SLOT + segFillFrac * ROW_H;
+  const trackOffsetPx = -(currentIndex * ROW_SLOT + ROW_H / 2);
+  const viewportHeight = VISIBLE_ROWS * ROW_H + (VISIBLE_ROWS - 1) * ROW_GAP;
+  const totalTrackHeight = intervalCount * ROW_SLOT;
+
   return (
     <div className="px-5 pt-1 pb-4">
-      <div className="flex gap-3">
-        <div className="relative shrink-0" style={{ width: 10, height: totalHeight }}>
-          <div className="absolute inset-0 rounded-full bg-stone-200 overflow-hidden">
+      <div
+        className="relative overflow-hidden"
+        style={{ height: viewportHeight, ...VERTICAL_FADE_MASK }}
+      >
+        <motion.div
+          className="absolute left-0 top-1/2 w-full flex gap-3"
+          animate={{ y: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
+          {/* Current-time arrow — to the left of the bar, pointing right at
+              it (the Schedule tab's own chevron, used as-is here since it
+              already points the right way for a vertical list). */}
+          <div className="relative shrink-0" style={{ width: 14 }}>
+            <div className="absolute -translate-y-1/2 right-0" style={{ top: fillPx }} aria-hidden>
+              <svg width="14" height="18" viewBox="0 0 16 20" style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}>
+                <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
+              </svg>
+            </div>
+          </div>
+          <div
+            className="relative shrink-0 rounded-full bg-stone-200 overflow-hidden"
+            style={{ width: 10, height: totalTrackHeight }}
+          >
             <div
-              className="absolute inset-x-0 top-0 bg-blue-200 transition-[height]"
-              style={{ height: `${pct}%` }}
+              className="absolute inset-x-0 bg-blue-200 transition-[height]"
+              style={{ top: 0, height: fillPx }}
               aria-hidden
             />
             {Array.from({ length: intervalCount - 1 }, (_, i) => (
               <div
                 key={i}
                 className="absolute inset-x-0 h-px bg-white"
-                style={{ top: `${((i + 1) / intervalCount) * 100}%` }}
+                style={{ top: (i + 1) * ROW_SLOT }}
                 aria-hidden
               />
             ))}
           </div>
-          <div className="absolute -right-2 -translate-y-1/2" style={{ top: `${pct}%` }} aria-hidden>
-            <svg
-              width="14"
-              height="18"
-              viewBox="0 0 16 20"
-              style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
-            >
-              <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
-            </svg>
-          </div>
-        </div>
-        <ol className="flex-1 min-w-0 space-y-1.5">
-          {Array.from({ length: intervalCount }, (_, i) => {
-            const status = statuses[i];
-            const isCurrent = i === currentIndex;
-            const { bg, text } = statusColors(status, isCurrent);
-            return (
-              <li key={i} className="flex items-center gap-2" style={{ height: ROW_H }}>
-                <span
-                  className={cn(
-                    "shrink-0 grid place-items-center size-6 rounded-full font-display font-bold text-[11px] tabular-nums",
-                    isCurrent ? "border-2" : "border",
-                    bg,
-                    text,
-                  )}
+          <div className="relative flex-1 min-w-0">
+            {Array.from({ length: intervalCount }, (_, i) => {
+              const status = statuses[i];
+              const isCurrent = i === currentIndex;
+              const { bg, text } = statusColors(status, isCurrent);
+              return (
+                <div
+                  key={i}
+                  className="absolute left-0 right-0 flex items-center gap-2"
+                  style={{ top: i * ROW_SLOT, height: ROW_H }}
                 >
-                  {i + 1}
-                </span>
-                <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground tabular-nums">
-                  {intervalRange(i, intervalMin)}
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <RowScoreButton
-                    variant="negative"
-                    label={negativeLabel}
-                    selected={status === "incorrect"}
-                    disabled={!sessionRunning}
-                    onClick={() => onScore(i, "incorrect")}
-                  />
-                  <RowScoreButton
-                    variant="positive"
-                    label={positiveLabel}
-                    selected={status === "correct"}
-                    disabled={!sessionRunning}
-                    onClick={() => onScore(i, "correct")}
-                  />
+                  <span
+                    className={cn(
+                      "shrink-0 grid place-items-center size-6 rounded-full font-display font-bold text-[11px] tabular-nums",
+                      isCurrent ? "border-2" : "border",
+                      bg,
+                      text,
+                    )}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground tabular-nums">
+                    {intervalRange(i, intervalMin)}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <RowScoreButton
+                      variant="negative"
+                      label={negativeLabel}
+                      selected={status === "incorrect"}
+                      disabled={!sessionRunning}
+                      onClick={() => onScore(i, "incorrect")}
+                    />
+                    <RowScoreButton
+                      variant="positive"
+                      label={positiveLabel}
+                      selected={status === "correct"}
+                      disabled={!sessionRunning}
+                      onClick={() => onScore(i, "correct")}
+                    />
+                  </div>
                 </div>
-              </li>
-            );
-          })}
-        </ol>
+              );
+            })}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

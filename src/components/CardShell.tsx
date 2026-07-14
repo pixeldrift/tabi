@@ -7,6 +7,7 @@ import { CardEditControls, type CardEditControlsProps } from "./CardEditControls
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { TeachingProcedure } from "./TeachingProcedureAccordion";
 import { renderBreakableTitle } from "./BreakableTitle";
+import { PHASE_ICONS } from "@/lib/phaseIcons";
 import { cn } from "@/lib/utils";
 
 /** Shared by every card kind so the toolbar's edit mode (reorder/favorite/
@@ -120,6 +121,7 @@ export function CardShell({
 }: CardShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
+  const PhaseIcon = PHASE_ICONS[phase];
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
   const barBg = isComplete
@@ -190,7 +192,14 @@ export function CardShell({
           />
         ) : (
           <div className="text-right leading-tight -mt-0.5">
-            <div className="text-xs font-medium italic text-muted-foreground">{phase}</div>
+            <div className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground">
+              {PhaseIcon && (
+                <span className="shrink-0 not-italic [&>svg]:size-3">
+                  <PhaseIcon />
+                </span>
+              )}
+              <span>{phase}</span>
+            </div>
             {dataType && (
               <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
                 {dataTypeIcon && (
