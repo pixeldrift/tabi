@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { GripVertical, Heart, EyeOff } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
+import { renderBreakableTitle } from "./BreakableTitle";
 import { cn } from "@/lib/utils";
 
 export interface MiniTileShellProps extends CardEditAndDrawerProps {
@@ -134,7 +135,7 @@ export function MiniTileShell({
             // per-tile details button (removed; the drawer's own pull-tab
             // is the one way to open it now), so the title gets that width
             // back.
-            "font-display font-bold flex-1",
+            "font-display font-bold flex-1 min-w-0 break-words",
             // leading-[…] MUST come after text-[…] here — tailwind-merge
             // treats an arbitrary text-size and leading as the same
             // conflict group (real Tailwind size utilities like text-sm
@@ -153,7 +154,7 @@ export function MiniTileShell({
             large ? "text-[13px] line-clamp-3 leading-[1.2]" : "text-[10.5px] line-clamp-2 leading-[1.2]",
           )}
         >
-          {title}
+          {renderBreakableTitle(title)}
         </h2>
         {reorderEditing && (
           <MiniEditControls

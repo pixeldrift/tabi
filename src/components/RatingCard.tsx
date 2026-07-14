@@ -126,6 +126,40 @@ export function RatingCard({
                 { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
               ]}
             />
+            <div className="mt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Rating scale
+              </h3>
+              <ol className="space-y-2">
+                {Array.from({ length: numStars }, (_, i) => {
+                  const value = min + i + 1;
+                  const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
+                  const filled = rating >= value;
+                  const isTop = filled && value === rating;
+                  return (
+                    <li key={value} className="flex items-start gap-2.5">
+                      <RatingStar
+                        value={value}
+                        size={24}
+                        maxSize={24}
+                        filled={filled}
+                        isTop={isTop}
+                        disabled={!sessionRunning}
+                        onClick={() => pick(value)}
+                      />
+                      <span
+                        className={cn(
+                          "flex-1 text-sm leading-tight",
+                          isTop ? "text-foreground" : "text-foreground/70",
+                        )}
+                      >
+                        {desc}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
             {teachingProcedure && (
               <div className="mt-4">
                 <TeachingProcedureAccordion data={teachingProcedure} kind="rating" />
@@ -241,6 +275,40 @@ export function RatingCard({
               { label: "Current rating", value: rating > 0 ? String(rating) : "Not yet rated" },
             ]}
           />
+          <div className="mt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              Rating scale
+            </h3>
+            <ol className="space-y-2">
+              {Array.from({ length: numStars }, (_, i) => {
+                const value = min + i + 1;
+                const desc = levelDescriptions?.[i] ?? `Describe what a rating of ${value} looks like.`;
+                const filled = rating >= value;
+                const isTop = filled && value === rating;
+                return (
+                  <li key={value} className="flex items-start gap-2.5">
+                    <RatingStar
+                      value={value}
+                      size={24}
+                      maxSize={24}
+                      filled={filled}
+                      isTop={isTop}
+                      disabled={!sessionRunning}
+                      onClick={() => pick(value)}
+                    />
+                    <span
+                      className={cn(
+                        "flex-1 text-sm leading-tight",
+                        isTop ? "text-foreground" : "text-foreground/70",
+                      )}
+                    >
+                      {desc}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
           {teachingProcedure && (
             <div className="mt-4">
               <TeachingProcedureAccordion data={teachingProcedure} kind="rating" />

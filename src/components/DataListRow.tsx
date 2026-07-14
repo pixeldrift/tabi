@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { type CardEditAndDrawerProps } from "./CardShell";
+import { renderBreakableTitle } from "./BreakableTitle";
 import { cn } from "@/lib/utils";
 
 export interface DataListRowProps extends CardEditAndDrawerProps {
@@ -98,7 +99,9 @@ export function DataListRow({
         >
           {dataTypeIcon}
         </span>
-        <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0">{title}</h2>
+        <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0 break-words">
+          {renderBreakableTitle(title)}
+        </h2>
         {/* Trails the title (not leading it, like the data-type icon does)
             so it sits at the row's right edge — same side CardShell's own
             edit controls occupy — and inherits this row's items-start,

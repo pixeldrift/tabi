@@ -6,6 +6,7 @@ import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { CardEditControls, type CardEditControlsProps } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { TeachingProcedure } from "./TeachingProcedureAccordion";
+import { renderBreakableTitle } from "./BreakableTitle";
 import { cn } from "@/lib/utils";
 
 /** Shared by every card kind so the toolbar's edit mode (reorder/favorite/
@@ -176,7 +177,9 @@ export function CardShell({
             />
           </button>
         )}
-        <h2 className="font-display text-base leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
+        <h2 className="font-display text-base leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
+          {renderBreakableTitle(title)}
+        </h2>
         {reorderEditing ? (
           <CardEditControls
             favorited={favorited}

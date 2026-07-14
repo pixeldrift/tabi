@@ -12,6 +12,7 @@ import {
 import { motion } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
+import { renderBreakableTitle } from "./BreakableTitle";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
 
@@ -83,7 +84,7 @@ const DrawerTitle = memo(function DrawerTitle({
     // to top.
     <motion.h2
       onClick={onClick}
-      className="font-display text-base leading-[1.15] flex-1 min-w-0 cursor-pointer select-none text-center"
+      className="font-display text-base leading-[1.15] flex-1 min-w-0 break-words cursor-pointer select-none text-center"
       animate={
         exitDir
           ? { y: exitDir === "next" ? 16 : -16, opacity: 0 }
@@ -93,7 +94,7 @@ const DrawerTitle = memo(function DrawerTitle({
       }
       transition={entering ? { duration: 0 } : SLIDE_TRANSITION}
     >
-      {title}
+      {renderBreakableTitle(title)}
     </motion.h2>
   );
 });
@@ -114,7 +115,7 @@ const DrawerContent = memo(function DrawerContent({
   const entered = useEnterPhase(slideFrom);
   const entering = slideFrom && !entered;
   return (
-    <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto p-4">
+    <div ref={contentScrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">
       <motion.div
         animate={
           exitDir
@@ -463,10 +464,10 @@ export function DataDetailsDrawer({
             arrows, and the title's own top line all sit in one flex row and
             align naturally instead of needing separately-matched offsets. */}
         <div
-          className="shrink-0 border-b border-stone-200/70 bg-background p-4 pb-3"
+          className="shrink-0 border-b border-stone-200/70 bg-background py-1.5 px-4"
           style={{ minHeight: toolbarRowHeight }}
         >
-          <div className="flex items-start gap-1">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={(e) => {
@@ -475,7 +476,7 @@ export function DataDetailsDrawer({
               }}
               disabled={!onPrevCard || exitDir !== null}
               aria-label="Previous card"
-              className="-mt-[5px] grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -493,7 +494,7 @@ export function DataDetailsDrawer({
               }}
               disabled={!onNextCard || exitDir !== null}
               aria-label="Next card"
-              className="-mt-[5px] grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronRight className="size-4" />
             </button>
@@ -508,7 +509,7 @@ export function DataDetailsDrawer({
                 onOpenChange(false);
               }}
               aria-label="Close"
-              className="-mt-[5px] -mr-1 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
+              className="-mr-1 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="size-4" />
             </button>

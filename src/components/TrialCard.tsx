@@ -23,6 +23,7 @@ import { useCardState, useResetGuard } from "./CardDataStore";
 import { type CardEditAndDrawerProps } from "./CardShell";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
+import { renderBreakableTitle } from "./BreakableTitle";
 import { cn } from "@/lib/utils";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
@@ -172,7 +173,7 @@ export function TrialCard({
   const percentCorrectReady = completedCount >= (minTrials ?? 1) && scoredForPercent > 0;
   const percentCorrectDisplay = percentCorrectReady
     ? `${Math.round((correctCount / scoredForPercent) * 100)}%`
-    : "Min trials not reached";
+    : "Min not met";
 
   const { markDirty, resetSignal, sessionRunning } = useCardSession();
   useReportCardStatus(cardKey, completedCount > 0, isComplete);
@@ -323,7 +324,7 @@ export function TrialCard({
               stats={[
                 { label: "Minimum trials", value: minTrials ?? "No Min" },
                 { label: "Maximum trials", value: maxTrials ?? "No Max" },
-                { label: "Percent Correct (this session)", value: percentCorrectDisplay },
+                { label: "Percent Correct", value: percentCorrectDisplay },
               ]}
             />
             {teachingProcedure && (
@@ -555,7 +556,9 @@ export function TrialCard({
               )}
             />
           </button>
-          <h2 className="font-display text-lg leading-[1.05] flex-1 mr-auto mt-0.5">{title}</h2>
+          <h2 className="font-display text-lg leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
+            {renderBreakableTitle(title)}
+          </h2>
           {reorderEditing ? (
             <CardEditControls
               favorited={favorited}
@@ -610,7 +613,7 @@ export function TrialCard({
                   stats={[
                     { label: "Minimum trials", value: minTrials ?? "No Min" },
                     { label: "Maximum trials", value: maxTrials ?? "No Max" },
-                    { label: "Percent Correct (this session)", value: percentCorrectDisplay },
+                    { label: "Percent Correct", value: percentCorrectDisplay },
                   ]}
                 />
                 {teachingProcedure && (

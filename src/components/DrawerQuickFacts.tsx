@@ -25,20 +25,20 @@ export function DrawerQuickFacts({
   const PhaseIcon = PHASE_ICONS[phase];
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 text-sm text-foreground/80">
-        <span className="flex items-center gap-1.5 min-w-0">
+      <div className="flex flex-col gap-0.5 text-sm text-foreground/80">
+        <span className="flex items-center gap-1 min-w-0">
           <span className="shrink-0 [&>svg]:size-4" aria-hidden>
             {icon}
           </span>
           <span className="font-medium truncate">{dataTypeLabel}</span>
         </span>
-        <span className="flex items-center gap-1.5 shrink-0 text-muted-foreground">
+        <span className="flex items-center gap-1 min-w-0 text-muted-foreground">
           {PhaseIcon && (
             <span className="shrink-0 [&>svg]:size-3.5" aria-hidden>
               <PhaseIcon />
             </span>
           )}
-          <span>{phase}</span>
+          <span className="truncate">{phase}</span>
         </span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
