@@ -95,26 +95,22 @@ const BUBBLE = 18;
 const BUBBLE_CENTER = 54;
 const GAP = 6;
 
-/** Small badge for a step's chaining-plan expectation — a prompt-level icon
- *  (amber) or the green Independent check — entirely separate from whatever
- *  actually gets scored for the step during a session. Returns null for a
- *  step with no set expectation, or an unrecognized level. */
+/** Small badge for a step's chaining-plan expectation — the bare symbol only
+ *  (no background circle or color-coding, unlike the actual I/P/E scoring
+ *  buttons below it, so it doesn't compete with those for attention): a
+ *  single generic hand for "some level of prompting is expected" (not the
+ *  specific per-level icon used elsewhere — that distinction belongs to
+ *  what gets scored, not to this plan preview) or a check for "expected
+ *  independent." Entirely separate from whatever actually gets scored for
+ *  the step during a session. Returns null for a step with no set
+ *  expectation. */
 function StepPlanBadge({ level }: { level: StepPlanLevel | null | undefined }) {
   if (!level) return null;
   const isIndependent = level === "Independent";
-  const Icon = isIndependent ? Check : PROMPT_LEVEL_ICONS[level];
-  if (!Icon) return null;
+  const Icon = isIndependent ? Check : HandHelping;
   return (
-    <span
-      title={`Expected: ${level}`}
-      className={cn(
-        "shrink-0 grid place-items-center size-5 rounded-full border",
-        isIndependent
-          ? "border-green-300 bg-green-50 text-green-600"
-          : "border-amber-300 bg-amber-50 text-amber-600",
-      )}
-    >
-      <Icon className="size-3" strokeWidth={2.5} />
+    <span title={`Expected: ${level}`} className="shrink-0 grid place-items-center text-stone-500">
+      <Icon className="size-3.5" strokeWidth={isIndependent ? 2.5 : 1.75} />
     </span>
   );
 }
@@ -733,7 +729,7 @@ export function TaskAnalysisCard({
                       <span
                         className={cn(
                           isCenter
-                            ? "font-display text-2xl leading-none"
+                            ? "font-display text-2xl leading-none tabular-nums"
                             : "text-[7px] leading-none",
                         )}
                       >
