@@ -15,6 +15,7 @@ import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
+import { TimestampCard } from "@/components/TimestampCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import {
   SessionProvider,
@@ -120,6 +121,16 @@ type CardConfig = {
       min?: number;
       max: number;
       levelDescriptions?: string[];
+    }
+  | {
+      kind: "timestamp";
+      title: string;
+      phase: string;
+      description: string;
+      /** Length of each scored interval, in minutes (e.g. 30 or 60). */
+      intervalMin: number;
+      /** Total number of intervals across the whole observation window. */
+      intervalCount: number;
     }
 );
 
@@ -538,6 +549,33 @@ const cards: CardConfig[] = [
         'Rate what you observed, not what you hoped for — a generous "Fully ready" on a rough session makes the data less useful for spotting real patterns.',
     },
   },
+  {
+    id: "remains-dry",
+    kind: "timestamp",
+    title: "Remains dry for 1-1.5hrs",
+    phase: "Intervention",
+    description:
+      "Score the current interval Correct if he was dry at the check, Incorrect if there was an accident. The interval shown is locked to session time — you can only score whichever one is happening right now.",
+    intervalMin: 30,
+    intervalCount: 3,
+    teachingProcedure: {
+      goal: "Phineas will remain dry through 3 consecutive 30-minute checks (90 minutes total) across 3 consecutive sessions.",
+      rationale:
+        "Time-sampling at fixed intervals (rather than only logging accidents) gives a true dry/wet rate instead of just an accident count, since a session with no logged accident could still mean nobody checked.",
+      procedure:
+        "At each interval's check, ask him to tell you if he's dry or take him to the bathroom to check directly, then score that interval before moving on — the next interval starts automatically at the 30-minute mark regardless of when you scored the current one.",
+      sd: "The interval boundary arriving (see the timeline's blue marker) — not a request from the learner.",
+      measurement: {
+        markCorrect: "Dry at the time of the check, for the entire interval being scored.",
+        markError: "A wet/soiled accident occurred at any point during the interval being scored.",
+      },
+      correction:
+        "For an accident, follow the standard bathroom/change routine calmly and without extended attention, then resume the schedule at the next interval — don't re-score the interval that already closed out.",
+      materials: "Change of clothes, standard bathroom supplies.",
+      instructionalNotes:
+        "Only the current interval (locked to session time) can be scored — if a check is missed, that interval is simply left blank rather than back-filled once the next one has already started.",
+    },
+  },
 ];
 
 // Data-submitted animation timing — TODO: surface in user settings.
@@ -580,6 +618,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
   "duration",
   "task-analysis",
   "rating",
+  "timestamp",
 ];
 
 // Clinical progression order, not the cards' own declaration order — the
@@ -1341,6 +1380,17 @@ function renderCard(
           min={card.min}
           max={card.max}
           levelDescriptions={card.levelDescriptions}
+          {...common}
+        />
+      );
+    case "timestamp":
+      return (
+        <TimestampCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          intervalMin={card.intervalMin}
+          intervalCount={card.intervalCount}
           {...common}
         />
       );

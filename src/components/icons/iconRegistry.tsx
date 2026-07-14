@@ -10,6 +10,7 @@ import { FrequencyIcon } from "./FrequencyIcon";
 import { DurationIcon } from "./DurationIcon";
 import { RateIcon } from "./RateIcon";
 import { TaskAnalysisIcon } from "./TaskAnalysisIcon";
+import { TimestampIcon } from "./TimestampIcon";
 import { VerbalPromptIcon } from "./VerbalPromptIcon";
 import { GesturalPromptIcon } from "./GesturalPromptIcon";
 import { ModelingPromptIcon } from "./ModelingPromptIcon";
@@ -72,6 +73,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Duration", "Duration card kind", DurationIcon),
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
+      custom("Timestamp", "Timestamp card kind", TimestampIcon),
       lucide("Star", "Score card kind + score selector", Star),
     ],
   },

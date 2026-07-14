@@ -5,7 +5,7 @@ import { GridViewIcon } from "@/components/icons/GridViewIcon";
 import { SmallGridViewIcon } from "@/components/icons/SmallGridViewIcon";
 import { useSettings } from "./SettingsContext";
 
-export type CardKind = "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating";
+export type CardKind = "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating" | "timestamp";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 

@@ -19,6 +19,7 @@ import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
 import { RateIcon } from "@/components/icons/RateIcon";
 import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
+import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const KIND_META: Record<
   duration: { label: "Duration", icon: (p) => <DurationIcon {...p} /> },
   "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
+  timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
 };
 
 export interface DataToolbarProps {
