@@ -15,6 +15,13 @@ import { GesturalPromptIcon } from "./GesturalPromptIcon";
 import { ModelingPromptIcon } from "./ModelingPromptIcon";
 import { PartialPhysicalPromptIcon } from "./PartialPhysicalPromptIcon";
 import { FullPhysicalPromptIcon } from "./FullPhysicalPromptIcon";
+import { ProbingIcon } from "./ProbingIcon";
+import { BaselineIcon } from "./BaselineIcon";
+import { InterventionIcon } from "./InterventionIcon";
+import { MaintenanceIcon } from "./MaintenanceIcon";
+import { FadingIcon } from "./FadingIcon";
+import { PairingIcon } from "./PairingIcon";
+import { AntecedentIcon } from "./AntecedentIcon";
 import { ListViewIcon } from "./ListViewIcon";
 import { CardViewIcon } from "./CardViewIcon";
 import { GridViewIcon } from "./GridViewIcon";
@@ -66,6 +73,18 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
       lucide("Star", "Rating card kind + rating selector", Star),
+    ],
+  },
+  {
+    group: "Phases",
+    icons: [
+      custom("Probing", "Phase indicator (drawer quick facts)", ProbingIcon),
+      custom("Baseline", "Phase indicator (drawer quick facts)", BaselineIcon),
+      custom("Intervention", "Phase indicator (drawer quick facts)", InterventionIcon),
+      custom("Maintenance", "Phase indicator (drawer quick facts)", MaintenanceIcon),
+      custom("Fading", "Not yet wired up — added for future use", FadingIcon),
+      custom("Pairing", "Not yet wired up — added for future use", PairingIcon),
+      custom("Antecedent", "Not yet wired up — added for future use", AntecedentIcon),
     ],
   },
   {
