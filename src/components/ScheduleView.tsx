@@ -1508,7 +1508,7 @@ export function ScheduleView({
                     // !bg-blue-50, so one definition works over any of this
                     // row's background states instead of needing a second
                     // shade picked to stay visible against each one.
-                    className="absolute left-1 right-1 border-t border-black/10"
+                    className="absolute left-1 right-1 border-t border-black/5"
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}
@@ -1691,7 +1691,7 @@ export function ScheduleView({
                     {Array.from({ length: apptGridLines }, (_, i) => (
                       <div
                         key={`ag-${i}`}
-                        className="absolute left-1 right-1 border-t border-black/10"
+                        className="absolute left-1 right-1 border-t border-black/5"
                         style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                       />
                     ))}
