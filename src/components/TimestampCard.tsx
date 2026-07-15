@@ -78,16 +78,29 @@ export function intervalLabel(index: number, intervalMin: number): string {
   return `${index + 1}: ${intervalRange(index, intervalMin)}`;
 }
 
-/** Just the interval's higher (end) boundary — "30m", "1hr", "1hr 30m",
- *  "2hrs" — what the standard view's own header shows for the viewed
- *  interval instead of a full start-end range. */
-function intervalEndLabel(index: number, intervalMin: number): string {
-  const totalMin = (index + 1) * intervalMin;
+/** A single time boundary in the "30m" / "1hr" / "1hr 30m" / "2hrs" style —
+ *  shared by `intervalEndLabel` (just the higher boundary) and the "time to
+ *  check" alert's own start-end range (see `intervalCheckRangeLabel`). */
+function formatIntervalBoundary(totalMin: number): string {
   if (totalMin < 60) return `${totalMin}m`;
   const hours = Math.floor(totalMin / 60);
   const rem = totalMin % 60;
   const hrPart = `${hours}hr${hours > 1 ? "s" : ""}`;
   return rem === 0 ? hrPart : `${hrPart} ${rem}m`;
+}
+
+/** Just the interval's higher (end) boundary — "30m", "1hr", "1hr 30m",
+ *  "2hrs" — what the standard view's own header shows for the viewed
+ *  interval instead of a full start-end range. */
+function intervalEndLabel(index: number, intervalMin: number): string {
+  return formatIntervalBoundary((index + 1) * intervalMin);
+}
+
+/** "1hr-1hr 30m" — the full start-end range in that same boundary style,
+ *  used as the "time to check" alert's own sub-text instead of the card's
+ *  title. */
+function intervalCheckRangeLabel(index: number, intervalMin: number): string {
+  return `${formatIntervalBoundary(index * intervalMin)}-${formatIntervalBoundary((index + 1) * intervalMin)}`;
 }
 
 function formatCompactTime(ms: number) {
@@ -271,7 +284,7 @@ export function TimestampCard({
       dedupeKey: `timestamp-check:${cardKey}:${currentIndex}`,
       kind: "alert-now",
       title: `Check if ${positiveLabel}`,
-      body: title,
+      body: intervalCheckRangeLabel(currentIndex, intervalMin),
       icon: "bell-chime",
       allowSnooze: true,
       timestampCheck: {

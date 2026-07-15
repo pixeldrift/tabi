@@ -541,44 +541,47 @@ function NotificationRow({
             adds — same swipe/drag behavior as any other alert (this sits
             inside the same draggable bubble), just with room below the
             header for a jump-to-card button plus the card's own two score
-            buttons, styled to match its RowScoreButton. */}
+            buttons. Icon-only circles (like the standard audio/snooze/
+            dismiss cluster above), not labeled pills — the color alone
+            (plus the aria-label/title) carries what each one does. */}
         {n.timestampCheck && (
-          <div className="flex items-center gap-1.5 px-3 pb-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-center gap-2 px-3 pb-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               aria-label="Scroll to card"
               title="Scroll to card"
               onClick={n.timestampCheck.onScrollToCard}
-              className="shrink-0 inline-flex items-center gap-1 h-7 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wide px-2 transition-colors"
+              className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
             >
-              <NowIcon className="size-3" />
-              Now
+              <NowIcon className="size-3.5" />
             </button>
             <button
               type="button"
+              aria-label={n.timestampCheck.negativeLabel}
+              title={n.timestampCheck.negativeLabel}
               onClick={() => handleIntervalScore("incorrect")}
               className={cn(
-                "flex-1 min-w-0 h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2 text-[11px] font-semibold truncate transition-colors",
+                "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
                 intervalStatus === "incorrect"
                   ? "btn-bevel bg-red-500 border-red-600 text-white"
                   : "border-red-300 text-red-700 bg-white hover:bg-red-50",
               )}
             >
-              <X className="size-3 shrink-0" strokeWidth={3} />
-              <span className="truncate">{n.timestampCheck.negativeLabel}</span>
+              <X className="size-4" strokeWidth={3} />
             </button>
             <button
               type="button"
+              aria-label={n.timestampCheck.positiveLabel}
+              title={n.timestampCheck.positiveLabel}
               onClick={() => handleIntervalScore("correct")}
               className={cn(
-                "flex-1 min-w-0 h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2 text-[11px] font-semibold truncate transition-colors",
+                "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
                 intervalStatus === "correct"
                   ? "btn-bevel bg-green-500 border-green-600 text-white"
                   : "border-green-300 text-green-700 bg-white hover:bg-green-50",
               )}
             >
-              <Check className="size-3 shrink-0" strokeWidth={3} />
-              <span className="truncate">{n.timestampCheck.positiveLabel}</span>
+              <Check className="size-4" strokeWidth={3} />
             </button>
           </div>
         )}
