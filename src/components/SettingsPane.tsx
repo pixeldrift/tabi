@@ -10,6 +10,7 @@ import {
 import { DISPLAY_MODES } from "./DataToolbarContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
 import { IconsShowcase } from "./IconsShowcase";
+import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -266,6 +267,7 @@ export function SettingsPane() {
         </section>
 
         <IconsShowcase />
+        <ColorPaletteShowcase />
       </div>
     </div>
   );
