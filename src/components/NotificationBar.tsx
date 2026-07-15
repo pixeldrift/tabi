@@ -481,7 +481,7 @@ function NotificationRow({
               <Icon className="size-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
+              <NotificationTitle title={n.title} className="block text-sm text-foreground truncate" />
               {n.body && (
                 <div className="text-xs text-muted-foreground truncate">
                   {n.body}
@@ -714,7 +714,7 @@ function NotificationListRow({
         <Icon className="size-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <NotificationTitle title={n.title} className="block text-sm text-stone-900" />
+        <NotificationTitle title={n.title} className="block text-sm text-foreground" />
         {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
         <div className="mt-1 flex items-center gap-2">
           {n.sourceRef && (

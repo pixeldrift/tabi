@@ -28,11 +28,11 @@ const FAMILY_HEX: Record<string, Record<number, string>> = {
 // that share one deliberate 50/300/500/600/700 pattern (see
 // NotificationBar.tsx's own NOTIFICATION_STYLES).
 const CORE_PALETTE: { family: string; counts: Record<number, number> }[] = [
-  { family: "stone", counts: { 50: 6, 100: 35, 200: 74, 300: 28, 400: 34, 500: 14, 600: 23, 700: 7, 800: 8, 900: 4 } },
-  { family: "blue", counts: { 50: 33, 100: 13, 200: 10, 300: 28, 400: 43, 500: 78, 600: 89, 700: 61, 800: 6, 900: 2 } },
-  { family: "red", counts: { 50: 24, 100: 9, 300: 23, 400: 3, 500: 29, 600: 17, 700: 28 } },
-  { family: "green", counts: { 50: 15, 100: 8, 200: 1, 300: 13, 400: 3, 500: 25, 600: 13, 700: 20, 800: 2 } },
-  { family: "amber", counts: { 50: 13, 100: 8, 300: 17, 400: 7, 500: 12, 600: 6, 700: 17 } },
+  { family: "stone", counts: { 50: 6, 100: 35, 200: 27, 300: 18, 400: 33, 500: 15, 600: 22, 700: 5, 800: 8, 900: 2 } },
+  { family: "blue", counts: { 50: 33, 100: 13, 200: 10, 300: 21, 400: 51, 500: 90, 600: 110, 700: 34, 800: 5, 900: 2 } },
+  { family: "red", counts: { 50: 24, 100: 12, 300: 23, 400: 3, 500: 24, 600: 24, 700: 27 } },
+  { family: "green", counts: { 50: 15, 100: 11, 200: 1, 300: 14, 400: 3, 500: 20, 600: 18, 700: 22 } },
+  { family: "amber", counts: { 50: 13, 100: 9, 300: 17, 400: 1, 500: 13, 600: 13, 700: 16 } },
   { family: "yellow", counts: { 300: 1, 400: 5 } },
 ];
 
@@ -149,22 +149,22 @@ export function ColorPaletteShowcase() {
                 <div className="flex flex-wrap gap-3">
                   <TokenPair name="background" bgVar="--background" fgVar="--foreground" />
                   <TokenPair name="card" bgVar="--card" fgVar="--card-foreground" />
-                  <TokenPair name="popover" bgVar="--popover" fgVar="--popover-foreground" />
+                  <TokenPair name="popover" bgVar="--popover" fgVar="--popover-foreground" note="= card" />
                   <TokenPair name="primary" bgVar="--primary" fgVar="--primary-foreground" />
                   <TokenPair name="secondary" bgVar="--secondary" fgVar="--secondary-foreground" />
                   <TokenPair name="muted" bgVar="--muted" fgVar="--muted-foreground" />
                   <TokenPair name="accent" bgVar="--accent" fgVar="--accent-foreground" />
                   <TokenPair name="destructive" bgVar="--destructive" fgVar="--destructive-foreground" />
-                  <TokenPair name="success" bgVar="--success" fgVar="--success-foreground" note="unused" />
                   <TokenSolo name="border" cssVar="--border" />
                   <TokenSolo name="input" cssVar="--input" />
                   <TokenSolo name="ring" cssVar="--ring" />
-                  <TokenSolo name="surface" cssVar="--surface" />
-                  <TokenSolo name="surface-elevated" cssVar="--surface-elevated" />
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-2">
-                  Most cards/alerts reach for a literal Tailwind shade (below) instead of these —
-                  "success" and "surface"/"surface-elevated" aren't referenced by any component.
+                  Most cards/alerts reach for a literal Tailwind shade (below) instead of these.
+                  "popover" now aliases "card" directly in styles.css rather than duplicating its
+                  value — the two were never actually differentiated. The formerly-unused
+                  "success"/"surface"/"surface-elevated" tokens have been removed outright: nothing
+                  referenced them and there was no near-term plan that needed them kept as a spare.
                 </p>
               </div>
 

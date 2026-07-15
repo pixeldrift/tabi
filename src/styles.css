@@ -31,13 +31,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-surface: var(--surface);
-  --color-surface-elevated: var(--surface-elevated);
 }
 
 :root {
@@ -47,13 +43,12 @@
   --background: oklch(0.975 0.018 85);
   --foreground: oklch(0.22 0.03 60);
 
-  --surface: oklch(0.99 0.012 85);
-  --surface-elevated: oklch(1 0 0);
-
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.03 60);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.03 60);
+  /* Never actually differentiated from --card in this app — aliased rather
+     than kept as a second literal so the two can't drift apart by accident. */
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
 
   --primary: oklch(0.55 0.22 264);    /* blue-600 */
   --primary-foreground: oklch(0.99 0.01 264);
@@ -69,9 +64,6 @@
 
   --destructive: oklch(0.55 0.21 25);
   --destructive-foreground: oklch(0.985 0.01 85);
-
-  --success: oklch(0.62 0.13 155);
-  --success-foreground: oklch(0.99 0.01 155);
 
   --border: oklch(0.9 0.018 80);
   --input: oklch(0.92 0.018 80);
@@ -96,12 +88,10 @@
 .dark {
   --background: oklch(0.18 0.02 60);
   --foreground: oklch(0.96 0.015 85);
-  --surface: oklch(0.22 0.025 60);
-  --surface-elevated: oklch(0.26 0.03 60);
   --card: oklch(0.24 0.028 60);
   --card-foreground: oklch(0.96 0.015 85);
-  --popover: oklch(0.24 0.028 60);
-  --popover-foreground: oklch(0.96 0.015 85);
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
   --primary: oklch(0.78 0.14 50);
   --primary-foreground: oklch(0.2 0.03 60);
   --secondary: oklch(0.3 0.03 60);
@@ -112,8 +102,6 @@
   --accent-foreground: oklch(0.2 0.03 60);
   --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(0.98 0.01 85);
-  --success: oklch(0.68 0.14 155);
-  --success-foreground: oklch(0.18 0.02 60);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.78 0.14 50);
