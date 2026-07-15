@@ -49,7 +49,7 @@ const SelectTrigger = React.forwardRef<
         // z-50 content elsewhere on the page, like an open Dialog.
         // The blue pill look is the app's one Select style — every trigger
         // gets it by default rather than each call site repeating it.
-        "group relative data-[state=open]:z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-300 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "group relative data-[state=open]:z-[60] flex h-8 w-full items-center justify-between whitespace-nowrap rounded-full border-2 border-blue-400 bg-white px-3 py-1.5 text-sm text-blue-700 shadow-sm ring-offset-background cursor-pointer data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
       )}
       {...props}
@@ -154,7 +154,7 @@ const SelectContent = React.forwardRef<
       <SelectPrimitive.Content
         ref={setRefs}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) overflow-y-auto overflow-x-hidden border-2 border-blue-300 bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-4 data-[side=top]:slide-in-from-bottom-4 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 origin-(--radix-select-content-transform-origin)",
+          "relative z-50 max-h-(--radix-select-content-available-height) overflow-y-auto overflow-x-hidden border-2 border-blue-400 bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-4 data-[side=top]:slide-in-from-bottom-4 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 origin-(--radix-select-content-transform-origin)",
           // Normal case: list hangs below the pill, flat top tucks under
           // it, rounded bottom. Flipped case (opened upward because there's
           // no room below): mirror it — flat bottom tucks under the pill

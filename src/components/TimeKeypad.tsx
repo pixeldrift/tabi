@@ -191,7 +191,7 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
               type="button"
               onClick={() => handleOpenChange(false)}
               whileTap={{ scale: 0.92 }}
-              className="grid size-8 place-items-center rounded-full border border-stone-200 text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
+              className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-stone-100 hover:text-foreground"
               aria-label="Close"
             >
               <X className="size-4" />
@@ -255,8 +255,8 @@ function KeyButton({
       className={cn(
         "btn-bevel h-9 select-none rounded-lg border text-lg font-semibold font-display transition-colors",
         variant === "default"
-          ? "bg-stone-100 text-foreground border-stone-200 hover:bg-stone-200 active:bg-stone-300"
-          : "bg-muted/70 text-muted-foreground border-stone-200 hover:bg-muted active:bg-stone-200",
+          ? "bg-stone-100 text-foreground border-border hover:bg-stone-200 active:bg-stone-300"
+          : "bg-muted/70 text-muted-foreground border-border hover:bg-muted active:bg-stone-200",
       )}
     >
       <span className="flex items-center justify-center">{children}</span>

@@ -352,7 +352,7 @@ export function TimestampCard({
     <span
       aria-label="Locked to session time"
       title="Locked to session time"
-      className="inline-flex items-center shrink-0 rounded-full border border-stone-300 bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
+      className="inline-flex items-center shrink-0 rounded-full border border-border bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
     >
       {formatCompactTime(elapsed)}
       <Link2 className="ml-1 size-3 rotate-45" strokeWidth={2.5} />
@@ -449,7 +449,7 @@ export function TimestampCard({
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
                 viewStatus === "incorrect"
-                  ? "bg-red-400 border-red-500 text-white"
+                  ? "bg-red-500 border-red-600 text-white"
                   : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
               )}
             >
@@ -467,7 +467,7 @@ export function TimestampCard({
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
                 viewStatus === "correct"
-                  ? "bg-green-400 border-green-500 text-white"
+                  ? "bg-green-500 border-green-600 text-white"
                   : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
               )}
             >
@@ -836,7 +836,7 @@ function IntervalTimeline({
               style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
               aria-hidden
             >
-              <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
+              <path d={NOW_CHEVRON_PATH} fill="var(--color-now-chevron)" />
             </svg>
             {/* Rotating a non-square box like this one leaves it centered in
                 its own unrotated (16x20) footprint, so the visually-rotated
@@ -960,7 +960,7 @@ function TimestampExpandedView({
               style={{ top: fillPx, right: -CHEVRON_OVERLAP_PX }}
             >
               <svg width="16" height="20" viewBox="0 0 16 20" style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }} aria-hidden>
-                <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
+                <path d={NOW_CHEVRON_PATH} fill="var(--color-now-chevron)" />
               </svg>
             </div>
           </div>
@@ -1125,8 +1125,8 @@ function ScoreButton({
           : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
         selected &&
           (isPositive
-            ? "bg-green-500 border-green-600 text-white hover:bg-green-500"
-            : "bg-red-500 border-red-600 text-white hover:bg-red-500"),
+            ? "bg-green-500 border-green-600 text-white hover:bg-green-600"
+            : "bg-red-500 border-red-600 text-white hover:bg-red-600"),
       )}
     >
       <Icon className="size-4 shrink-0" strokeWidth={3} />
@@ -1158,14 +1158,14 @@ function RowScoreButton({
       className={cn(
         "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40 shrink-0",
         isPositive
-          ? "border-green-300 text-green-700 hover:bg-green-50"
-          : "border-red-300 text-red-700 hover:bg-red-50",
+          ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+          : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
         selected &&
           cn(
             "btn-bevel text-white",
             isPositive
-              ? "bg-green-500 border-green-600 hover:bg-green-500"
-              : "bg-red-500 border-red-600 hover:bg-red-500",
+              ? "bg-green-500 border-green-600 hover:bg-green-600"
+              : "bg-red-500 border-red-600 hover:bg-red-600",
           ),
       )}
     >

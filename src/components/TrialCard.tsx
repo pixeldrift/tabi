@@ -533,7 +533,7 @@ export function TrialCard({
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-          : "border border-stone-200 opacity-80 hover:opacity-95",
+          : "border border-border opacity-80 hover:opacity-95",
       )}
     >
       <div className="relative rounded-xl overflow-hidden">
@@ -640,7 +640,7 @@ export function TrialCard({
 
         {/* Universal header/body divider — present in both the standard and
           expanded views, not just faded in while expanded. */}
-        <div className="mx-[18px] mt-2.5 border-t border-dashed border-stone-200" />
+        <div className="mx-[18px] mt-2.5 border-t border-dashed border-border" />
 
         <div
           className={cn(
@@ -885,7 +885,7 @@ export function TrialCard({
                         disabled={!sessionRunning}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
-                          "border-red-300 text-red-700 hover:bg-red-50",
+                          "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
                           t === "incorrect" && "btn-bevel bg-red-500 border-red-600 text-white",
                         )}
                       >
@@ -900,7 +900,7 @@ export function TrialCard({
                         disabled={!sessionRunning}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
-                          "border-amber-300 text-amber-700 hover:bg-amber-50",
+                          "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
                           t === "no-response" &&
                             "btn-bevel bg-amber-500 border-amber-600 text-white",
                         )}
@@ -915,7 +915,7 @@ export function TrialCard({
                       disabled={!sessionRunning}
                       className={cn(
                         "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
-                        "border-green-300 text-green-700 hover:bg-green-50",
+                        "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
                         t === "correct" && "btn-bevel bg-green-500 border-green-600 text-white",
                       )}
                     >
@@ -945,7 +945,7 @@ export function TrialCard({
                     isComplete
                       ? "bg-green-500/25"
                       : progress >= 50
-                        ? "bg-yellow-400/25"
+                        ? "bg-yellow-400/30"
                         : "bg-blue-400/25",
                   )}
                   animate={{ width: `${progress}%` }}
@@ -1031,13 +1031,13 @@ const ACTION_BUTTON_STYLES = {
     icon: Check,
     label: "Correct",
     classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-    selectedClasses: "bg-green-500 border-green-600 text-white hover:bg-green-500",
+    selectedClasses: "bg-green-500 border-green-600 text-white hover:bg-green-600",
   },
   incorrect: {
     icon: X,
     label: "Error",
     classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-    selectedClasses: "bg-red-500 border-red-600 text-white hover:bg-red-500",
+    selectedClasses: "bg-red-500 border-red-600 text-white hover:bg-red-600",
   },
   // Neutral (not positive or negative), same amber used for Task Analysis's
   // Prompted option, so "the target behavior didn't happen at all" reads
@@ -1046,7 +1046,7 @@ const ACTION_BUTTON_STYLES = {
     icon: CircleSlash2,
     label: "No Response",
     classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    selectedClasses: "bg-amber-500 border-amber-600 text-white hover:bg-amber-500",
+    selectedClasses: "bg-amber-500 border-amber-600 text-white hover:bg-amber-600",
   },
 } as const;
 
@@ -1132,7 +1132,7 @@ function PromptLevelButton({
           className={cn(
             "btn-bevel flex-1 min-w-0 h-10 rounded-full border-2 flex flex-col items-center justify-center transition-colors disabled:opacity-40",
             "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-            selected && "bg-red-500 border-red-600 text-white hover:bg-red-500",
+            selected && "bg-red-500 border-red-600 text-white hover:bg-red-600",
           )}
         >
           <span className="flex items-center gap-1.5">

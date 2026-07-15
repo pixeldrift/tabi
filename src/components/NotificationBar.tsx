@@ -52,55 +52,55 @@ const KIND_STYLES: Record<NotificationKind, { ring: string; iconFg: string; acce
     ring: "border-red-300 bg-red-50",
     iconFg: "text-red-700",
     accent: "bg-red-500",
-    button: "bg-red-500 hover:bg-red-600 active:bg-red-700",
+    button: "bg-red-500 hover:bg-red-600 active:bg-red-600",
   },
   "alert-priming": {
     ring: "border-amber-300 bg-amber-50",
     iconFg: "text-amber-700",
     accent: "bg-amber-500",
-    button: "bg-amber-500 hover:bg-amber-600 active:bg-amber-700",
+    button: "bg-amber-500 hover:bg-amber-600 active:bg-amber-600",
   },
   "goal-change": {
     ring: "border-blue-300 bg-blue-50",
     iconFg: "text-blue-700",
     accent: "bg-blue-500",
-    button: "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+    button: "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
   },
   message: {
     ring: "border-emerald-300 bg-emerald-50",
     iconFg: "text-emerald-700",
     accent: "bg-emerald-500",
-    button: "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
+    button: "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-600",
   },
   announcement: {
     ring: "border-violet-300 bg-violet-50",
     iconFg: "text-violet-700",
     accent: "bg-violet-500",
-    button: "bg-violet-500 hover:bg-violet-600 active:bg-violet-700",
+    button: "bg-violet-500 hover:bg-violet-600 active:bg-violet-600",
   },
   "appointment-new": {
     ring: "border-teal-300 bg-teal-50",
     iconFg: "text-teal-700",
     accent: "bg-teal-500",
-    button: "bg-teal-500 hover:bg-teal-600 active:bg-teal-700",
+    button: "bg-teal-500 hover:bg-teal-600 active:bg-teal-600",
   },
   "appointment-cancelled": {
     ring: "border-rose-300 bg-rose-50",
     iconFg: "text-rose-700",
     accent: "bg-rose-500",
-    button: "bg-rose-500 hover:bg-rose-600 active:bg-rose-700",
+    button: "bg-rose-500 hover:bg-rose-600 active:bg-rose-600",
   },
   "edit-request": {
     ring: "border-orange-300 bg-orange-50",
     iconFg: "text-orange-700",
     accent: "bg-orange-500",
-    button: "bg-orange-500 hover:bg-orange-600 active:bg-orange-700",
+    button: "bg-orange-500 hover:bg-orange-600 active:bg-orange-600",
   },
   "edit-approved": {
     ring: "border-indigo-300 bg-indigo-50",
     iconFg: "text-indigo-700",
     accent: "bg-indigo-500",
-    button: "bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700",
+    button: "bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-600",
   },
 };
 
@@ -483,7 +483,7 @@ function NotificationRow({
             <div className="flex-1 min-w-0">
               <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
               {n.body && (
-                <div className="text-xs text-stone-600 truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {n.body}
                   {relativeTime && (
                     <>
@@ -517,7 +517,7 @@ function NotificationRow({
                   "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
                   intervalStatus === "incorrect"
                     ? "btn-bevel bg-red-500 border-red-600 text-white"
-                    : "border-red-300 text-red-700 bg-white hover:bg-red-50",
+                    : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
                 )}
               >
                 <X className="size-4" strokeWidth={3} />
@@ -531,7 +531,7 @@ function NotificationRow({
                   "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
                   intervalStatus === "correct"
                     ? "btn-bevel bg-green-500 border-green-600 text-white"
-                    : "border-green-300 text-green-700 bg-white hover:bg-green-50",
+                    : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
                 )}
               >
                 <Check className="size-4" strokeWidth={3} />
@@ -547,7 +547,7 @@ function NotificationRow({
                   <RowButton
                     label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
                     colorClass={cn(
-                      audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button,
+                      audioState === "off" ? "bg-stone-500 hover:bg-stone-600 active:bg-stone-600" : styles.button,
                       // Muting used to only swap the icon, leaving the button
                       // at full strength — reads as still "on." Fading it
                       // here is what actually sells "this is now off,"
@@ -608,7 +608,7 @@ export function NotificationsPane() {
 
   if (ordered.length === 0) {
     return (
-      <div className="max-w-md mx-auto mt-12 rounded-xl border border-dashed border-stone-300 bg-white p-8 text-center">
+      <div className="max-w-md mx-auto mt-12 rounded-xl border border-dashed border-border bg-white p-8 text-center">
         <h2 className="font-display text-xl">Alerts &amp; announcements</h2>
         <p className="mt-2 text-sm text-muted-foreground">Messages, reminders, and supervisor notes will appear here.</p>
       </div>
@@ -619,7 +619,7 @@ export function NotificationsPane() {
     <div className="max-w-2xl mx-auto mt-6 px-4 pb-8">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Notifications</h2>
-        <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+        <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
           Clear all
         </button>
       </div>
@@ -708,20 +708,20 @@ function NotificationListRow({
       onDragStart={() => { wasDragging.current = true; }}
       onDragEnd={handleDragEnd}
       style={{ x: dismissX, opacity: cardOpacity }}
-      className="flex items-start gap-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing"
+      className="flex items-start gap-3 rounded-xl border border-border bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing"
     >
       <div className={cn("flex items-center justify-center size-8 shrink-0 rounded-full", styles.ring, styles.iconFg)}>
         <Icon className="size-4" />
       </div>
       <div className="flex-1 min-w-0">
         <NotificationTitle title={n.title} className="block text-sm text-stone-900" />
-        {n.body && <p className="mt-0.5 text-xs text-stone-600">{n.body}</p>}
+        {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
         <div className="mt-1 flex items-center gap-2">
           {n.sourceRef && (
             <button
               type="button"
               onClick={() => { if (!wasDragging.current) onActivate(); }}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700"
+              className="text-xs font-medium text-blue-500 hover:text-blue-600"
             >
               {viewLabel}
             </button>

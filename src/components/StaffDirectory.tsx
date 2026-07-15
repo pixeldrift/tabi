@@ -242,7 +242,7 @@ function StaffProfileDialog({
 
         <p className="text-sm text-foreground/80 leading-snug">{staff.bio}</p>
 
-        <div className="border-t border-stone-200 pt-2">
+        <div className="border-t border-border pt-2">
           <button
             type="button"
             onClick={() => setClientsOpen((v) => !v)}
@@ -279,7 +279,7 @@ function StaffProfileDialog({
 
 function ContactButton({ icon, label, href }: { icon: React.ReactNode; label: string; href?: string }) {
   const className =
-    "flex flex-1 flex-col items-center gap-1 rounded-lg border border-stone-200 py-2 text-[11px] font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors";
+    "flex flex-1 flex-col items-center gap-1 rounded-lg border border-border py-2 text-[11px] font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors";
   if (!href) {
     return (
       <button type="button" className={className}>

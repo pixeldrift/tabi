@@ -12,7 +12,7 @@ export function PhotoZoomButton({
   kind,
   label,
   size,
-  ringClassName = "border border-stone-200 bg-blue-50",
+  ringClassName = "border border-border bg-blue-50",
 }: {
   avatar?: string;
   kind?: "person" | "vehicle";

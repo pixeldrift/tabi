@@ -210,7 +210,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
             key={s.id}
             type="button"
             onClick={() => jumpTo(s.id)}
-            className="px-2 py-1 rounded-full border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
+            className="px-2 py-1 rounded-full border border-border bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
           >
             {s.label}
           </button>
@@ -220,7 +220,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
       <AboutMeSection phineasAppointments={phineasAppointments} onViewSchedule={onViewSchedule} />
 
       <Section id="section-guardians" title="Guardians">
-        <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden">
+        <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
           {GUARDIANS.map((g) => (
             <div key={g.id} className="flex items-center gap-3 p-3">
               <PhotoZoomButton avatar={g.avatar} label={g.name} size="size-10" />
@@ -252,7 +252,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
       </Section>
 
       <Section id="section-vehicles" title="Vehicles">
-        <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden">
+        <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
           {VEHICLES.map((v) => {
             const guardian = GUARDIANS.find((g) => g.id === v.guardianId);
             return (
@@ -281,7 +281,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
       </Section>
 
       <Section id="section-team" title="Care Team">
-        <div className="rounded-xl border border-stone-200 bg-white p-3 space-y-2 text-sm">
+        <div className="rounded-xl border border-border bg-white p-3 space-y-2 text-sm">
           <InfoRow label="Lead BCBA:">
             <PersonPill name="Heinz Doofenshmirtz" />
           </InfoRow>
@@ -364,7 +364,7 @@ function AboutMeSection({
           )}
         </button>
       </div>
-      <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
+      <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden text-sm">
         <NoteRow
           id="safetyPlan"
           emoji="🚨"
@@ -487,7 +487,7 @@ function AboutMeSection({
             <button
               type="button"
               onClick={onViewSchedule}
-              className="text-blue-600 hover:text-blue-700 underline underline-offset-2"
+              className="text-blue-500 hover:text-blue-600 underline underline-offset-2"
             >
               View schedule
             </button>
@@ -653,7 +653,7 @@ function RequestEditDialog({
             Cancel <X className="size-4" />
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none"
+            className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40 disabled:pointer-events-none"
             disabled={!text.trim()}
             onClick={handleSave}
           >

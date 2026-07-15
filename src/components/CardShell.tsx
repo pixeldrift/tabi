@@ -150,9 +150,9 @@ export function CardShell({
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? editing
-            ? "border border-stone-200 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+            ? "border border-border shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             : "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-          : "border border-stone-200 opacity-80 hover:opacity-95",
+          : "border border-border opacity-80 hover:opacity-95",
       )}
     >
       {/* Clips inner content (mainly the progress bar's own square corners,
@@ -214,7 +214,7 @@ export function CardShell({
 
       {/* Universal header/body divider — present in every card and both
           the standard and expanded views, not just faded in while expanded. */}
-      <div className="mx-[18px] mt-2.5 border-t border-dashed border-stone-200" />
+      <div className="mx-[18px] mt-2.5 border-t border-dashed border-border" />
 
       {/* Positioned so the circle's center sits at the card's own corner-radius
           center (rounded-xl = 20px), rather than in the header's flex flow.

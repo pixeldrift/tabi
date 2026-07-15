@@ -35,7 +35,7 @@ export function ListActionBadge({
 const LIST_BUTTON_VARIANTS = {
   neutral: {
     classes: "border-stone-200 bg-white text-foreground/70 hover:bg-stone-50",
-    selectedClasses: "bg-stone-600 border-stone-700 text-white",
+    selectedClasses: "bg-stone-500 border-stone-600 text-white",
   },
   red: {
     classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",

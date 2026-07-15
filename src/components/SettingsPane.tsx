@@ -27,7 +27,7 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
           onClick={open}
           className={cn(
             "flex h-9 w-[110px] items-center justify-center rounded-full border-2 bg-white px-2 text-sm tabular-nums shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors text-blue-700",
-            isEditing ? "border-blue-500" : "border-blue-300",
+            isEditing ? "border-blue-400" : "border-blue-300",
           )}
         >
           {formatTimeOfDay(value)}
@@ -243,7 +243,7 @@ export function SettingsPane() {
                 <RotateCcw className="size-3" />
               </button>
             </div>
-            <div className="mt-2 flex items-center gap-1 rounded-full border border-stone-200 bg-stone-100/60 p-1 w-fit">
+            <div className="mt-2 flex items-center gap-1 rounded-full border border-border bg-stone-100/60 p-1 w-fit">
               {DISPLAY_MODES.map(({ mode, label, icon }) => (
                 <button
                   key={mode}

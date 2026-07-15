@@ -371,7 +371,7 @@ export function DurationCard({
                     className={cn(
                       "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
                       large ? "h-10" : "h-[30px]",
-                      accent ? "border-blue-500" : "border-stone-300",
+                      accent ? "border-blue-500" : "border-border",
                     )}
                   >
                     <TimeKeypad
@@ -412,7 +412,7 @@ export function DurationCard({
                       disabled={!sessionRunning}
                       aria-label={running ? "Pause this instance" : "Start this instance"}
                       className={cn(
-                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40",
+                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
                         large ? "w-10" : "w-[30px]",
                       )}
                     >
@@ -486,7 +486,7 @@ export function DurationCard({
             <div
               className={cn(
                 "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
-                isActivated(viewIdx) ? "border-blue-500" : "border-stone-300",
+                isActivated(viewIdx) ? "border-blue-500" : "border-border",
               )}
             >
               <TimeKeypad
@@ -517,7 +517,7 @@ export function DurationCard({
                 }}
                 disabled={!sessionRunning}
                 aria-label={running_ ? "Pause this instance" : "Start this instance"}
-                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40"
+                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
               >
                 {running_ ? (
                   <Pause className="size-3" fill="currentColor" strokeWidth={0} />
@@ -646,7 +646,7 @@ export function DurationCard({
                   aria-label={isRunning ? "Pause this instance" : "Start this instance"}
                   className={cn(
                     "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40",
-                    isRunning ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600",
+                    "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
                   )}
                 >
                   {isRunning ? (
@@ -658,7 +658,7 @@ export function DurationCard({
               </li>
             );
           })}
-          <li className="flex items-center gap-2 px-2 py-2 mt-1 border-t border-dashed border-stone-200">
+          <li className="flex items-center gap-2 px-2 py-2 mt-1 border-t border-dashed border-border">
             <span className="size-6 shrink-0" aria-hidden />
             <span className="tabular-nums text-sm font-bold text-foreground">{formatTime(totalMs)}</span>
             <span className="text-sm font-bold text-foreground">Total</span>
@@ -786,7 +786,7 @@ function CenterPill({
     <div
       className={cn(
         "absolute inset-0 flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-        accent ? "border-blue-500" : "border-stone-300",
+        accent ? "border-blue-500" : "border-border",
       )}
     >
       <div className="flex-1 flex items-center gap-2 pl-2 pr-2">
@@ -845,7 +845,7 @@ function CenterPill({
         }}
         disabled={disabled}
         aria-label={running ? "Pause this instance" : "Start this instance"}
-        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40"
+        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
       >
         {running ? (
           <Pause className="size-5 -translate-x-0.5" fill="currentColor" strokeWidth={0} />

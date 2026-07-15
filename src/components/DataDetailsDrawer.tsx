@@ -355,7 +355,7 @@ export function DataDetailsDrawer({
         // Matches the active card's own border while open — same blue,
         // same 2px weight — so the drawer visibly reads as "this card,
         // pulled out," not a generic unrelated panel.
-        open ? "border-2 border-blue-400/80" : "border border-stone-200/70",
+        open ? "border-2 border-blue-400/80" : "border border-border/70",
         // widthClassName is only a fallback here — a real hugWidth (once
         // measured) wins via the inline style below regardless of which
         // class is present, so there's no conflict in leaving both applied.
@@ -392,7 +392,7 @@ export function DataDetailsDrawer({
         aria-expanded={open}
         className={cn(
           "absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg bg-background text-stone-500 hover:text-stone-800 transition-colors",
-          open ? "border-2 border-blue-400/80" : "border border-stone-200/70",
+          open ? "border-2 border-blue-400/80" : "border border-border/70",
           "border-r-0",
         )}
         style={{ height: toolbarRowHeight }}
@@ -474,7 +474,7 @@ export function DataDetailsDrawer({
             arrows, and the title's own top line all sit in one flex row and
             align naturally instead of needing separately-matched offsets. */}
         <div
-          className="shrink-0 border-b border-stone-200/70 bg-background py-1.5 px-4"
+          className="shrink-0 border-b border-border/70 bg-background py-1.5 px-4"
           style={{ minHeight: toolbarRowHeight }}
         >
           <div className="flex items-center gap-1">
@@ -486,7 +486,7 @@ export function DataDetailsDrawer({
               }}
               disabled={!onPrevCard || exitDir !== null}
               aria-label="Previous card"
-              className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="grid shrink-0 place-items-center size-7 rounded-full border border-border text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -504,7 +504,7 @@ export function DataDetailsDrawer({
               }}
               disabled={!onNextCard || exitDir !== null}
               aria-label="Next card"
-              className="grid shrink-0 place-items-center size-7 rounded-full border border-stone-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              className="grid shrink-0 place-items-center size-7 rounded-full border border-border text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronRight className="size-4" />
             </button>

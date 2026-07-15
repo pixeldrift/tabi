@@ -43,6 +43,12 @@ import {
 import { cn } from "@/lib/utils";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
+import {
+  TIMER_MORPH_DIGIT_MINI,
+  TIMER_MORPH_DIGIT_FULL,
+  TIMER_MORPH_BORDER_MINI,
+  TIMER_MORPH_BORDER_FULL,
+} from "@/lib/actionColors";
 
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
@@ -519,8 +525,8 @@ export function StatusBar({
                       className={cn(
                         "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
                         isActive
-                          ? "bg-background text-foreground border-stone-200 font-medium"
-                          : "bg-stone-200/70 text-stone-600 border-transparent hover:text-foreground hover:bg-stone-200",
+                          ? "bg-background text-foreground border-border font-medium"
+                          : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
                       )}
                     >
                       <Icon className={cn("size-4", !isActive && "opacity-60")} />
@@ -611,9 +617,15 @@ export function StatusBar({
         {pillTraveling && pillTravelRect && (() => {
           const toMini = pillView === "mini";
           const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
-          const digitColor = { from: toMini ? "#292524" : "#1d4ed8", to: toMini ? "#1d4ed8" : "#292524" };
+          const digitColor = {
+            from: toMini ? TIMER_MORPH_DIGIT_MINI : TIMER_MORPH_DIGIT_FULL,
+            to: toMini ? TIMER_MORPH_DIGIT_FULL : TIMER_MORPH_DIGIT_MINI,
+          };
           const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
-          const borderColor = { from: toMini ? "#d6d3d1" : "#3b82f6", to: toMini ? "#3b82f6" : "#d6d3d1" };
+          const borderColor = {
+            from: toMini ? TIMER_MORPH_BORDER_MINI : TIMER_MORPH_BORDER_FULL,
+            to: toMini ? TIMER_MORPH_BORDER_FULL : TIMER_MORPH_BORDER_MINI,
+          };
           return (
             <motion.div
               key="pill-travel-overlay"
@@ -657,7 +669,7 @@ export function StatusBar({
         })()}
       </AnimatePresence>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-500 rounded-xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-400/80 ring-2 ring-inset ring-red-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-red-600">Warning!</DialogTitle>
             <DialogDescription className="text-left">
@@ -674,7 +686,7 @@ export function StatusBar({
             <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => setDiscardOpen(false)}
-              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               Continue Session Safely
               <Play className="size-4" fill="currentColor" />
@@ -683,7 +695,7 @@ export function StatusBar({
         </DialogContent>
       </Dialog>
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-green-500 rounded-xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
             <DialogDescription className="text-left">
@@ -704,7 +716,7 @@ export function StatusBar({
             <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => setEndOpen(false)}
-              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
             >
               Return to Session
               <Play className="size-4" fill="currentColor" />
@@ -780,7 +792,7 @@ function ActiveDurationIndicator({
           // animating independently instead of staying visually locked to
           // it during transitions.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
+          className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors"
         >
           <span className="relative inline-flex">
             <span className="inline-block animate-pulse-scale">
@@ -822,7 +834,7 @@ function SaveIndicator({
   const SymbolIcon = isDirty ? ArrowUp : isSaving ? RefreshCw : Check;
 
   const label = isSaving ? "Saving" : isDirty ? "Unsaved" : "Saved";
-  const labelColor = isSaving || isDirty ? "text-blue-600" : "text-stone-700";
+  const labelColor = isSaving || isDirty ? "text-blue-600" : "text-muted-foreground";
 
   return (
     <div className="flex items-center gap-1.5">
@@ -853,7 +865,7 @@ function SaveIndicator({
           >
             <X className="size-4" />
           </PopoverPrimitive.Close>
-          <div className="relative px-5 pt-4 pb-2 border-b border-stone-200 bg-white rounded-t-xl">
+          <div className="relative px-5 pt-4 pb-2 border-b border-border bg-white rounded-t-xl">
             <h3 className="font-display text-lg leading-tight pr-8">Session Data Status</h3>
           </div>
 

@@ -142,7 +142,7 @@ export function DataToolbar({
       // banner below the row, when it's showing) rather than the full
       // viewport.
       data-toolbar
-      className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70"
+      className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
       style={{ top: stickyTop }}
     >
       {/* Named separately from data-toolbar above — this is just the row's
@@ -155,7 +155,7 @@ export function DataToolbar({
           {/* View mode segmented toggle — nudged left within the toolbar's own
            *  px-4 padding, since its rounded pill reads with more empty edge
            *  space than the toolbar's other controls at the same inset. */}
-          <div className="flex items-center -ml-1 rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+          <div className="flex items-center -ml-1 rounded-full border border-border bg-stone-100/60 p-0.5 shrink-0">
             {DISPLAY_MODES.map(({ mode, label, icon }) => (
               <button
                 key={mode}
@@ -235,7 +235,7 @@ export function DataToolbar({
                 measured (see the effect above) rather than a fixed value. */}
               <div
                 className={cn(
-                  "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-stone-300 bg-popover",
+                  "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-border bg-popover",
                   "-top-[7px] border-l-2 border-t-2",
                   "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
                   "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
@@ -293,7 +293,7 @@ export function DataToolbar({
             className={cn(
               "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
               editMode
-                ? "btn-bevel bg-blue-500 border-blue-500 text-white"
+                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
                 : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
             )}
           >
@@ -319,7 +319,7 @@ export function DataToolbar({
               // that, regardless of the viewport meta tag's own scale limits
               // in current iOS versions. Desktop/tablet (sm+) doesn't have
               // that behavior, so it reverts to the toolbar's own compact size.
-              className="w-full h-7 rounded-full border border-stone-200 bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+              className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
             />
             {searchQuery && (
               <button
@@ -374,7 +374,7 @@ function FilterPopoverContent({
         <button
           type="button"
           onClick={clearFilters}
-          className="justify-self-center text-xs text-blue-600 hover:text-blue-700"
+          className="justify-self-center text-xs text-blue-500 hover:text-blue-600"
         >
           Clear all
         </button>
@@ -462,7 +462,7 @@ function FilterPopoverContent({
                 className={cn(
                   "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
                   selected
-                    ? "border-blue-400 bg-blue-500 text-white"
+                    ? "bg-blue-500 border-blue-600 text-white"
                     : "border-stone-200 text-stone-600 hover:bg-stone-100",
                 )}
               >
@@ -490,7 +490,7 @@ function FilterPopoverContent({
                 className={cn(
                   "rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
                   selected
-                    ? "border-blue-400 bg-blue-500 text-white"
+                    ? "bg-blue-500 border-blue-600 text-white"
                     : "border-stone-200 text-stone-600 hover:bg-stone-100",
                 )}
               >
@@ -523,7 +523,7 @@ function ToggleChip({
       className={cn(
         "flex flex-1 items-center justify-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
         selected
-          ? "border-blue-400 bg-blue-500 text-white"
+          ? "bg-blue-500 border-blue-600 text-white"
           : "border-stone-200 text-stone-600 hover:bg-stone-100",
       )}
     >

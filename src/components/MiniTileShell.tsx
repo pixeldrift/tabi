@@ -76,7 +76,7 @@ export function MiniTileShell({
   const large = density === "large";
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
-  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400/30" : "bg-blue-400";
   const progressBarWidth = PROGRESS_BAR_WIDTH[density];
 
   return (
@@ -98,7 +98,7 @@ export function MiniTileShell({
         large ? "rounded-[18px]" : "rounded-[14px]",
         isActive
           ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]"
-          : "border border-stone-200 opacity-80 hover:opacity-95",
+          : "border border-border opacity-80 hover:opacity-95",
       )}
     >
       <div

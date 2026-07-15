@@ -69,7 +69,7 @@ const OPTIONS: {
     icon: X,
     strokeWidth: 3,
     classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-    selectedClasses: "bg-red-400 border-red-500 text-white",
+    selectedClasses: "bg-red-500 border-red-600 text-white",
   },
   {
     value: "prompted",
@@ -79,7 +79,7 @@ const OPTIONS: {
     // strokeWidth reads noticeably heavier — thinned to match their weight.
     strokeWidth: 1.75,
     classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    selectedClasses: "bg-amber-400 border-amber-500 text-white",
+    selectedClasses: "bg-amber-500 border-amber-600 text-white",
   },
   {
     value: "independent",
@@ -87,7 +87,7 @@ const OPTIONS: {
     icon: Check,
     strokeWidth: 3,
     classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-    selectedClasses: "bg-green-400 border-green-500 text-white",
+    selectedClasses: "bg-green-500 border-green-600 text-white",
   },
 ];
 
@@ -910,7 +910,7 @@ function TaskAnalysisPromptLevelButton({
           className={cn(
             "flex-1 min-w-0 h-10 rounded-full border-2 flex flex-col items-center justify-center transition-colors disabled:opacity-40",
             "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-400 border-amber-500 text-white",
+            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
           )}
         >
           <span className="flex items-center gap-1">
@@ -1002,7 +1002,7 @@ function ListTaskAnalysisPromptLevelButton({
           className={cn(
             "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
             "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-400 border-amber-500 text-white",
+            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
           )}
         >
           <HandHelping className="size-3.5 -translate-y-0.5" strokeWidth={1.75} />
@@ -1077,7 +1077,7 @@ function RowPromptLevelButton({
           className={cn(
             "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
             "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-400 border-amber-500 text-white",
+            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
           )}
         >
           <HandHelping className="size-3.5" strokeWidth={1.75} />
@@ -1139,7 +1139,7 @@ function PromptLevelList({
         className={cn(
           "rounded-lg px-3 py-1.5 text-left text-sm font-medium italic transition-colors",
           selected && !selectedLevel
-            ? "bg-amber-400 text-white"
+            ? "bg-amber-500 text-white"
             : "text-amber-700/70 hover:bg-amber-50",
         )}
       >
@@ -1159,7 +1159,7 @@ function PromptLevelList({
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
               selectedLevel === level
-                ? "bg-amber-400 text-white"
+                ? "bg-amber-500 text-white"
                 : "text-amber-700 hover:bg-amber-50",
             )}
           >

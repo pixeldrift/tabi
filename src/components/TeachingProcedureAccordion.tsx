@@ -101,7 +101,7 @@ export function TeachingProcedureAccordion({
   };
 
   return (
-    <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white overflow-hidden text-sm">
+    <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden text-sm">
       <AccordionRow
         id="goal"
         icon={<Target className="size-3.5" />}
@@ -200,7 +200,7 @@ export function TeachingProcedureAccordion({
                   className={cn(
                     "shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px]",
                     isTally
-                      ? "border-stone-300 bg-white text-foreground/70"
+                      ? "border-border bg-white text-foreground/70"
                       : "border-red-300 bg-red-50 text-red-700",
                   )}
                 >

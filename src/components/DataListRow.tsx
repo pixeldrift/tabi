@@ -60,7 +60,7 @@ export function DataListRow({
   const showActions = actions && !reorderEditing;
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
-  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400" : "bg-blue-400";
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400/30" : "bg-blue-400";
 
   return (
     <article
@@ -74,7 +74,7 @@ export function DataListRow({
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
-          : "border border-stone-200 opacity-80 hover:opacity-95",
+          : "border border-border opacity-80 hover:opacity-95",
       )}
     >
       <div className="relative rounded-xl overflow-hidden">

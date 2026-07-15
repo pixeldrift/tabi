@@ -155,7 +155,7 @@ export function FrequencyCard({
               disabled={!sessionRunning || count === 0}
               aria-label="Decrement"
               className={cn(
-                "btn-bevel shrink-0 rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
+                "btn-bevel shrink-0 rounded-full grid place-items-center border border-border bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
                 large ? "size-[42px]" : "size-7",
               )}
             >
@@ -170,7 +170,7 @@ export function FrequencyCard({
               disabled={!sessionRunning}
               aria-label="Increment"
               className={cn(
-                "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-40",
+                "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
               )}
             >
@@ -347,7 +347,7 @@ export function FrequencyCard({
           onClick={dec}
           disabled={count === 0}
           aria-label="Decrement"
-          className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-stone-200 bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
+          className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-border bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
         >
           <Minus className="size-5" strokeWidth={2.5} />
         </button>
@@ -414,7 +414,7 @@ export function FrequencyCard({
           aria-label="Increment"
           className={cn(
             "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors disabled:opacity-40",
-            "bg-blue-500 hover:bg-blue-600 active:bg-blue-700",
+            "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
           )}
         >
           <Plus className="size-6" strokeWidth={3} />

@@ -332,7 +332,7 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return toMin(aStart) < toMin(bEnd) && toMin(aEnd) > toMin(bStart);
 }
 
-const INPUT_BLUE_CLS = "border-2 border-blue-300 focus-visible:ring-blue-300";
+const INPUT_BLUE_CLS = "border-2 border-blue-400 focus-visible:ring-blue-400";
 
 export function ScheduleView({
   scrollTargetId,
@@ -889,7 +889,7 @@ export function ScheduleView({
               "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1",
               !currentItem || editMode
                 ? "bg-stone-300 hover:bg-stone-300"
-                : "bg-blue-600 hover:bg-blue-700",
+                : "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
             )}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
@@ -930,7 +930,7 @@ export function ScheduleView({
             // shadow than the smaller fields use — at this size and weight,
             // a lighter shadow reads as decoration rather than a carved-in,
             // clearly-editable well.
-            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-500 bg-white text-black shadow-[inset_0_3px_6px_rgba(0,0,0,0.26)] transition-colors"
+            className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 border-blue-400 bg-white text-black shadow-[inset_0_3px_6px_rgba(0,0,0,0.26)] transition-colors"
             style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
           />
         ) : (
@@ -939,7 +939,7 @@ export function ScheduleView({
               // min-w-0 lets this shrink below its text's intrinsic width —
               // without it, a long schedule name can force the flex row wider
               // than the viewport and push Cancel/Save off screen.
-              className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 bg-white border-blue-500 text-blue-700 focus:ring-blue-300 transition-colors"
+              className="flex-1 min-w-0 h-11 text-base rounded-full px-4 font-bold border-2 bg-white border-blue-400 text-blue-700 focus:ring-blue-400 transition-colors"
               style={{ transitionDuration: `${EDIT_MODE_DURATION_MS}ms` }}
             >
               <SelectValue />
@@ -1015,7 +1015,7 @@ export function ScheduleView({
                   <X className="size-5" />
                 </Button>
                 <Button
-                  className="h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 gap-1.5"
+                  className="h-11 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-4 gap-1.5"
                   onClick={() => setEditMode(false)}
                   aria-label="Save"
                 >
@@ -1039,7 +1039,7 @@ export function ScheduleView({
                   "h-11 w-11 grid place-content-center rounded-full shrink-0",
                   isLocked
                     ? "text-stone-300 cursor-not-allowed"
-                    : "text-blue-600 hover:text-blue-700",
+                    : "text-blue-500 hover:text-blue-600",
                 )}
                 aria-label={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
                 title={isLocked ? "Locked — duplicate to edit" : "Edit schedule"}
@@ -1068,14 +1068,14 @@ export function ScheduleView({
             <div className="flex items-center gap-1 flex-nowrap">
               <Button
                 size="sm"
-                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
+                className="h-8 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
                 onClick={duplicateActive}
               >
                 <Copy /> Duplicate
               </Button>
               <Button
                 size="sm"
-                className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
+                className="h-8 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-2.5 text-xs gap-1 [&_svg]:size-3"
                 onClick={() => setNewSchedOpen(true)}
               >
                 <Plus /> New
@@ -1109,14 +1109,14 @@ export function ScheduleView({
             className="mt-6 px-1 space-y-3 overflow-hidden"
           >
           {/* Appointments editor */}
-          <div className="rounded-xl border border-stone-200 bg-white p-3">
+          <div className="rounded-xl border border-border bg-white p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
                 <HandHelping className="size-4" /> Appointments
               </div>
               <Button
                 size="sm"
-                className="h-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 [&_svg]:size-3"
+                className="h-7 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-3 [&_svg]:size-3"
                 onClick={() => setCreatingAppt(true)}
               >
                 Add <Plus className="ml-1" />
@@ -1131,7 +1131,7 @@ export function ScheduleView({
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">
                         <span className="mr-1">{APPOINTMENT_TYPE_ICONS[a.type] ?? ""}</span>
-                        {a.type} <span className="text-stone-500">· {a.provider}</span>
+                        {a.type} <span className="text-muted-foreground">· {a.provider}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">
                         {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
@@ -1176,7 +1176,7 @@ export function ScheduleView({
           // transformed box still counts toward layout overflow even at
           // opacity-0, which was inflating the page's scroll width and
           // making the browser auto-shrink-to-fit the whole viewport.
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-stone-200/70 py-1.5 px-8",
+          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-8",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
         style={{ top: stickyTop }}
@@ -1187,7 +1187,7 @@ export function ScheduleView({
             onClick={() =>
               setLayoutMode((m) => (m === "proportional" ? "collapsed" : "proportional"))
             }
-            className="flex items-center gap-1.5 text-blue-600"
+            className="flex items-center gap-1.5 text-blue-500 hover:text-blue-600"
             title={
               layoutMode === "proportional"
                 ? "Switch to collapsed (uniform) rows"
@@ -1288,7 +1288,7 @@ export function ScheduleView({
                 : "opacity-0 translate-x-[130%] pointer-events-none delay-0",
               !currentItem || editMode
                 ? "bg-stone-300"
-                : "bg-blue-600 hover:bg-blue-700",
+                : "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
             )}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
@@ -1307,7 +1307,7 @@ export function ScheduleView({
       </div>
 
       {/* Schedule grid */}
-      <div className="mt-3 mx-1 rounded-md border border-stone-200 relative">
+      <div className="mt-3 mx-1 rounded-md border border-border relative">
         <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 mb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-stone-200 rounded-full">
           <div className="text-right pr-1.5">Time</div>
           <div className="flex items-center gap-1.5">
@@ -1341,7 +1341,7 @@ export function ScheduleView({
             // permanently out-rank this line the instant "Now" was pressed
             // once, since that bump never resets back down. Staying under
             // the chevron marker (z-30) only.
-            <NowLine top={arrowTop} color={arrowGray ? "#a8a29e" : "#2563eb"} zClassName="z-[25]" />
+            <NowLine top={arrowTop} color={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"} zClassName="z-[25]" />
           )}
           {arrowTop !== null && !editMode && (
             <div
@@ -1361,7 +1361,7 @@ export function ScheduleView({
               >
                 <path
                   d="M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
-                  fill={arrowGray ? "#a8a29e" : "#2563eb"}
+                  fill={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"}
                 />
               </svg>
               {showOutsideOfHoursLabel && (
@@ -1392,7 +1392,7 @@ export function ScheduleView({
                     {Array.from({ length: gapGridLines }, (_, i) => (
                       <div
                         key={`gg-${i}`}
-                        className="absolute left-1 right-1 border-t border-stone-200"
+                        className="absolute left-1 right-1 border-t border-border"
                         style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                       />
                     ))}
@@ -1495,8 +1495,8 @@ export function ScheduleView({
               >
                 <div
                   className={cn(
-                    "absolute inset-0 rounded-md border border-stone-300 bg-white transition-colors",
-                    isCurrent && "!border-2 !border-blue-500 !bg-blue-50",
+                    "absolute inset-0 rounded-md border border-border bg-white transition-colors",
+                    isCurrent && "!border-2 !border-blue-400 !bg-blue-50",
                   )}
                 />
                 {Array.from({ length: gridLines }, (_, i) => (
@@ -1545,7 +1545,7 @@ export function ScheduleView({
                   // underneath it; the shared list-level line (see above)
                   // handles that case instead, at a z that clears the
                   // appointment.
-                  <NowLine top={arrowTop - top} color={arrowGray ? "#a8a29e" : "#2563eb"} />
+                  <NowLine top={arrowTop - top} color={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"} />
                 )}
                 <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
                   <div
@@ -1672,7 +1672,7 @@ export function ScheduleView({
 
                   <div
                     className={cn(
-                      "absolute inset-0 rounded-md bg-green-50 border-2 border-green-500 transition-opacity",
+                      "absolute inset-0 rounded-md bg-green-50 border-2 border-green-300 transition-opacity",
                       collapsed ? "opacity-0 pointer-events-none" : "opacity-100",
                     )}
                     style={{ transitionDuration: `${APPT_COLLAPSE_DURATION_MS}ms` }}
@@ -1705,7 +1705,7 @@ export function ScheduleView({
                     </button>
                     <div className="relative h-full grid grid-cols-[40px_1fr] gap-1 pl-1.5 pr-8 pt-0.5 items-start">
                       <div
-                        className="text-[11px] tabular-nums leading-tight text-green-800 pl-0.5 pt-0.5"
+                        className="text-[11px] tabular-nums leading-tight text-green-700 pl-0.5 pt-0.5"
                         style={textHalo(APPT_HALO_COLOR)}
                       >
                         {fmt12(a.start)}
@@ -1714,7 +1714,7 @@ export function ScheduleView({
                         <div className="flex items-center gap-1.5 min-w-0">
                           <ScrubText
                             text={a.type}
-                            className="text-xs font-semibold text-green-800 leading-tight truncate"
+                            className="text-xs font-semibold text-green-700 leading-tight truncate"
                             style={textHalo(APPT_HALO_COLOR)}
                           />
                           {a.tag && (
@@ -1939,7 +1939,7 @@ function ConfirmDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogContent className="max-w-sm rounded-2xl border-stone-200 shadow-xl">
+      <DialogContent className="max-w-sm rounded-2xl border-border shadow-xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -1953,7 +1953,7 @@ function ConfirmDialog({
             Cancel <X className="size-4" />
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white"
             onClick={onConfirm}
           >
             {confirmLabel}
@@ -2275,7 +2275,7 @@ function ItemDialog({
             Cancel <X className="size-4" />
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none"
+            className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40 disabled:pointer-events-none"
             disabled={!!error}
             onClick={handleSave}
           >
@@ -2448,7 +2448,7 @@ function AppointmentDialog({
             Cancel <X className="size-4" />
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600"
             onClick={handleSave}
           >
             Save
@@ -2635,7 +2635,7 @@ function TimeField({
             !resetSide && "rounded-full",
             resetSide === "left" && "rounded-r-full",
             resetSide === "right" && "rounded-l-full",
-            isEditing ? "border-blue-500" : "border-blue-300",
+            isEditing ? "border-blue-400" : "border-blue-300",
             display ? "text-blue-700" : "text-stone-300",
           )}
         >
@@ -2708,7 +2708,7 @@ function NewScheduleDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent
-        className="max-w-sm rounded-2xl border-stone-200 shadow-xl transition-[translate] duration-150"
+        className="max-w-sm rounded-2xl border-border shadow-xl transition-[translate] duration-150"
         style={keyboardInsetStyle(keyboardInset)}
       >
         <DialogHeader>
@@ -2740,7 +2740,7 @@ function NewScheduleDialog({
             <X className="size-4" /> Cancel
           </Button>
           <Button
-            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600"
             onClick={() => onCreate(name)}
           >
             <Plus className="size-4" /> Create New Schedule
