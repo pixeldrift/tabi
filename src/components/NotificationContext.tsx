@@ -106,6 +106,14 @@ interface NotificationContextValue {
   // are the only things that actually remove it from that list for good.
   clear: (id: string) => void;
   clearAll: () => void;
+  // Looks up a still-tracked notification by its own dedupeKey and clears
+  // it outright — used by TimestampCard so scoring an interval directly on
+  // the card (not via the alert's own buttons) also retires that interval's
+  // now-pointless "time to check" alert, rather than leaving it to sit as
+  // dead history in the Notifications tab. A no-op if nothing was ever
+  // pushed under that key (e.g. scoring an interval before its alert has
+  // even fired) or if it's already been cleared.
+  clearByDedupeKey: (dedupeKey: string) => void;
   activate: (n: Notification) => void;
   prefs: UserPrefs;
 }
@@ -283,6 +291,11 @@ export function NotificationProvider({ children, onActivate }: { children: React
     dedupeRef.current.clear();
   }, []);
 
+  const clearByDedupeKey = useCallback((dedupeKey: string) => {
+    const id = dedupeRef.current.get(dedupeKey);
+    if (id) clear(id);
+  }, [clear]);
+
   const push = useCallback((input: PushInput): string | null => {
     const dedupeKey = input.dedupeKey ?? input.id;
     if (dedupeKey) {
@@ -362,8 +375,8 @@ export function NotificationProvider({ children, onActivate }: { children: React
   );
 
   const value = useMemo<NotificationContextValue>(
-    () => ({ notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, activate, prefs }),
-    [notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, activate, prefs],
+    () => ({ notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, clearByDedupeKey, activate, prefs }),
+    [notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, clearByDedupeKey, activate, prefs],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

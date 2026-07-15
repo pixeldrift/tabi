@@ -167,7 +167,7 @@ function NotificationTitle({ title, className }: { title: string; className?: st
 }
 
 export function NotificationBar() {
-  const { live, dismiss, snooze, silence, unsilence, enableChime, activate } = useNotifications();
+  const { live, dismiss, clear, snooze, silence, unsilence, enableChime, activate } = useNotifications();
   const { prefs } = useNotifications();
 
   // Newest on top — show up to maxStackVisible.
@@ -226,6 +226,7 @@ export function NotificationBar() {
               nowMs={nowMs}
               onActivate={() => activate(n)}
               onDismiss={() => dismiss(n.id)}
+              onClear={() => clear(n.id)}
               onSnooze={() => snooze(n.id)}
               onSilence={() => silence(n.id)}
               onUnsilence={() => unsilence(n.id)}
@@ -256,6 +257,7 @@ function NotificationRow({
   nowMs,
   onActivate,
   onDismiss,
+  onClear,
   onSnooze,
   onSilence,
   onUnsilence,
@@ -265,6 +267,7 @@ function NotificationRow({
   nowMs: number;
   onActivate: () => void;
   onDismiss: () => void;
+  onClear: () => void;
   onSnooze: () => void;
   onSilence: () => void;
   onUnsilence: () => void;
@@ -289,10 +292,12 @@ function NotificationRow({
     setIntervalStatus((prev) => (prev === value ? null : value));
     n.timestampCheck.onScore(value);
     // A brief pause — long enough to actually see the button fill in — then
-    // dismiss on its own, the same slide-off `commit` every other dismissal
-    // uses. Scoring from the alert is meant to fully resolve the check, not
+    // clear outright (the same slide-off `commit` every other dismissal
+    // uses, just backed by `clear` instead of `dismiss`) so a recorded
+    // interval's alert doesn't linger as dead history in the Notifications
+    // tab. Scoring from the alert is meant to fully resolve the check, not
     // just leave it sitting there waiting for a separate manual dismiss.
-    dismissTimeoutRef.current = window.setTimeout(() => commit(-1, onDismiss), 550);
+    dismissTimeoutRef.current = window.setTimeout(() => commit(-1, onClear), 550);
   };
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);

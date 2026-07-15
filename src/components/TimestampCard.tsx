@@ -281,7 +281,20 @@ export function TimestampCard({
   // (see useRegisterActiveTimer's elementRef) — used below so the "time to
   // check" alert's own Now button can scroll straight back to this card.
   const cardElRef = useRef<HTMLDivElement | null>(null);
-  const { push: pushNotification } = useNotifications();
+  const { push: pushNotification, clearByDedupeKey } = useNotifications();
+  // Every score button that lives on the card itself (not the alert's own —
+  // see below) goes through this instead of `score` directly, so recording
+  // an interval retires that interval's "time to check" alert right away if
+  // one's still sitting live or unread in the Notifications tab — instead
+  // of leaving dead, already-answered history there. The alert's own score
+  // buttons deliberately keep calling `score` directly instead: they already
+  // clear themselves on their own short delay (see NotificationBar's own
+  // handleIntervalScore), so clearing here too would just cut that pause
+  // short.
+  const scoreFromCard = (index: number, value: Exclude<IntervalStatus, null>) => {
+    score(index, value);
+    clearByDedupeKey(`timestamp-check:${cardKey}:${index}`);
+  };
   // Pops a "time to check" alert the instant a new interval boundary is
   // actually crossed in real time (not while the session is paused — elapsed,
   // and so rawIndex, only ever advances while it's running; not gated by the
@@ -423,7 +436,7 @@ export function TimestampCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                score(viewIdx, "incorrect");
+                scoreFromCard(viewIdx, "incorrect");
               }}
               disabled={!sessionRunning}
               aria-label={negativeLabel}
@@ -441,7 +454,7 @@ export function TimestampCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                score(viewIdx, "correct");
+                scoreFromCard(viewIdx, "correct");
               }}
               disabled={!sessionRunning}
               aria-label={positiveLabel}
@@ -509,7 +522,7 @@ export function TimestampCard({
               selected={viewStatus === "incorrect"}
               disabled={!sessionRunning}
               ariaLabel={negativeLabel}
-              onClick={() => score(viewIdx, "incorrect")}
+              onClick={() => scoreFromCard(viewIdx, "incorrect")}
             />
             <ListActionButton
               icon={Check}
@@ -517,7 +530,7 @@ export function TimestampCard({
               selected={viewStatus === "correct"}
               disabled={!sessionRunning}
               ariaLabel={positiveLabel}
-              onClick={() => score(viewIdx, "correct")}
+              onClick={() => scoreFromCard(viewIdx, "correct")}
             />
           </div>
         }
@@ -564,7 +577,7 @@ export function TimestampCard({
           sessionRunning={sessionRunning}
           positiveLabel={positiveLabel}
           negativeLabel={negativeLabel}
-          onScore={score}
+          onScore={scoreFromCard}
           timerPill={timerPill}
         />
       }
@@ -598,14 +611,14 @@ export function TimestampCard({
             label={negativeLabel}
             selected={viewStatus === "incorrect"}
             disabled={!sessionRunning}
-            onClick={() => score(viewIdx, "incorrect")}
+            onClick={() => scoreFromCard(viewIdx, "incorrect")}
           />
           <ScoreButton
             variant="positive"
             label={positiveLabel}
             selected={viewStatus === "correct"}
             disabled={!sessionRunning}
-            onClick={() => score(viewIdx, "correct")}
+            onClick={() => scoreFromCard(viewIdx, "correct")}
           />
         </div>
       </div>
