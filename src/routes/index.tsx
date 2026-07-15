@@ -566,7 +566,7 @@ const cards: CardConfig[] = [
   {
     id: "remains-dry",
     kind: "timestamp",
-    title: "Remains dry",
+    title: "Remains dry for 1.5 Hrs",
     phase: "Intervention",
     description:
       "Score the current interval Dry if he was dry at the check, Wet/Soiled if there was an accident. The interval shown is locked to session time — you can only score whichever one is happening right now. Runs the whole session on a 30-minute check schedule.",

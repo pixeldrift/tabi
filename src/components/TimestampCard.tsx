@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Check, X, Link2 } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
@@ -75,6 +75,18 @@ function intervalRange(index: number, intervalMin: number): string {
  *  step labels ("1: Turn on water"). */
 export function intervalLabel(index: number, intervalMin: number): string {
   return `${index + 1}: ${intervalRange(index, intervalMin)}`;
+}
+
+/** Just the interval's higher (end) boundary — "30m", "1hr", "1hr 30m",
+ *  "2hrs" — what the standard view's own header shows for the viewed
+ *  interval instead of a full start-end range. */
+function intervalEndLabel(index: number, intervalMin: number): string {
+  const totalMin = (index + 1) * intervalMin;
+  if (totalMin < 60) return `${totalMin}m`;
+  const hours = Math.floor(totalMin / 60);
+  const rem = totalMin % 60;
+  const hrPart = `${hours}hr${hours > 1 ? "s" : ""}`;
+  return rem === 0 ? hrPart : `${hrPart} ${rem}m`;
 }
 
 function formatCompactTime(ms: number) {
@@ -236,6 +248,46 @@ export function TimestampCard({
     positive: `Mark ${positiveLabel} if`,
     negative: `Mark ${negativeLabel} if`,
   };
+
+  // Rendered inside the timeline itself, following the "now" chevron rather
+  // than sitting in the header — see IntervalTimeline's own `timerPill` prop.
+  const timerPill = locked ? (
+    <span
+      aria-label="Locked to session time"
+      title="Locked to session time"
+      className="inline-flex items-center shrink-0 rounded-full border border-stone-300 bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
+    >
+      {formatCompactTime(elapsed)}
+      <Link2 className="ml-1 size-3 rotate-45" strokeWidth={2.5} />
+    </span>
+  ) : (
+    <TimeKeypad
+      valueMs={elapsed}
+      onReplace={(ms) => {
+        setElapsed(Math.max(0, ms));
+        markDirty();
+      }}
+      onAdd={(ms) => {
+        setElapsed(Math.max(0, elapsed + ms));
+        markDirty();
+      }}
+    >
+      {({ open }) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            open();
+          }}
+          disabled={!sessionRunning}
+          aria-label="Edit elapsed time (testing)"
+          className="inline-flex items-center shrink-0 rounded-full border border-blue-500 bg-white pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-foreground cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {formatCompactTime(elapsed)}
+        </button>
+      )}
+    </TimeKeypad>
+  );
 
   const details = (
     <>
@@ -437,52 +489,8 @@ export function TimestampCard({
       }
     >
       <div className="px-5 pt-2 pb-4 flex flex-col gap-1">
-        <div className="relative flex items-center justify-end gap-2 h-5">
-          {/* Centered over the row rather than the flex layout's own middle,
-              so it lines up with the (also centered) current bubble below
-              regardless of the pill's width — same horizontal midpoint as
-              the timeline, since both rows share the same symmetric side
-              padding. */}
-          <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums pointer-events-none">
-            {intervalRange(viewIdx, intervalMin)}
-          </div>
-          {locked ? (
-            <span
-              aria-label="Locked to session time"
-              title="Locked to session time"
-              className="inline-flex items-center shrink-0 rounded-full border border-stone-300 bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
-            >
-              {formatCompactTime(elapsed)}
-              <Link2 className="ml-1 size-3 rotate-45" strokeWidth={2.5} />
-            </span>
-          ) : (
-            <TimeKeypad
-              valueMs={elapsed}
-              onReplace={(ms) => {
-                setElapsed(Math.max(0, ms));
-                markDirty();
-              }}
-              onAdd={(ms) => {
-                setElapsed(Math.max(0, elapsed + ms));
-                markDirty();
-              }}
-            >
-              {({ open }) => (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    open();
-                  }}
-                  disabled={!sessionRunning}
-                  aria-label="Edit elapsed time (testing)"
-                  className="inline-flex items-center shrink-0 rounded-full border border-blue-500 bg-white pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-foreground cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {formatCompactTime(elapsed)}
-                </button>
-              )}
-            </TimeKeypad>
-          )}
+        <div className="text-center text-sm font-semibold tabular-nums">
+          {intervalEndLabel(viewIdx, intervalMin)}
         </div>
 
         <div className="relative px-10">
@@ -499,6 +507,7 @@ export function TimestampCard({
             currentIndex={currentIndex}
             viewIdx={viewIdx}
             statuses={statuses}
+            timerPill={timerPill}
           />
         </div>
 
@@ -550,7 +559,9 @@ const BUBBLE_ROW_TOP_PX = 4;
 const NAV_CENTER_PX = BUBBLE_ROW_TOP_PX + BUBBLE / 2;
 // The "now" chevron's own half-width, roughly, once rotated on its side —
 // extra room so it can render in full even parked right at a track edge.
-const CHEVRON_EDGE_BUFFER = 10;
+// Chevron height (its rotated SVG) + a small gap + the timer pill's own
+// height (h-5) stacked underneath it, following the same x position.
+const CHEVRON_ROW_H = 18 + 4 + 20;
 const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as const;
 // Fades both edges — like Percent Correct's own trial-bubble strip, the
 // viewed interval sits centered in the viewport with past/future segments
@@ -567,6 +578,7 @@ function IntervalTimeline({
   currentIndex,
   viewIdx,
   statuses,
+  timerPill,
 }: {
   intervalCount: number;
   elapsedMs: number;
@@ -574,6 +586,7 @@ function IntervalTimeline({
   currentIndex: number;
   viewIdx: number;
   statuses: IntervalStatus[];
+  timerPill: ReactNode;
 }) {
   // Every period is an equal length of time, so its bubble is the same size
   // as every other's — only the border weight and the solid/faded/gray
@@ -584,15 +597,16 @@ function IntervalTimeline({
   // single continuous fill width follows directly from that, rather than a
   // percentage of some fixed (and, for an open-ended card, nonexistent)
   // total duration. This "now" fill/chevron always reflects the real
-  // session clock, independent of whatever interval is being browsed.
+  // session clock, independent of whatever interval is being browsed —
+  // starts at zero (the session's own start) and never gets any extra
+  // padding tacked onto it.
   const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
   const fillPx = currentIndex * SEG_W + segFillFrac * SEG_W;
   // Continuous centering, the same idiom as Percent Correct's own
-  // trial-bubble strip: the viewed interval's own segment always sits
-  // dead-center in the viewport (the track's left edge is pinned to the
-  // viewport's horizontal midpoint, then shifted back by exactly how far
-  // that segment's center sits from the track's own start).
-  const trackOffsetPx = -(viewIdx * SEG_W + SEG_W / 2);
+  // trial-bubble strip: the viewed interval's own bubble — which now marks
+  // the interval's END (see below), matching the bar's own divider ticks —
+  // always sits dead-center in the viewport.
+  const trackOffsetPx = -((viewIdx + 1) * SEG_W);
 
   return (
     <div className="pt-1">
@@ -611,7 +625,7 @@ function IntervalTimeline({
             const recency = recencyOf(i, viewIdx);
             const { bg, text, fade } = statusColors(statuses[i], recency);
             return (
-              <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: i * SEG_W + SEG_W / 2 }}>
+              <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: (i + 1) * SEG_W }}>
                 <div
                   className={cn(
                     "rounded-full flex items-center justify-center font-display font-bold tabular-nums text-[11px] transition-all duration-200",
@@ -657,29 +671,27 @@ function IntervalTimeline({
           ))}
         </motion.div>
       </div>
-      <div
-        className="relative overflow-hidden h-4"
-        style={{
-          marginLeft: -CHEVRON_EDGE_BUFFER,
-          width: `calc(100% + ${CHEVRON_EDGE_BUFFER * 2}px)`,
-          ...HORIZONTAL_FADE_MASK,
-        }}
-        aria-hidden
-      >
+      {/* The "now" chevron and the mini timer pill follow the same real
+          elapsed-time position, the pill stacked directly underneath the
+          chevron it belongs to rather than living in the card's own
+          header. */}
+      <div className="relative overflow-hidden" style={{ height: CHEVRON_ROW_H, ...HORIZONTAL_FADE_MASK }}>
         <motion.div
           className="absolute left-1/2 top-0"
           animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
-          <div className="absolute top-0 -translate-x-1/2" style={{ left: fillPx + CHEVRON_EDGE_BUFFER }}>
+          <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-1" style={{ left: fillPx }}>
             <svg
               width="14"
               height="18"
               viewBox="0 0 16 20"
               style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
+              aria-hidden
             >
               <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
             </svg>
+            {timerPill}
           </div>
         </motion.div>
       </div>
