@@ -134,6 +134,23 @@
      scroll before firing click — this tells the browser it can resolve the
      tap immediately. */
   button, [role="button"] { touch-action: manipulation; }
+
+  /* One consistent tap-feedback scale for every button in the app, so
+     pressing anything — not just the ones that happen to spell out their
+     own `active:scale-95` — visibly gives a little. Plain element selectors
+     so any component's own more specific `active:scale-*` utility (a
+     different value, or paired with e.g. brightness) still wins outright;
+     this is only the fallback for buttons that don't otherwise define one.
+     transform is called out explicitly (not folded into a blanket
+     `transition`) since `transition-colors` — the most common transition
+     utility in this app — doesn't cover it, and would otherwise make the
+     scale snap back instead of easing. */
+  button:not(:disabled), [role="button"] {
+    transition: transform 0.1s ease-out;
+  }
+  button:not(:disabled):active, [role="button"]:active {
+    transform: scale(0.95);
+  }
 }
 
 @layer utilities {
