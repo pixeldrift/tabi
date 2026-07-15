@@ -1200,10 +1200,18 @@ function IndexInner() {
               block. Without `relative` here, that ancestor search skips
               right past this div (still `static`) and the exit keeps
               inflating scrollWidth even though nothing is visibly seen
-              sticking out. */}
+              sticking out. overflow-x-CLIP, not hidden: per the CSS
+              overflow spec, pairing `hidden` (or `auto`/`scroll`) on one
+              axis with `visible` on the other forces that "visible" axis
+              to `auto` too — silently clipping every card's own drop
+              shadow top/bottom, which needs to paint outside this box.
+              `clip` is the one non-`visible` value exempted from that
+              forcing rule, so overflow-y actually stays `visible` here —
+              while still suppressing the exit slide's scrollWidth
+              inflation just as well as `hidden` did. */}
                 <div
                   className={cn(
-                    "relative flex flex-col items-center -mx-2 overflow-x-hidden",
+                    "relative flex flex-col items-center -mx-2 overflow-x-clip overflow-y-visible",
                     isGridDisplayMode ? "pt-4" : "pt-5",
                   )}
                 >

@@ -33,21 +33,6 @@ const ZzIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Same glyph as the Schedule tab's own "Now" button (ScheduleView.tsx) —
-// a chevron dropping onto a line, standing for "jump to this, right now."
-const NowIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 12 12" className={className} aria-hidden="true">
-    <path
-      d="M6 1.5v5.5M3.5 5.5L6 8 8.5 5.5M2.5 9.5h7"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
-  </svg>
-);
-
 const ICON_MAP: Record<NotificationIcon, ComponentType<{ className?: string }>> = {
   bell: Bell,
   "bell-chime": BellRing,
@@ -465,8 +450,21 @@ function NotificationRow({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => { if (!wasDragging.current) onActivate(); }}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+            // Timestamp's own "time to check" alert has no sourceRef to
+            // activate — tapping it instead does what its old standalone
+            // "Now" button used to (jump straight to the card), rather than
+            // giving up that whole tap target to a no-op.
+            onClick={() => {
+              if (wasDragging.current) return;
+              if (n.timestampCheck) n.timestampCheck.onScrollToCard();
+              else onActivate();
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              if (n.timestampCheck) n.timestampCheck.onScrollToCard();
+              else onActivate();
+            }}
             className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
           >
             <div
@@ -501,26 +499,15 @@ function NotificationRow({
           {/* Card-specific cluster (Timestamp's own "time to check" alert) —
               kept as its own group, distinct from the standard audio/snooze/
               dismiss cluster on the right, rather than all six buttons
-              reading as one undifferentiated row. `flex-1` (splitting the
-              row's remaining width evenly with the title block to its left)
-              plus `justify-center` is what actually centers it in the space
-              between the title and the standard cluster, rather than just
-              hugging up against whichever one comes first. */}
+              reading as one undifferentiated row. `shrink-0` (rather than
+              matching the title block's own `flex-1`) so it only ever
+              claims the width its two buttons actually need — the title
+              block picks up the rest, instead of the two splitting evenly
+              regardless of how little this cluster needs. The scroll-to-card
+              jump this used to have its own dedicated button for now lives
+              on the title/icon tap target itself (see its own onClick). */}
           {n.timestampCheck && (
-            <div className="flex-1 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-              {/* Just the icon in blue, no circular button chrome — unlike
-                  the two score buttons beside it, this doesn't toggle a
-                  recorded state, it jumps you elsewhere, so it shouldn't
-                  read as the same kind of control. */}
-              <button
-                type="button"
-                aria-label="Scroll to card"
-                title="Scroll to card"
-                onClick={n.timestampCheck.onScrollToCard}
-                className="shrink-0 inline-flex items-center justify-center size-8 text-blue-600 hover:text-blue-700 active:text-blue-800 transition-colors"
-              >
-                <NowIcon className="size-4" />
-              </button>
+            <div className="shrink-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 aria-label={n.timestampCheck.negativeLabel}
@@ -559,7 +546,15 @@ function NotificationRow({
                 {showAudioButton && (
                   <RowButton
                     label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
-                    colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
+                    colorClass={cn(
+                      audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button,
+                      // Muting used to only swap the icon, leaving the button
+                      // at full strength — reads as still "on." Fading it
+                      // here is what actually sells "this is now off,"
+                      // matching the never-configured "off" state's own
+                      // already-dimmed look instead of just its icon.
+                      audioState === "muted" && "opacity-50",
+                    )}
                     onClick={() => settleInPlace(audioAction)}
                   >
                     {/* Crossfades rather than swapping instantly — a toggle,
