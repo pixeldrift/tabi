@@ -444,57 +444,58 @@ function NotificationRow({
         style={{ x: dragX, opacity: bubbleOpacity }}
         onDragStart={() => { wasDragging.current = true; }}
         onDragEnd={handleDragEnd}
-        className={cn("relative border shadow-sm", n.timestampCheck ? "rounded-2xl" : "rounded-full", styles.ring)}
+        className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
-        {/* Wraps just the header row (not the whole bubble) so the action
-            buttons below — positioned via `inset-y-0` — span only this
-            row's own height, even once the Timestamp check's extra row
-            makes the bubble as a whole taller than a standard alert. */}
-        <div className="relative">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (!wasDragging.current) onActivate(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+          className={cn(
+            "w-full flex items-center gap-3 pl-3 py-1.5 text-left cursor-pointer",
+            // Timestamp's own check alert packs 3 extra icon buttons into the
+            // same row as the standard audio/snooze/dismiss cluster, so it
+            // needs more reserved space on the right than a normal alert.
+            n.timestampCheck ? "pr-56" : "pr-24",
+          )}
+        >
           <div
-            role="button"
-            tabIndex={0}
-            onClick={() => { if (!wasDragging.current) onActivate(); }}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-            className="w-full flex items-center gap-3 pl-3 pr-24 py-1.5 text-left cursor-pointer"
+            className={cn(
+              "flex items-center justify-center size-7 shrink-0",
+              styles.iconFg,
+              // animate-bounce's arc sits above the resting baseline, which
+              // reads as off-center within this box — nudged down so its
+              // resting position looks vertically centered.
+              !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
+              !silenced && n.kind === "alert-priming" && "animate-pulse",
+            )}
           >
-            <div
-              className={cn(
-                "flex items-center justify-center size-7 shrink-0",
-                styles.iconFg,
-                // animate-bounce's arc sits above the resting baseline, which
-                // reads as off-center within this box — nudged down so its
-                // resting position looks vertically centered.
-                !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
-                !silenced && n.kind === "alert-priming" && "animate-pulse",
-              )}
-            >
-              <Icon className="size-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
-              {n.body && (
-                <div className="text-xs text-stone-600 truncate">
-                  {n.body}
-                  {relativeTime && (
-                    <>
-                      {" · "}
-                      <span className="font-semibold">{relativeTime}</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <Icon className="size-5" />
           </div>
+          <div className="flex-1 min-w-0">
+            <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
+            {n.body && (
+              <div className="text-xs text-stone-600 truncate">
+                {n.body}
+                {relativeTime && (
+                  <>
+                    {" · "}
+                    <span className="font-semibold">{relativeTime}</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
-          {/* Action buttons now live inside the draggable bubble itself, so
-              they ride along with it as it's dragged instead of sitting fixed
-              while the bubble slides underneath — the background labels above
-              are what communicate "what will happen" during the gesture now. */}
-          <div
-            className="absolute inset-y-0 right-2 flex items-center gap-0.5"
-            onClick={(e) => e.stopPropagation()}
-          >
+        {/* Action buttons now live inside the draggable bubble itself, so
+            they ride along with it as it's dragged instead of sitting fixed
+            while the bubble slides underneath — the background labels above
+            are what communicate "what will happen" during the gesture now. */}
+        <div
+          className="absolute inset-y-0 right-2 flex items-center gap-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
           {alert ? (
             <>
               {showAudioButton && (
@@ -525,6 +526,50 @@ function NotificationRow({
                   <ZzIcon className="size-4" />
                 </RowButton>
               )}
+              {/* Timestamp's own "time to check" alert adds 3 more icon
+                  buttons right in line with the standard cluster above —
+                  scroll-to-card, then the card's own two score buttons. */}
+              {n.timestampCheck && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Scroll to card"
+                    title="Scroll to card"
+                    onClick={n.timestampCheck.onScrollToCard}
+                    className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
+                  >
+                    <NowIcon className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={n.timestampCheck.negativeLabel}
+                    title={n.timestampCheck.negativeLabel}
+                    onClick={() => handleIntervalScore("incorrect")}
+                    className={cn(
+                      "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                      intervalStatus === "incorrect"
+                        ? "btn-bevel bg-red-500 border-red-600 text-white"
+                        : "border-red-300 text-red-700 bg-white hover:bg-red-50",
+                    )}
+                  >
+                    <X className="size-4" strokeWidth={3} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={n.timestampCheck.positiveLabel}
+                    title={n.timestampCheck.positiveLabel}
+                    onClick={() => handleIntervalScore("correct")}
+                    className={cn(
+                      "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                      intervalStatus === "correct"
+                        ? "btn-bevel bg-green-500 border-green-600 text-white"
+                        : "border-green-300 text-green-700 bg-white hover:bg-green-50",
+                    )}
+                  >
+                    <Check className="size-4" strokeWidth={3} />
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
@@ -534,57 +579,7 @@ function NotificationRow({
           <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
             <X className="size-4" />
           </RowButton>
-          </div>
         </div>
-
-        {/* The 3 extra buttons a Timestamp card's own "time to check" alert
-            adds — same swipe/drag behavior as any other alert (this sits
-            inside the same draggable bubble), just with room below the
-            header for a jump-to-card button plus the card's own two score
-            buttons. Icon-only circles (like the standard audio/snooze/
-            dismiss cluster above), not labeled pills — the color alone
-            (plus the aria-label/title) carries what each one does. */}
-        {n.timestampCheck && (
-          <div className="flex items-center justify-center gap-2 px-3 pb-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              aria-label="Scroll to card"
-              title="Scroll to card"
-              onClick={n.timestampCheck.onScrollToCard}
-              className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
-            >
-              <NowIcon className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label={n.timestampCheck.negativeLabel}
-              title={n.timestampCheck.negativeLabel}
-              onClick={() => handleIntervalScore("incorrect")}
-              className={cn(
-                "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
-                intervalStatus === "incorrect"
-                  ? "btn-bevel bg-red-500 border-red-600 text-white"
-                  : "border-red-300 text-red-700 bg-white hover:bg-red-50",
-              )}
-            >
-              <X className="size-4" strokeWidth={3} />
-            </button>
-            <button
-              type="button"
-              aria-label={n.timestampCheck.positiveLabel}
-              title={n.timestampCheck.positiveLabel}
-              onClick={() => handleIntervalScore("correct")}
-              className={cn(
-                "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
-                intervalStatus === "correct"
-                  ? "btn-bevel bg-green-500 border-green-600 text-white"
-                  : "border-green-300 text-green-700 bg-white hover:bg-green-50",
-              )}
-            >
-              <Check className="size-4" strokeWidth={3} />
-            </button>
-          </div>
-        )}
       </motion.div>
     </motion.div>
   );
