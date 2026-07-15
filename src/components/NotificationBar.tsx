@@ -446,139 +446,131 @@ function NotificationRow({
         onDragEnd={handleDragEnd}
         className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => { if (!wasDragging.current) onActivate(); }}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-          className={cn(
-            "w-full flex items-center gap-3 pl-3 py-1.5 text-left cursor-pointer",
-            // Timestamp's own check alert packs 3 extra icon buttons into the
-            // same row as the standard audio/snooze/dismiss cluster, so it
-            // needs more reserved space on the right than a normal alert.
-            n.timestampCheck ? "pr-56" : "pr-24",
-          )}
-        >
+        <div className="w-full flex items-center gap-2 pl-3 pr-2 py-1.5">
           <div
-            className={cn(
-              "flex items-center justify-center size-7 shrink-0",
-              styles.iconFg,
-              // animate-bounce's arc sits above the resting baseline, which
-              // reads as off-center within this box — nudged down so its
-              // resting position looks vertically centered.
-              !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
-              !silenced && n.kind === "alert-priming" && "animate-pulse",
-            )}
+            role="button"
+            tabIndex={0}
+            onClick={() => { if (!wasDragging.current) onActivate(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+            className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
           >
-            <Icon className="size-5" />
+            <div
+              className={cn(
+                "flex items-center justify-center size-7 shrink-0",
+                styles.iconFg,
+                // animate-bounce's arc sits above the resting baseline, which
+                // reads as off-center within this box — nudged down so its
+                // resting position looks vertically centered.
+                !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
+                !silenced && n.kind === "alert-priming" && "animate-pulse",
+              )}
+            >
+              <Icon className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
+              {n.body && (
+                <div className="text-xs text-stone-600 truncate">
+                  {n.body}
+                  {relativeTime && (
+                    <>
+                      {" · "}
+                      <span className="font-semibold">{relativeTime}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
-            {n.body && (
-              <div className="text-xs text-stone-600 truncate">
-                {n.body}
-                {relativeTime && (
-                  <>
-                    {" · "}
-                    <span className="font-semibold">{relativeTime}</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Action buttons now live inside the draggable bubble itself, so
-            they ride along with it as it's dragged instead of sitting fixed
-            while the bubble slides underneath — the background labels above
-            are what communicate "what will happen" during the gesture now. */}
-        <div
-          className="absolute inset-y-0 right-2 flex items-center gap-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {alert ? (
-            <>
-              {showAudioButton && (
-                <RowButton
-                  label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
-                  colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
-                  onClick={() => settleInPlace(audioAction)}
-                >
-                  {/* Crossfades rather than swapping instantly — a toggle,
-                      not a one-shot action, so it needs to read as flipping
-                      a state rather than the button itself changing identity. */}
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.span
-                      key={audioState}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="grid"
-                    >
-                      {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-                    </motion.span>
-                  </AnimatePresence>
-                </RowButton>
-              )}
-              {showSnooze && (
-                <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
-                  <ZzIcon className="size-4" />
-                </RowButton>
-              )}
-              {/* Timestamp's own "time to check" alert adds 3 more icon
-                  buttons right in line with the standard cluster above —
-                  scroll-to-card, then the card's own two score buttons. */}
-              {n.timestampCheck && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Scroll to card"
-                    title="Scroll to card"
-                    onClick={n.timestampCheck.onScrollToCard}
-                    className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
-                  >
-                    <NowIcon className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={n.timestampCheck.negativeLabel}
-                    title={n.timestampCheck.negativeLabel}
-                    onClick={() => handleIntervalScore("incorrect")}
-                    className={cn(
-                      "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
-                      intervalStatus === "incorrect"
-                        ? "btn-bevel bg-red-500 border-red-600 text-white"
-                        : "border-red-300 text-red-700 bg-white hover:bg-red-50",
-                    )}
-                  >
-                    <X className="size-4" strokeWidth={3} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={n.timestampCheck.positiveLabel}
-                    title={n.timestampCheck.positiveLabel}
-                    onClick={() => handleIntervalScore("correct")}
-                    className={cn(
-                      "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
-                      intervalStatus === "correct"
-                        ? "btn-bevel bg-green-500 border-green-600 text-white"
-                        : "border-green-300 text-green-700 bg-white hover:bg-green-50",
-                    )}
-                  >
-                    <Check className="size-4" strokeWidth={3} />
-                  </button>
-                </>
-              )}
-            </>
-          ) : (
-            <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
-              <ArrowRight className="size-4" />
-            </RowButton>
+          {/* Card-specific cluster (Timestamp's own "time to check" alert) —
+              kept as its own group in the middle of the row, distinct from
+              the standard audio/snooze/dismiss cluster on the right, rather
+              than all six buttons reading as one undifferentiated row. */}
+          {n.timestampCheck && (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                aria-label="Scroll to card"
+                title="Scroll to card"
+                onClick={n.timestampCheck.onScrollToCard}
+                className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
+              >
+                <NowIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={n.timestampCheck.negativeLabel}
+                title={n.timestampCheck.negativeLabel}
+                onClick={() => handleIntervalScore("incorrect")}
+                className={cn(
+                  "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                  intervalStatus === "incorrect"
+                    ? "btn-bevel bg-red-500 border-red-600 text-white"
+                    : "border-red-300 text-red-700 bg-white hover:bg-red-50",
+                )}
+              >
+                <X className="size-4" strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                aria-label={n.timestampCheck.positiveLabel}
+                title={n.timestampCheck.positiveLabel}
+                onClick={() => handleIntervalScore("correct")}
+                className={cn(
+                  "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                  intervalStatus === "correct"
+                    ? "btn-bevel bg-green-500 border-green-600 text-white"
+                    : "border-green-300 text-green-700 bg-white hover:bg-green-50",
+                )}
+              >
+                <Check className="size-4" strokeWidth={3} />
+              </button>
+            </div>
           )}
-          <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
-            <X className="size-4" />
-          </RowButton>
+
+          {/* Standard alert cluster — always the rightmost group. */}
+          <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {alert ? (
+              <>
+                {showAudioButton && (
+                  <RowButton
+                    label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
+                    colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
+                    onClick={() => settleInPlace(audioAction)}
+                  >
+                    {/* Crossfades rather than swapping instantly — a toggle,
+                        not a one-shot action, so it needs to read as flipping
+                        a state rather than the button itself changing identity. */}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={audioState}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="grid"
+                      >
+                        {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                      </motion.span>
+                    </AnimatePresence>
+                  </RowButton>
+                )}
+                {showSnooze && (
+                  <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
+                    <ZzIcon className="size-4" />
+                  </RowButton>
+                )}
+              </>
+            ) : (
+              <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
+                <ArrowRight className="size-4" />
+              </RowButton>
+            )}
+            <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
+              <X className="size-4" />
+            </RowButton>
+          </div>
         </div>
       </motion.div>
     </motion.div>
