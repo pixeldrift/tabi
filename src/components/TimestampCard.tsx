@@ -576,7 +576,6 @@ export function TimestampCard({
           intervalMin={intervalMin}
           intervalMs={intervalMs}
           statuses={statuses}
-          currentIndex={currentIndex}
           viewIdx={viewIdx}
           elapsedMs={elapsed}
           sessionRunning={sessionRunning}
@@ -603,7 +602,6 @@ export function TimestampCard({
             intervalCount={displayIntervalCount}
             elapsedMs={elapsed}
             intervalMs={intervalMs}
-            currentIndex={currentIndex}
             viewIdx={viewIdx}
             statuses={statuses}
             timerPill={timerPill}
@@ -692,7 +690,6 @@ function IntervalTimeline({
   intervalCount,
   elapsedMs,
   intervalMs,
-  currentIndex,
   viewIdx,
   statuses,
   timerPill,
@@ -700,7 +697,6 @@ function IntervalTimeline({
   intervalCount: number;
   elapsedMs: number;
   intervalMs: number;
-  currentIndex: number;
   viewIdx: number;
   statuses: IntervalStatus[];
   timerPill: ReactNode;
@@ -709,16 +705,18 @@ function IntervalTimeline({
   // as every other's — only the border weight and the solid/faded/gray
   // recency treatment set one apart from another, not a bigger diameter.
   // (BUBBLE itself lives at module scope — the nav arrows need it too.)
-  // Every interval before `currentIndex` is fully elapsed; `currentIndex`
-  // itself is partially filled; nothing after it is filled at all — a
-  // single continuous fill width follows directly from that, rather than a
-  // percentage of some fixed (and, for an open-ended card, nonexistent)
-  // total duration. This "now" fill/chevron always reflects the real
-  // session clock, independent of whatever interval is being browsed —
-  // starts at zero (the session's own start) and never gets any extra
-  // padding tacked onto it.
-  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
-  const fillPx = currentIndex * SEG_W + segFillFrac * SEG_W;
+  // Every interval before the real (not graced) current one is fully
+  // elapsed; that one itself is partially filled; nothing after it is
+  // filled at all — a single continuous fill width follows directly from
+  // that, rather than a percentage of some fixed (and, for an open-ended
+  // card, nonexistent) total duration. This "now" fill/chevron always
+  // reflects the real session clock, independent of whatever interval is
+  // being browsed OR of `currentIndex`'s own half-interval scoring grace
+  // (see its own comment above) — that grace only delays which interval
+  // is highlighted/scored, not where "now" actually, physically is.
+  const rawIndex = Math.floor(elapsedMs / intervalMs);
+  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - rawIndex * intervalMs) / intervalMs));
+  const fillPx = rawIndex * SEG_W + segFillFrac * SEG_W;
   // Continuous centering, the same idiom as Percent Correct's own
   // trial-bubble strip: the viewed interval's own bubble — which now marks
   // the interval's END (see below), matching the bar's own divider ticks —
@@ -882,7 +880,6 @@ function TimestampExpandedView({
   intervalMin,
   intervalMs,
   statuses,
-  currentIndex,
   viewIdx,
   elapsedMs,
   sessionRunning,
@@ -895,7 +892,6 @@ function TimestampExpandedView({
   intervalMin: number;
   intervalMs: number;
   statuses: IntervalStatus[];
-  currentIndex: number;
   viewIdx: number;
   elapsedMs: number;
   sessionRunning: boolean;
@@ -904,16 +900,27 @@ function TimestampExpandedView({
   onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
   timerPill: ReactNode;
 }) {
-  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
-  const fillPx = currentIndex * ROW_SLOT + segFillFrac * ROW_H;
+  // Tracks the real, continuous session clock — not `currentIndex`'s own
+  // half-interval scoring grace (see its own comment above the parent's
+  // `gracedIndex`) — and scales the fractional remainder by ROW_SLOT (the
+  // row's own full pitch, gap included) rather than just ROW_H, since the
+  // divider lines below are drawn at ROW_SLOT multiples too.
+  const rawIndex = Math.floor(elapsedMs / intervalMs);
+  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - rawIndex * intervalMs) / intervalMs));
+  const fillPx = rawIndex * ROW_SLOT + segFillFrac * ROW_SLOT;
   const trackOffsetPx = -Math.max(0, viewIdx - (VISIBLE_ROWS - 1)) * ROW_SLOT;
   // The extra CHEVRON_PAD_Y headroom top/bottom (see its own comment) rides
   // along as a constant part of the same offset — the auto-scroll math
   // itself is unaffected since it's applied uniformly regardless of scroll
   // position, just shifting the whole track down to leave clipping-free
   // room above the topmost visible pixel and, symmetrically, below the
-  // bottom-most one.
-  const viewportHeight = VISIBLE_ROWS * ROW_H + (VISIBLE_ROWS - 1) * ROW_GAP + 2 * CHEVRON_PAD_Y;
+  // bottom-most one. Each row is centered ON its own divider rather than
+  // top-aligned to its own slot (see the row wrapper's own `top` below), so
+  // the last visible row's bottom edge actually lands ROW_H/2 further down
+  // than VISIBLE_ROWS full slots would suggest — without adding that back
+  // in here too, that row's own bottom half gets silently clipped off by
+  // this viewport's own overflow-hidden edge.
+  const viewportHeight = VISIBLE_ROWS * ROW_SLOT + ROW_H / 2 + 2 * CHEVRON_PAD_Y;
   const totalTrackHeight = intervalCount * ROW_SLOT;
 
   return (
