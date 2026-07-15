@@ -121,7 +121,7 @@ export function PersonPill({ name }: { name: string }) {
 
   if (!staff) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-sm">
         <User className="size-3" fill="currentColor" strokeWidth={0} />
         <span>{name}</span>
       </span>
@@ -134,7 +134,7 @@ export function PersonPill({ name }: { name: string }) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 hover:bg-blue-100 hover:text-blue-700 transition-colors text-sm"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm"
           >
             <User className="size-3" fill="currentColor" strokeWidth={0} />
             <span>{name}</span>
@@ -263,7 +263,7 @@ function StaffProfileDialog({
               {staff.assignedClients.map((client) => (
                 <span
                   key={client}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-200 text-blue-800 text-sm"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-sm"
                 >
                   <User className="size-3" fill="currentColor" strokeWidth={0} />
                   <span>{client}</span>

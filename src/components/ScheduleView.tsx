@@ -1502,14 +1502,13 @@ export function ScheduleView({
                 {Array.from({ length: gridLines }, (_, i) => (
                   <div
                     key={`g-${i}`}
-                    className={cn(
-                      "absolute left-1 right-1 border-t",
-                      // border-stone-100 is nearly invisible against this
-                      // row's own !bg-blue-50 (both are pale, and warm-gray
-                      // vs. light-blue barely differ in luminance) — needs
-                      // its own tint to actually show up once highlighted.
-                      isCurrent ? "border-blue-200" : "border-stone-100",
-                    )}
+                    // Black at low opacity rather than a tinted gray/blue —
+                    // darkens whatever's underneath by the same relative
+                    // amount whether the row is plain white or highlighted
+                    // !bg-blue-50, so one definition works over any of this
+                    // row's background states instead of needing a second
+                    // shade picked to stay visible against each one.
+                    className="absolute left-1 right-1 border-t border-black/10"
                     style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                   />
                 ))}
@@ -1684,11 +1683,15 @@ export function ScheduleView({
                       className="absolute top-0 left-0 right-0 z-10 h-2 cursor-pointer"
                     />
                     {/* Same 5-minute divider lines an activity row shows —
-                        see apptGridLines above. */}
+                        see apptGridLines above. Black/opacity here too,
+                        rather than a green shade picked to match this box's
+                        own tint — appointments aren't all rendered on the
+                        same bg-green-50 forever, and a fixed color would
+                        need re-picking for any other panel color. */}
                     {Array.from({ length: apptGridLines }, (_, i) => (
                       <div
                         key={`ag-${i}`}
-                        className="absolute left-1 right-1 border-t border-green-200"
+                        className="absolute left-1 right-1 border-t border-black/10"
                         style={{ top: (i + 1) * 5 * PX_PER_MIN }}
                       />
                     ))}

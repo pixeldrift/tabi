@@ -719,11 +719,11 @@ export function TrialCard({
                               : "text-foreground";
                       const centerBg =
                         lastAction.value === "correct" && i === current - 1
-                          ? "bg-green-100 border-green-400"
+                          ? "bg-green-50 border-green-400/80"
                           : lastAction.value === "incorrect" && i === current - 1
-                            ? "bg-red-100 border-red-400"
+                            ? "bg-red-50 border-red-400/80"
                             : lastAction.value === "no-response" && i === current - 1
-                              ? "bg-amber-100 border-amber-400"
+                              ? "bg-amber-50 border-amber-400/80"
                               : "";
                       return (
                         <motion.button
