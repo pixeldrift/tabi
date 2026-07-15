@@ -922,8 +922,16 @@ function TimestampExpandedView({
           standard view's own horizontal chevron, this one doesn't attach to
           it: the chevron still slides continuously along the vertical bar
           below, but pairing a moving pill with it down there reads as too
-          unstable for a value that's otherwise always anchored in place. */}
-      <div className="flex justify-center mb-2">{timerPill}</div>
+          unstable for a value that's otherwise always anchored in place.
+          Anchored over the vertical progress bar itself (chevron gutter
+          width + the row's own gap-3 + half the bar's own width) rather
+          than centered on the whole card, so it reads as belonging to the
+          bar right underneath it. */}
+      <div className="relative mb-2" style={{ height: 20 }}>
+        <div className="absolute top-0 -translate-x-1/2" style={{ left: 16 + 12 + 5 }}>
+          {timerPill}
+        </div>
+      </div>
       <div
         className="relative overflow-hidden"
         style={{ height: viewportHeight }}
