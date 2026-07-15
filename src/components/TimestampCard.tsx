@@ -633,16 +633,12 @@ export function TimestampCard({
 }
 
 // The "now" chevron is the Schedule tab's own arrow (see ScheduleView.tsx),
-// which points RIGHT to cross a vertical list from its left edge — rotated
-// -90° for the horizontal timeline (below) so it instead points UP,
-// crossing that bar from underneath; used un-rotated for the expanded
-// view's own vertical bar, where it already points the right way as-is.
-// Flat (unrounded) on its own left edge and fit tight in a SQUARE viewBox —
-// the flat edge is what sits flush against the timer pill in both
-// orientations (rotating a square -90° doesn't change its own footprint,
-// so no rotation-induced gap opens up between the two the way a rounded
-// corner or a non-square box would).
-const NOW_CHEVRON_PATH = "M0 0 V16 L14 9 Q16 8 14 7 Z";
+// same path and 16x20 aspect ratio — an established style reused as-is
+// rather than reshaped, and rotated -90° for the horizontal timeline
+// (below) so it instead points UP, crossing that bar from underneath;
+// used un-rotated for the expanded view's own vertical bar, where it
+// already points the right way as-is.
+const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z";
 
 // Fixed px per interval segment (both timelines) — keeps each interval a
 // comfortable, constant size no matter how many total intervals exist,
@@ -673,9 +669,10 @@ const BUBBLE_ROW_TOP_PX = 2;
 const NAV_CENTER_PX = BUBBLE_ROW_TOP_PX + BUBBLE_ROW_H / 2;
 // The "now" chevron's own half-width, roughly, once rotated on its side —
 // extra room so it can render in full even parked right at a track edge.
-// Chevron height (its rotated SVG) + a small gap + the timer pill's own
-// height (h-5) stacked underneath it, following the same x position.
-const CHEVRON_ROW_H = 18 + 4 + 20;
+// Chevron width (its rotated SVG footprint, unrotated height 20) + a small
+// gap + the timer pill's own height (h-5) stacked underneath it, following
+// the same x position.
+const CHEVRON_ROW_H = 20 + 4 + 20;
 // How far the chevron's own tip pokes up into the bar above it (standard
 // view) / right into the bar beside it (expanded view) — about half the
 // bar's own thickness, so the tip visually meets the bar rather than
@@ -836,14 +833,20 @@ function IntervalTimeline({
           <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0" style={{ left: fillPx }}>
             <svg
               width="16"
-              height="16"
-              viewBox="0 0 16 16"
+              height="20"
+              viewBox="0 0 16 20"
               style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
               aria-hidden
             >
               <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
             </svg>
-            {timerPill}
+            {/* Rotating a non-square box like this one leaves it centered in
+                its own unrotated (16x20) footprint, so the visually-rotated
+                chevron (now 20 wide x 16 tall) sits with a couple of px of
+                empty space below it before the box's own reserved height
+                ends — pulled up to close that gap without touching the
+                chevron's own established shape. */}
+            <div style={{ marginTop: -4 }}>{timerPill}</div>
           </div>
         </motion.div>
       </div>
@@ -941,7 +944,7 @@ function TimestampExpandedView({
               className="absolute -translate-y-1/2"
               style={{ top: fillPx, right: -CHEVRON_OVERLAP_PX }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }} aria-hidden>
+              <svg width="16" height="20" viewBox="0 0 16 20" style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }} aria-hidden>
                 <path d={NOW_CHEVRON_PATH} fill="#2563eb" />
               </svg>
             </div>
