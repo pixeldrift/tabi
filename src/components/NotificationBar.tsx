@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Volume2, VolumeX, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Check, Volume2, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, isAlert, vibrate, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
@@ -30,6 +30,21 @@ const ZzIcon = ({ className }: { className?: string }) => (
   >
     <path d="M13 5h7l-7 9h7" />
     <path d="M3 13h6l-6 6h6" />
+  </svg>
+);
+
+// Same glyph as the Schedule tab's own "Now" button (ScheduleView.tsx) —
+// a chevron dropping onto a line, standing for "jump to this, right now."
+const NowIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 12 12" className={className} aria-hidden="true">
+    <path
+      d="M6 1.5v5.5M3.5 5.5L6 8 8.5 5.5M2.5 9.5h7"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
   </svg>
 );
 
@@ -258,6 +273,17 @@ function NotificationRow({
   // Once silenced the row stays but reads as muted, regardless of the
   // notification's own stored icon (which is what drives the chime).
   const Icon = silenced ? BellOff : ICON_MAP[n.icon];
+  // Local, optimistic highlight for the Timestamp check's own two extra
+  // score buttons — seeded from the interval's status at the moment this
+  // alert fired, then just toggled in place on tap (matching the actual
+  // card's own score() toggle-on-repeat-press semantics) rather than
+  // re-reading the card's live state on every render.
+  const [intervalStatus, setIntervalStatus] = useState(n.timestampCheck?.initialStatus ?? null);
+  const handleIntervalScore = (value: "correct" | "incorrect") => {
+    if (!n.timestampCheck) return;
+    setIntervalStatus((prev) => (prev === value ? null : value));
+    n.timestampCheck.onScore(value);
+  };
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
@@ -418,52 +444,57 @@ function NotificationRow({
         style={{ x: dragX, opacity: bubbleOpacity }}
         onDragStart={() => { wasDragging.current = true; }}
         onDragEnd={handleDragEnd}
-        className={cn("relative rounded-full border shadow-sm", styles.ring)}
+        className={cn("relative border shadow-sm", n.timestampCheck ? "rounded-2xl" : "rounded-full", styles.ring)}
       >
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => { if (!wasDragging.current) onActivate(); }}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-          className="w-full flex items-center gap-3 pl-3 pr-24 py-1.5 text-left cursor-pointer"
-        >
+        {/* Wraps just the header row (not the whole bubble) so the action
+            buttons below — positioned via `inset-y-0` — span only this
+            row's own height, even once the Timestamp check's extra row
+            makes the bubble as a whole taller than a standard alert. */}
+        <div className="relative">
           <div
-            className={cn(
-              "flex items-center justify-center size-7 shrink-0",
-              styles.iconFg,
-              // animate-bounce's arc sits above the resting baseline, which
-              // reads as off-center within this box — nudged down so its
-              // resting position looks vertically centered.
-              !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
-              !silenced && n.kind === "alert-priming" && "animate-pulse",
-            )}
+            role="button"
+            tabIndex={0}
+            onClick={() => { if (!wasDragging.current) onActivate(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+            className="w-full flex items-center gap-3 pl-3 pr-24 py-1.5 text-left cursor-pointer"
           >
-            <Icon className="size-5" />
+            <div
+              className={cn(
+                "flex items-center justify-center size-7 shrink-0",
+                styles.iconFg,
+                // animate-bounce's arc sits above the resting baseline, which
+                // reads as off-center within this box — nudged down so its
+                // resting position looks vertically centered.
+                !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
+                !silenced && n.kind === "alert-priming" && "animate-pulse",
+              )}
+            >
+              <Icon className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
+              {n.body && (
+                <div className="text-xs text-stone-600 truncate">
+                  {n.body}
+                  {relativeTime && (
+                    <>
+                      {" · "}
+                      <span className="font-semibold">{relativeTime}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
-            {n.body && (
-              <div className="text-xs text-stone-600 truncate">
-                {n.body}
-                {relativeTime && (
-                  <>
-                    {" · "}
-                    <span className="font-semibold">{relativeTime}</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Action buttons now live inside the draggable bubble itself, so
-            they ride along with it as it's dragged instead of sitting fixed
-            while the bubble slides underneath — the background labels above
-            are what communicate "what will happen" during the gesture now. */}
-        <div
-          className="absolute inset-y-0 right-2 flex items-center gap-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
+          {/* Action buttons now live inside the draggable bubble itself, so
+              they ride along with it as it's dragged instead of sitting fixed
+              while the bubble slides underneath — the background labels above
+              are what communicate "what will happen" during the gesture now. */}
+          <div
+            className="absolute inset-y-0 right-2 flex items-center gap-0.5"
+            onClick={(e) => e.stopPropagation()}
+          >
           {alert ? (
             <>
               {showAudioButton && (
@@ -503,7 +534,54 @@ function NotificationRow({
           <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
             <X className="size-4" />
           </RowButton>
+          </div>
         </div>
+
+        {/* The 3 extra buttons a Timestamp card's own "time to check" alert
+            adds — same swipe/drag behavior as any other alert (this sits
+            inside the same draggable bubble), just with room below the
+            header for a jump-to-card button plus the card's own two score
+            buttons, styled to match its RowScoreButton. */}
+        {n.timestampCheck && (
+          <div className="flex items-center gap-1.5 px-3 pb-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              aria-label="Scroll to card"
+              title="Scroll to card"
+              onClick={n.timestampCheck.onScrollToCard}
+              className="shrink-0 inline-flex items-center gap-1 h-7 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wide px-2 transition-colors"
+            >
+              <NowIcon className="size-3" />
+              Now
+            </button>
+            <button
+              type="button"
+              onClick={() => handleIntervalScore("incorrect")}
+              className={cn(
+                "flex-1 min-w-0 h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2 text-[11px] font-semibold truncate transition-colors",
+                intervalStatus === "incorrect"
+                  ? "btn-bevel bg-red-500 border-red-600 text-white"
+                  : "border-red-300 text-red-700 bg-white hover:bg-red-50",
+              )}
+            >
+              <X className="size-3 shrink-0" strokeWidth={3} />
+              <span className="truncate">{n.timestampCheck.negativeLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleIntervalScore("correct")}
+              className={cn(
+                "flex-1 min-w-0 h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2 text-[11px] font-semibold truncate transition-colors",
+                intervalStatus === "correct"
+                  ? "btn-bevel bg-green-500 border-green-600 text-white"
+                  : "border-green-300 text-green-700 bg-white hover:bg-green-50",
+              )}
+            >
+              <Check className="size-3 shrink-0" strokeWidth={3} />
+              <span className="truncate">{n.timestampCheck.positiveLabel}</span>
+            </button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

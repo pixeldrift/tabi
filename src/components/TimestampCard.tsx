@@ -11,6 +11,7 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
+import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
 import { cn } from "@/lib/utils";
 
@@ -187,6 +188,11 @@ export function TimestampCard({
   // interval boundary snaps the view back to live.
   const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", currentIndex);
   const prevCurrentIndexRef = useRef(currentIndex);
+  // Separate from prevCurrentIndexRef above — that one drives auto-follow
+  // and must update synchronously in the same effect tick; this one just
+  // guards the "time to check" alert (see below) against re-firing for an
+  // index it's already alerted for, on its own independent effect.
+  const prevAlertIndexRef = useRef(currentIndex);
   useEffect(() => {
     if (currentIndex !== prevCurrentIndexRef.current) {
       prevCurrentIndexRef.current = currentIndex;
@@ -215,6 +221,7 @@ export function TimestampCard({
     setElapsed(0);
     setViewIdx(0);
     prevCurrentIndexRef.current = 0;
+    prevAlertIndexRef.current = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
@@ -243,6 +250,40 @@ export function TimestampCard({
       return next;
     });
   };
+
+  // Own root element ref — same "wrap the CardShell return in a plain div"
+  // convention Duration/Rate cards use for their own scroll-to-card jump
+  // (see useRegisterActiveTimer's elementRef) — used below so the "time to
+  // check" alert's own Now button can scroll straight back to this card.
+  const cardElRef = useRef<HTMLDivElement | null>(null);
+  const { push: pushNotification } = useNotifications();
+  // Pops a "time to check" alert every time a new interval becomes current
+  // (not on mount, and not while the session is paused — elapsed, and so
+  // currentIndex, only ever advances while it's running). Scoring from the
+  // alert calls this same `score` closure the card itself uses, so the
+  // bubble/button color and the alert's own highlighting both come from
+  // the identical source of truth.
+  useEffect(() => {
+    if (currentIndex === 0) return;
+    if (currentIndex === prevAlertIndexRef.current) return;
+    prevAlertIndexRef.current = currentIndex;
+    pushNotification({
+      dedupeKey: `timestamp-check:${cardKey}:${currentIndex}`,
+      kind: "alert-now",
+      title: `Check if ${positiveLabel}`,
+      body: title,
+      icon: "bell-chime",
+      allowSnooze: true,
+      timestampCheck: {
+        positiveLabel,
+        negativeLabel,
+        initialStatus: statuses[currentIndex] ?? null,
+        onScore: (value) => score(currentIndex, value),
+        onScrollToCard: () => cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
 
   const measurementLabelOverride = {
     positive: `Mark ${positiveLabel} if`,
@@ -447,7 +488,8 @@ export function TimestampCard({
   }
 
   return (
-    <CardShell
+    <div ref={cardElRef} className="w-full max-w-md scroll-mt-32">
+      <CardShell
       title={title}
       phase={phase}
       dataType="Timestamp"
@@ -529,7 +571,8 @@ export function TimestampCard({
           />
         </div>
       </div>
-    </CardShell>
+      </CardShell>
+    </div>
   );
 }
 
