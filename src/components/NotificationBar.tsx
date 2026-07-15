@@ -499,19 +499,27 @@ function NotificationRow({
           </div>
 
           {/* Card-specific cluster (Timestamp's own "time to check" alert) —
-              kept as its own group in the middle of the row, distinct from
-              the standard audio/snooze/dismiss cluster on the right, rather
-              than all six buttons reading as one undifferentiated row. */}
+              kept as its own group, distinct from the standard audio/snooze/
+              dismiss cluster on the right, rather than all six buttons
+              reading as one undifferentiated row. `flex-1` (splitting the
+              row's remaining width evenly with the title block to its left)
+              plus `justify-center` is what actually centers it in the space
+              between the title and the standard cluster, rather than just
+              hugging up against whichever one comes first. */}
           {n.timestampCheck && (
-            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {/* Just the icon in blue, no circular button chrome — unlike
+                  the two score buttons beside it, this doesn't toggle a
+                  recorded state, it jumps you elsewhere, so it shouldn't
+                  read as the same kind of control. */}
               <button
                 type="button"
                 aria-label="Scroll to card"
                 title="Scroll to card"
                 onClick={n.timestampCheck.onScrollToCard}
-                className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
+                className="shrink-0 inline-flex items-center justify-center size-8 text-blue-600 hover:text-blue-700 active:text-blue-800 transition-colors"
               >
-                <NowIcon className="size-3.5" />
+                <NowIcon className="size-4" />
               </button>
               <button
                 type="button"
