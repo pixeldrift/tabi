@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { Check, X, Link2 } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
@@ -86,17 +86,32 @@ function formatCompactTime(ms: number) {
   return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Where an interval sits relative to `viewIdx` — the position the nav
+ *  arrows move, same "current/browsable" idiom as Task Analysis's own
+ *  `current` step. */
+type Recency = "current" | "past" | "future";
+
+function recencyOf(index: number, viewIdx: number): Recency {
+  if (index === viewIdx) return "current";
+  return index < viewIdx ? "past" : "future";
+}
+
 // Bubble/badge coloring shared by the timeline's own numbers and the
 // expanded view's per-row badges — gray until an interval has actually been
-// scored, then the same green/red as its button. The current interval gets
-// an outlined (not flat-gray) treatment while still unscored, so it reads
-// as "this one's active" rather than just another blank slot.
-function statusColors(status: IntervalStatus, isCurrent: boolean) {
-  if (status === "correct") return { bg: "bg-green-50 border-green-300", text: "text-green-700" };
-  if (status === "incorrect") return { bg: "bg-red-50 border-red-300", text: "text-red-700" };
-  return isCurrent
-    ? { bg: "bg-card border-foreground/30", text: "text-foreground" }
-    : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/40" };
+// scored, then the same green/red as its button. The current (viewed)
+// interval reads solid/full-opacity; anything already passed fades out;
+// anything still ahead stays flat gray regardless of status, since it
+// hasn't come up yet.
+function statusColors(status: IntervalStatus, recency: Recency) {
+  if (recency === "future") {
+    return { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade: "" };
+  }
+  const fade = recency === "past" ? "opacity-60" : "";
+  if (status === "correct") return { bg: "bg-green-50 border-green-300", text: "text-green-700", fade };
+  if (status === "incorrect") return { bg: "bg-red-50 border-red-300", text: "text-red-700", fade };
+  return recency === "current"
+    ? { bg: "bg-card border-foreground/30", text: "text-foreground", fade: "" }
+    : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
 export function TimestampCard({
@@ -152,6 +167,22 @@ export function TimestampCard({
     intervalCount !== undefined ? intervalCount : Math.max(defaultWindowIntervalCount, uncappedIndex + 2);
   const currentIndex = intervalCount !== undefined ? Math.min(intervalCount - 1, uncappedIndex) : uncappedIndex;
 
+  // Which interval is being browsed/scored — like Task Analysis's own
+  // `current` step, navigable with the triangle arrows below, independent
+  // of `currentIndex` (the real, session-time-driven "now"). Auto-follows
+  // `currentIndex` the instant it moves to a new interval (see the effect
+  // below), so browsing away is only ever temporary — the next real
+  // interval boundary snaps the view back to live.
+  const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", currentIndex);
+  const prevCurrentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    if (currentIndex !== prevCurrentIndexRef.current) {
+      prevCurrentIndexRef.current = currentIndex;
+      setViewIdx(currentIndex);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
+
   const [statuses, setStatuses] = useCardState<IntervalStatus[]>(cardKey, "statuses", () =>
     Array(displayIntervalCount).fill(null),
   );
@@ -170,6 +201,8 @@ export function TimestampCard({
     markResetHandled();
     setStatuses(Array(intervalCount ?? defaultWindowIntervalCount).fill(null));
     setElapsed(0);
+    setViewIdx(0);
+    prevCurrentIndexRef.current = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
@@ -178,14 +211,18 @@ export function TimestampCard({
     return subscribeTick((d) => setElapsed((e) => e + d));
   }, [sessionRunning, subscribeTick]);
 
-  const currentStatus = statuses[currentIndex];
+  const viewStatus = statuses[viewIdx];
   const scoredCount = statuses.filter((s) => s !== null).length;
   const isComplete = scoredCount === displayIntervalCount;
   useReportCardStatus(cardKey, scoredCount > 0, isComplete);
 
-  // Generalized to an arbitrary index (not just `currentIndex`) — the
-  // expanded view lets any interval be scored or corrected directly,
-  // mirroring Task Analysis's own expanded per-step editing.
+  const goTo = (idx: number) => {
+    setViewIdx(Math.max(0, Math.min(idx, displayIntervalCount - 1)));
+  };
+
+  // Generalized to an arbitrary index (not just `viewIdx`) — the expanded
+  // view lets any interval be scored or corrected directly, mirroring Task
+  // Analysis's own expanded per-step editing.
   const score = (index: number, value: Exclude<IntervalStatus, null>) => {
     markDirty();
     setStatuses((prev) => {
@@ -255,14 +292,14 @@ export function TimestampCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                score(currentIndex, "incorrect");
+                score(viewIdx, "incorrect");
               }}
               disabled={!sessionRunning}
               aria-label={negativeLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
-                currentStatus === "incorrect"
+                viewStatus === "incorrect"
                   ? "bg-red-400 border-red-500 text-white"
                   : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
               )}
@@ -273,14 +310,14 @@ export function TimestampCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                score(currentIndex, "correct");
+                score(viewIdx, "correct");
               }}
               disabled={!sessionRunning}
               aria-label={positiveLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
-                currentStatus === "correct"
+                viewStatus === "correct"
                   ? "bg-green-400 border-green-500 text-white"
                   : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
               )}
@@ -293,7 +330,7 @@ export function TimestampCard({
         <div className="flex flex-col items-center gap-0.5">
           <div className="inline-flex items-center gap-1">
             <span className={cn("font-display leading-none tabular-nums", large ? "text-[32px]" : "text-[24px]")}>
-              {currentIndex + 1}
+              {viewIdx + 1}
             </span>
             <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>/</span>
             <span className={cn("font-display leading-none tabular-nums text-foreground/50", large ? "text-lg" : "text-sm")}>
@@ -301,7 +338,7 @@ export function TimestampCard({
             </span>
           </div>
           <span className={cn("text-muted-foreground tabular-nums", large ? "text-[11px]" : "text-[9px]")}>
-            {intervalLabel(currentIndex, intervalMin)}
+            {intervalLabel(viewIdx, intervalMin)}
           </span>
         </div>
       </MiniTileShell>
@@ -334,22 +371,22 @@ export function TimestampCard({
         isComplete={isComplete}
         actions={
           <div className="flex items-center gap-1">
-            <ListActionBadge value={currentIndex + 1} weight="regular" />
+            <ListActionBadge value={viewIdx + 1} weight="regular" />
             <ListActionButton
               icon={X}
               variant="red"
-              selected={currentStatus === "incorrect"}
+              selected={viewStatus === "incorrect"}
               disabled={!sessionRunning}
               ariaLabel={negativeLabel}
-              onClick={() => score(currentIndex, "incorrect")}
+              onClick={() => score(viewIdx, "incorrect")}
             />
             <ListActionButton
               icon={Check}
               variant="green"
-              selected={currentStatus === "correct"}
+              selected={viewStatus === "correct"}
               disabled={!sessionRunning}
               ariaLabel={positiveLabel}
-              onClick={() => score(currentIndex, "correct")}
+              onClick={() => score(viewIdx, "correct")}
             />
           </div>
         }
@@ -390,6 +427,7 @@ export function TimestampCard({
           intervalMs={intervalMs}
           statuses={statuses}
           currentIndex={currentIndex}
+          viewIdx={viewIdx}
           elapsedMs={elapsed}
           sessionRunning={sessionRunning}
           positiveLabel={positiveLabel}
@@ -399,8 +437,15 @@ export function TimestampCard({
       }
     >
       <div className="px-5 pt-2 pb-4 flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-semibold tabular-nums">{intervalLabel(currentIndex, intervalMin)}</div>
+        <div className="relative flex items-center justify-end gap-2 h-5">
+          {/* Centered over the row rather than the flex layout's own middle,
+              so it lines up with the (also centered) current bubble below
+              regardless of the pill's width — same horizontal midpoint as
+              the timeline, since both rows share the same symmetric side
+              padding. */}
+          <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums pointer-events-none">
+            {intervalRange(viewIdx, intervalMin)}
+          </div>
           {locked ? (
             <span
               aria-label="Locked to session time"
@@ -440,28 +485,37 @@ export function TimestampCard({
           )}
         </div>
 
-        <IntervalTimeline
-          intervalCount={displayIntervalCount}
-          elapsedMs={elapsed}
-          intervalMs={intervalMs}
-          currentIndex={currentIndex}
-          statuses={statuses}
-        />
+        <div className="relative px-10">
+          <TriangleNav direction="left" onClick={() => goTo(viewIdx - 1)} disabled={viewIdx <= 0} />
+          <TriangleNav
+            direction="right"
+            onClick={() => goTo(viewIdx + 1)}
+            disabled={viewIdx >= displayIntervalCount - 1}
+          />
+          <IntervalTimeline
+            intervalCount={displayIntervalCount}
+            elapsedMs={elapsed}
+            intervalMs={intervalMs}
+            currentIndex={currentIndex}
+            viewIdx={viewIdx}
+            statuses={statuses}
+          />
+        </div>
 
         <div className="mt-2 flex items-center gap-3">
           <ScoreButton
             variant="negative"
             label={negativeLabel}
-            selected={currentStatus === "incorrect"}
+            selected={viewStatus === "incorrect"}
             disabled={!sessionRunning}
-            onClick={() => score(currentIndex, "incorrect")}
+            onClick={() => score(viewIdx, "incorrect")}
           />
           <ScoreButton
             variant="positive"
             label={positiveLabel}
-            selected={currentStatus === "correct"}
+            selected={viewStatus === "correct"}
             disabled={!sessionRunning}
-            onClick={() => score(currentIndex, "correct")}
+            onClick={() => score(viewIdx, "correct")}
           />
         </div>
       </div>
@@ -481,14 +535,29 @@ const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
 // rather than getting squeezed thinner the longer an open-ended card's
 // window grows. The track is free to run wider/taller than its own
 // viewport; each viewport auto-scrolls (a spring transform, not real
-// scroll) to keep the current interval centered and fades its own edges,
-// the same idiom as Percent Correct's own draggable trial-bubble strip.
+// scroll) to keep the viewed interval in frame and fades its own trailing
+// edge, the same idiom as Percent Correct's own draggable trial-bubble
+// strip.
 const SEG_W = 64;
 const BAR_H = 10;
+// Same diameter as every period bubble (see IntervalTimeline's own comment) —
+// hoisted here so the nav arrows below can vertically center themselves on
+// the bubble row specifically, rather than the timeline's full height
+// (bubbles + bar + chevron).
+const BUBBLE = 24;
+// Matches IntervalTimeline's own leading `pt-1` before the bubble row.
+const BUBBLE_ROW_TOP_PX = 4;
+const NAV_CENTER_PX = BUBBLE_ROW_TOP_PX + BUBBLE / 2;
+// The "now" chevron's own half-width, roughly, once rotated on its side —
+// extra room so it can render in full even parked right at a track edge.
+const CHEVRON_EDGE_BUFFER = 10;
 const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as const;
+// Fades both edges — like Percent Correct's own trial-bubble strip, the
+// viewed interval sits centered in the viewport with past/future segments
+// trailing off on either side, so both directions need to fade out.
 const HORIZONTAL_FADE_MASK = {
-  WebkitMaskImage: "linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%)",
-  maskImage: "linear-gradient(to right, transparent 0, black 12%, black 88%, transparent 100%)",
+  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)",
+  maskImage: "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)",
 } as const;
 
 function IntervalTimeline({
@@ -496,26 +565,34 @@ function IntervalTimeline({
   elapsedMs,
   intervalMs,
   currentIndex,
+  viewIdx,
   statuses,
 }: {
   intervalCount: number;
   elapsedMs: number;
   intervalMs: number;
   currentIndex: number;
+  viewIdx: number;
   statuses: IntervalStatus[];
 }) {
   // Every period is an equal length of time, so its bubble is the same size
-  // as every other's — only the border weight and (once scored) color set
-  // the current one apart, not a bigger diameter.
-  const BUBBLE = 24;
+  // as every other's — only the border weight and the solid/faded/gray
+  // recency treatment set one apart from another, not a bigger diameter.
+  // (BUBBLE itself lives at module scope — the nav arrows need it too.)
   // Every interval before `currentIndex` is fully elapsed; `currentIndex`
   // itself is partially filled; nothing after it is filled at all — a
   // single continuous fill width follows directly from that, rather than a
   // percentage of some fixed (and, for an open-ended card, nonexistent)
-  // total duration.
+  // total duration. This "now" fill/chevron always reflects the real
+  // session clock, independent of whatever interval is being browsed.
   const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
   const fillPx = currentIndex * SEG_W + segFillFrac * SEG_W;
-  const trackOffsetPx = -(currentIndex * SEG_W + SEG_W / 2);
+  // Continuous centering, the same idiom as Percent Correct's own
+  // trial-bubble strip: the viewed interval's own segment always sits
+  // dead-center in the viewport (the track's left edge is pinned to the
+  // viewport's horizontal midpoint, then shifted back by exactly how far
+  // that segment's center sits from the track's own start).
+  const trackOffsetPx = -(viewIdx * SEG_W + SEG_W / 2);
 
   return (
     <div className="pt-1">
@@ -531,16 +608,17 @@ function IntervalTimeline({
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
-            const isCurrent = i === currentIndex;
-            const { bg, text } = statusColors(statuses[i], isCurrent);
+            const recency = recencyOf(i, viewIdx);
+            const { bg, text, fade } = statusColors(statuses[i], recency);
             return (
               <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: i * SEG_W + SEG_W / 2 }}>
                 <div
                   className={cn(
                     "rounded-full flex items-center justify-center font-display font-bold tabular-nums text-[11px] transition-all duration-200",
-                    isCurrent ? "border-2" : "border",
+                    recency === "current" ? "border-2" : "border",
                     bg,
                     text,
+                    fade,
                   )}
                   style={{ width: BUBBLE, height: BUBBLE }}
                 >
@@ -579,13 +657,21 @@ function IntervalTimeline({
           ))}
         </motion.div>
       </div>
-      <div className="relative overflow-hidden h-4" style={HORIZONTAL_FADE_MASK} aria-hidden>
+      <div
+        className="relative overflow-hidden h-4"
+        style={{
+          marginLeft: -CHEVRON_EDGE_BUFFER,
+          width: `calc(100% + ${CHEVRON_EDGE_BUFFER * 2}px)`,
+          ...HORIZONTAL_FADE_MASK,
+        }}
+        aria-hidden
+      >
         <motion.div
           className="absolute left-1/2 top-0"
           animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
-          <div className="absolute top-0 -translate-x-1/2" style={{ left: fillPx }}>
+          <div className="absolute top-0 -translate-x-1/2" style={{ left: fillPx + CHEVRON_EDGE_BUFFER }}>
             <svg
               width="14"
               height="18"
@@ -605,9 +691,11 @@ const ROW_H = 28; // matches h-7 row buttons
 const ROW_GAP = 6; // matches space-y-1.5
 const ROW_SLOT = ROW_H + ROW_GAP;
 const VISIBLE_ROWS = 4; // how many intervals fit in the scrollable viewport at once
+// Fades only the trailing (bottom) edge — see HORIZONTAL_FADE_MASK's own
+// comment for why the leading edge stays fully opaque instead.
 const VERTICAL_FADE_MASK = {
-  WebkitMaskImage: "linear-gradient(to bottom, transparent 0, black 8%, black 92%, transparent 100%)",
-  maskImage: "linear-gradient(to bottom, transparent 0, black 8%, black 92%, transparent 100%)",
+  WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+  maskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
 } as const;
 
 /** Twirl-down alternative to the standard view's horizontal timeline — same
@@ -615,8 +703,8 @@ const VERTICAL_FADE_MASK = {
  *  list of every interval, each with its own working score buttons (not
  *  gated to only the current one), mirroring Task Analysis's own expanded
  *  per-step editing. Only `VISIBLE_ROWS` show at once, auto-scrolled
- *  (spring transform) to keep the current interval in view and fading its
- *  own top/bottom edges — same idiom as the standard view's own horizontal
+ *  (spring transform) to keep the viewed interval in frame and fading its
+ *  own trailing edge — same idiom as the standard view's own horizontal
  *  strip, just running the other way. */
 function TimestampExpandedView({
   intervalCount,
@@ -624,6 +712,7 @@ function TimestampExpandedView({
   intervalMs,
   statuses,
   currentIndex,
+  viewIdx,
   elapsedMs,
   sessionRunning,
   positiveLabel,
@@ -635,6 +724,7 @@ function TimestampExpandedView({
   intervalMs: number;
   statuses: IntervalStatus[];
   currentIndex: number;
+  viewIdx: number;
   elapsedMs: number;
   sessionRunning: boolean;
   positiveLabel: string;
@@ -643,7 +733,7 @@ function TimestampExpandedView({
 }) {
   const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
   const fillPx = currentIndex * ROW_SLOT + segFillFrac * ROW_H;
-  const trackOffsetPx = -(currentIndex * ROW_SLOT + ROW_H / 2);
+  const trackOffsetPx = -Math.max(0, viewIdx - (VISIBLE_ROWS - 1)) * ROW_SLOT;
   const viewportHeight = VISIBLE_ROWS * ROW_H + (VISIBLE_ROWS - 1) * ROW_GAP;
   const totalTrackHeight = intervalCount * ROW_SLOT;
 
@@ -654,7 +744,7 @@ function TimestampExpandedView({
         style={{ height: viewportHeight, ...VERTICAL_FADE_MASK }}
       >
         <motion.div
-          className="absolute left-0 top-1/2 w-full flex gap-3"
+          className="absolute left-0 top-0 w-full flex gap-3"
           animate={{ y: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
@@ -689,8 +779,8 @@ function TimestampExpandedView({
           <div className="relative flex-1 min-w-0">
             {Array.from({ length: intervalCount }, (_, i) => {
               const status = statuses[i];
-              const isCurrent = i === currentIndex;
-              const { bg, text } = statusColors(status, isCurrent);
+              const recency = recencyOf(i, viewIdx);
+              const { bg, text, fade } = statusColors(status, recency);
               return (
                 <div
                   key={i}
@@ -700,9 +790,10 @@ function TimestampExpandedView({
                   <span
                     className={cn(
                       "shrink-0 grid place-items-center size-6 rounded-full font-display font-bold text-[11px] tabular-nums",
-                      isCurrent ? "border-2" : "border",
+                      recency === "current" ? "border-2" : "border",
                       bg,
                       text,
+                      fade,
                     )}
                   >
                     {i + 1}
@@ -733,6 +824,44 @@ function TimestampExpandedView({
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function TriangleNav({
+  direction,
+  onClick,
+  disabled,
+}: {
+  direction: "left" | "right";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  const isLeft = direction === "left";
+  return (
+    <motion.button
+      aria-label={isLeft ? "Previous interval" : "Next interval"}
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={{ scale: 0.82 }}
+      whileHover={{ scale: 1.08 }}
+      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+      // Vertically centered on the period-bubble row specifically (not the
+      // full bubbles+bar+chevron height), so the arrows sit above the time
+      // bar rather than straddling it.
+      style={{ top: NAV_CENTER_PX }}
+      className={cn(
+        "absolute -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
+        isLeft ? "-left-2" : "-right-2",
+      )}
+    >
+      <svg viewBox="0 0 24 24" className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]" fill="currentColor" aria-hidden>
+        {isLeft ? (
+          <path d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z" strokeLinejoin="round" />
+        ) : (
+          <path d="M8.5 4.2c-1.1-.7-2.5.1-2.5 1.4v12.8c0 1.3 1.4 2.1 2.5 1.4l8.6-5.8a1.9 1.9 0 0 0 0-3.2L8.5 4.2z" strokeLinejoin="round" />
+        )}
+      </svg>
+    </motion.button>
   );
 }
 
