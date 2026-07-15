@@ -46,6 +46,18 @@ export interface Notification {
   // passes, instead of a string frozen at whatever it said the moment the
   // alert fired.
   activityAt?: number;
+  // Present only for a Timestamp card's own "time to check" alert — adds 3
+  // extra buttons to the row (scroll-to-card, negative, positive) alongside
+  // the standard audio/snooze/dismiss ones. The callbacks close directly
+  // over the pushing card's own `score`/scroll-ref, so no separate lookup
+  // registry is needed; see NotificationBar's own rendering of this.
+  timestampCheck?: {
+    positiveLabel: string;
+    negativeLabel: string;
+    initialStatus: "correct" | "incorrect" | null;
+    onScore: (value: "correct" | "incorrect") => void;
+    onScrollToCard: () => void;
+  };
 }
 
 interface PushInput {
@@ -61,6 +73,7 @@ interface PushInput {
   allowSnooze?: boolean;
   sourceRef?: Notification["sourceRef"];
   activityAt?: number;
+  timestampCheck?: Notification["timestampCheck"];
 }
 
 interface NotificationContextValue {
@@ -270,6 +283,7 @@ export function NotificationProvider({ children, onActivate }: { children: React
       allowSnooze: input.allowSnooze,
       sourceRef: input.sourceRef,
       activityAt: input.activityAt,
+      timestampCheck: input.timestampCheck,
       state: "live",
     };
     if (dedupeKey) dedupeRef.current.set(dedupeKey, id);

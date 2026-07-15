@@ -11,6 +11,7 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
+import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
 import { cn } from "@/lib/utils";
 
@@ -77,16 +78,29 @@ export function intervalLabel(index: number, intervalMin: number): string {
   return `${index + 1}: ${intervalRange(index, intervalMin)}`;
 }
 
-/** Just the interval's higher (end) boundary — "30m", "1hr", "1hr 30m",
- *  "2hrs" — what the standard view's own header shows for the viewed
- *  interval instead of a full start-end range. */
-function intervalEndLabel(index: number, intervalMin: number): string {
-  const totalMin = (index + 1) * intervalMin;
+/** A single time boundary in the "30m" / "1hr" / "1hr 30m" / "2hrs" style —
+ *  shared by `intervalEndLabel` (just the higher boundary) and the "time to
+ *  check" alert's own start-end range (see `intervalCheckRangeLabel`). */
+function formatIntervalBoundary(totalMin: number): string {
   if (totalMin < 60) return `${totalMin}m`;
   const hours = Math.floor(totalMin / 60);
   const rem = totalMin % 60;
   const hrPart = `${hours}hr${hours > 1 ? "s" : ""}`;
   return rem === 0 ? hrPart : `${hrPart} ${rem}m`;
+}
+
+/** Just the interval's higher (end) boundary — "30m", "1hr", "1hr 30m",
+ *  "2hrs" — what the standard view's own header shows for the viewed
+ *  interval instead of a full start-end range. */
+function intervalEndLabel(index: number, intervalMin: number): string {
+  return formatIntervalBoundary((index + 1) * intervalMin);
+}
+
+/** "1hr-1hr 30m" — the full start-end range in that same boundary style,
+ *  used as the "time to check" alert's own sub-text instead of the card's
+ *  title. */
+function intervalCheckRangeLabel(index: number, intervalMin: number): string {
+  return `${formatIntervalBoundary(index * intervalMin)}-${formatIntervalBoundary((index + 1) * intervalMin)}`;
 }
 
 function formatCompactTime(ms: number) {
@@ -187,6 +201,11 @@ export function TimestampCard({
   // interval boundary snaps the view back to live.
   const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", currentIndex);
   const prevCurrentIndexRef = useRef(currentIndex);
+  // Separate from prevCurrentIndexRef above — that one drives auto-follow
+  // and must update synchronously in the same effect tick; this one just
+  // guards the "time to check" alert (see below) against re-firing for an
+  // index it's already alerted for, on its own independent effect.
+  const prevAlertIndexRef = useRef(currentIndex);
   useEffect(() => {
     if (currentIndex !== prevCurrentIndexRef.current) {
       prevCurrentIndexRef.current = currentIndex;
@@ -215,6 +234,7 @@ export function TimestampCard({
     setElapsed(0);
     setViewIdx(0);
     prevCurrentIndexRef.current = 0;
+    prevAlertIndexRef.current = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
@@ -243,6 +263,40 @@ export function TimestampCard({
       return next;
     });
   };
+
+  // Own root element ref — same "wrap the CardShell return in a plain div"
+  // convention Duration/Rate cards use for their own scroll-to-card jump
+  // (see useRegisterActiveTimer's elementRef) — used below so the "time to
+  // check" alert's own Now button can scroll straight back to this card.
+  const cardElRef = useRef<HTMLDivElement | null>(null);
+  const { push: pushNotification } = useNotifications();
+  // Pops a "time to check" alert every time a new interval becomes current
+  // (not on mount, and not while the session is paused — elapsed, and so
+  // currentIndex, only ever advances while it's running). Scoring from the
+  // alert calls this same `score` closure the card itself uses, so the
+  // bubble/button color and the alert's own highlighting both come from
+  // the identical source of truth.
+  useEffect(() => {
+    if (currentIndex === 0) return;
+    if (currentIndex === prevAlertIndexRef.current) return;
+    prevAlertIndexRef.current = currentIndex;
+    pushNotification({
+      dedupeKey: `timestamp-check:${cardKey}:${currentIndex}`,
+      kind: "alert-now",
+      title: `Check if ${positiveLabel}`,
+      body: intervalCheckRangeLabel(currentIndex, intervalMin),
+      icon: "bell-chime",
+      allowSnooze: true,
+      timestampCheck: {
+        positiveLabel,
+        negativeLabel,
+        initialStatus: statuses[currentIndex] ?? null,
+        onScore: (value) => score(currentIndex, value),
+        onScrollToCard: () => cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
 
   const measurementLabelOverride = {
     positive: `Mark ${positiveLabel} if`,
@@ -447,7 +501,8 @@ export function TimestampCard({
   }
 
   return (
-    <CardShell
+    <div ref={cardElRef} className="w-full max-w-md scroll-mt-32">
+      <CardShell
       title={title}
       phase={phase}
       dataType="Timestamp"
@@ -485,6 +540,7 @@ export function TimestampCard({
           positiveLabel={positiveLabel}
           negativeLabel={negativeLabel}
           onScore={score}
+          timerPill={timerPill}
         />
       }
     >
@@ -528,7 +584,8 @@ export function TimestampCard({
           />
         </div>
       </div>
-    </CardShell>
+      </CardShell>
+    </div>
   );
 }
 
@@ -554,9 +611,16 @@ const BAR_H = 10;
 // the bubble row specifically, rather than the timeline's full height
 // (bubbles + bar + chevron).
 const BUBBLE = 24;
+// The currently-viewed interval's own bubble stands out at a larger size —
+// same "active is bigger" idiom used elsewhere (e.g. the enlarged current
+// dot on other cards' quick-glance strips) — so it needs its own row height
+// tall enough to fit without clipping (bubbles are bottom-anchored, so the
+// bigger one simply grows upward).
+const BUBBLE_CURRENT = 32;
+const BUBBLE_ROW_H = BUBBLE_CURRENT;
 // Matches IntervalTimeline's own leading `pt-1` before the bubble row.
 const BUBBLE_ROW_TOP_PX = 4;
-const NAV_CENTER_PX = BUBBLE_ROW_TOP_PX + BUBBLE / 2;
+const NAV_CENTER_PX = BUBBLE_ROW_TOP_PX + BUBBLE_ROW_H / 2;
 // The "now" chevron's own half-width, roughly, once rotated on its side —
 // extra room so it can render in full even parked right at a track edge.
 // Chevron height (its rotated SVG) + a small gap + the timer pill's own
@@ -565,10 +629,11 @@ const CHEVRON_ROW_H = 18 + 4 + 20;
 const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as const;
 // Fades both edges — like Percent Correct's own trial-bubble strip, the
 // viewed interval sits centered in the viewport with past/future segments
-// trailing off on either side, so both directions need to fade out.
+// trailing off on either side, so both directions need to fade out. Narrow
+// and hugging the edge, rather than eating a big chunk of the viewport.
 const HORIZONTAL_FADE_MASK = {
-  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)",
-  maskImage: "linear-gradient(to right, transparent 0%, black 22%, black 78%, transparent 100%)",
+  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+  maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
 } as const;
 
 function IntervalTimeline({
@@ -612,32 +677,34 @@ function IntervalTimeline({
     <div className="pt-1">
       {/* Period bubbles — parked in place above their own segment (not a
           draggable/swipeable strip like Percent Correct's trial bubbles),
-          all the same size (equal-length intervals), gray until scored
-          then colored to match the button that scored it. */}
-      <div className="relative overflow-hidden" style={{ height: BUBBLE, ...HORIZONTAL_FADE_MASK }}>
+          gray until scored then colored to match the button that scored
+          it. The currently-viewed one grows larger to stand out. */}
+      <div className="relative overflow-hidden" style={{ height: BUBBLE_ROW_H, ...HORIZONTAL_FADE_MASK }}>
         <motion.div
           className="absolute left-1/2 top-0"
-          style={{ height: BUBBLE }}
+          style={{ height: BUBBLE_ROW_H }}
           animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
             const recency = recencyOf(i, viewIdx);
             const { bg, text, fade } = statusColors(statuses[i], recency);
+            const isCurrent = recency === "current";
             return (
               <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: (i + 1) * SEG_W }}>
-                <div
+                <motion.div
                   className={cn(
-                    "rounded-full flex items-center justify-center font-display font-bold tabular-nums text-[11px] transition-all duration-200",
-                    recency === "current" ? "border-2" : "border",
+                    "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
+                    isCurrent ? "border-2 text-sm" : "border text-[11px]",
                     bg,
                     text,
                     fade,
                   )}
-                  style={{ width: BUBBLE, height: BUBBLE }}
+                  animate={{ width: isCurrent ? BUBBLE_CURRENT : BUBBLE, height: isCurrent ? BUBBLE_CURRENT : BUBBLE }}
+                  transition={{ type: "spring", stiffness: 360, damping: 28 }}
                 >
                   {i + 1}
-                </div>
+                </motion.div>
               </div>
             );
           })}
@@ -646,9 +713,12 @@ function IntervalTimeline({
       {/* The single combined progress indicator: the gray track fills light
           blue as the session clock advances, and the chevron below marks
           exactly how far the fill has reached — no separate "percent
-          scored" bar duplicating this one. */}
+          scored" bar duplicating this one. The gray/blue pill is sized to
+          the track's own true bounds (0 to the last interval's end), not
+          the viewport — otherwise, once the viewed interval is centered,
+          gray backdrop would show through before the session's own start. */}
       <div
-        className="relative overflow-hidden rounded-full bg-stone-200 mt-0.5"
+        className="relative overflow-hidden mt-0.5"
         style={{ height: BAR_H, ...HORIZONTAL_FADE_MASK }}
       >
         <motion.div
@@ -657,10 +727,15 @@ function IntervalTimeline({
           transition={SPRING_TRANSITION}
         >
           <div
-            className="absolute bg-blue-200 transition-[width]"
-            style={{ top: 0, left: 0, height: BAR_H, width: fillPx }}
-            aria-hidden
-          />
+            className="absolute rounded-full overflow-hidden bg-stone-200"
+            style={{ top: 0, left: 0, height: BAR_H, width: intervalCount * SEG_W }}
+          >
+            <div
+              className="absolute bg-blue-200 transition-[width]"
+              style={{ top: 0, left: 0, height: BAR_H, width: fillPx }}
+              aria-hidden
+            />
+          </div>
           {Array.from({ length: intervalCount - 1 }, (_, i) => (
             <div
               key={i}
@@ -700,24 +775,22 @@ function IntervalTimeline({
 }
 
 const ROW_H = 28; // matches h-7 row buttons
-const ROW_GAP = 6; // matches space-y-1.5
+// A bit more breathing room between rows than the standard-view idiom
+// (space-y-1.5) — enough rows' worth of buttons crowd together vertically
+// that the extra gap reads clearly, unlike a single horizontal row.
+const ROW_GAP = 12;
 const ROW_SLOT = ROW_H + ROW_GAP;
 const VISIBLE_ROWS = 4; // how many intervals fit in the scrollable viewport at once
-// Fades only the trailing (bottom) edge — see HORIZONTAL_FADE_MASK's own
-// comment for why the leading edge stays fully opaque instead.
-const VERTICAL_FADE_MASK = {
-  WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
-  maskImage: "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
-} as const;
 
 /** Twirl-down alternative to the standard view's horizontal timeline — same
  *  progress fill and "now" indicator, just running vertically alongside a
  *  list of every interval, each with its own working score buttons (not
  *  gated to only the current one), mirroring Task Analysis's own expanded
  *  per-step editing. Only `VISIBLE_ROWS` show at once, auto-scrolled
- *  (spring transform) to keep the viewed interval in frame and fading its
- *  own trailing edge — same idiom as the standard view's own horizontal
- *  strip, just running the other way. */
+ *  (spring transform) to keep the viewed interval in frame. Unlike the
+ *  standard view's own horizontal strip, nothing here fades at its edges —
+ *  that fade exists purely so the horizontal nav arrows don't look like
+ *  they're clipping content, and this view has no nav arrows of its own. */
 function TimestampExpandedView({
   intervalCount,
   intervalMin,
@@ -730,6 +803,7 @@ function TimestampExpandedView({
   positiveLabel,
   negativeLabel,
   onScore,
+  timerPill,
 }: {
   intervalCount: number;
   intervalMin: number;
@@ -742,6 +816,7 @@ function TimestampExpandedView({
   positiveLabel: string;
   negativeLabel: string;
   onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
+  timerPill: ReactNode;
 }) {
   const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - currentIndex * intervalMs) / intervalMs));
   const fillPx = currentIndex * ROW_SLOT + segFillFrac * ROW_H;
@@ -751,9 +826,10 @@ function TimestampExpandedView({
 
   return (
     <div className="px-5 pt-1 pb-4">
+      <div className="flex justify-center mb-2">{timerPill}</div>
       <div
         className="relative overflow-hidden"
-        style={{ height: viewportHeight, ...VERTICAL_FADE_MASK }}
+        style={{ height: viewportHeight }}
       >
         <motion.div
           className="absolute left-0 top-0 w-full flex gap-3"

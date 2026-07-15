@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Volume2, VolumeX, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Check, Volume2, VolumeX, ArrowRight } from "lucide-react";
 import { useNotifications, isAlert, vibrate, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
@@ -30,6 +30,21 @@ const ZzIcon = ({ className }: { className?: string }) => (
   >
     <path d="M13 5h7l-7 9h7" />
     <path d="M3 13h6l-6 6h6" />
+  </svg>
+);
+
+// Same glyph as the Schedule tab's own "Now" button (ScheduleView.tsx) —
+// a chevron dropping onto a line, standing for "jump to this, right now."
+const NowIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 12 12" className={className} aria-hidden="true">
+    <path
+      d="M6 1.5v5.5M3.5 5.5L6 8 8.5 5.5M2.5 9.5h7"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
   </svg>
 );
 
@@ -258,6 +273,17 @@ function NotificationRow({
   // Once silenced the row stays but reads as muted, regardless of the
   // notification's own stored icon (which is what drives the chime).
   const Icon = silenced ? BellOff : ICON_MAP[n.icon];
+  // Local, optimistic highlight for the Timestamp check's own two extra
+  // score buttons — seeded from the interval's status at the moment this
+  // alert fired, then just toggled in place on tap (matching the actual
+  // card's own score() toggle-on-repeat-press semantics) rather than
+  // re-reading the card's live state on every render.
+  const [intervalStatus, setIntervalStatus] = useState(n.timestampCheck?.initialStatus ?? null);
+  const handleIntervalScore = (value: "correct" | "incorrect") => {
+    if (!n.timestampCheck) return;
+    setIntervalStatus((prev) => (prev === value ? null : value));
+    n.timestampCheck.onScore(value);
+  };
   const styles = KIND_STYLES[n.kind];
   const alert = isAlert(n.kind);
   const showSnooze = alert && n.allowSnooze;
@@ -420,89 +446,131 @@ function NotificationRow({
         onDragEnd={handleDragEnd}
         className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => { if (!wasDragging.current) onActivate(); }}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
-          className="w-full flex items-center gap-3 pl-3 pr-24 py-1.5 text-left cursor-pointer"
-        >
+        <div className="w-full flex items-center gap-2 pl-3 pr-2 py-1.5">
           <div
-            className={cn(
-              "flex items-center justify-center size-7 shrink-0",
-              styles.iconFg,
-              // animate-bounce's arc sits above the resting baseline, which
-              // reads as off-center within this box — nudged down so its
-              // resting position looks vertically centered.
-              !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
-              !silenced && n.kind === "alert-priming" && "animate-pulse",
-            )}
+            role="button"
+            tabIndex={0}
+            onClick={() => { if (!wasDragging.current) onActivate(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate(); } }}
+            className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
           >
-            <Icon className="size-5" />
+            <div
+              className={cn(
+                "flex items-center justify-center size-7 shrink-0",
+                styles.iconFg,
+                // animate-bounce's arc sits above the resting baseline, which
+                // reads as off-center within this box — nudged down so its
+                // resting position looks vertically centered.
+                !silenced && n.kind === "alert-now" && "animate-bounce translate-y-0.5",
+                !silenced && n.kind === "alert-priming" && "animate-pulse",
+              )}
+            >
+              <Icon className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
+              {n.body && (
+                <div className="text-xs text-stone-600 truncate">
+                  {n.body}
+                  {relativeTime && (
+                    <>
+                      {" · "}
+                      <span className="font-semibold">{relativeTime}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <NotificationTitle title={n.title} className="block text-sm text-stone-900 truncate" />
-            {n.body && (
-              <div className="text-xs text-stone-600 truncate">
-                {n.body}
-                {relativeTime && (
-                  <>
-                    {" · "}
-                    <span className="font-semibold">{relativeTime}</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Action buttons now live inside the draggable bubble itself, so
-            they ride along with it as it's dragged instead of sitting fixed
-            while the bubble slides underneath — the background labels above
-            are what communicate "what will happen" during the gesture now. */}
-        <div
-          className="absolute inset-y-0 right-2 flex items-center gap-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {alert ? (
-            <>
-              {showAudioButton && (
-                <RowButton
-                  label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
-                  colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
-                  onClick={() => settleInPlace(audioAction)}
-                >
-                  {/* Crossfades rather than swapping instantly — a toggle,
-                      not a one-shot action, so it needs to read as flipping
-                      a state rather than the button itself changing identity. */}
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.span
-                      key={audioState}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="grid"
-                    >
-                      {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-                    </motion.span>
-                  </AnimatePresence>
-                </RowButton>
-              )}
-              {showSnooze && (
-                <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
-                  <ZzIcon className="size-4" />
-                </RowButton>
-              )}
-            </>
-          ) : (
-            <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
-              <ArrowRight className="size-4" />
-            </RowButton>
+          {/* Card-specific cluster (Timestamp's own "time to check" alert) —
+              kept as its own group in the middle of the row, distinct from
+              the standard audio/snooze/dismiss cluster on the right, rather
+              than all six buttons reading as one undifferentiated row. */}
+          {n.timestampCheck && (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                aria-label="Scroll to card"
+                title="Scroll to card"
+                onClick={n.timestampCheck.onScrollToCard}
+                className="shrink-0 inline-flex items-center justify-center size-8 rounded-full bg-blue-600 hover:bg-blue-700 active:bg-blue-700 text-white transition-colors"
+              >
+                <NowIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={n.timestampCheck.negativeLabel}
+                title={n.timestampCheck.negativeLabel}
+                onClick={() => handleIntervalScore("incorrect")}
+                className={cn(
+                  "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                  intervalStatus === "incorrect"
+                    ? "btn-bevel bg-red-500 border-red-600 text-white"
+                    : "border-red-300 text-red-700 bg-white hover:bg-red-50",
+                )}
+              >
+                <X className="size-4" strokeWidth={3} />
+              </button>
+              <button
+                type="button"
+                aria-label={n.timestampCheck.positiveLabel}
+                title={n.timestampCheck.positiveLabel}
+                onClick={() => handleIntervalScore("correct")}
+                className={cn(
+                  "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
+                  intervalStatus === "correct"
+                    ? "btn-bevel bg-green-500 border-green-600 text-white"
+                    : "border-green-300 text-green-700 bg-white hover:bg-green-50",
+                )}
+              >
+                <Check className="size-4" strokeWidth={3} />
+              </button>
+            </div>
           )}
-          <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
-            <X className="size-4" />
-          </RowButton>
+
+          {/* Standard alert cluster — always the rightmost group. */}
+          <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {alert ? (
+              <>
+                {showAudioButton && (
+                  <RowButton
+                    label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
+                    colorClass={audioState === "off" ? "bg-stone-300 hover:bg-stone-400 active:bg-stone-500" : styles.button}
+                    onClick={() => settleInPlace(audioAction)}
+                  >
+                    {/* Crossfades rather than swapping instantly — a toggle,
+                        not a one-shot action, so it needs to read as flipping
+                        a state rather than the button itself changing identity. */}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={audioState}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="grid"
+                      >
+                        {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                      </motion.span>
+                    </AnimatePresence>
+                  </RowButton>
+                )}
+                {showSnooze && (
+                  <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
+                    <ZzIcon className="size-4" />
+                  </RowButton>
+                )}
+              </>
+            ) : (
+              <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
+                <ArrowRight className="size-4" />
+              </RowButton>
+            )}
+            <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
+              <X className="size-4" />
+            </RowButton>
+          </div>
         </div>
       </motion.div>
     </motion.div>
