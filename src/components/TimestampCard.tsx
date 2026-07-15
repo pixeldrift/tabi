@@ -959,7 +959,12 @@ function TimestampExpandedView({
           </div>
           <div
             className="relative shrink-0 rounded-full bg-stone-200 overflow-hidden"
-            style={{ width: 10, height: totalTrackHeight }}
+            // Pulled left out of the row's own gap-3 (12px) so the chevron's
+            // tip — which only pokes CHEVRON_OVERLAP_PX past the gutter's
+            // own edge — actually reaches the bar instead of stopping short
+            // in the gap, the same overlap amount as the standard view's
+            // own horizontal bar.
+            style={{ width: 10, height: totalTrackHeight, marginLeft: -(12 - CHEVRON_OVERLAP_PX) }}
           >
             <div
               className="absolute inset-x-0 bg-blue-200 transition-[height]"
