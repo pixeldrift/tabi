@@ -125,14 +125,17 @@ export function DataToolbar({
     };
   }, [filterOpen]);
 
+  // Counts only what's inside the filter popover itself — the
+  // interfering/target behaviorFilter toggle lives as its own separate,
+  // always-visible button in the main row (see below) and already shows
+  // its own active state there, so it doesn't also need to bump this badge.
   const activeFilterCount =
     filters.kinds.size +
     filters.phases.size +
     (filters.dataFilter !== "all" ? 1 : 0) +
     (filters.completionFilter !== "all" ? 1 : 0) +
     (filters.favoritesOnly ? 1 : 0) +
-    (filters.showHidden ? 1 : 0) +
-    (filters.behaviorFilter !== "both" ? 1 : 0);
+    (filters.showHidden ? 1 : 0);
 
   return (
     <div
