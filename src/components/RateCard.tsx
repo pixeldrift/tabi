@@ -320,6 +320,7 @@ export function RateCard({
         title={title}
         description={description}
         dataTypeIcon={<RateIcon />}
+        kind="rate"
         dataTypeLabel="Rate / Min"
         isActive={isActive}
         onActivate={onActivate}
@@ -412,6 +413,7 @@ export function RateCard({
       phase={phase}
       dataType="Rate / Min"
       dataTypeIcon={<RateIcon />}
+      kind="rate"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

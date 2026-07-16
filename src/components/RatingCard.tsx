@@ -194,6 +194,7 @@ export function RatingCard({
         title={title}
         description={description}
         dataTypeIcon={<Star />}
+        kind="rating"
         dataTypeLabel="Score"
         isActive={isActive}
         onActivate={onActivate}
@@ -253,6 +254,7 @@ export function RatingCard({
       phase={phase}
       dataType="Score"
       dataTypeIcon={<Star />}
+      kind="rating"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

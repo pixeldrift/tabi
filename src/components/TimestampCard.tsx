@@ -505,6 +505,7 @@ export function TimestampCard({
         title={title}
         description={description}
         dataTypeIcon={<TimestampIcon />}
+        kind="timestamp"
         dataTypeLabel="Timestamp"
         isActive={isActive}
         onActivate={onActivate}
@@ -558,6 +559,7 @@ export function TimestampCard({
       phase={phase}
       dataType="Timestamp"
       dataTypeIcon={<TimestampIcon />}
+      kind="timestamp"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

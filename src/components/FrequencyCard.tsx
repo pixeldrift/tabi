@@ -231,6 +231,7 @@ export function FrequencyCard({
         title={title}
         description={description}
         dataTypeIcon={<FrequencyIcon />}
+        kind="frequency"
         dataTypeLabel="Frequency"
         isActive={isActive}
         onActivate={onActivate}
@@ -319,6 +320,7 @@ export function FrequencyCard({
       phase={phase}
       dataType="Frequency"
       dataTypeIcon={<FrequencyIcon />}
+      kind="frequency"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

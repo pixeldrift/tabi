@@ -3,11 +3,16 @@ import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { type CardEditAndDrawerProps } from "./CardShell";
 import { renderBreakableTitle } from "./BreakableTitle";
+import { DataTypeInfoLabel } from "./KindInfoLabels";
+import type { CardKind } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 export interface DataListRowProps extends CardEditAndDrawerProps {
   title: string;
   description?: string;
+  /** Which data-type info modal to open when the leading icon is tapped —
+   *  see DataTypeInfoLabel. */
+  kind: CardKind;
   /** Shown alone (no label), ahead of the title — phase and the data-type
    *  name itself aren't worth the space in a condensed list. */
   dataTypeIcon: ReactNode;
@@ -40,6 +45,7 @@ export interface DataListRowProps extends CardEditAndDrawerProps {
 export function DataListRow({
   title,
   description,
+  kind,
   dataTypeIcon,
   dataTypeLabel,
   isActive = true,
@@ -100,13 +106,14 @@ export function DataListRow({
             the right (see below), so there's no layout conflict keeping
             this off during editing like there was when both shared one
             slot. */}
-        <span
-          className="shrink-0 text-muted-foreground [&>svg]:size-4"
-          title={dataTypeLabel}
-          aria-label={dataTypeLabel}
-        >
-          {dataTypeIcon}
-        </span>
+        <DataTypeInfoLabel
+          kind={kind}
+          label={dataTypeLabel}
+          icon={dataTypeIcon}
+          showLabel={false}
+          className="shrink-0 text-muted-foreground hover:text-blue-600 transition-colors"
+          iconClassName="[&>svg]:size-4"
+        />
         <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0 break-words">
           {renderBreakableTitle(title)}
         </h2>

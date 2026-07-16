@@ -465,6 +465,7 @@ export function DurationCard({
         title={title}
         description={description}
         dataTypeIcon={<DurationIcon />}
+        kind="duration"
         dataTypeLabel="Duration"
         isActive={isActive}
         onActivate={onActivate}
@@ -568,6 +569,7 @@ export function DurationCard({
       phase={phase}
       dataType="Duration"
       dataTypeIcon={<DurationIcon />}
+      kind="duration"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

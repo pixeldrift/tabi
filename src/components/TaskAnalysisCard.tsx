@@ -496,6 +496,7 @@ export function TaskAnalysisCard({
         title={title}
         description={description}
         dataTypeIcon={<TaskAnalysisIcon />}
+        kind="task-analysis"
         dataTypeLabel="Task Analysis"
         isActive={isActive}
         onActivate={onActivate}
@@ -586,6 +587,7 @@ export function TaskAnalysisCard({
       phase={phase}
       dataType="Task Analysis"
       dataTypeIcon={<TaskAnalysisIcon />}
+      kind="task-analysis"
       description={description}
       isActive={isActive}
       onActivate={onActivate}

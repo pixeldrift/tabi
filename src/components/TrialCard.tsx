@@ -18,7 +18,7 @@ import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
-import { PHASE_ICONS } from "@/lib/phaseIcons";
+import { PhaseInfoLabel, DataTypeInfoLabel } from "./KindInfoLabels";
 import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { type CardEditAndDrawerProps } from "./CardShell";
@@ -104,7 +104,6 @@ export function TrialCard({
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const cardKey = id ?? title;
-  const PhaseIcon = PHASE_ICONS[phase];
   // Keyed by trial index rather than a parallel array — entries just don't
   // exist for trials that aren't "incorrect" (or don't have a level yet),
   // so it never needs to stay in sync/length with the trials array.
@@ -457,6 +456,7 @@ export function TrialCard({
         title={title}
         description={description}
         dataTypeIcon={<PercentCorrectIcon />}
+        kind="trial"
         dataTypeLabel={dataType}
         isActive={isActive}
         onActivate={onActivate}
@@ -598,18 +598,16 @@ export function TrialCard({
             />
           ) : (
             <div className="text-right leading-tight -mt-0.5">
-              <div className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground">
-                {PhaseIcon && (
-                  <span className="shrink-0 not-italic [&>svg]:size-3">
-                    <PhaseIcon />
-                  </span>
-                )}
-                <span>{phase}</span>
-              </div>
-              <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-                <PercentCorrectIcon className="size-3 shrink-0" />
-                <span>{dataType}</span>
-              </div>
+              <PhaseInfoLabel
+                phase={phase}
+                className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground hover:text-blue-600 transition-colors"
+              />
+              <DataTypeInfoLabel
+                kind="trial"
+                label={dataType}
+                icon={<PercentCorrectIcon />}
+                className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground hover:text-blue-600 transition-colors"
+              />
             </div>
           )}
         </header>

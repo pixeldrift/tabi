@@ -78,18 +78,22 @@ export interface PhaseInfo {
 export const PHASE_INFO: Record<string, PhaseInfo> = {
   Baseline: {
     description:
-      "Data collected before any teaching or behavior plan begins, so later progress has something to be measured against.",
+      "A behavior is currently in the standard stages of normal activity for that client — the starting point before any teaching or behavior plan begins, so later progress has something to be measured against.",
   },
   Intervention: {
     description:
-      "Data collected while a specific teaching strategy or behavior plan is actively being used.",
+      "Trying to make a change in a behavior through targeted techniques — a specific teaching strategy or behavior plan is actively being used.",
   },
   Probing: {
     description:
-      "A quick, occasional check on a skill without ongoing teaching — used to see whether a skill has generalized or is being retained without regular practice.",
+      "Investigating a client's abilities to establish what the baseline is — a quick, occasional check on a skill without ongoing teaching.",
   },
   Maintenance: {
     description:
-      "Data collected after a skill has been mastered, to confirm it's holding up over time without regular teaching.",
+      "A behavior has been successfully modified, but is still reinforced occasionally to make sure that it remains permanent.",
+  },
+  Fading: {
+    description:
+      "Trying to reduce the need for intervention and reinforcement to make the behavior automatic and independent.",
   },
 };
