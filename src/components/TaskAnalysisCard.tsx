@@ -329,6 +329,7 @@ export function TaskAnalysisCard({
           <>
             <DrawerQuickFacts
               icon={<TaskAnalysisIcon />}
+              kind="task-analysis"
               dataTypeLabel="Task analysis"
               phase={phase}
               stats={[
@@ -519,6 +520,7 @@ export function TaskAnalysisCard({
           <>
             <DrawerQuickFacts
               icon={<TaskAnalysisIcon />}
+              kind="task-analysis"
               dataTypeLabel="Task analysis"
               phase={phase}
               stats={[
@@ -626,6 +628,7 @@ export function TaskAnalysisCard({
         <>
           <DrawerQuickFacts
             icon={<TaskAnalysisIcon />}
+            kind="task-analysis"
             dataTypeLabel="Task analysis"
             phase={phase}
             stats={[

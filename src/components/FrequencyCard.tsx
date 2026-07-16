@@ -134,6 +134,7 @@ export function FrequencyCard({
           <>
             <DrawerQuickFacts
               icon={<FrequencyIcon />}
+              kind="frequency"
               dataTypeLabel="Frequency (count)"
               phase={phase}
               stats={[
@@ -252,6 +253,7 @@ export function FrequencyCard({
           <>
             <DrawerQuickFacts
               icon={<FrequencyIcon />}
+              kind="frequency"
               dataTypeLabel="Frequency (count)"
               phase={phase}
               stats={[
@@ -353,6 +355,7 @@ export function FrequencyCard({
         <>
           <DrawerQuickFacts
             icon={<FrequencyIcon />}
+            kind="frequency"
             dataTypeLabel="Frequency (count)"
             phase={phase}
             stats={[

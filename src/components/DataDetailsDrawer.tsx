@@ -571,10 +571,21 @@ export function DataDetailsDrawer({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeDrawer();
+      if (e.key !== "Escape") return;
+      // A Radix Dialog (e.g. DrawerQuickFacts' data-type/phase info modal)
+      // opened from inside this drawer adds its own Escape handling, but
+      // doesn't stop the event from also reaching this listener — without
+      // this guard, dismissing that modal with Escape closed the whole
+      // drawer out from under it too. Registered with `capture: true` so
+      // this runs during the capture phase, before Radix's own dismiss
+      // layer (which reacts on a plain bubble/document listener) has had a
+      // chance to react to this same keydown — checking after that point
+      // would already see the dialog mid-close and miss it.
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      closeDrawer();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

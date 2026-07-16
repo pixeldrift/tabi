@@ -325,6 +325,7 @@ export function TrialCard({
           <>
             <DrawerQuickFacts
               icon={<PercentCorrectIcon />}
+              kind="trial"
               dataTypeLabel={dataType}
               phase={phase}
               stats={[
@@ -480,6 +481,7 @@ export function TrialCard({
           <>
             <DrawerQuickFacts
               icon={<PercentCorrectIcon />}
+              kind="trial"
               dataTypeLabel={dataType}
               phase={phase}
               stats={[
@@ -642,6 +644,7 @@ export function TrialCard({
               <>
                 <DrawerQuickFacts
                   icon={<PercentCorrectIcon />}
+                  kind="trial"
                   dataTypeLabel={dataType}
                   phase={phase}
                   stats={[

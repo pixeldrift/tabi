@@ -392,6 +392,7 @@ export function TimestampCard({
     <>
       <DrawerQuickFacts
         icon={<TimestampIcon />}
+        kind="timestamp"
         dataTypeLabel="Timestamp"
         phase={phase}
         stats={[

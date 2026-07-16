@@ -208,6 +208,7 @@ export function RateCard({
             <>
               <DrawerQuickFacts
                 icon={<RateIcon />}
+                kind="rate"
                 dataTypeLabel="Rate (per minute)"
                 phase={phase}
                 stats={[
@@ -341,6 +342,7 @@ export function RateCard({
           <>
             <DrawerQuickFacts
               icon={<RateIcon />}
+              kind="rate"
               dataTypeLabel="Rate (per minute)"
               phase={phase}
               stats={[
@@ -435,6 +437,7 @@ export function RateCard({
         <>
           <DrawerQuickFacts
             icon={<RateIcon />}
+            kind="rate"
             dataTypeLabel="Rate (per minute)"
             phase={phase}
             stats={[

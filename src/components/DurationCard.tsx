@@ -288,6 +288,7 @@ export function DurationCard({
             <>
               <DrawerQuickFacts
                 icon={<DurationIcon />}
+                kind="duration"
                 dataTypeLabel="Frequency / Duration"
                 phase={phase}
                 stats={[
@@ -486,6 +487,7 @@ export function DurationCard({
           <>
             <DrawerQuickFacts
               icon={<DurationIcon />}
+              kind="duration"
               dataTypeLabel="Frequency / Duration"
               phase={phase}
               stats={[
@@ -601,6 +603,7 @@ export function DurationCard({
         <>
           <DrawerQuickFacts
             icon={<DurationIcon />}
+            kind="duration"
             dataTypeLabel="Frequency / Duration"
             phase={phase}
             stats={[

@@ -134,6 +134,7 @@ export function RatingCard({
           <>
             <DrawerQuickFacts
               icon={<Star />}
+              kind="rating"
               dataTypeLabel="Score (quality)"
               phase={phase}
               stats={[
@@ -215,6 +216,7 @@ export function RatingCard({
           <>
             <DrawerQuickFacts
               icon={<Star />}
+              kind="rating"
               dataTypeLabel="Score (quality)"
               phase={phase}
               stats={[
@@ -277,6 +279,7 @@ export function RatingCard({
         <>
           <DrawerQuickFacts
             icon={<Star />}
+            kind="rating"
             dataTypeLabel="Score (quality)"
             phase={phase}
             stats={[
