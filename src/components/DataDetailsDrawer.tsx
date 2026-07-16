@@ -371,7 +371,15 @@ export function DataDetailsDrawer({
   // viewport's own left edge); x === viewport width is fully closed (the
   // whole panel — pull tab included — has slid completely off the right
   // edge); anything in between reveals exactly that many px from the right.
-  const x = useMotionValue(open ? viewportWidth - restingWidthPx : viewportWidth);
+  // Mirrors the sync effect's own target formula below exactly (including
+  // the widthMode==="full" case) — this only runs once, on mount, so a
+  // fresh prev/next remount while at full width used to ignore widthMode
+  // here and initialize at the NORMAL-width target instead, then visibly
+  // spring the rest of the way to 0 once that effect's first commit caught
+  // up a beat later.
+  const x = useMotionValue(
+    !open ? viewportWidth : widthMode === "full" ? 0 : viewportWidth - restingWidthPx,
+  );
   // The shell above is always rendered at full viewport width so translating
   // it is cheap — but that means everything INSIDE it (header, body) also
   // defaults to that same full local width. Left unconstrained, right-flush
