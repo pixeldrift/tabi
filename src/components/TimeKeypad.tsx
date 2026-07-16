@@ -85,9 +85,13 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
     }
   }, [open]);
 
-  // Render the HH:MM:SS display with dimmed placeholders for unentered digits.
+  // Render the HH:MM:SS display with dimmed placeholders for unentered
+  // digits — spelling out which unit each dimmed slot belongs to (h/h,
+  // m/m, s/s) rather than just "0", so the empty state itself explains the
+  // format instead of looking like a pre-filled zero duration.
   const padded = pending.padStart(MAX_DIGITS, "0");
   const entered = pending.length;
+  const PLACEHOLDER_UNIT = ["h", "h", "m", "m", "s", "s"];
   const charNodes: React.ReactNode[] = [];
   for (let i = 0; i < MAX_DIGITS; i++) {
     if (i === 2 || i === 4) {
@@ -98,9 +102,18 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
       );
     }
     const isReal = i >= MAX_DIGITS - entered;
+    // Fixed 1ch width per slot — a placeholder letter (h/m/s) doesn't share
+    // a real digit's tabular-nums width, so without this the display would
+    // shrink or jump sideways the instant a typed digit replaces one.
     charNodes.push(
-      <span key={`d-${i}`} className={isReal ? "text-blue-600" : "text-muted-foreground/40"}>
-        {padded[i]}
+      <span
+        key={`d-${i}`}
+        className={cn(
+          "inline-block w-[1ch] text-center",
+          isReal ? "text-blue-600" : "text-muted-foreground/40",
+        )}
+      >
+        {isReal ? padded[i] : PLACEHOLDER_UNIT[i]}
       </span>,
     );
   }

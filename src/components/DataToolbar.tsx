@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Check,
   CheckCircle2,
   CircleDashed,
   ClipboardCheck,
@@ -308,7 +309,7 @@ export function DataToolbar({
                 : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
             )}
           >
-            <Pencil className="size-3.5" />
+            {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
           </button>
 
           {/* Search — trimmed a bit short of the row's full width (mr-6) so

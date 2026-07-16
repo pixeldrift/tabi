@@ -136,7 +136,9 @@ export function TimeOfDayKeypad({
     setOpen(false);
   };
 
-  // Digit nodes: when empty, render a fully grayed "00:00" placeholder.
+  // Digit nodes: when empty, render a dimmed "hh:mm" placeholder spelling
+  // out each unit rather than a plain "00:00" zero-looking value.
+  const PLACEHOLDER_UNIT = ["h", "h", "m", "m"];
   const charNodes: React.ReactNode[] = [];
   for (let i = 0; i < MAX_DIGITS; i++) {
     if (i === 2) {
@@ -147,9 +149,18 @@ export function TimeOfDayKeypad({
       );
     }
     const isReal = entered > 0 && i >= MAX_DIGITS - entered;
+    // Fixed 1ch width per slot — see TimeKeypad's identical comment: a
+    // placeholder letter doesn't share a real digit's tabular-nums width,
+    // so without this the display would shift as digits are typed in.
     charNodes.push(
-      <span key={`d-${i}`} className={isReal ? "text-blue-600" : "text-muted-foreground/40"}>
-        {padded[i]}
+      <span
+        key={`d-${i}`}
+        className={cn(
+          "inline-block w-[1ch] text-center",
+          isReal ? "text-blue-600" : "text-muted-foreground/40",
+        )}
+      >
+        {isReal ? padded[i] : PLACEHOLDER_UNIT[i]}
       </span>,
     );
   }
