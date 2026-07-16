@@ -764,7 +764,22 @@ export function DataDetailsDrawer({
         </button>
       )}
 
-      <motion.div className="flex h-full flex-col" style={{ width: contentWidth }}>
+      <motion.div
+        className={cn(
+          // overflow-hidden clips the sticky header's own square corner
+          // (its bg-background rectangle otherwise pokes past the outer
+          // panel's rounded arc, showing as a small square notch beyond the
+          // curve) to match the outer panel's own rounding below — scoped
+          // to this inner wrapper rather than the outer panel itself, since
+          // the outer panel also hosts the arrow pointer and off-screen
+          // indicator, both deliberately positioned outside its own box via
+          // a negative left offset; overflow-hidden there would clip those
+          // instead of just the header's corner.
+          "flex h-full flex-col overflow-hidden",
+          open && widthMode !== "full" && "rounded-tl-lg",
+        )}
+        style={{ width: contentWidth }}
+      >
         {/* Sticky header — stays put while the content below scrolls under
             it. bg-background keeps scrolled content from showing through;
             the border gives scrolled content a clear edge to disappear
@@ -776,7 +791,14 @@ export function DataDetailsDrawer({
           className="shrink-0 border-b border-border/70 bg-background py-1.5 px-4"
           style={{ minHeight: toolbarRowHeight }}
         >
-          <div className="flex items-center gap-1">
+          {/* items-start (not items-center) — a multi-line title grows this
+              row taller than the icons' own size-7, and centering would
+              slide every icon down to stay centered in that taller row
+              instead of holding still. Pinning to the top keeps them at
+              the same spot regardless of how many lines the title wraps
+              to, matching where they already sit in the common single-line
+              case. */}
+          <div className="flex items-start gap-1">
             {/* Expand/collapse — replaces the pull tab's own bidirectional
                 chevron now that the tab itself only shows while closed (see
                 its own comment above). Toggles between the two open widths
