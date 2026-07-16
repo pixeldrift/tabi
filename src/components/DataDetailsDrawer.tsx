@@ -270,7 +270,6 @@ export function DataDetailsDrawer({
   // showing — measured directly here (rather than threaded down as a prop)
   // since it's a different element than whatever positions this drawer.
   const toolbarRowHeight = useElementHeight("[data-toolbar-row]");
-  const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
   // Lazily measured up front (not just `null`, corrected a frame later by
   // the layout effect below) — `x`'s own useMotionValue call just below only
@@ -333,13 +332,12 @@ export function DataDetailsDrawer({
     onOpenChange(false);
   };
 
-  // Guards every window.innerWidth read below — this whole block runs
-  // above the `if (!mounted) return null` gate (hooks can't follow a
-  // conditional return), and this app's dev server does an initial SSR
-  // pass where `window` doesn't exist yet (see the mounted-gated JSX
-  // further down, which already assumed a browser and read window there
-  // safely). 0 is never actually seen on screen — first real paint happens
-  // client-side, by which point window is real and this recomputes.
+  // Guards every window.innerWidth read below — this app's dev server does
+  // an initial SSR pass where `window` doesn't exist yet (see the
+  // `typeof document` gate further down, which already assumes a browser
+  // and reads window there safely). 0 is never actually seen on screen —
+  // first real paint happens client-side, by which point window is real
+  // and this recomputes.
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
 
   // The panel's own resting width, in px, for whichever non-full state it's
@@ -551,8 +549,6 @@ export function DataDetailsDrawer({
     exitTimeoutRef.current = window.setTimeout(() => onNextCard(), EXIT_MS);
   };
 
-  useEffect(() => setMounted(true), []);
-
   // useLayoutEffect (not useEffect) — this runs before the browser paints,
   // so a freshly-mounted instance (after a prev/next card switch) measures
   // and settles arrowTop/hugWidth in the same frame it first renders,
@@ -664,7 +660,21 @@ export function DataDetailsDrawer({
     onOpenChange(true);
   };
 
-  if (!mounted) return null;
+  // A plain synchronous environment check (not a `useState`/`useEffect`
+  // "mounted" flag, which this used to be) — that pattern forced every
+  // fresh instance, including every prev/next remount (a NEW instance each
+  // time — see slideFrom's own comment), to render nothing at all for one
+  // commit before its effect flipped the flag true a tick later. For the
+  // very first mount of the app that's invisible (nothing was on screen
+  // yet anyway), but for a remount replacing an already-open, full-width
+  // drawer it was a real one-frame flash of the card list underneath
+  // before the drawer reappeared — easy to misread as the drawer itself
+  // shrinking and springing back. This check needs no state or effect: the
+  // only time it's ever false is the dev server's initial SSR pass, where
+  // `document` (like `window` above) genuinely doesn't exist yet — true on
+  // every real client-side render, including every remount, from the very
+  // first one.
+  if (typeof document === "undefined") return null;
 
   // Kept below the toolbar-covered strip at the panel's own top (the arrow
   // only ever points at a card in the pane, never into the toolbar itself).
