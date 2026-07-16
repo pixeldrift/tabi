@@ -29,13 +29,7 @@ export function DrawerInfoModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl">
-        <DialogHeader className="items-start text-left space-y-2">
-          {/* No circle backdrop — a plain, unboxed glyph in a quiet slate
-              tone reads as an illustration of the concept rather than a
-              button or badge competing with the lightbulb below it. */}
-          <span className="grid place-items-center size-12 text-stone-500 [&>svg]:size-8" aria-hidden>
-            {icon}
-          </span>
+        <DialogHeader className="items-start text-left">
           <DialogTitle className="flex items-center gap-1.5">
             <Lightbulb className="size-4 shrink-0 text-stone-500" aria-hidden />
             <span>
@@ -43,6 +37,17 @@ export function DrawerInfoModal({
             </span>
           </DialogTitle>
         </DialogHeader>
+
+        {/* No circle backdrop — a plain, unboxed glyph in a quiet slate tone
+            reads as an illustration of the concept rather than a button or
+            badge. mx-auto (not a flex/grid alignment utility) centers it
+            horizontally regardless of DialogContent's own grid layout,
+            since this element's fixed size means "stretch" alignment
+            wouldn't otherwise do anything — its own row, beneath the
+            (left-aligned) title bar above it rather than part of it. */}
+        <span className="grid place-items-center mx-auto size-12 text-stone-500 [&>svg]:size-8" aria-hidden>
+          {icon}
+        </span>
 
         <p className="text-sm text-foreground/80 leading-snug">{description}</p>
 
