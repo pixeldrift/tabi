@@ -14,7 +14,18 @@ import { useEffect, useRef, useState } from "react";
  *  into React state fights the panel's own `layout="position"` FLIP
  *  tracking instead of letting the transition's native reflow do the work. */
 export function useElementHeight(selector: string) {
-  const [height, setHeight] = useState(0);
+  // Lazily measured up front, not just `0` corrected a frame later — a
+  // caller can read this value into a Motion `useMotionValue`'s own
+  // one-time initializer (see DataDetailsDrawer's `x`), which never re-reads
+  // it once mounted. Starting this at `0` would bake that wrong height in
+  // permanently, only reachable afterward through an actual spring
+  // animation — visibly playing out as a brief, unwanted size change right
+  // after mount (e.g. every prev/next card switch, since that remounts the
+  // drawer fresh) instead of just being correct from the first frame.
+  const [height, setHeight] = useState(() => {
+    if (typeof document === "undefined") return 0;
+    return document.querySelector(selector)?.getBoundingClientRect().height ?? 0;
+  });
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -43,7 +54,18 @@ export function useElementHeight(selector: string) {
  *  toolbar's view-mode icon cluster. Same debounced-commit shape as
  *  useElementHeight above, just tracking a different rect field. */
 export function useElementRight(selector: string) {
-  const [right, setRight] = useState(0);
+  // Same reasoning as useElementHeight's own lazy initializer above — this
+  // value feeds DataDetailsDrawer's maxRestingWidthPx clamp, which its `x`
+  // motion value's one-time initializer reads. Starting at `0` here reads
+  // as "not yet measured" (see maxRestingWidthPx's own comment) and leaves
+  // the clamp uncapped for that first render — on a fresh prev/next remount,
+  // that let the panel open wider than its real clamped resting width for
+  // one frame, then visibly spring-shrink down once this effect's first
+  // commit corrected it a moment later.
+  const [right, setRight] = useState(() => {
+    if (typeof document === "undefined") return 0;
+    return document.querySelector(selector)?.getBoundingClientRect().right ?? 0;
+  });
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
