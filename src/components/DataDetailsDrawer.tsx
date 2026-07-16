@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { motion } from "motion/react";
+import { motion, useMotionValue, useDragControls, animate, type PanInfo } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -164,23 +164,24 @@ export interface DataDetailsDrawerProps {
   /** The card this drawer's contents describe — its on-screen position
    *  drives the arrow pointing back at it. */
   cardRef: RefObject<HTMLElement | null>;
-  /** Overrides the panel's own width classes — the sm+ half of the default
-   *  pairs with card mode's own drawerOpen compression (see IndexInner),
-   *  which collapses to a single ~55%-wide column so this can sit alongside
-   *  it rather than covering it; the "+14px" past an even half covers a
-   *  card's own top-right info button the same way the list row's does.
-   *  Below sm, card content stays full-width instead (too dense to compress
-   *  at phone widths without truncating), so this just overlays on top
-   *  there rather than sitting side-by-side. Ignored once `hugCardRight`
-   *  computes a real width — this only matters as its fallback until then. */
-  widthClassName?: string;
-  /** Instead of a fixed widthClassName, size the panel to exactly reach
+  /** The panel's own default resting width, in px, when neither dragged to
+   *  full width nor `hugCardRight`. The sm+ half pairs with card mode's own
+   *  drawerOpen compression (see IndexInner), which collapses to a single
+   *  ~55%-wide column so this can sit alongside it rather than covering it;
+   *  the "+14px" past an even half covers a card's own top-right info
+   *  button the same way the list row's does. Below sm, card content stays
+   *  full-width instead (too dense to compress at phone widths without
+   *  truncating), so this just overlays on top there rather than sitting
+   *  side-by-side. Ignored once `hugCardRight` computes a real width — this
+   *  only matters as its fallback until then. */
+  normalWidthPx?: (viewportWidth: number) => number;
+  /** Instead of a fixed normalWidthPx, size the panel to exactly reach
    *  `cardRef`'s own right edge — for the quick-action grids, where each
    *  tile's own width is a card-count-dependent, non-round fraction of the
-   *  pane (a plain half-viewport-ish widthClassName would either fall short
+   *  pane (a plain half-viewport-ish normalWidthPx would either fall short
    *  of the tile's edge or overshoot past it, rather than the two meeting
    *  exactly). Measured the same way `arrowTop` already is, from the same
-   *  card rect. Unlike widthClassName's own fallback, this doesn't add any
+   *  card rect. Unlike normalWidthPx's own fallback, this doesn't add any
    *  extra overlap past that edge by default — see `hugGapPx` to change that. */
   hugCardRight?: boolean;
   /** How far past `cardRef`'s own right edge the panel's left edge sits,
@@ -213,7 +214,7 @@ export function DataDetailsDrawer({
   top,
   toolbarHeight,
   cardRef,
-  widthClassName = "w-[88%] sm:w-[calc(50%+14px)]",
+  normalWidthPx: normalWidthPxFn = (vw) => (vw < 640 ? vw * 0.88 : vw * 0.5 + 14),
   hugCardRight = false,
   hugGapPx = DRAWER_TILE_GAP_PX,
 }: DataDetailsDrawerProps) {
@@ -235,6 +236,134 @@ export function DataDetailsDrawer({
   // is replaced by a button indicating which way to scroll to bring the
   // card back into view.
   const [offDirection, setOffDirection] = useState<"above" | "below" | null>(null);
+  // Which of the two open widths the panel is currently resting at — a tap
+  // on the pull tab only ever toggles "normal" vs. closed (see its onClick);
+  // "full" is reached only by dragging the tab all the way left. Reset to
+  // "normal" the moment the drawer closes so the next open always starts at
+  // the usual width rather than remembering a full-width session.
+  const [widthMode, setWidthMode] = useState<"normal" | "full">("normal");
+  useEffect(() => {
+    if (!open) setWidthMode("normal");
+  }, [open]);
+
+  // Guards every window.innerWidth read below — this whole block runs
+  // above the `if (!mounted) return null` gate (hooks can't follow a
+  // conditional return), and this app's dev server does an initial SSR
+  // pass where `window` doesn't exist yet (see the mounted-gated JSX
+  // further down, which already assumed a browser and read window there
+  // safely). 0 is never actually seen on screen — first real paint happens
+  // client-side, by which point window is real and this recomputes.
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+
+  // The panel's own resting width, in px, for whichever non-full state it's
+  // in right now — hugWidth (once measured) wins the same way it already
+  // does for the old CSS width class, falling back to normalWidthPxFn until
+  // then. Recomputed fresh every render (no memoization) so it's
+  // automatically fresh, including the one triggered by the resize
+  // listener below.
+  const restingWidthPx = hugCardRight && hugWidth !== null ? hugWidth : normalWidthPxFn(viewportWidth);
+
+  // Drives the panel's own horizontal position — always rendered at a full
+  // viewport width (see the panel's own w-full below) and translated via x
+  // to reveal only as much as the current state calls for, rather than
+  // animating `width` itself: a transform is cheap to update every frame of
+  // a drag/spring, where `width` would force a synchronous layout each time.
+  // x === 0 is fully expanded (the panel's own left edge sits at the
+  // viewport's own left edge); x === viewport width is fully closed (the
+  // whole panel — pull tab included — has slid completely off the right
+  // edge); anything in between reveals exactly that many px from the right.
+  const x = useMotionValue(open ? viewportWidth - restingWidthPx : viewportWidth);
+  const dragControls = useDragControls();
+  const isDraggingRef = useRef(false);
+  // A drag gesture still ends in a native click on the handle (pointerdown
+  // + pointerup with little movement is a click regardless of the drag
+  // machinery layered on top) — without this, every drag would also fire
+  // the tap-to-toggle below and immediately undo whatever the drag just
+  // settled on. Same idiom as NotificationBar's own swipe-vs-tap guard.
+  const wasDraggingRef = useRef(false);
+  // Armed just before a drag-driven setWidthMode/onOpenChange call, so the
+  // sync effect below — which would otherwise immediately re-animate `x` to
+  // the same target it's already being sent to, but without the release
+  // velocity onDragEnd already knows about — skips exactly that one run
+  // instead of restarting the spring from a dead stop.
+  const skipNextSyncRef = useRef(false);
+
+  // Keeps `x` pointed at wherever (open, widthMode, restingWidthPx) say it
+  // should rest — covers the pull tab's own tap-to-toggle, the header's
+  // Close button, Escape, and a resting resize, none of which carry a drag
+  // gesture's own velocity. A live drag owns `x` itself (see the panel's own
+  // `drag` prop below), so this steps aside until it ends.
+  useEffect(() => {
+    if (isDraggingRef.current) return;
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
+    const target = !open ? window.innerWidth : widthMode === "full" ? 0 : window.innerWidth - restingWidthPx;
+    const controls = animate(x, target, { type: "spring", stiffness: 340, damping: 34 });
+    return () => controls.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, widthMode, restingWidthPx]);
+
+  const handleDragStart = () => {
+    isDraggingRef.current = true;
+    wasDraggingRef.current = true;
+  };
+
+  // Decides which of the three resting spots (full / normal / closed) a
+  // released drag settles into. "Normal" acts as a detent, not just a third
+  // stop: releasing anywhere within STICKY_RADIUS of it snaps there even if
+  // that isn't the nearest edge, the same way a bottom sheet's middle stop
+  // catches a drag that wasn't aimed decisively past it — unless the
+  // release was a fast enough fling (FLING_PX_S) to read as deliberately
+  // skipping over it toward an edge instead.
+  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+    isDraggingRef.current = false;
+    const val = x.get();
+    const vx = info.velocity.x;
+    const vw = window.innerWidth;
+    const xFull = 0;
+    const xNormal = vw - restingWidthPx;
+    const xClosed = vw;
+    const FLING_PX_S = 700;
+    // Capped at half of whichever side's own range is smaller — a flat 70px
+    // radius would swallow the *entire* gap to full width on a narrow phone
+    // (normalWidthPx is already ~88% of the viewport there, leaving well
+    // under 70px of room), making full width unreachable by anything short
+    // of a hard fling. Scaling down keeps "normal" sticky without eating
+    // the very state it's supposed to sit between.
+    const stickyRadius = Math.min(70, (xNormal - xFull) / 2, (xClosed - xNormal) / 2);
+
+    let target: number;
+    let mode = widthMode;
+    let willClose = false;
+
+    if (Math.abs(val - xNormal) <= stickyRadius && Math.abs(vx) < FLING_PX_S) {
+      target = xNormal;
+      mode = "normal";
+    } else if (val <= xNormal) {
+      const wantsFull = val < xNormal - stickyRadius || vx < -FLING_PX_S;
+      target = wantsFull ? xFull : xNormal;
+      mode = wantsFull ? "full" : "normal";
+    } else {
+      const wantsClosed = val > xNormal + stickyRadius || vx > FLING_PX_S;
+      target = wantsClosed ? xClosed : xNormal;
+      willClose = wantsClosed;
+      mode = "normal";
+    }
+
+    animate(x, target, { type: "spring", velocity: vx, stiffness: 340, damping: 34 });
+    if (mode !== widthMode || willClose) skipNextSyncRef.current = true;
+    if (mode !== widthMode) setWidthMode(mode);
+    if (willClose) onOpenChange(false);
+    // Cleared a tick later, not synchronously — the click this drag's own
+    // pointerup produces fires (as a browser event) right after this
+    // handler returns, so it has to still see wasDraggingRef as true.
+    window.setTimeout(() => {
+      wasDraggingRef.current = false;
+    }, 80);
+  };
+
   // Which nav button is mid-press — set the instant it's clicked so THIS
   // (still-mounted, about-to-be-replaced) instance can play its own exit
   // slide immediately, rather than just vanishing the moment the parent's
@@ -270,7 +399,7 @@ export function DataDetailsDrawer({
       const rect = el.getBoundingClientRect();
       const midY = rect.top + rect.height / 2 - top;
       setArrowTop(midY);
-      // A small positive gap (unlike Card/List's widthClassName fallback,
+      // A small positive gap (unlike Card/List's normalWidthPx fallback,
       // which deliberately reaches a bit past a card's own edge to cover its
       // now-redundant info button) — a tile is small enough that a body
       // overlap running its full height would sit across real controls the
@@ -351,20 +480,27 @@ export function DataDetailsDrawer({
       // it, which means it has to out-stack the toolbar, not just sit next
       // to it.
       className={cn(
-        "fixed right-0 z-[62] bg-background shadow-[-8px_0_30px_-8px_rgba(0,0,0,0.25)]",
+        // Always a full viewport width — see the `x` motion value above for
+        // why position, not width, is what actually changes.
+        "fixed right-0 w-full z-[62] bg-background shadow-[-8px_0_30px_-8px_rgba(0,0,0,0.25)]",
         // Matches the active card's own border while open — same blue,
         // same 2px weight — so the drawer visibly reads as "this card,
         // pulled out," not a generic unrelated panel.
         open ? "border-2 border-blue-400/80" : "border border-border/70",
-        // widthClassName is only a fallback here — a real hugWidth (once
-        // measured) wins via the inline style below regardless of which
-        // class is present, so there's no conflict in leaving both applied.
-        widthClassName,
       )}
-      style={{ top, bottom: 0, ...(hugCardRight && hugWidth !== null ? { width: hugWidth } : {}) }}
-      initial={false}
-      animate={{ x: open ? 0 : "100%" }}
-      transition={{ type: "spring", stiffness: 340, damping: 34 }}
+      style={{ x, top, bottom: 0 }}
+      // Only the pull tab can start a drag (see its own onPointerDown) —
+      // dragListener={false} keeps a tap/scroll anywhere else on the panel
+      // (its own scrollable body, the header buttons) from being mistaken
+      // for a resize gesture.
+      drag="x"
+      dragListener={false}
+      dragControls={dragControls}
+      dragConstraints={{ left: 0, right: window.innerWidth }}
+      dragElastic={0.15}
+      dragMomentum={false}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       aria-hidden={!open}
     >
       {/* Pull tab — attached to the panel's own left edge (a child of the
@@ -384,14 +520,21 @@ export function DataDetailsDrawer({
           inside of that border, not the outside). */}
       <button
         type="button"
+        // Starts the panel's own drag (dragControls, not this button's) on
+        // pointerdown — the standard Framer Motion pattern for a drag
+        // handle that isn't the dragged element itself. A plain tap (little
+        // to no movement before pointerup) still fires onClick normally
+        // alongside it, so the existing tap-to-toggle keeps working.
+        onPointerDown={(e) => dragControls.start(e)}
         onClick={(e) => {
           e.stopPropagation();
+          if (wasDraggingRef.current) return;
           onOpenChange(!open);
         }}
         aria-label={open ? "Close details drawer" : "Open details drawer"}
         aria-expanded={open}
         className={cn(
-          "absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg bg-background text-stone-500 hover:text-stone-800 transition-colors",
+          "absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg bg-background text-stone-500 hover:text-stone-800 transition-colors touch-none",
           open ? "border-2 border-blue-400/80" : "border border-border/70",
           "border-r-0",
         )}
@@ -406,6 +549,22 @@ export function DataDetailsDrawer({
         />
       </button>
 
+      {/* Edge grab strip — the pull tab above is genuinely off-screen at
+          full width (its -left-7 offset is relative to the panel's own left
+          edge, which now sits at the viewport's own left edge), so there'd
+          be nothing left to grab to drag it back. This sits right at the
+          screen edge instead, inside the panel's own visible bounds, purely
+          as a resize handle — no visible chrome of its own, so it doesn't
+          look like a second, redundant control next to the (currently
+          hidden) tab. */}
+      {widthMode === "full" && (
+        <div
+          onPointerDown={(e) => dragControls.start(e)}
+          className="absolute left-0 top-0 bottom-0 w-4 touch-none cursor-grab"
+          aria-hidden
+        />
+      )}
+
       {/* Arrow — points at the card this drawer's contents belong to. Only
           rendered while open: when the panel slides off-screen its fixed
           -9px offset from the (now off-screen) left edge would otherwise
@@ -414,8 +573,10 @@ export function DataDetailsDrawer({
           entirely once the card has scrolled fully out of the visible pane
           — pointing at a card that isn't there to point at reads as broken,
           not just imprecise, so a direction button takes its place instead
-          (see offDirection above). */}
-      {open && !offDirection && (
+          (see offDirection above). Hidden at full width too — the card it
+          points to is now completely covered by the panel itself, not just
+          sitting beside it, so pointing "at" it no longer means anything. */}
+      {open && !offDirection && widthMode !== "full" && (
         <div
           // size-6 (24px) is size-4 (16px) scaled by 1.5x, so the -left
           // offset scales with it too — nudged a little further in past
@@ -433,8 +594,9 @@ export function DataDetailsDrawer({
       {/* Off-screen indicator — replaces the arrow above once the card it
           points to has scrolled fully out of view. Same corner the arrow
           would otherwise sit near (top-left/bottom-left of the panel), and
-          the same smooth-center scroll as the Schedule tab's "Now" button. */}
-      {open && offDirection && (
+          the same smooth-center scroll as the Schedule tab's "Now" button.
+          Same full-width exception as the arrow above. */}
+      {open && offDirection && widthMode !== "full" && (
         <button
           type="button"
           onClick={(e) => {

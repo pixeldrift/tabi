@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Check, Volume2, VolumeX, ArrowRight } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, X, Check, Volume2, VolumeX, ArrowRight, ArrowDownToLine } from "lucide-react";
 import { useNotifications, isAlert, vibrate, type Notification, type NotificationIcon, type NotificationKind } from "./NotificationContext";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
@@ -469,7 +469,7 @@ function NotificationRow({
           >
             <div
               className={cn(
-                "flex items-center justify-center size-7 shrink-0",
+                "relative flex items-center justify-center size-7 shrink-0",
                 styles.iconFg,
                 // animate-bounce's arc sits above the resting baseline, which
                 // reads as off-center within this box — nudged down so its
@@ -479,7 +479,19 @@ function NotificationRow({
               )}
             >
               <Icon className="size-5" />
+              {/* Badges the bell with the same "jump to it" cue this alert's
+                  own standalone Now button used to carry, now that tapping
+                  the whole row does what that button did — otherwise nothing
+                  here signals the tap does anything beyond dismiss/silence
+                  like every other alert kind. */}
+              {n.timestampCheck && (
+                <ArrowDownToLine
+                  className="absolute -bottom-1 -right-1 size-3 rounded-full bg-background p-px"
+                  aria-hidden
+                />
+              )}
             </div>
+            {n.timestampCheck && <span className="sr-only">Tap to jump to the card</span>}
             <div className="flex-1 min-w-0">
               <NotificationTitle title={n.title} className="block text-sm text-foreground truncate" />
               {n.body && (

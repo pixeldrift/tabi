@@ -174,7 +174,7 @@ export function MiniTileShell({
           onOpenChange={onDetailsOpenChange ?? (() => {})}
           // Tiles keep their own grid's normal per-column width when the
           // drawer opens (see index.tsx's `stackToLeftColumn`) rather than
-          // the pane compressing — so a fixed widthClassName guess can't
+          // the pane compressing — so a fixed normalWidthPx guess can't
           // reliably reach exactly this tile's own right edge the way it
           // can for card/list's more predictable half-viewport split.
           // hugCardRight measures the real thing instead.
