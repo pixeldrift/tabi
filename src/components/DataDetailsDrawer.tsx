@@ -19,6 +19,7 @@ import {
 } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
+import { DoubleChevronIcon } from "./icons/DoubleChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
@@ -201,6 +202,15 @@ export interface DataDetailsDrawerProps {
    *  clickable — small grid tiles are too narrow for that margin, so they
    *  keep the default gap. */
   hugGapPx?: number;
+  /** Which of the two open widths the panel is resting at — lifted up to
+   *  (and owned by) the caller rather than kept as this component's own
+   *  local state, the same way `open` already is: the whole component
+   *  remounts fresh on every prev/next card switch (see `slideFrom`'s own
+   *  comment), and local state doesn't survive a remount. Falls back to an
+   *  internal default ("normal") when omitted, for any caller that doesn't
+   *  need cross-card persistence. */
+  widthMode?: "normal" | "full";
+  onWidthModeChange?: (mode: "normal" | "full") => void;
 }
 
 /** A single shared, non-modal details panel — mounted only by whichever card
@@ -224,6 +234,8 @@ export function DataDetailsDrawer({
   normalWidthPx: normalWidthPxFn = (vw) => (vw < 640 ? vw * 0.88 : vw * 0.5 + 14),
   hugCardRight = false,
   hugGapPx = DRAWER_TILE_GAP_PX,
+  widthMode: widthModeProp,
+  onWidthModeChange: onWidthModeChangeProp,
 }: DataDetailsDrawerProps) {
   // Just the toolbar row's own collapsed height — not `toolbarHeight` (which
   // also grows by the "Start session" banner's variable height below it).
@@ -247,27 +259,32 @@ export function DataDetailsDrawer({
   // on the pull tab only ever toggles "normal" vs. closed (see its onClick);
   // "full" is reached only by dragging the tab all the way left. Reset to
   // "normal" the moment the drawer closes so the next open always starts at
-  // the usual width rather than remembering a full-width session.
-  const [widthMode, setWidthMode] = useState<"normal" | "full">("normal");
-  // A double-click's two constituent single clicks each commit their own
-  // toggle (open -> closed) before the dblclick handler (openToFull) ever
-  // runs — see openToFull's own comment. That closed-transition's reset
-  // effect below is a separate queued commit, and can end up FIRING AFTER
-  // openToFull has already committed widthMode:"full", stale-stomping it
-  // back to "normal" a beat later (its closure captured `open` as false from
-  // its own commit, not whatever's true by the time it actually runs).
-  // openToFull arms this ref so that stale reset — if it hasn't already
-  // fired harmlessly as a no-op before openToFull ran — is skipped instead
-  // of clobbering the width it just set. Cleared shortly after (not
-  // instantly) so it only shields that one specific pending reset rather
-  // than suppressing a genuine later close.
-  const suppressWidthResetRef = useRef(false);
-  useEffect(() => {
-    if (!open) {
-      if (suppressWidthResetRef.current) return;
-      setWidthMode("normal");
-    }
-  }, [open]);
+  // the usual width rather than remembering a full-width session. Falls
+  // back to local state when the caller doesn't lift this (see the props'
+  // own comment) — same optional-controlled-prop shape as `open`/
+  // `onOpenChange` conceptually are, just not made fully required since not
+  // every caller cares about cross-card persistence.
+  const [localWidthMode, setLocalWidthMode] = useState<"normal" | "full">("normal");
+  const widthMode = widthModeProp ?? localWidthMode;
+  const setWidthMode = onWidthModeChangeProp ?? setLocalWidthMode;
+  // The "reset to normal on close" used to live in a `useEffect` keyed on
+  // `open` — but effects fire asynchronously relative to the click events
+  // that trigger them, and a double-click's two constituent single clicks
+  // (each toggling `open` on its own, before the dblclick handler even
+  // runs — see openToFull's own comment) could commit their close-triggered
+  // reset AFTER openToFull had already set widthMode:"full", stale-stomping
+  // it back down a beat later. That race got worse (not better) once
+  // `widthMode` moved from this component's own local state to a value
+  // lifted up to a distant ancestor (see the props' own comment) — the
+  // re-render it now triggers is much bigger, which only widens the window
+  // for the stale effect to land after the fact. Doing the reset inline,
+  // synchronously, in the same handler that actually closes the drawer
+  // sidesteps the whole race: there's no async gap left for a later commit
+  // to land in.
+  const closeDrawer = () => {
+    setWidthMode("normal");
+    onOpenChange(false);
+  };
 
   // Guards every window.innerWidth read below — this whole block runs
   // above the `if (!mounted) return null` gate (hooks can't follow a
@@ -487,11 +504,12 @@ export function DataDetailsDrawer({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false);
+      if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Same smooth-center pattern as the Schedule tab's own "Now" button.
   const scrollToCard = () => {
@@ -510,23 +528,22 @@ export function DataDetailsDrawer({
 
   // Double-tapping the pull tab jumps straight to full width — a shortcut
   // past "normal" for anyone who already knows that's where they're headed.
-  // The browser still fires the two ordinary single clicks that make up a
-  // double-click first (each one toggling open vs. closed on its own) before
-  // this handler runs, so it forces the end state outright rather than
-  // toggling from whatever those left behind. That's also why this can't be
-  // conditionally attached only `!open ? openToFull : undefined` the way the
-  // rest of this file gates "closed-only" affordances — by the time the
-  // actual dblclick event dispatches, the two preceding clicks have already
-  // flipped `open` to true, so a `!open`-gated prop would already have gone
-  // undefined and silently swallowed the double-click.
-  const openToFull = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    suppressWidthResetRef.current = true;
+  // Deliberately NOT implemented via the browser's native `dblclick`/React's
+  // `onDoubleClick` — the whole panel doubles as a drag surface (see `drag`
+  // on the panel below), and something about that combination reliably
+  // suppresses native double-click synthesis on this button in practice
+  // (confirmed empirically: same DOM node throughout, well within any
+  // timing threshold, still zero native `dblclick` events observed even
+  // with a raw two-click CDP dispatch and a capture-phase listener on
+  // `document`). Detecting the second tap ourselves — same click handler,
+  // just checking how recently the previous one landed — sidesteps
+  // whatever that interaction is entirely, since it never depends on the
+  // browser agreeing the two clicks constitute a "double click" at all.
+  const lastTabClickAtRef = useRef(0);
+  const DOUBLE_TAP_MS = 350;
+  const openToFull = () => {
     setWidthMode("full");
     onOpenChange(true);
-    window.setTimeout(() => {
-      suppressWidthResetRef.current = false;
-    }, 100);
   };
 
   if (!mounted) return null;
@@ -597,12 +614,16 @@ export function DataDetailsDrawer({
           onClick={(e) => {
             e.stopPropagation();
             if (wasDraggingRef.current) return;
-            onOpenChange(!open);
+            const now = Date.now();
+            const isDoubleTap = now - lastTabClickAtRef.current < DOUBLE_TAP_MS;
+            lastTabClickAtRef.current = now;
+            if (isDoubleTap) {
+              openToFull();
+              return;
+            }
+            if (open) closeDrawer();
+            else onOpenChange(true);
           }}
-          // Always attached (not gated by `open`) — see openToFull's own
-          // comment on why a `!open`-conditional prop can't reliably tell
-          // this apart from a double-click starting in the open state.
-          onDoubleClick={openToFull}
           aria-label={open ? "Close details drawer" : "Open details drawer"}
           aria-expanded={open}
           className={cn(
@@ -612,13 +633,19 @@ export function DataDetailsDrawer({
           )}
           style={{ height: toolbarRowHeight }}
         >
-          {/* Base orientation points right; always faces the direction the
-              drawer will slide if pressed again — left (toward opening) while
-              closed, right (toward closing) while open — and animates between
-              the two as the drawer itself slides. */}
-          <TimeChevronIcon
-            className={cn("size-3.5 transition-transform duration-300", !open && "rotate-180")}
-          />
+          {open ? (
+            // Open (at normal width): the tab is draggable both ways from
+            // here — further left toward full width, right to collapse/
+            // close — so a single directional chevron would only describe
+            // half of what pressing/dragging it can do. The bidirectional
+            // icon signals both at once.
+            <DoubleChevronIcon className="size-3.5" />
+          ) : (
+            // Closed: only one direction does anything (drag/tap left to
+            // open), so the single chevron's own base-right orientation
+            // rotates to point left, toward that action.
+            <TimeChevronIcon className="size-3.5 rotate-180" />
+          )}
         </button>
       )}
 
@@ -739,7 +766,7 @@ export function DataDetailsDrawer({
               onClick={(e) => {
                 e.stopPropagation();
                 if (wasDraggingRef.current) return;
-                onOpenChange(false);
+                closeDrawer();
               }}
               aria-label="Close"
               className="-mr-1 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"

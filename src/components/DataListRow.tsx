@@ -55,6 +55,8 @@ export function DataListRow({
   onPrevCard,
   onNextCard,
   slideFrom,
+  widthMode,
+  onWidthModeChange,
 }: DataListRowProps) {
   const rowRef = useRef<HTMLElement | null>(null);
   const showActions = actions && !reorderEditing;
@@ -162,6 +164,8 @@ export function DataListRow({
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={rowRef}
+          widthMode={widthMode}
+          onWidthModeChange={onWidthModeChange}
         />
       )}
     </article>

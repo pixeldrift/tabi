@@ -747,6 +747,14 @@ function IndexInner() {
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Which of the drawer's two open widths is showing — lifted up here
+  // (rather than left as DataDetailsDrawer's own local state) so it
+  // survives a prev/next card switch, which remounts a fresh drawer
+  // instance for the newly active card (see DataDetailsDrawer's own props
+  // for the full explanation). Without this, dragging to full width and
+  // then paging to the next card would snap the drawer back down to normal
+  // width on every step.
+  const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
   const { status, transitionStage, transitionKind } = useSession();
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
@@ -1219,36 +1227,26 @@ function IndexInner() {
                     className={cn(
                       "transition-[opacity,width] duration-300",
                       !sessionActive && "opacity-50",
-                      // The open drawer is half the viewport wide (see
-                      // DataListRow/CardShell) — left-anchored and just over half
-                      // width itself (rather than the usual full width, centered)
-                      // so the cards/rows and the open drawer stay visible side by
-                      // side instead of the drawer covering them entirely. Card
-                      // mode's full-size cards are much denser than a list row,
-                      // though — squeezing them to the same 55% at phone widths
-                      // left button labels truncating and text wrapping badly, so
-                      // that mode only compresses at sm+ (tablet/desktop, where 55%
-                      // is still wide enough to hold a full card); below that the
-                      // drawer just overlays on top full-width instead (see
-                      // DataDetailsDrawer's own mobile-width default). List's rows
-                      // are minimal enough to compress at any width. The two
-                      // quick-action grids don't compress this container at all —
-                      // unlike a card (which is already a fixed intrinsic size
-                      // regardless of its grid track's own width) a tile's size
-                      // IS its grid track's width, so shrinking the container here
-                      // would shrink every tile with it. Instead their own tiles
-                      // stay pinned to column 1 of their normal (unchanged)
-                      // multi-column grid — see gridClasses/the per-card
-                      // `gridColumn` override below — so they keep their usual
-                      // size and just stack into the left column the drawer
-                      // doesn't cover, rather than a general-purpose "compress the
-                      // pane" approach.
-                      drawerOpen
-                        ? displayMode === "card"
-                          ? "w-full sm:w-[55%] sm:self-start"
-                          : displayMode === "list"
-                            ? "w-[55%] self-start"
-                            : "w-full"
+                      // Card mode's own cards are dense enough (button labels,
+                      // wrapped text) that squeezing them into a narrower column
+                      // reads badly at phone widths, so that mode compresses the
+                      // container itself down to 55% — left-anchored, sm+ only —
+                      // so the still-full-size cards and the open drawer stay
+                      // visible side by side instead of the drawer covering them
+                      // entirely. List rows and both quick-action grids don't need
+                      // that: a list row is already compact and reads fine
+                      // truncated under a half-width overlay, and a grid tile's
+                      // size IS its grid track's width (unlike a card, which has a
+                      // fixed intrinsic size regardless of its track), so shrinking
+                      // the container here would shrink every tile with it — those
+                      // two instead keep this container at full width and let the
+                      // drawer just overlay on top (see DataDetailsDrawer's own
+                      // ~half-viewport default width), with the grids' own tiles
+                      // separately stacking into the left column the drawer
+                      // doesn't cover (see gridClasses/the per-card `gridColumn`
+                      // override below).
+                      drawerOpen && displayMode === "card"
+                        ? "w-full sm:w-[55%] sm:self-start"
                         : "w-full",
                     )}
                   >
@@ -1278,6 +1276,8 @@ function IndexInner() {
                       drawerOpen={drawerOpen}
                       drawerSlideOpen={drawerSlideOpen}
                       onDrawerOpenChange={setDrawerOpen}
+                      drawerWidthMode={drawerWidthMode}
+                      onDrawerWidthModeChange={setDrawerWidthMode}
                       stickyTop={stickyTop}
                       toolbarHeight={toolbarHeight}
                     />
@@ -1336,6 +1336,8 @@ function renderCard(
     onPrevCard?: () => void;
     onNextCard?: () => void;
     slideFrom?: "left" | "right" | null;
+    widthMode?: "normal" | "full";
+    onWidthModeChange?: (mode: "normal" | "full") => void;
   },
 ): React.ReactNode {
   switch (card.kind) {
@@ -1619,6 +1621,8 @@ const DataCardList = memo(function DataCardList({
   drawerOpen,
   drawerSlideOpen,
   onDrawerOpenChange,
+  drawerWidthMode,
+  onDrawerWidthModeChange,
   stickyTop,
   toolbarHeight,
 }: {
@@ -1649,6 +1653,11 @@ const DataCardList = memo(function DataCardList({
    *  modes until the reflow it triggers has settled (see IndexInner). */
   drawerSlideOpen: boolean;
   onDrawerOpenChange: (open: boolean) => void;
+  /** Lifted the same way `drawerOpen` is — see DataDetailsDrawer's own
+   *  `widthMode` prop for why this can't just live as the drawer's own
+   *  local state. */
+  drawerWidthMode: "normal" | "full";
+  onDrawerWidthModeChange: (mode: "normal" | "full") => void;
   stickyTop: number;
   toolbarHeight: number;
 }) {
@@ -1737,6 +1746,8 @@ const DataCardList = memo(function DataCardList({
       },
       stickyTop,
       toolbarHeight,
+      widthMode: drawerWidthMode,
+      onWidthModeChange: onDrawerWidthModeChange,
       reorderEditing: editMode,
       favorited: favorites.has(card.id),
       onToggleFavorite: () => toggleFavorite(card.id),

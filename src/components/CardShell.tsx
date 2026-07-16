@@ -57,6 +57,16 @@ export interface CardEditAndDrawerProps {
   onPrevCard?: () => void;
   onNextCard?: () => void;
   slideFrom?: "left" | "right" | null;
+  /** Which of the drawer's two open widths is currently showing — lifted up
+   *  here (rather than left as the drawer's own local state) so it survives
+   *  a prev/next card switch. Each card mounts a fresh DataDetailsDrawer
+   *  instance when it becomes active (see the `{isActive && ...}` gating in
+   *  this file/DataListRow/MiniTileShell), which would otherwise reset a
+   *  locally-owned width back to "normal" on every navigation — jarring
+   *  when the user deliberately dragged to full width and just wants to
+   *  page through cards at that size. */
+  widthMode?: "normal" | "full";
+  onWidthModeChange?: (mode: "normal" | "full") => void;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {
@@ -118,6 +128,8 @@ export function CardShell({
   onPrevCard,
   onNextCard,
   slideFrom,
+  widthMode,
+  onWidthModeChange,
 }: CardShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
@@ -247,6 +259,8 @@ export function CardShell({
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={articleRef}
+          widthMode={widthMode}
+          onWidthModeChange={onWidthModeChange}
         />
       )}
 

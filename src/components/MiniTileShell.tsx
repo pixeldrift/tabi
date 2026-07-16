@@ -71,6 +71,8 @@ export function MiniTileShell({
   onPrevCard,
   onNextCard,
   slideFrom,
+  widthMode,
+  onWidthModeChange,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const large = density === "large";
@@ -196,6 +198,8 @@ export function MiniTileShell({
           top={stickyTop}
           toolbarHeight={toolbarHeight}
           cardRef={articleRef}
+          widthMode={widthMode}
+          onWidthModeChange={onWidthModeChange}
         />
       )}
 

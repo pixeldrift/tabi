@@ -99,6 +99,8 @@ export function TrialCard({
   onPrevCard,
   onNextCard,
   slideFrom,
+  widthMode,
+  onWidthModeChange,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const cardKey = id ?? title;
@@ -317,6 +319,8 @@ export function TrialCard({
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
+        widthMode={widthMode}
+        onWidthModeChange={onWidthModeChange}
         details={
           <>
             <DrawerQuickFacts
@@ -470,6 +474,8 @@ export function TrialCard({
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
+        widthMode={widthMode}
+        onWidthModeChange={onWidthModeChange}
         actions={
           // The badge AND the buttons travel together here — unlike
           // Frequency/Rate's tally-and-increment (one action, repeated), each
@@ -635,6 +641,8 @@ export function TrialCard({
             top={stickyTop}
             toolbarHeight={toolbarHeight}
             cardRef={articleRef}
+            widthMode={widthMode}
+            onWidthModeChange={onWidthModeChange}
           />
         )}
 
