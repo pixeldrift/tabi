@@ -19,6 +19,7 @@ export interface TimeKeypadProps {
 }
 
 const MAX_DIGITS = 6;
+const UNIT_HINTS = ["hh", "mm", "ss"];
 
 function pendingToMs(pending: string) {
   const padded = pending.padStart(MAX_DIGITS, "0");
@@ -86,34 +87,34 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
   }, [open]);
 
   // Render the HH:MM:SS display with dimmed placeholders for unentered
-  // digits — spelling out which unit each dimmed slot belongs to (h/h,
-  // m/m, s/s) rather than just "0", so the empty state itself explains the
-  // format instead of looking like a pre-filled zero duration.
+  // digits, plus a small "hh mm ss" unit hint centered under each digit
+  // pair — a plain, always-numeric display (never letters swapped into the
+  // digit slots themselves, which let "mm" overflow its slot and clash with
+  // its neighbors).
   const padded = pending.padStart(MAX_DIGITS, "0");
   const entered = pending.length;
-  const PLACEHOLDER_UNIT = ["h", "h", "m", "m", "s", "s"];
-  const charNodes: React.ReactNode[] = [];
-  for (let i = 0; i < MAX_DIGITS; i++) {
-    if (i === 2 || i === 4) {
-      charNodes.push(
-        <span key={`sep-${i}`} className="text-muted-foreground/40">
-          :
-        </span>,
+  const unitNodes: React.ReactNode[] = [];
+  for (let u = 0; u < 3; u++) {
+    if (u > 0) {
+      unitNodes.push(
+        <span key={`sep-${u}`} className="self-start text-muted-foreground/40">:</span>,
       );
     }
-    const isReal = i >= MAX_DIGITS - entered;
-    // Fixed 1ch width per slot — a placeholder letter (h/m/s) doesn't share
-    // a real digit's tabular-nums width, so without this the display would
-    // shrink or jump sideways the instant a typed digit replaces one.
-    charNodes.push(
-      <span
-        key={`d-${i}`}
-        className={cn(
-          "inline-block w-[1ch] text-center",
-          isReal ? "text-blue-600" : "text-muted-foreground/40",
-        )}
-      >
-        {isReal ? padded[i] : PLACEHOLDER_UNIT[i]}
+    const i0 = u * 2;
+    const i1 = u * 2 + 1;
+    unitNodes.push(
+      <span key={`unit-${u}`} className="flex flex-col items-center">
+        <span className="flex">
+          <span className={i0 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}>
+            {padded[i0]}
+          </span>
+          <span className={i1 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}>
+            {padded[i1]}
+          </span>
+        </span>
+        <span className="mt-0.5 text-[8px] font-medium leading-none tracking-wide text-muted-foreground/50">
+          {UNIT_HINTS[u]}
+        </span>
       </span>,
     );
   }
@@ -180,8 +181,10 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
 
           {/* Same blue-bordered, inner-shadowed well as standard text entry
               fields (see ui/input.tsx) — matches NumberKeypad's own display. */}
-          <div className="mb-2 flex h-8 items-center justify-center overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
-            <span className="font-display text-2xl leading-none tabular-nums">{charNodes}</span>
+          <div className="mb-2 flex items-center justify-center overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
+            <span className="flex items-start font-display text-2xl leading-none tabular-nums">
+              {unitNodes}
+            </span>
           </div>
 
           <div className="grid grid-cols-3 gap-1.5">

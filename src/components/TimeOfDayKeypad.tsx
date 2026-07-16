@@ -16,6 +16,7 @@ export interface TimeOfDayKeypadProps {
 }
 
 const MAX_DIGITS = 4;
+const UNIT_HINTS = ["hh", "mm"];
 const BUSINESS_START = 8; // 8 AM
 const BUSINESS_END = 18; // 6 PM
 
@@ -136,31 +137,34 @@ export function TimeOfDayKeypad({
     setOpen(false);
   };
 
-  // Digit nodes: when empty, render a dimmed "hh:mm" placeholder spelling
-  // out each unit rather than a plain "00:00" zero-looking value.
-  const PLACEHOLDER_UNIT = ["h", "h", "m", "m"];
-  const charNodes: React.ReactNode[] = [];
-  for (let i = 0; i < MAX_DIGITS; i++) {
-    if (i === 2) {
-      charNodes.push(
-        <span key="sep" className="text-muted-foreground/40">
-          :
-        </span>,
+  // Digit nodes: when empty, render a fully grayed "00:00" placeholder,
+  // plus a small "hh mm" unit hint centered under each digit pair (see
+  // TimeKeypad's identical treatment for why — plain digits only, never
+  // letters swapped into the digit slots themselves).
+  const unitNodes: React.ReactNode[] = [];
+  for (let u = 0; u < 2; u++) {
+    if (u > 0) {
+      unitNodes.push(
+        <span key="sep" className="self-start text-muted-foreground/40">:</span>,
       );
     }
-    const isReal = entered > 0 && i >= MAX_DIGITS - entered;
-    // Fixed 1ch width per slot — see TimeKeypad's identical comment: a
-    // placeholder letter doesn't share a real digit's tabular-nums width,
-    // so without this the display would shift as digits are typed in.
-    charNodes.push(
-      <span
-        key={`d-${i}`}
-        className={cn(
-          "inline-block w-[1ch] text-center",
-          isReal ? "text-blue-600" : "text-muted-foreground/40",
-        )}
-      >
-        {isReal ? padded[i] : PLACEHOLDER_UNIT[i]}
+    const i0 = u * 2;
+    const i1 = u * 2 + 1;
+    const isReal0 = entered > 0 && i0 >= MAX_DIGITS - entered;
+    const isReal1 = entered > 0 && i1 >= MAX_DIGITS - entered;
+    unitNodes.push(
+      <span key={`unit-${u}`} className="flex flex-col items-center">
+        <span className="flex">
+          <span className={isReal0 ? "text-blue-600" : "text-muted-foreground/40"}>
+            {padded[i0]}
+          </span>
+          <span className={isReal1 ? "text-blue-600" : "text-muted-foreground/40"}>
+            {padded[i1]}
+          </span>
+        </span>
+        <span className="mt-0.5 text-[8px] font-medium leading-none tracking-wide text-muted-foreground/50">
+          {UNIT_HINTS[u]}
+        </span>
       </span>,
     );
   }
@@ -219,9 +223,11 @@ export function TimeOfDayKeypad({
           {/* Display row: digits + stacked AM/PM — same blue-bordered,
               inner-shadowed well as standard text entry fields (see
               ui/input.tsx) rather than the old plain gray box. */}
-          <div className="mb-2 flex h-10 items-stretch overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white pl-3 pr-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
-            <div className="flex flex-1 items-center justify-end">
-              <span className="font-display text-2xl leading-none tabular-nums">{charNodes}</span>
+          <div className="mb-2 flex items-stretch overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white py-1.5 pl-3 pr-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
+            <div className="flex flex-1 flex-col items-end justify-center">
+              <span className="flex items-start font-display text-2xl leading-none tabular-nums">
+                {unitNodes}
+              </span>
             </div>
             <div className="ml-1.5 flex flex-col justify-center gap-0.5 py-0.5">
               <button
