@@ -36,3 +36,34 @@ export function useElementHeight(selector: string) {
 
   return height;
 }
+
+/** Viewport-relative right edge (in px) of the first element matching
+ *  `selector`, kept in sync via ResizeObserver + a resize listener — used to
+ *  keep the data details drawer's normal-width left edge from covering the
+ *  toolbar's view-mode icon cluster. Same debounced-commit shape as
+ *  useElementHeight above, just tracking a different rect field. */
+export function useElementRight(selector: string) {
+  const [right, setRight] = useState(0);
+  const debounceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = document.querySelector(selector) as HTMLElement | null;
+    if (!el) return;
+    const commit = () => setRight(el.getBoundingClientRect().right);
+    const update = () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(commit, 60);
+    };
+    commit();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [selector]);
+
+  return right;
+}

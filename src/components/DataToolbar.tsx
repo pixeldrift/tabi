@@ -155,7 +155,15 @@ export function DataToolbar({
           {/* View mode segmented toggle — nudged left within the toolbar's own
            *  px-4 padding, since its rounded pill reads with more empty edge
            *  space than the toolbar's other controls at the same inset. */}
-          <div className="flex items-center -ml-1 rounded-full border border-border bg-stone-100/60 p-0.5 shrink-0">
+          <div
+            // Named so the data details drawer can measure this cluster's
+            // own right edge (see useElementRight) and keep its normal-width
+            // left edge from resting on top of it for the list/card display
+            // modes, whose drawer width isn't otherwise tied to any tile's
+            // own measured position the way the grid modes' hugCardRight is.
+            data-view-mode-toggle
+            className="flex items-center -ml-1 rounded-full border border-border bg-stone-100/60 p-0.5 shrink-0"
+          >
             {DISPLAY_MODES.map(({ mode, label, icon }) => (
               <button
                 key={mode}
