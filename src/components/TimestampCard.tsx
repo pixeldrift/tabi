@@ -9,6 +9,7 @@ import { useCardState, useResetGuard } from "./CardDataStore";
 import { TimestampIcon } from "./icons/TimestampIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
+import { Switch } from "@/components/ui/switch";
 import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
@@ -233,6 +234,11 @@ export function TimestampCard({
   const [statuses, setStatuses] = useCardState<IntervalStatus[]>(cardKey, "statuses", () =>
     Array(displayIntervalCount).fill(null),
   );
+  // A per-card preference, not session data — deliberately left out of the
+  // shouldReset block below, so toggling it off doesn't get undone by the
+  // next "reset session" (unlike statuses/elapsed/viewIdx, which describe
+  // this session's progress rather than how the card itself should behave).
+  const [alertsEnabled, setAlertsEnabled] = useCardState(cardKey, "alertsEnabled", true);
   // Grows the persisted statuses array as the open-ended window grows —
   // only ever extends (never truncates), so nothing already scored is lost.
   useEffect(() => {
@@ -315,6 +321,9 @@ export function TimestampCard({
     if (rawIndex === 0) return;
     if (rawIndex === prevAlertRawIndexRef.current) return;
     prevAlertRawIndexRef.current = rawIndex;
+    // Bookkeeping above still runs with alerts off, so re-enabling doesn't
+    // dump a backlog of alerts for every boundary that passed while muted.
+    if (!alertsEnabled) return;
     const alertedIndex = rawIndex - 1;
     // A fixed intervalCount card has nothing left to check once its last
     // interval has already passed — rawIndex keeps climbing for as long as
@@ -400,6 +409,22 @@ export function TimestampCard({
           { label: "Scored", value: `${scoredCount} / ${displayIntervalCount}` },
         ]}
       />
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2.5">
+        <div className="min-w-0">
+          <label htmlFor={`${cardKey}-alerts-enabled`} className="text-sm font-medium">
+            Alert at intervals
+          </label>
+          <p className="text-xs text-muted-foreground/80 mt-0.5">
+            Notify when each interval ends, prompting a check.
+          </p>
+        </div>
+        <Switch
+          id={`${cardKey}-alerts-enabled`}
+          checked={alertsEnabled}
+          onCheckedChange={setAlertsEnabled}
+          className="shrink-0"
+        />
+      </div>
       {teachingProcedure && (
         <div className="mt-4">
           <TeachingProcedureAccordion

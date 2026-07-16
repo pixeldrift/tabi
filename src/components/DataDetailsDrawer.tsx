@@ -13,7 +13,6 @@ import {
   motion,
   useMotionValue,
   useTransform,
-  useDragControls,
   animate,
   type PanInfo,
 } from "motion/react";
@@ -273,7 +272,21 @@ export function DataDetailsDrawer({
   const toolbarRowHeight = useElementHeight("[data-toolbar-row]");
   const [mounted, setMounted] = useState(false);
   const [arrowTop, setArrowTop] = useState(0);
-  const [hugWidth, setHugWidth] = useState<number | null>(null);
+  // Lazily measured up front (not just `null`, corrected a frame later by
+  // the layout effect below) — `x`'s own useMotionValue call just below only
+  // ever reads its initializer argument once, on this exact first render, so
+  // if this started at `null` here it would bake that (wrong, fallback-width)
+  // value into `x` permanently; the layout effect's later correction would
+  // then only reach it through an actual spring animation, visibly playing
+  // out as the panel briefly changing width right after a prev/next switch.
+  // Measuring synchronously here instead means the first real value is
+  // already correct, before `x` ever reads it.
+  const [hugWidth, setHugWidth] = useState<number | null>(() => {
+    if (!hugCardRight) return null;
+    const el = cardRef.current;
+    if (!el) return null;
+    return window.innerWidth - el.getBoundingClientRect().right - hugGapPx;
+  });
   const contentScrollRef = useRef<HTMLDivElement>(null);
   // Right edge (viewport-relative px) of the toolbar's view-mode segmented
   // control — 0 until measured, which is treated as "not yet known" below
@@ -376,29 +389,29 @@ export function DataDetailsDrawer({
     const vw = typeof window !== "undefined" ? window.innerWidth : 0;
     return vw - val;
   });
-  const dragControls = useDragControls();
   const isDraggingRef = useRef(false);
-  // A drag gesture still ends in a native click on whatever was under the
+  // A swipe gesture still ends in a native click on whatever was under the
   // pointer (pointerdown + pointerup with little movement is a click
-  // regardless of the drag machinery layered on top) — without this, every
-  // drag would also fire that element's own click handler (toggle, close,
-  // prev/next) and immediately undo whatever the drag just settled on.
+  // regardless of the pan machinery layered on top) — without this, every
+  // swipe would also fire that element's own click handler (toggle, close,
+  // prev/next) and immediately undo whatever the swipe just settled on.
   // Same idiom as NotificationBar's own swipe-vs-tap guard, just applied to
-  // every clickable thing on the panel now that the whole surface drags,
-  // not just the pull tab.
+  // every clickable thing on the panel now that the whole surface is a pan
+  // surface, not just the pull tab.
   const wasDraggingRef = useRef(false);
-  // Armed just before a drag-driven setWidthMode/onOpenChange call, so the
+  // Armed just before a swipe-driven setWidthMode/onOpenChange call, so the
   // sync effect below — which would otherwise immediately re-animate `x` to
   // the same target it's already being sent to, but without the release
-  // velocity onDragEnd already knows about — skips exactly that one run
+  // velocity onPanEnd already knows about — skips exactly that one run
   // instead of restarting the spring from a dead stop.
   const skipNextSyncRef = useRef(false);
 
   // Keeps `x` pointed at wherever (open, widthMode, restingWidthPx) say it
   // should rest — covers the pull tab's own tap-to-toggle, the header's
-  // Close button, Escape, and a resting resize, none of which carry a drag
-  // gesture's own velocity. A live drag owns `x` itself (see the panel's own
-  // `drag` prop below), so this steps aside until it ends.
+  // Close button, Escape, and a resting resize, as well as (see onPanEnd
+  // below) every swipe: a swipe never moves `x` itself mid-gesture, so this
+  // effect is what actually plays the transition once onPanEnd decides
+  // which detent to land on and calls setWidthMode/onOpenChange.
   useEffect(() => {
     if (isDraggingRef.current) return;
     if (skipNextSyncRef.current) {
@@ -411,29 +424,48 @@ export function DataDetailsDrawer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, widthMode, restingWidthPx]);
 
-  const handleDragStart = () => {
+  const handlePanStart = () => {
     isDraggingRef.current = true;
     wasDraggingRef.current = true;
   };
 
   // Decides which of the three resting spots (full / normal / closed) a
-  // released drag settles into — modeled as a swipe-to-dismiss gesture
-  // (the Facebook/Instagram "swipe a sheet closed" idiom) rather than a
-  // plain drag-to-position: where you happen to release isn't the whole
+  // released swipe lands on — modeled as a swipe-to-dismiss gesture (the
+  // Facebook/Instagram "swipe a sheet closed" idiom) rather than a
+  // plain drag-to-position: where your finger happens to be isn't the whole
   // story, how fast you were moving when you let go matters just as much.
   // Both "normal" (open) and "full" are sticky detents that resist a slow,
-  // undecided release — leaving one takes either dragging clearly past it
-  // or releasing with real speed — while a hard enough swipe from "full"
-  // can skip "normal" entirely and land on "closed" in one motion, the same
-  // way a fast flick down a stack of sheets blows past the middle stop.
-  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+  // undecided release — leaving one takes either swiping clearly past it or
+  // releasing with real speed — while a hard enough swipe from "full" can
+  // skip "normal" entirely and land on "closed" in one motion, the same way
+  // a fast flick down a stack of sheets blows past the middle stop.
+  //
+  // Deliberately built on Framer's standalone onPan/onPanEnd handlers rather
+  // than `drag` — `drag` would have `x` visually track the pointer in real
+  // time, letting the panel rest at any arbitrary width the instant you lift
+  // your finger. Plain pan handlers report the same offset/velocity info
+  // without ever touching `x` themselves, so the panel only ever moves via
+  // the `animate()` calls below and in the sync effect above — always a
+  // spring straight to one of the three fixed detents, never a position the
+  // gesture passed through along the way.
+  const handlePanEnd = (_e: unknown, info: PanInfo) => {
     isDraggingRef.current = false;
-    const val = x.get();
+    // The resting position this swipe started from — never touched mid-pan
+    // (see the comment above), so still exactly where it was before the
+    // pointer went down.
+    const restingAtStart = x.get();
     const vx = info.velocity.x;
     const vw = window.innerWidth;
     const xFull = 0;
     const xNormal = vw - restingWidthPx;
     const xClosed = vw;
+
+    // Reconstructs where a live-following drag would have ended up — the
+    // starting rest position plus the pointer's own raw cumulative offset,
+    // clamped to the same bounds a real drag's dragConstraints would have
+    // enforced — since nothing actually moved the panel to read that back
+    // off of `x` itself.
+    const draggedTo = Math.min(xClosed, Math.max(xFull, restingAtStart + info.offset.x));
 
     // Projects where the gesture would carry the panel a beat past release
     // if its velocity kept going — a fast flick lands far past its own raw
@@ -444,7 +476,7 @@ export function DataDetailsDrawer({
     // gentler swipe covering the same on-screen distance still only
     // reaches "normal".
     const PROJECTION_SEC = 0.22;
-    const projected = Math.min(xClosed, Math.max(xFull, val + vx * PROJECTION_SEC));
+    const projected = Math.min(xClosed, Math.max(xFull, draggedTo + vx * PROJECTION_SEC));
 
     // Each detent holds onto a gesture that started there unless the
     // projection clears a real chunk of the gap to its neighbor — capped at
@@ -668,14 +700,14 @@ export function DataDetailsDrawer({
             )
           : "border border-border/70",
       )}
-      style={{ x, top, bottom: 0 }}
-      drag="x"
-      dragControls={dragControls}
-      dragConstraints={{ left: 0, right: window.innerWidth }}
-      dragElastic={0.15}
-      dragMomentum={false}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      // touchAction: "pan-y" — the same touch-scroll carve-out `drag="x"`
+      // used to configure automatically, kept now that horizontal gesture
+      // tracking comes from plain onPan handlers instead: lets a vertical
+      // scroll on a touchscreen still pass through unclaimed, while a
+      // horizontal swipe on this panel is recognized as a swipe.
+      style={{ x, top, bottom: 0, touchAction: "pan-y" }}
+      onPanStart={handlePanStart}
+      onPanEnd={handlePanEnd}
       aria-hidden={!open}
     >
       {/* Pull tab — attached to the panel's own left edge (a child of the
@@ -830,9 +862,11 @@ export function DataDetailsDrawer({
                 below rather than this icon doubling up on both jobs.
                 Styled like the X (plain icon, no pill chrome) rather than
                 like prev/next's bordered circles — it's a panel-level
-                control, not another step through the card list — and the
-                matching -ml-1/-mr-1 bookend the row the same way on both
-                ends. */}
+                control, not another step through the card list. Pulled in
+                further than the X's own -mr-1 (-ml-4, not -ml-1) so its own
+                icon sits about as close to this corner as the collapsed
+                pull tab's chevron sits to its corner, rather than noticeably
+                deeper inside the header's padding than that tab was. */}
             {open && (
               <button
                 type="button"
@@ -845,7 +879,7 @@ export function DataDetailsDrawer({
                   widthMode === "full" ? "Collapse drawer to normal width" : "Expand drawer to full width"
                 }
                 aria-expanded={widthMode === "full"}
-                className="-ml-1 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
+                className="-ml-4 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <DoubleChevronIcon className="size-3.5" />
               </button>
