@@ -98,7 +98,20 @@ const DrawerTitle = memo(function DrawerTitle({
     // to top.
     <motion.h2
       onClick={onClick}
-      className="font-display text-base leading-[1.15] flex-1 min-w-0 break-words cursor-pointer select-none text-center"
+      // The prev/next/close/expand buttons flanking this title are all
+      // size-7 (1.75rem tall) with their own icon glyph centered inside via
+      // grid place-items-center — but this title's own single line of text
+      // is only 1.15em tall (leading-[1.15]), and items-start (see the
+      // header row above) aligns everything by box TOP, not center. Left
+      // alone, that pins the (shorter) first line's own vertical center
+      // noticeably above the (taller) button's own glyph center instead of
+      // matching it. This margin nudges just the text down by exactly that
+      // gap — half the height difference between the two — so the first
+      // line's center lines up with the buttons' glyph center the same way
+      // it would if both were simply centered together, while still only
+      // ever growing the row downward as more lines wrap (this offset is a
+      // fixed amount added once, not a function of how many lines follow).
+      className="font-display text-base leading-[1.15] flex-1 min-w-0 break-words cursor-pointer select-none text-center mt-[calc((1.75rem-1.15em)/2)]"
       animate={
         exitDir
           ? { y: exitDir === "next" ? 16 : -16, opacity: 0 }
