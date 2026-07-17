@@ -18,7 +18,6 @@ import {
 } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
-import { DoubleChevronIcon } from "./icons/DoubleChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { useElementHeight, useElementRight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
@@ -884,7 +883,14 @@ export function DataDetailsDrawer({
                 further than the X's own -mr-1 (-ml-4, not -ml-1) so its own
                 icon sits about as close to this corner as the collapsed
                 pull tab's chevron sits to its corner, rather than noticeably
-                deeper inside the header's padding than that tab was. */}
+                deeper inside the header's padding than that tab was.
+                A single TimeChevronIcon (not the bidirectional
+                DoubleChevronIcon this used to be) — the panel no longer
+                actually drags open/closed (see the pan-gesture rewrite
+                above), just toggles on tap, so a single directional chevron
+                that flips 180° now matches the real interaction better than
+                a "drag either way" glyph. Same rotate-on-state-change idiom
+                as the Select trigger's own chevron. */}
             {open && (
               <button
                 type="button"
@@ -899,7 +905,12 @@ export function DataDetailsDrawer({
                 aria-expanded={widthMode === "full"}
                 className="-ml-4 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
               >
-                <DoubleChevronIcon className="size-3.5" />
+                <TimeChevronIcon
+                  className={cn(
+                    "size-3.5 transition-transform duration-200",
+                    widthMode === "full" && "rotate-180",
+                  )}
+                />
               </button>
             )}
             <button
