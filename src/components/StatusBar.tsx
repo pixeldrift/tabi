@@ -12,12 +12,12 @@ import {
   ArrowUp,
   ArrowLeft,
   RefreshCw,
-  User,
   ArrowRight,
   Upload,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
+import { PersonPill } from "./StaffDirectory";
 import { markInitialLayoutSettled, useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import {
   useSession,
@@ -912,7 +912,12 @@ function SaveIndicator({
           align="end"
           sideOffset={10}
           collisionPadding={16}
-          className="relative w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          // z-[70]: same reasoning as DataToolbar's own filter popover — the
+          // sticky toolbar below sits at z-[60], so this content (default
+          // z-50) needs to paint above that or its "Saved by" pill (which
+          // now opens its own nested Profile/Phone/Email/Chat menu) sits
+          // underneath the toolbar and its clicks get intercepted there.
+          className="relative z-[70] w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
           {/* Arrow — right-aligned to point at the cloud icon */}
           <span
@@ -959,13 +964,7 @@ function SaveIndicator({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm"
-              >
-                <User className="size-3" fill="currentColor" strokeWidth={0} />
-                <span>Perry Plat</span>
-              </button>
+              <PersonPill name="Perry Plat" />
             </div>
           </div>
         </PopoverContent>
@@ -1170,10 +1169,7 @@ function ExpandedSessionBox({
           {contextTime && (
             <span className="text-[10px] text-muted-foreground text-center tabular-nums whitespace-nowrap">
               {formatRelativeFromNow(contextTime)}{"\u00a0"}({formatMDY(contextTime)}) by{"\u00a0"}
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px]">
-                <User className="size-2.5" fill="currentColor" strokeWidth={0} />
-                <span>Perry Plat</span>
-              </span>
+              <PersonPill name="Perry Plat" size="sm" />
             </span>
           )}
         </motion.div>

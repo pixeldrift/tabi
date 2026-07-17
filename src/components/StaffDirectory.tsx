@@ -113,16 +113,20 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
  *  (Info tab's plan/BCBA/team rows). Staff members (anyone with a
  *  `STAFF_DIRECTORY` entry) open a small Profile/Phone/Email/Chat menu;
  *  the client themself has no staff record, so their pill stays a plain,
- *  non-interactive label. */
-export function PersonPill({ name }: { name: string }) {
+ *  non-interactive label. `size="sm"` matches the compact inline pills
+ *  used in denser rows (StatusBar's "Previous Session ... by" line) —
+ *  same interaction, just smaller text/icon/padding. */
+export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
   const staff = STAFF_DIRECTORY[name];
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-sm";
+  const iconSize = size === "sm" ? "size-2.5" : "size-3";
 
   if (!staff) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-sm">
-        <User className="size-3" fill="currentColor" strokeWidth={0} />
+      <span className={cn("inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700", sizeClasses)}>
+        <User className={iconSize} fill="currentColor" strokeWidth={0} />
         <span>{name}</span>
       </span>
     );
@@ -134,9 +138,12 @@ export function PersonPill({ name }: { name: string }) {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
+              sizeClasses,
+            )}
           >
-            <User className="size-3" fill="currentColor" strokeWidth={0} />
+            <User className={iconSize} fill="currentColor" strokeWidth={0} />
             <span>{name}</span>
           </button>
         </PopoverTrigger>
@@ -144,7 +151,12 @@ export function PersonPill({ name }: { name: string }) {
           side="bottom"
           align="center"
           sideOffset={8}
-          className="group w-48 rounded-xl border-2 border-blue-300 bg-card p-1 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          // z-[80]: PersonPill can be invoked from inside another already-
+          // open popover (e.g. SaveIndicator's own "Saved by" row, z-[70]) —
+          // without a z-index above every known container it might be
+          // nested in, this menu paints partially underneath its own
+          // parent's box instead of on top of it.
+          className="group z-[80] w-48 rounded-xl border-2 border-blue-300 bg-card p-1 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
           <MenuButton
             icon={<User className="size-3.5" />}
