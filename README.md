@@ -53,6 +53,52 @@ patch automatically on `bun install`; remove it once upstream fixes the
 import.
 </details>
 
+## Architecture notes & lessons learned
+
+A few patterns that took real debugging to arrive at — worth knowing before
+touching this code again, so the same bugs don't get re-introduced or
+re-solved from scratch.
+
+- **Session transition timing (`SessionContext.tsx`)** — Timing state for
+  session-transition animations (collapse, pill travel, header reflow) lives
+  centrally in `SessionContext`, not mirrored out to components via effects.
+  Mirroring introduces a one-render lag between components, which showed up
+  as a visible "hop"/"bounce" on resume/pause. Read this state directly from
+  context rather than re-deriving or copying it locally.
+
+- **Framer Motion's `layout` prop** — Never toggle `layout` between `false`
+  and `"position"` to suppress an animation. Motion re-initializes its
+  projection when it's re-enabled and can catch (and animate) whatever moved
+  while it was off. Instead keep `layout="position"` always on and zero
+  `transition.layout.duration` when suppression is needed.
+
+- **Effects keyed on a value another mechanism can reset** — If an effect
+  depends on a value that gets reset by a separate, independently-timed
+  mechanism (e.g. a transition-kind flag cleared by its own dwell timer),
+  capture that value once via a ref at the moment of the real trigger and
+  exclude it from the effect's dependency array. Otherwise a later, unrelated
+  reset can cancel work the effect already had in flight.
+
+- **Card data persistence (`CardDataStore.tsx`)** — Data-card state (elapsed
+  time, scores, etc.) lives in a shared store keyed by card ID, not local
+  `useState`, because cards remount on every display-mode switch (List/Grid/
+  Card view). `useResetGuard` tracks which session's reset has already been
+  applied per card, so switching views doesn't accidentally wipe recorded
+  data, and starting a genuinely new session still resets it.
+
+- **Blur/reveal photo pattern (`PhotoZoom.tsx`)** — `BlurredPhotoZoomButton`
+  is the shared "blurred until tapped, then auto-reblurs" interaction for any
+  photo needing a privacy step (client photo, guardian photos). Reuse it
+  instead of reimplementing; plain `PhotoZoomButton` is for photos that don't
+  need blurring (vehicles, staff).
+
+- **Debug leftovers in demo card data** — Watch for stray testing overrides
+  on the sample card configs in `routes/index.tsx` (e.g. an unlocked
+  elapsed-time editor for fast-forwarding through intervals). One such
+  leftover was the root cause of a real bug: it let elapsed time be typed in
+  directly, which could cross an alert's interval boundary and fire a real
+  chime with no legitimate alert due.
+
 ## Roadmap
 
 Running tracker for UI/UX polish requests, grouped by type and tagged by
