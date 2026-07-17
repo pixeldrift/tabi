@@ -28,7 +28,6 @@ import {
   PILL_CROSSFADE_MS,
   type SaveStatus,
   type SessionStatus,
-  type TransitionKind,
 } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -100,9 +99,10 @@ export function StatusBar({
     endAndSubmit,
     transitionStage,
     transitionKind,
-    boxHeightAnimating,
-    setBoxHeightAnimating,
-    setPillTraveling: setPillTravelingShared,
+    collapsed,
+    boxCollapsed,
+    pillTraveling,
+    headerReflowActive,
     requestStartNew,
     requestContinuePrevious,
     requestResume,
@@ -214,94 +214,21 @@ export function StatusBar({
   // when the box collapses — except for discard, where the box was already
   // expanded (paused) and stays that way; only its displayed value swaps.
   const dimmed = transitionStage > 0;
-  const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
-  // `boxHeightAnimating` (SessionContext) is the precise version of what
-  // used to be approximated here as `transitionStage === 2 && transitionKind
-  // !== "discard"` — this box's own real height `animate()` is what's
-  // actually driving the reflow this nav sits under, on its own clock, not
-  // something `layout="position"`'s once-per-render FLIP snapshot can ever
-  // stay in step with. Since this nav is pushed by ordinary document flow,
-  // not sticky itself, turning `layout` off for the same window just lets
-  // it natively track the box in real time instead of racing it. Reading
-  // the shared flag (driven by the effect below) instead of re-deriving the
-  // old approximation also covers a case that one couldn't: a plain,
-  // unstaged `pause()` click never touches transitionStage/transitionKind
-  // at all, so the old condition stayed false — and un-suppressed —
-  // throughout the box's real expand animation, which is what let the tab
-  // nav (and, transitively, the toolbar riding right below it) visibly lag
-  // half a beat behind it specifically while pausing.
-  //
-  // `boxHeightAnimating` alone still misses one thing, though: `pillTraveling`
-  // (below) is its OWN separate real reflow — the mini-session slot growing
-  // into (or shrinking out of) this very nav — driven by `isRunning`
-  // flipping, not by the box's collapse timing, and on a staged resume it
-  // starts well before the box even begins moving. OR'd in at this nav's own
-  // `transition.layout` below (declared after `pillTraveling` exists).
-  const suppressSessionLayout = boxHeightAnimating;
-
-  // The box itself waits for the pill to actually land before collapsing,
-  // so the two read as sequential beats ("clock moves, then box closes")
-  // instead of happening at once — and, now that the mini-session slot
-  // animates its own height in (see renderMiniPill below), so the box's
-  // "pull nav up" and the slot's "push nav down" don't overlap and fight
-  // each other, which read as a bounce. A fresh start's pill travel doesn't
-  // begin until DIGIT_SETTLE_MS after isRunning flips (the odometer settles
-  // first), so the box needs that same head start here — every other kind
-  // (resume, etc.) travels immediately, so SESSION_MORPH_MS alone is enough.
-  // Captured once via a ref (not read from `transitionKind` in the
-  // dependency array below) so SessionContext's own later reset of
-  // transitionKind can't cancel this timeout the same way it once could
-  // for the card-entrance delay — see that fix's comment in routes/index.tsx.
-  const collapseKindRef = useRef<TransitionKind>(null);
-  const prevCollapsedRef = useRef(collapsed);
-  if (collapsed !== prevCollapsedRef.current) {
-    prevCollapsedRef.current = collapsed;
-    if (collapsed) collapseKindRef.current = transitionKind;
-  }
-
-  // A real state flip (not a Motion `transition.delay`) so it can't be
-  // disturbed by the elapsed-timer's frequent re-renders once the session
-  // is running. SessionContext's stage-2 dwell is extended by
-  // BOX_COLLAPSE_MS to match, so `dimmed` doesn't reset (and box content
-  // reappear) before this lands.
-  const [boxCollapsed, setBoxCollapsed] = useState(collapsed);
-  useEffect(() => {
-    if (collapsed) {
-      const delay =
-        collapseKindRef.current === "start-new"
-          ? DIGIT_SETTLE_MS + SESSION_MORPH_MS
-          : SESSION_MORPH_MS;
-      const id = window.setTimeout(() => setBoxCollapsed(true), delay);
-      return () => window.clearTimeout(id);
-    }
-    setBoxCollapsed(false);
-  }, [collapsed]);
-
-  // Reports the box's own real height-animate window to SessionContext (see
-  // `boxHeightAnimating`'s own comment there) — this is the ONE moment
-  // `boxCollapsed` flipping actually drives a real CSS height transition
-  // below (the `animate={{height: ...}}` motion.div), so the window this
-  // covers matches that transition's own duration exactly: BOX_COLLAPSE_MS
-  // collapsing, SESSION_MORPH_MS expanding.
-  //
-  // `useLayoutEffect`, not `useEffect` — this sets state on a different
-  // component (SessionContext's provider), so it can't be done inline
-  // during render the way `prevCollapsedRef` above adjusts StatusBar's own
-  // state (React logs "Cannot update a component while rendering a
-  // different component" if you try). `useLayoutEffect` still runs before
-  // the browser paints, though: the render that flips `boxCollapsed` commits
-  // with the OLD (pre-collapse) `layout` prop on nav, but this fires
-  // synchronously right after that commit and flushes the resulting
-  // re-render before anything is shown on screen — so the stale-`layout`
-  // frame this would otherwise have painted for one tick is never actually
-  // visible, and nav's FLIP is already off by the time the box's real
-  // height starts moving.
-  useLayoutEffect(() => {
-    setBoxHeightAnimating(true);
-    const duration = boxCollapsed ? BOX_COLLAPSE_MS : SESSION_MORPH_MS;
-    const id = window.setTimeout(() => setBoxHeightAnimating(false), duration);
-    return () => window.clearTimeout(id);
-  }, [boxCollapsed, setBoxHeightAnimating]);
+  // `collapsed`, `boxCollapsed`, and `headerReflowActive` all live in
+  // SessionContext now (see that file's own comments) — StatusBar reads
+  // them rather than deriving its own copies, so the box's real height
+  // `animate()` below, this nav's own suppression, and routes/index.tsx's
+  // pane suppression all read the exact same values on the exact same
+  // render, with nothing mirrored or a tick behind. `headerReflowActive`
+  // is what used to be approximated here as `transitionStage === 2 &&
+  // transitionKind !== "discard"` — that approximation missed a plain,
+  // unstaged `pause()` click (never touches transitionStage/transitionKind
+  // at all) and, separately, the dwell between `collapsed` changing and the
+  // box's real height actually starting to move (during which this nav's
+  // own `isRunning`-derived margin already changes) — both of which let
+  // the tab nav, the toolbar riding on it, and the pane below visibly
+  // hop/bounce out of step with the header's real motion.
+  const suppressSessionLayout = headerReflowActive;
 
   // Same "never animate to the literal string auto" fix as actionsHeight
   // below: without it, whenever the pill itself enters/leaves this box (its
@@ -346,80 +273,76 @@ export function StatusBar({
   const bigPillRef = useRef<HTMLDivElement>(null);
   const miniPillRef = useRef<HTMLDivElement>(null);
   const [pillView, setPillView] = useState<"big" | "mini">(isRunning ? "mini" : "big");
-  const [pillTraveling, setPillTraveling] = useState(false);
+  // `pillTraveling` (from SessionContext) is the shared, purely-timed
+  // window — StatusBar's own visual travel (capturing rects, mounting the
+  // overlay below) is driven directly off it turning true/false rather
+  // than keeping its own separate copy, so the two can't drift apart the
+  // way a locally-mirrored flag could (see that field's own comment).
+  // `visualTravelActive` is local: on the rare mount where there's no
+  // outgoing pill element to travel FROM (no prior render to measure), the
+  // shared window still opens/closes on schedule, but there's nothing to
+  // actually animate — this stays false for that one case so the overlay
+  // and the temporarily-doubled big+mini pills don't render for nothing.
+  const [visualTravelActive, setVisualTravelActive] = useState(false);
   const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
   const pillTravelFromRef = useRef<DOMRect | null>(null);
-  const prevIsRunningForPillRef = useRef(isRunning);
-  // Mirrors this local flag into SessionContext (see that field's own
-  // comment) so routes/index.tsx's pane can fold this same real-reflow
-  // window into its own layout suppression, the same way it already does
-  // for `boxHeightAnimating`.
-  useLayoutEffect(() => {
-    setPillTravelingShared(pillTraveling);
-  }, [pillTraveling, setPillTravelingShared]);
+  const prevPillTravelingRef = useRef(pillTraveling);
 
-  // The instant `isRunning` flips, decide whether to travel right away or
-  // wait first. A fresh start resets the odometer to zero at this same
-  // instant (see pillElapsed above) — DIGIT_SETTLE_MS holds the pill still
-  // (big) so that reset is visibly readable before anything starts
-  // shrinking/moving, instead of the roll and the travel happening on top
-  // of each other. Resume/pause have no such reset, so they travel
-  // immediately. Either way, the outgoing rect is captured fresh at the
-  // moment travel actually begins (post-settle, if delayed), and the
-  // destination element mounts (invisible) so the next effect can measure
-  // where it naturally lands.
+  // Reacts to the shared travel window opening/closing. On open: capture
+  // the outgoing element's rect fresh (before `pillView` flips and the DOM
+  // changes under it), then flip the view. On close: drop the captured
+  // rect so a future travel starts clean — the overlay below unmounts on
+  // its own once `visualTravelActive` goes false, AnimatePresence playing
+  // its own `exit` fade.
   useLayoutEffect(() => {
-    if (isRunning === prevIsRunningForPillRef.current) return;
-    prevIsRunningForPillRef.current = isRunning;
-    const startingFresh = isRunning && transitionKind === "start-new";
+    if (pillTraveling === prevPillTravelingRef.current) return;
+    prevPillTravelingRef.current = pillTraveling;
+    if (!pillTraveling) {
+      setVisualTravelActive(false);
+      setPillTravelRect(null);
+      return;
+    }
     const fromEl = isRunning ? bigPillRef.current : miniPillRef.current;
     if (!fromEl) {
       setPillView(isRunning ? "mini" : "big");
       return;
     }
-    const beginTravel = () => {
-      pillTravelFromRef.current = fromEl.getBoundingClientRect();
-      setPillTravelRect(null);
-      setPillTraveling(true);
-      setPillView(isRunning ? "mini" : "big");
-    };
-    if (startingFresh) {
-      const id = window.setTimeout(beginTravel, DIGIT_SETTLE_MS);
-      return () => window.clearTimeout(id);
-    }
-    beginTravel();
-  }, [isRunning, transitionKind]);
+    pillTravelFromRef.current = fromEl.getBoundingClientRect();
+    setPillTravelRect(null);
+    setVisualTravelActive(true);
+    setPillView(isRunning ? "mini" : "big");
+  }, [pillTraveling, isRunning]);
 
   // Once the destination element exists in the DOM (still invisible),
   // measure its natural resting rect and let the overlay start traveling
   // toward it.
   useLayoutEffect(() => {
-    if (!pillTraveling || pillTravelRect) return;
+    if (!visualTravelActive || pillTravelRect) return;
     const toEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
     const fromRect = pillTravelFromRef.current;
     if (!toEl || !fromRect) return;
     const rawTo = toEl.getBoundingClientRect();
     // Landing in "mini" happens before the session box collapses (see
-    // boxCollapsed's own delay above — deliberately, so the two read as
-    // sequential beats). But the mini slot's rect right now still reflects
-    // the box being open; travelling straight there lands the pill well
-    // below the tab bar, into the content pane, and only THEN does the box
-    // collapse and drag it back up to where it actually belongs — a visible
-    // dip past its own final resting spot. Collapsing the box frees exactly
-    // boxNaturalHeight of vertical space above the nav, so predicting that
-    // shift now and landing there directly skips the detour without
-    // touching the "land, then collapse" sequencing itself.
+    // boxCollapsed's own delay in SessionContext — deliberately, so the two
+    // read as sequential beats). But the mini slot's rect right now still
+    // reflects the box being open; travelling straight there lands the
+    // pill well below the tab bar, into the content pane, and only THEN
+    // does the box collapse and drag it back up to where it actually
+    // belongs — a visible dip past its own final resting spot. Collapsing
+    // the box frees exactly boxNaturalHeight of vertical space above the
+    // nav, so predicting that shift now and landing there directly skips
+    // the detour without touching the "land, then collapse" sequencing.
     const willCollapseAfterLanding = pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
     const to = willCollapseAfterLanding
       ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
       : rawTo;
     setPillTravelRect({ from: fromRect, to });
-  }, [pillTraveling, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
+  }, [visualTravelActive, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
 
-  const renderBigPill = pillView === "big" || pillTraveling;
-  const renderMiniPill = pillView === "mini" || pillTraveling;
-  const bigPillVisible = pillView === "big" && !pillTraveling;
-  const miniPillVisible = pillView === "mini" && !pillTraveling;
+  const renderBigPill = pillView === "big" || visualTravelActive;
+  const renderMiniPill = pillView === "mini" || visualTravelActive;
+  const bigPillVisible = pillView === "big" && !visualTravelActive;
+  const miniPillVisible = pillView === "mini" && !visualTravelActive;
 
   // Same "never animate to the literal string auto" fix as boxNaturalHeight/
   // actionsHeight above — Motion's own "auto" resolution re-measures
@@ -633,16 +556,16 @@ export function StatusBar({
                 (non-zero) transition instead. Zeroing just the duration
                 keeps measurement continuous and collapses whatever phantom
                 delta it finds down to a single frame, which reads as no
-                jump at all. `suppressSessionLayout` (computed above) zeroes
+                jump at all. `suppressSessionLayout` (computed above,
+                already folding in the mini-session slot's own real height
+                animation growing/shrinking directly inside this nav) zeroes
                 it for the unrelated session-transition reason explained
-                there; `pillTraveling` zeroes it for the mini-session slot's
-                own real height animation growing/shrinking directly inside
-                this nav (see that state's own comment). */}
+                there. */}
             <motion.nav
               layout="position"
               transition={{
                 layout:
-                  suppressNavLayout || suppressSessionLayout || pillTraveling || !initialLayoutSettled
+                  suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
                     ? { duration: 0 }
                     : NOTIFICATION_AREA_TRANSITION,
               }}
@@ -758,7 +681,7 @@ export function StatusBar({
           duration is actually honored. Rendered outside data-status-bar's
           overflow-hidden so position:fixed isn't clipped. */}
       <AnimatePresence>
-        {pillTraveling && pillTravelRect && (() => {
+        {visualTravelActive && pillTravelRect && (() => {
           const toMini = pillView === "mini";
           const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
           const digitColor = {
@@ -791,7 +714,6 @@ export function StatusBar({
               }}
               exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
               transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-              onAnimationComplete={() => setPillTraveling(false)}
               className="fixed z-50 flex items-stretch rounded-full border-2 bg-white pointer-events-none overflow-hidden"
             >
               <motion.span
