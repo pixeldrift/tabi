@@ -60,6 +60,12 @@ complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). "Later" items are backlog
 features, not sized yet. Completed requests are dropped from this list
 rather than kept checked off — see git history for what's already shipped.
 
+### 🐛 Bugs
+
+- [ ] Stray chime (sometimes more than one) plays when resuming or starting
+      a session — likely an audio-playback or notification-system timing
+      issue, root cause not yet confirmed
+
 ### ⚙️ Functionality / Features
 
 - [ ] 🔴 Left-side target/goal list/tree view mirroring Info Drawer — titles
@@ -67,14 +73,49 @@ rather than kept checked off — see git history for what's already shipped.
 
 ### 🗄️ Later (backlog — not sized)
 
-- [ ] Revision mode for editing a paused, unsubmitted session
+**Core concept to design around:** session timers are for data collection
+only — they are not connected to appointments or billing. Appointments and
+the employee calendar are what feed payroll and insurance submission.
+Timers exist to produce rate-based data (e.g. words spoken per minute, how
+long a client stays regulated without interfering behavior, frequency of
+aggressive behavior) so BCBAs can track trends. The handoff, revision-mode,
+and scheduling items below all need to respect that split.
+
+- [ ] Data Revision mode: edit/update session data while the session timer
+      isn't running (paused, not yet submitted) — e.g. adding tallies
+      without skewing rate data by leaving the timer running
+- [ ] Session handoff / shift boundaries: clarify what "ending a shift"
+      means vs. the client's own schedule, and when to pause/park a session
+      vs. end it outright. User-centric visibility into who's currently in
+      a session, who last ran it, and who else is accessing it concurrently
+- [ ] Full calendar/scheduling integration, not just clinical appointments —
+      surface handoffs ("Transfer session to [person]"), make it clear who's
+      recording data vs. who's submitting it, and let a tech see their
+      appointment ending with another tech taking over. Needs a clear
+      distinction between "appointment" and "session"
+- [ ] Targets that persist progress across sessions without needing to be
+      graphed out first — pick up where you left off, with an icon/symbol
+      denoting a persisted target
+- [ ] Notifications when a goal changes phase, a learner graduates from a
+      goal, or a supervisor updates a program — so technicians aren't
+      surprised to find cards missing or new ones appearing without warning
+- [ ] Pre-submission data review: a summary screen before submitting a
+      session, warning about incomplete trials or unmet minimums, with end
+      totals shown in a human-readable way
+- [ ] Settings: an "add a new goal" section at the top of the page — guided
+      workflow to pick a data-collection type and fill in its details (TA
+      steps; correct/incorrect/no-response/prompt-level options; min/max for
+      others), plus free-text sections for the standard drawer content
+      (rationale, procedure, etc.) with the ability to hide/delete standard
+      sections and add custom ones. Ideally shows a live preview of the
+      resulting card as the form is filled in, and supports editing in place
+      afterward (access permitting)
+- [ ] Robust "primer timer" feature — a few visual styles (sand, hatching
+      egg, wheel, wedge, Pac-Man dots, etc.), color themes, sounds, and
+      finale effects, with the ability to save a combination as the default
 - [ ] Multi-instance Task Analysis entry (step-by-step + trial navigation,
       dual nav pattern)
-- [ ] Expanded/twirldown view for Percent Correct + other multi-trial cards
-- [ ] Mini card view + multi-column grid dashboard (widget-style)
 - [ ] Custom mixed dashboard layout (standard/mini/expanded per card)
-- [ ] Pinned favorites for frequently-used targets
-- [ ] Edit mode: reorder cards/targets, filter by behavior/goal/data type
 - [ ] Per-field access levels on Info tab data (Editing Allowed / Editing Not
       Allowed / Approval Required) plus a supervisor-side approve/deny action
       on the notification an edit request generates. Today, the "About Me"
@@ -87,4 +128,4 @@ rather than kept checked off — see git history for what's already shipped.
       persist there indefinitely until manually cleared — no such
       preference exists yet, this is just noting the idea for later.
 
-*Roadmap last updated: 2026-07-12*
+*Roadmap last updated: 2026-07-17*
