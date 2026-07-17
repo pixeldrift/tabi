@@ -20,6 +20,7 @@ import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
 import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import { cn } from "@/lib/utils";
 import phineasPhoto from "@/assets/images/people/phineas.jpeg";
 import lindaPhoto from "@/assets/images/people/linda.jpeg";
@@ -631,9 +632,16 @@ function RequestEditDialog({
     onOpenChange(false);
   };
 
+  // Shifts the modal up clear of the OS keyboard — this dialog is just a
+  // textarea, same treatment as Schedule's Add/Edit Activity dialogs.
+  const keyboardInset = useKeyboardInset(open);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl">
+      <DialogContent
+        className="w-[calc(100%-2rem)] max-w-sm rounded-xl transition-[translate] duration-150"
+        style={keyboardInsetStyle(keyboardInset)}
+      >
         <DialogHeader className="text-left">
           <DialogTitle>Request Edit</DialogTitle>
           <DialogDescription>{label}</DialogDescription>
