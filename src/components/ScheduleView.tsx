@@ -777,10 +777,16 @@ export function ScheduleView({
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const scrollToNow = () => {
-    if (!currentItem) return;
-    const el = rowRefs.current.get(currentItem.id);
+    // No item spans `now` exactly — either it's a gap between two items, or
+    // before the first / after the last. In every one of those cases the
+    // nearest useful thing to jump to is whichever item starts next; once
+    // we're past the very last item's end, there is no "next" one left, so
+    // fall back to the last item instead (the "end of schedule" case).
+    const target = currentItem ?? items.find((i) => toMin(i.start) >= nowMin) ?? items[items.length - 1];
+    if (!target) return;
+    const el = rowRefs.current.get(target.id);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    triggerRowFlash(currentItem.id);
+    triggerRowFlash(target.id);
     setNowAnim((n) => n + 1);
   };
 
@@ -884,7 +890,7 @@ export function ScheduleView({
             type="button"
             size="sm"
             onClick={scrollToNow}
-            disabled={!currentItem || editMode}
+            disabled={editMode}
             className={cn(
               "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1",
               !currentItem || editMode
@@ -1278,7 +1284,7 @@ export function ScheduleView({
           <button
             type="button"
             onClick={scrollToNow}
-            disabled={!currentItem || editMode}
+            disabled={editMode}
             aria-hidden={!stickyCompact}
             tabIndex={stickyCompact ? 0 : -1}
             className={cn(
