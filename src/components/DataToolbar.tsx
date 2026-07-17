@@ -25,6 +25,7 @@ import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
 import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
+import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
@@ -108,6 +109,13 @@ export function DataToolbar({
     if (!layoutReady) setLayoutReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Also waits on the shared "session-bar" LayoutGroup settle flag — see
+  // use-initial-layout-settle's own comment. StatusBar's box grows once
+  // its demo-only "Previous Session" row appears a beat after mount, and
+  // without this, the toolbar would track THAT one-time growth (correctly
+  // synced with the tab nav and pane, but still a visible drop on every
+  // fresh page load) before it's had a chance to genuinely settle.
+  const initialLayoutSettled = useInitialLayoutSettled();
 
   // Re-centers the popover horizontally on the viewport after Radix
   // positions it (which otherwise hugs the button's own left-of-center
@@ -191,12 +199,21 @@ export function DataToolbar({
       // group turns each of those instant jumps into a FLIP tween batched
       // into the same frame-by-frame motion as the nav and the pane, so all
       // three move as one linked unit relative to the header instead of on
-      // three separate clocks. Gated on `layoutReady` (see its own comment)
-      // so the very first hydration-matching render doesn't register a
-      // projection node at all — once it flips on, this element's rect is
-      // already correct, so Framer has nothing stale to FLIP away from.
-      layout={layoutReady ? "position" : false}
-      transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
+      // three separate clocks. `layout="position"` stays on unconditionally
+      // (never toggled off/on) — see the tab nav's own `suppressNavLayout`
+      // comment in StatusBar: toggling the boolean itself makes Framer
+      // re-initialize its projection right as it re-enables, catching the
+      // tail of whatever moved while it was off and animating THAT with
+      // the full transition, which is worse than what it's meant to fix.
+      // Zeroing just the duration (below) instead keeps measurement
+      // continuous and collapses anything that happens before this
+      // instance is ready — `layoutReady`'s own one-tick hydration
+      // correction, or `initialLayoutSettled`'s one-time StatusBar-driven
+      // growth (see both hooks' own comments) — into a single frame.
+      layout="position"
+      transition={{
+        layout: !layoutReady || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+      }}
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
       style={{ top: stickyTop }}
     >

@@ -31,6 +31,7 @@ import { NotificationProvider } from "@/components/NotificationContext";
 import { NOTIFICATION_AREA_TRANSITION, NotificationsPane } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useElementHeight } from "@/hooks/use-element-height";
+import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { DataToolbar } from "@/components/DataToolbar";
 import {
   DataToolbarProvider,
@@ -782,6 +783,11 @@ function IndexInner() {
   // real reflow it drives) is over, for the discrete-jump cases (tab
   // switches, notification changes) it's actually meant for.
   const suppressPaneLayout = transitionStage === 2 && transitionKind !== "discard";
+  // See use-initial-layout-settle's own comment — StatusBar's demo-only
+  // "Previous Session" row grows its box a beat after mount, which this
+  // pane (tracked in the same "session-bar" LayoutGroup) would otherwise
+  // animate away from on every fresh page load.
+  const initialLayoutSettled = useInitialLayoutSettled();
 
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
@@ -1174,7 +1180,9 @@ function IndexInner() {
 
           <motion.section
             layout={suppressPaneLayout ? false : "position"}
-            transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
+            transition={{
+              layout: !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+            }}
             className={cn(
               "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
               // Only the Data tab has a toolbar directly above this pane, with

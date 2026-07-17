@@ -18,6 +18,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
+import { markInitialLayoutSettled, useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import {
   useSession,
   HEADER_MORPH_MS,
@@ -103,6 +104,12 @@ export function StatusBar({
     forceSync,
   } = useSession();
 
+  // See use-initial-layout-settle's own comment — this box's demo-only
+  // "Previous Session" row growing the box shortly after mount is real,
+  // one-time growth that the tabs/nav below (and the content pane and
+  // Data toolbar, in the shared LayoutGroup) shouldn't animate away from.
+  const initialLayoutSettled = useInitialLayoutSettled();
+
   // Duration only — a Rate card's own timer just clocks the observation
   // window behind a tally, not something the user manually started/stopped
   // the way a Duration instance is, so it doesn't belong in "something's
@@ -148,6 +155,32 @@ export function StatusBar({
     const maxMs = 3 * 24 * 3600 * 1000;
     setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
   }, []);
+
+  // Since previousSessionEndedAt can only be generated client-side (see its
+  // own comment — it's randomized, so it can never be seeded identically
+  // for server and client), this box's "Previous Session" row necessarily
+  // pops in a beat after mount, genuinely growing the box's natural
+  // height — which every layout-tracked sibling in the shared "session-bar"
+  // LayoutGroup (this nav, the content pane, the Data toolbar) faithfully
+  // tracks. Marking the shared settle flag (see its own comment) once that
+  // growth has actually landed — not on a guessed timer, but two frames
+  // after the state change that causes it, giving the resulting reflow and
+  // this box's own ResizeObserver time to actually commit — lets every
+  // subscriber turn its OWN layout tracking on together, instead of
+  // animating this one-time, page-load-only growth as a visible drop.
+  useEffect(() => {
+    if (previousSessionEndedAt === null) return;
+    let settleFrame = 0;
+    const growFrame = requestAnimationFrame(() => {
+      settleFrame = requestAnimationFrame(() => {
+        markInitialLayoutSettled();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(growFrame);
+      cancelAnimationFrame(settleFrame);
+    };
+  }, [previousSessionEndedAt]);
 
   const isRunning = status === "running";
 
@@ -456,7 +489,20 @@ export function StatusBar({
                       // box's own fade-in and the tabs/nav's layout push — which
                       // shares SESSION_MORPH_MS via NOTIFICATION_AREA_TRANSITION —
                       // move as one instead of the box appearing to lag behind.
-                      height: { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
+                      // Zeroed instead while `initialLayoutSettled` is still
+                      // false (see its own comment): `boxNaturalHeight`'s very
+                      // first real measurement lands a beat after mount, once
+                      // the demo-only "Previous Session" row appears — without
+                      // this, THIS box played its own real 350ms grow on every
+                      // page load, and every layout-tracked sibling below it
+                      // (correctly) tracked that real, continuous reflow live,
+                      // reading as the whole header/toolbar visibly settling
+                      // in a beat after everything else. Any LATER, genuine
+                      // height change (an actual session collapsing/expanding)
+                      // still gets the real transition.
+                      height: !initialLayoutSettled
+                        ? { duration: 0 }
+                        : { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
                       opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
                     }
               }
@@ -515,7 +561,9 @@ export function StatusBar({
                 all. */}
             <motion.nav
               layout="position"
-              transition={{ layout: suppressNavLayout ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION }}
+              transition={{
+                layout: suppressNavLayout || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+              }}
               className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-1.5")}
               role="tablist"
               aria-label="Session sections"
