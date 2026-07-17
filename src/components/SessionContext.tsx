@@ -62,6 +62,19 @@ interface SessionContextValue {
   // real status change actually commits).
   transitionStage: 0 | 1 | 2;
   transitionKind: TransitionKind;
+  // True while StatusBar's session box is mid a real height change (see
+  // that field's own comment on the SessionProvider below) — every
+  // layout-tracked sibling (tab nav, content pane) reads this to give up
+  // its own `layout="position"` FLIP for that window, since native reflow
+  // already tracks the box's real, continuous motion without it.
+  boxHeightAnimating: boolean;
+  setBoxHeightAnimating: (v: boolean) => void;
+  // True while the mini-session pill slot inside the tab nav is growing or
+  // shrinking (see that field's own comment on the SessionProvider below) —
+  // a second, separate real reflow inside the header that every
+  // layout-tracked sibling below it also needs to give up FLIP for.
+  pillTraveling: boolean;
+  setPillTraveling: (v: boolean) => void;
   requestStartNew: () => void;
   requestContinuePrevious: (initialMs: number) => void;
   requestResume: () => void;
@@ -92,46 +105,6 @@ export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error("useSession must be used inside SessionProvider");
   return ctx;
-}
-
-// How long past the end of a session transition (see below) to keep
-// treating it as still-in-progress — long enough to cover useStickyTop's
-// own 60ms ResizeObserver debounce plus real-world scheduling jitter.
-const SESSION_LAYOUT_SETTLE_GRACE_MS = 300;
-
-/** True for the same window as `transitionStage === 2 && transitionKind !==
- *  "discard"` (the box's own real height reflow — see StatusBar's
- *  `suppressSessionLayout` and routes/index.tsx's `suppressPaneLayout`),
- *  extended by a short grace window after it ends. Every consumer of that
- *  raw condition that reads a value continuously, in real time (the nav,
- *  the content pane — both plain native-flow position reads) is already
- *  perfectly in step with the box without needing this extension. The one
- *  exception is anything downstream of `useStickyTop`, which deliberately
- *  debounces its own correction against the box's per-frame reflow (see
- *  that hook's own comment) and can still be a beat behind once the raw
- *  condition above has already reverted — this hook is for exactly those
- *  consumers (DataToolbar's own `layout` gate, and `useStickyTop`'s
- *  `immediate` flag itself), so the debounce's last, late correction still
- *  lands as a plain jump instead of its own separate, out-of-sync tween. */
-export function useSuppressSessionLayout() {
-  const { transitionStage, transitionKind } = useSession();
-  const raw = transitionStage === 2 && transitionKind !== "discard";
-  const wasActiveRef = useRef(false);
-  const [graceActive, setGraceActive] = useState(false);
-  useEffect(() => {
-    if (raw) {
-      wasActiveRef.current = true;
-      setGraceActive(true);
-      return;
-    }
-    if (!wasActiveRef.current) return;
-    const id = window.setTimeout(() => {
-      wasActiveRef.current = false;
-      setGraceActive(false);
-    }, SESSION_LAYOUT_SETTLE_GRACE_MS);
-    return () => window.clearTimeout(id);
-  }, [raw]);
-  return raw || graceActive;
 }
 
 // Split out from SessionContextValue: most data cards only need `markDirty`
@@ -332,6 +305,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [runStagedTransition, clearAndDiscard],
   );
 
+  // True for exactly as long as StatusBar's own session box is actually
+  // mid-way through a real CSS height change (collapsing into the mini pill
+  // slot, or expanding back out) — see StatusBar's own `boxHeightAnimating`
+  // effect for how it's driven. This is the ONE thing every layout-tracked
+  // sibling below the header (the tab nav, the content pane) actually needs
+  // to give up their own `layout="position"` FLIP for: while the box's real
+  // height is genuinely changing, their true position is already changing
+  // in step with it via plain native reflow, and a FLIP layered on top of
+  // that can only fall behind the real, continuous motion, never match it.
+  // Covers BOTH a full staged start/resume/discard(-excluded) transition
+  // AND a plain, unstaged `pause()` click (which never touches
+  // transitionStage/transitionKind at all) — the previous approximation,
+  // gating on transitionStage alone, missed that second case, which is
+  // what let the tab nav and pane visibly lag half a beat behind the box
+  // (and, transitively, the sticky Data toolbar sitting right below the
+  // nav) specifically while pausing.
+  const [boxHeightAnimating, setBoxHeightAnimating] = useState(false);
+
+  // True while StatusBar's mini-session pill slot inside the tab nav is
+  // growing/shrinking in (its own real, `PILL_TRAVEL_MS`-long height
+  // animation — see StatusBar's `renderMiniPill` comment) — a second, EARLIER
+  // real reflow inside the header that `boxHeightAnimating` alone doesn't
+  // cover, since it's driven by `isRunning` flipping, not by the box's own
+  // collapse timing. On a staged resume this window lands well before the
+  // box's own collapse even starts, so without also suppressing FLIP for
+  // this window, the nav's `layout="position"` (unsuppressed at that point)
+  // was still smoothing toward the pill slot's real, already-moved size,
+  // lagging a few px behind it and the toolbar riding on the same real
+  // reflow. Mirrors StatusBar's own local `pillTraveling` state so routes/
+  // index.tsx's pane can fold this window into its own suppression too.
+  const [pillTraveling, setPillTraveling] = useState(false);
+
   // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
   const registerActiveTimer = useCallback((t: ActiveTimer) => {
@@ -362,6 +367,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       endAndSubmit,
       transitionStage,
       transitionKind,
+      boxHeightAnimating,
+      setBoxHeightAnimating,
+      pillTraveling,
+      setPillTraveling,
       requestStartNew,
       requestContinuePrevious,
       requestResume,
@@ -380,7 +389,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }),
     [
       status, elapsedMs, lastUpdated, pause, endAndSubmit,
-      transitionStage, transitionKind, requestStartNew, requestContinuePrevious, requestResume, requestDiscard,
+      transitionStage, transitionKind, boxHeightAnimating, setBoxHeightAnimating,
+      pillTraveling, setPillTraveling,
+      requestStartNew, requestContinuePrevious, requestResume, requestDiscard,
       sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer,
       saveStatus, lastSavedAt, markDirty, forceSync, resetSignal,
     ],

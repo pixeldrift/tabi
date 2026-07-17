@@ -756,7 +756,7 @@ function IndexInner() {
   // then paging to the next card would snap the drawer back down to normal
   // width on every step.
   const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
-  const { status, transitionStage, transitionKind } = useSession();
+  const { status, transitionStage, transitionKind, boxHeightAnimating, pillTraveling } = useSession();
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
   // record data" banner and dimmed every card each time a session was
@@ -774,15 +774,27 @@ function IndexInner() {
   // updated but before its real height has actually finished tweening
   // hands Motion a target that's already (visually) the fully-collapsed
   // position, so it commits and finishes the pane's FLIP well before the
-  // box (and the tab bar riding directly on its real height, needing no
-  // FLIP at all) actually gets there — the pane visibly arrives early.
-  // Turning `layout` off for the whole staged-transition window sidesteps
-  // this: with no FLIP running, the pane just follows native reflow like
-  // any other block, which can't ever be out of step with what's really
-  // above it. `layout="position"` comes back once the transition (and the
-  // real reflow it drives) is over, for the discrete-jump cases (tab
-  // switches, notification changes) it's actually meant for.
-  const suppressPaneLayout = transitionStage === 2 && transitionKind !== "discard";
+  // box (and the tab bar and toolbar riding directly on its real height,
+  // needing no FLIP at all) actually gets there — the pane visibly arrives
+  // early. Turning `layout` off for exactly the window the box's real
+  // height is changing sidesteps this: with no FLIP running, the pane just
+  // follows native reflow like any other block, which can't ever be out of
+  // step with what's really above it. `boxHeightAnimating` (see
+  // SessionContext) is the precise version of this window — it's driven
+  // directly off the box's own collapse/expand, so unlike the old
+  // `transitionStage`-based approximation it also covers a plain, unstaged
+  // `pause()` click, not just staged start/resume/discard transitions.
+  // `layout="position"` comes back the instant the box's real height is
+  // done moving, for the discrete-jump cases (tab switches, notification
+  // changes) it's actually meant for.
+  //
+  // `pillTraveling` covers a second, separate real reflow: the mini-session
+  // slot growing/shrinking inside StatusBar's own tab nav, driven by
+  // `isRunning` flipping rather than the box's collapse timing — on a staged
+  // resume this starts well before the box even begins moving, so without
+  // it the pane's FLIP was still active (and lagging) during that earlier
+  // window even though `boxHeightAnimating` was still false.
+  const suppressPaneLayout = boxHeightAnimating || pillTraveling;
   // See use-initial-layout-settle's own comment — StatusBar's demo-only
   // "Previous Session" row grows its box a beat after mount, which this
   // pane (tracked in the same "session-bar" LayoutGroup) would otherwise
@@ -1041,6 +1053,25 @@ function IndexInner() {
     }
   }
 
+  // A session starting (fresh or continued) should read as "the pane was
+  // already at the top," not as a scroll happening — a real session is
+  // meant to open on its first card, not wherever the user happened to be
+  // scrolled to on the idle/"Start New Session" screen. Instant (not
+  // smooth) and in a layout effect (before paint) so nothing is visibly
+  // scrolling; this also preempts a real, separate glitch: stage 1 hides
+  // the outgoing cards immediately (see `cardsHidden` above) but the new
+  // ones don't remount until PILL_LAND_MS later, so for that whole window
+  // the Data tab's pane is briefly far shorter than the page the user was
+  // actually scrolled against — if they were scrolled down, the browser's
+  // own native scroll-clamping snaps them to whatever the new (shorter) max
+  // happens to be the instant that content gap opens, a jump this makes
+  // moot by already being at the top before it can occur.
+  useLayoutEffect(() => {
+    if (transitionKind === "start-new" || transitionKind === "start-previous") {
+      window.scrollTo(0, 0);
+    }
+  }, [transitionKind]);
+
   // Stage 2's own commit is itself transient — SessionContext resets
   // transitionStage/transitionKind back to 0/null well before start-new's
   // PILL_LAND_MS timeout can fire, so that reset must not be allowed to
@@ -1136,47 +1167,40 @@ function IndexInner() {
             activeTab={tab}
             onTabChange={handleTabChange}
             suppressNavLayout={suppressCardLayout}
+            dataToolbar={
+              tab === "data" && (
+                <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
+                  <AnimatePresence initial={false}>
+                    {!sessionActive && (
+                      <motion.div
+                        key="start-session-banner"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{
+                          height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
+                          opacity: { duration: 0.25 },
+                        }}
+                        className="overflow-hidden border-t border-stone-200/70"
+                      >
+                        <motion.div
+                          initial={{ y: -16 }}
+                          animate={{ y: 0 }}
+                          exit={{ y: -16 }}
+                          transition={{ duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+                          className="py-1.5 px-8 text-center"
+                        >
+                          <span className="text-sm text-muted-foreground">
+                            Start session to record data.
+                          </span>
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </DataToolbar>
+              )
+            }
           />
-
-          {/* Rendered as a sibling of (not nested inside) the motion.section
-          below — that section's own `layout="position"` tracking applies a
-          (near-identity, but non-"none") transform, which makes it establish
-          a stacking context that traps any z-index inside it. */}
-          {tab === "data" && (
-            <DataToolbar
-              stickyTop={stickyTop}
-              availableKinds={availableKinds}
-              availablePhases={availablePhases}
-            >
-              <AnimatePresence initial={false}>
-                {!sessionActive && (
-                  <motion.div
-                    key="start-session-banner"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{
-                      height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
-                      opacity: { duration: 0.25 },
-                    }}
-                    className="overflow-hidden border-t border-stone-200/70"
-                  >
-                    <motion.div
-                      initial={{ y: -16 }}
-                      animate={{ y: 0 }}
-                      exit={{ y: -16 }}
-                      transition={{ duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
-                      className="py-1.5 px-8 text-center"
-                    >
-                      <span className="text-sm text-muted-foreground">
-                        Start session to record data.
-                      </span>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </DataToolbar>
-          )}
 
           <motion.section
             layout={suppressPaneLayout ? false : "position"}

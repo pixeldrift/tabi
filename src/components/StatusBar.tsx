@@ -59,6 +59,11 @@ interface StatusBarProps {
   onTabChange: (t: StatusTab) => void;
   title?: string;
   suppressNavLayout?: boolean;
+  /** The Data tab's sticky filter/view toolbar (DataToolbar), rendered as a
+   *  plain sibling of this component's own header content inside the SAME
+   *  sticky container — see that outer wrapper's own comment below for why.
+   *  `undefined`/`false` on every other tab. */
+  dataToolbar?: React.ReactNode;
 }
 
 const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
@@ -86,6 +91,7 @@ export function StatusBar({
   onTabChange,
   title = "Phineas Flynn's Data Sheet",
   suppressNavLayout = false,
+  dataToolbar,
 }: StatusBarProps) {
   const {
     status,
@@ -94,6 +100,9 @@ export function StatusBar({
     endAndSubmit,
     transitionStage,
     transitionKind,
+    boxHeightAnimating,
+    setBoxHeightAnimating,
+    setPillTraveling: setPillTravelingShared,
     requestStartNew,
     requestContinuePrevious,
     requestResume,
@@ -206,18 +215,29 @@ export function StatusBar({
   // expanded (paused) and stays that way; only its displayed value swaps.
   const dimmed = transitionStage > 0;
   const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
-  // Same condition (and same reasoning) as routes/index.tsx's
-  // `suppressPaneLayout`: this box's own real height `animate()` is what's
-  // actually driving the reflow this nav sits under during a start/pause/
-  // resume/discard(-excluded) transition, on its own clock — not something
-  // `layout="position"`'s once-per-render FLIP snapshot can ever stay in
-  // step with (see that comment for the full mechanics). Since this nav is
-  // pushed by ordinary document flow, not sticky itself, turning `layout`
-  // off for the same window just lets it natively track the box in real
-  // time instead of racing it — which is what was actually producing the
-  // tab-bar "bounce" and the toolbar/pane visibly detaching from the header
-  // during those transitions.
-  const suppressSessionLayout = transitionStage === 2 && transitionKind !== "discard";
+  // `boxHeightAnimating` (SessionContext) is the precise version of what
+  // used to be approximated here as `transitionStage === 2 && transitionKind
+  // !== "discard"` — this box's own real height `animate()` is what's
+  // actually driving the reflow this nav sits under, on its own clock, not
+  // something `layout="position"`'s once-per-render FLIP snapshot can ever
+  // stay in step with. Since this nav is pushed by ordinary document flow,
+  // not sticky itself, turning `layout` off for the same window just lets
+  // it natively track the box in real time instead of racing it. Reading
+  // the shared flag (driven by the effect below) instead of re-deriving the
+  // old approximation also covers a case that one couldn't: a plain,
+  // unstaged `pause()` click never touches transitionStage/transitionKind
+  // at all, so the old condition stayed false — and un-suppressed —
+  // throughout the box's real expand animation, which is what let the tab
+  // nav (and, transitively, the toolbar riding right below it) visibly lag
+  // half a beat behind it specifically while pausing.
+  //
+  // `boxHeightAnimating` alone still misses one thing, though: `pillTraveling`
+  // (below) is its OWN separate real reflow — the mini-session slot growing
+  // into (or shrinking out of) this very nav — driven by `isRunning`
+  // flipping, not by the box's collapse timing, and on a staged resume it
+  // starts well before the box even begins moving. OR'd in at this nav's own
+  // `transition.layout` below (declared after `pillTraveling` exists).
+  const suppressSessionLayout = boxHeightAnimating;
 
   // The box itself waits for the pill to actually land before collapsing,
   // so the two read as sequential beats ("clock moves, then box closes")
@@ -256,6 +276,32 @@ export function StatusBar({
     }
     setBoxCollapsed(false);
   }, [collapsed]);
+
+  // Reports the box's own real height-animate window to SessionContext (see
+  // `boxHeightAnimating`'s own comment there) — this is the ONE moment
+  // `boxCollapsed` flipping actually drives a real CSS height transition
+  // below (the `animate={{height: ...}}` motion.div), so the window this
+  // covers matches that transition's own duration exactly: BOX_COLLAPSE_MS
+  // collapsing, SESSION_MORPH_MS expanding.
+  //
+  // `useLayoutEffect`, not `useEffect` — this sets state on a different
+  // component (SessionContext's provider), so it can't be done inline
+  // during render the way `prevCollapsedRef` above adjusts StatusBar's own
+  // state (React logs "Cannot update a component while rendering a
+  // different component" if you try). `useLayoutEffect` still runs before
+  // the browser paints, though: the render that flips `boxCollapsed` commits
+  // with the OLD (pre-collapse) `layout` prop on nav, but this fires
+  // synchronously right after that commit and flushes the resulting
+  // re-render before anything is shown on screen — so the stale-`layout`
+  // frame this would otherwise have painted for one tick is never actually
+  // visible, and nav's FLIP is already off by the time the box's real
+  // height starts moving.
+  useLayoutEffect(() => {
+    setBoxHeightAnimating(true);
+    const duration = boxCollapsed ? BOX_COLLAPSE_MS : SESSION_MORPH_MS;
+    const id = window.setTimeout(() => setBoxHeightAnimating(false), duration);
+    return () => window.clearTimeout(id);
+  }, [boxCollapsed, setBoxHeightAnimating]);
 
   // Same "never animate to the literal string auto" fix as actionsHeight
   // below: without it, whenever the pill itself enters/leaves this box (its
@@ -304,6 +350,13 @@ export function StatusBar({
   const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
   const pillTravelFromRef = useRef<DOMRect | null>(null);
   const prevIsRunningForPillRef = useRef(isRunning);
+  // Mirrors this local flag into SessionContext (see that field's own
+  // comment) so routes/index.tsx's pane can fold this same real-reflow
+  // window into its own layout suppression, the same way it already does
+  // for `boxHeightAnimating`.
+  useLayoutEffect(() => {
+    setPillTravelingShared(pillTraveling);
+  }, [pillTraveling, setPillTravelingShared]);
 
   // The instant `isRunning` flips, decide whether to travel right away or
   // wait first. A fresh start resets the odometer to zero at this same
@@ -426,7 +479,18 @@ export function StatusBar({
 
   return (
     <>
-      <div ref={statusBarRef} data-status-bar className="relative overflow-hidden sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {/* Single shared sticky container for the header proper (title, box,
+          notifications, tabs) AND the Data tab's own toolbar below it —
+          `dataToolbar` renders here as a plain, normal-flow sibling rather
+          than an independently `position: sticky` element computing its own
+          `top` off this box's height. That earlier approach needed a
+          ResizeObserver/rAF bridge just to keep two SEPARATE sticky
+          elements in sync with each other; putting them in the one
+          container means there's nothing left to keep in sync — the
+          browser lays both out together on every reflow for free, the same
+          way it already does for the title row and the tabs below it. */}
+      <div className="sticky top-0 z-40">
+        <div ref={statusBarRef} data-status-bar className="relative overflow-hidden bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
         <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
           {/* Title row — static, never scales or layout-animates */}
           <div className="flex items-start justify-between gap-3">
@@ -569,14 +633,16 @@ export function StatusBar({
                 (non-zero) transition instead. Zeroing just the duration
                 keeps measurement continuous and collapses whatever phantom
                 delta it finds down to a single frame, which reads as no
-                jump at all. `suppressSessionLayout` (computed just above)
-                zeroes it for the unrelated session-transition reason
-                explained there. */}
+                jump at all. `suppressSessionLayout` (computed above) zeroes
+                it for the unrelated session-transition reason explained
+                there; `pillTraveling` zeroes it for the mini-session slot's
+                own real height animation growing/shrinking directly inside
+                this nav (see that state's own comment). */}
             <motion.nav
               layout="position"
               transition={{
                 layout:
-                  suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
+                  suppressNavLayout || suppressSessionLayout || pillTraveling || !initialLayoutSettled
                     ? { duration: 0 }
                     : NOTIFICATION_AREA_TRANSITION,
               }}
@@ -671,6 +737,8 @@ export function StatusBar({
 
           </>
         </div>
+        </div>
+        {dataToolbar}
       </div>
       {/* Blends the content pane's own border-t (routes/index.tsx) under
           whichever tab is active — see the tabBlend effect above for why

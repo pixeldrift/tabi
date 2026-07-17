@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "motion/react";
 import {
   Check,
   CheckCircle2,
@@ -24,9 +23,6 @@ import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
-import { useSuppressSessionLayout } from "@/components/SessionContext";
-import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
-import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
@@ -42,31 +38,15 @@ const KIND_META: Record<
   timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
 };
 
-/** Module-level (not React state) — flips true once, the first time ANY
- *  DataToolbar instance's mount effect fires, and stays true for the rest of
- *  the page's life. The Data tab is the default tab (see routes/index.tsx),
- *  so this component is part of the initial SSR/hydration pass — the server
- *  can't measure `[data-status-bar]`'s real pixel height, so `useStickyTop`
- *  necessarily starts at a placeholder there, corrected a tick later once
- *  the client actually lays out. Only THIS very first instance is at risk of
- *  animating that placeholder->real correction as a real move (see
- *  `layoutReady` below); every later mount (leaving the Data tab and coming
- *  back) is client-side only, with no SSR placeholder to correct away from. */
-let hasHydratedOnce = false;
-
 export interface DataToolbarProps {
-  stickyTop: number;
   availableKinds: CardKind[];
   availablePhases: string[];
-  /** Rendered below the main bar row, inside the same sticky container —
-   *  e.g. the Data tab's "Start session to record data" banner, so the two
-   *  stack under one shared `top` offset instead of needing a second one
-   *  computed for whatever sits below the toolbar. */
+  /** Rendered below the main bar row, inside the same container — e.g. the
+   *  Data tab's "Start session to record data" banner. */
   children?: React.ReactNode;
 }
 
 export function DataToolbar({
-  stickyTop,
   availableKinds,
   availablePhases,
   children,
@@ -92,83 +72,6 @@ export function DataToolbar({
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterContentRef = useRef<HTMLDivElement>(null);
   const [filterArrowLeft, setFilterArrowLeft] = useState(16);
-
-  // Gates the `layout="position"` FLIP tracking below until this instance
-  // is safely past any hydration risk — see `hasHydratedOnce`'s own
-  // comment. `false` here (server, or the page's very first client render)
-  // means `layout` starts out OFF, so Framer registers this element's
-  // projection node fresh once `useStickyTop`'s placeholder->real
-  // correction has already landed, with nothing stale to FLIP away from —
-  // instead of turning that one-tick correction into a visible "starts too
-  // high, drops into place" animation on every page load. Any LATER mount
-  // (leaving the Data tab and coming back) reads `hasHydratedOnce` already
-  // `true` here, so `layout` is on from its very first render, in step with
-  // the tab nav and content pane's own tracking in the same LayoutGroup.
-  const [layoutReady, setLayoutReady] = useState(() => typeof document !== "undefined" && hasHydratedOnce);
-  useEffect(() => {
-    hasHydratedOnce = true;
-    if (!layoutReady) setLayoutReady(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // Also waits on the shared "session-bar" LayoutGroup settle flag — see
-  // use-initial-layout-settle's own comment. StatusBar's box grows once
-  // its demo-only "Previous Session" row appears a beat after mount, and
-  // without this, the toolbar would track THAT one-time growth (correctly
-  // synced with the tab nav and pane, but still a visible drop on every
-  // fresh page load) before it's had a chance to genuinely settle.
-  const initialLayoutSettled = useInitialLayoutSettled();
-  // See useSuppressSessionLayout's own comment: the session box's real
-  // height `animate()` is what actually pushes this sticky toolbar's `top`
-  // during a start/pause/resume/discard(-excluded) transition, on its own
-  // clock — not something this `layout="position"` FLIP (which only
-  // snapshots a target once per render) can stay in step with. Without
-  // this, the toolbar was visibly detaching from the pane and tab nav
-  // during those transitions instead of moving as one linked unit.
-  const suppressSessionLayout = useSuppressSessionLayout();
-
-  // `stickyTop` (the prop, from routes/index.tsx's useStickyTop) is
-  // deliberately debounced against the header's own per-frame reflow (see
-  // that hook's own comment) — during a session transition, this tracks the
-  // header's real height directly instead, isolated in LOCAL state rather
-  // than lifted into routes/index.tsx's. That isolation turned out to
-  // matter a lot: an earlier version drove this same per-frame tracking
-  // through the page-level `stickyTop` state, and every tick re-rendered
-  // the entire route (all the data cards included) — expensive enough that
-  // it started competing with the browser's own frame budget and made the
-  // tracking itself lag behind the header's real height by several frames
-  // (confirmed via Playwright, comparing this value against the header's
-  // live height frame by frame — a many-frame gap opened up specifically
-  // during the fast part of the collapse). Keeping the state local here
-  // means each tick only re-renders this toolbar's own small subtree.
-  const [immediateTop, setImmediateTop] = useState<number | null>(null);
-  useEffect(() => {
-    if (!suppressSessionLayout) return;
-    const bar = document.querySelector("[data-status-bar]") as HTMLElement | null;
-    if (!bar) return;
-    let rafId = 0;
-    const tick = () => {
-      const height = bar.getBoundingClientRect().height;
-      setImmediateTop((prev) => (prev === height ? prev : height));
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [suppressSessionLayout]);
-  // Once suppression ends, `immediateTop` stays frozen at its last real
-  // value (the effect above simply stops updating it) rather than getting
-  // reset right away — handing off to the page-level `stickyTop` the
-  // instant suppression ends would show ITS stale, not-yet-caught-up value
-  // (confirmed via Playwright: a visible jump back to the pre-transition
-  // height, then a second correction once `stickyTop` finally settled).
-  // Waiting for `stickyTop` to independently arrive at the exact same
-  // number before dropping back to it makes the hand-off invisible — both
-  // sides already agree by the time it happens.
-  useEffect(() => {
-    if (!suppressSessionLayout && immediateTop !== null && stickyTop === immediateTop) {
-      setImmediateTop(null);
-    }
-  }, [suppressSessionLayout, stickyTop, immediateTop]);
-  const effectiveStickyTop = immediateTop !== null ? immediateTop : stickyTop;
 
   // Re-centers the popover horizontally on the viewport after Radix
   // positions it (which otherwise hugs the button's own left-of-center
@@ -232,46 +135,21 @@ export function DataToolbar({
     (filters.showHidden ? 1 : 0);
 
   return (
-    <motion.div
-      // Named so the drawer's own top offset can be measured off this
-      // element's rendered bottom edge (see useElementBottom) — the drawer
-      // is bounded to below the toolbar (including the "Start session"
-      // banner below the row, when it's showing) rather than the full
-      // viewport.
+    <div
+      // Named so the shared drawer's own top offset can be measured off
+      // this element's rendered bottom edge (see useElementBottom) — the
+      // drawer is bounded to below the toolbar (including the "Start
+      // session" banner below the row, when it's showing) rather than the
+      // full viewport. Plain, normal-flow content now — StatusBar renders
+      // this as a sibling of the header proper inside their shared sticky
+      // container (see StatusBar's own comment), so there's no independent
+      // position to track here: no `sticky`/computed `top`, no `layout`
+      // FLIP, nothing to keep in sync with the header's own real reflow.
+      // The browser lays this out together with the tab nav above it on
+      // every reflow for free, the same way it already does within any
+      // other single sticky element.
       data-toolbar
-      // `stickyTop` (from useStickyTop's ResizeObserver) only updates once
-      // the header's real box has already resized — a render or more behind
-      // Framer's own per-frame projection updates for the tab nav
-      // (motion.nav, layout="position") and the content pane below
-      // (motion.section, same LayoutGroup id="session-bar" in
-      // routes/index.tsx). Without `layout="position"` here too, this div's
-      // CSS `top` jumps to each new stickyTop value instantly (a plain React
-      // commit, no transition) while its LayoutGroup siblings glide —
-      // reading as the toolbar freezing, then teleporting, disconnected
-      // from everything around it. Adding it to the same tracked layout
-      // group turns each of those instant jumps into a FLIP tween batched
-      // into the same frame-by-frame motion as the nav and the pane, so all
-      // three move as one linked unit relative to the header instead of on
-      // three separate clocks. `layout="position"` stays on unconditionally
-      // (never toggled off/on) — see the tab nav's own `suppressNavLayout`
-      // comment in StatusBar: toggling the boolean itself makes Framer
-      // re-initialize its projection right as it re-enables, catching the
-      // tail of whatever moved while it was off and animating THAT with
-      // the full transition, which is worse than what it's meant to fix.
-      // Zeroing just the duration (below) instead keeps measurement
-      // continuous and collapses anything that happens before this
-      // instance is ready — `layoutReady`'s own one-tick hydration
-      // correction, or `initialLayoutSettled`'s one-time StatusBar-driven
-      // growth (see both hooks' own comments) — into a single frame.
-      layout="position"
-      transition={{
-        layout:
-          !layoutReady || !initialLayoutSettled || suppressSessionLayout
-            ? { duration: 0 }
-            : NOTIFICATION_AREA_TRANSITION,
-      }}
-      className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
-      style={{ top: effectiveStickyTop }}
+      className="z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
     >
       {/* Named separately from data-toolbar above — this is just the row's
        *  own box (its py-1.5/px-4 padding, not the banner below), so
@@ -471,7 +349,7 @@ export function DataToolbar({
         </div>
       </div>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
