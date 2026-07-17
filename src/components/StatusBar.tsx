@@ -206,6 +206,18 @@ export function StatusBar({
   // expanded (paused) and stays that way; only its displayed value swaps.
   const dimmed = transitionStage > 0;
   const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
+  // Same condition (and same reasoning) as routes/index.tsx's
+  // `suppressPaneLayout`: this box's own real height `animate()` is what's
+  // actually driving the reflow this nav sits under during a start/pause/
+  // resume/discard(-excluded) transition, on its own clock — not something
+  // `layout="position"`'s once-per-render FLIP snapshot can ever stay in
+  // step with (see that comment for the full mechanics). Since this nav is
+  // pushed by ordinary document flow, not sticky itself, turning `layout`
+  // off for the same window just lets it natively track the box in real
+  // time instead of racing it — which is what was actually producing the
+  // tab-bar "bounce" and the toolbar/pane visibly detaching from the header
+  // during those transitions.
+  const suppressSessionLayout = transitionStage === 2 && transitionKind !== "discard";
 
   // The box itself waits for the pill to actually land before collapsing,
   // so the two read as sequential beats ("clock moves, then box closes")
@@ -539,30 +551,35 @@ export function StatusBar({
             <NotificationBar />
 
             {/* Tabs row + mini session (when running) */}
-            {/* suppressNavLayout zeroes the layout transition's duration
-                during a data-tab display-mode morph. This nav sits sticky
-                at top:0, so its own true position never changes for that
-                reason — but Framer Motion's LayoutGroup batches it together
-                with the data panel below (see index.tsx's "session-bar"
-                LayoutGroup), and the panel's active-card scroll anchor calls
-                window.scrollBy every frame while the morph runs. Motion's
-                projection math isn't sticky-aware: it reads a stuck
-                element's rect as having moved whenever scrollY changes
-                mid-measurement, so it was playing a brief, spurious
-                correction (a few px, decaying back to 0 over the whole
-                morph) each time that scroll anchor nudged the page. Toggling
-                the `layout` prop itself off/on around the window was tried
-                and made this worse — Motion re-initializes its projection
-                right as it re-enables, so it can catch the tail of the
-                scroll correction and animate it with the full (non-zero)
-                transition instead. Zeroing just the duration keeps
-                measurement continuous and collapses whatever phantom delta
-                it finds down to a single frame, which reads as no jump at
-                all. */}
+            {/* suppressNavLayout (a prop from routes/index.tsx) zeroes the
+                layout transition's duration during a data-tab display-mode
+                morph. This nav sits sticky at top:0, so its own true
+                position never changes for that reason — but Framer Motion's
+                LayoutGroup batches it together with the data panel below
+                (see index.tsx's "session-bar" LayoutGroup), and the panel's
+                active-card scroll anchor calls window.scrollBy every frame
+                while the morph runs. Motion's projection math isn't
+                sticky-aware: it reads a stuck element's rect as having moved
+                whenever scrollY changes mid-measurement, so it was playing a
+                brief, spurious correction (a few px, decaying back to 0 over
+                the whole morph) each time that scroll anchor nudged the
+                page. Toggling the `layout` prop itself off/on around the
+                window was tried and made this worse — Motion re-initializes
+                its projection right as it re-enables, so it can catch the
+                tail of the scroll correction and animate it with the full
+                (non-zero) transition instead. Zeroing just the duration
+                keeps measurement continuous and collapses whatever phantom
+                delta it finds down to a single frame, which reads as no
+                jump at all. `suppressSessionLayout` (computed just above)
+                zeroes it for the unrelated session-transition reason
+                explained there. */}
             <motion.nav
               layout="position"
               transition={{
-                layout: suppressNavLayout || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+                layout:
+                  suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
+                    ? { duration: 0 }
+                    : NOTIFICATION_AREA_TRANSITION,
               }}
               className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-1.5")}
               role="tablist"

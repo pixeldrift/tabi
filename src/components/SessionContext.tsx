@@ -94,6 +94,46 @@ export function useSession() {
   return ctx;
 }
 
+// How long past the end of a session transition (see below) to keep
+// treating it as still-in-progress — long enough to cover useStickyTop's
+// own 60ms ResizeObserver debounce plus real-world scheduling jitter.
+const SESSION_LAYOUT_SETTLE_GRACE_MS = 300;
+
+/** True for the same window as `transitionStage === 2 && transitionKind !==
+ *  "discard"` (the box's own real height reflow — see StatusBar's
+ *  `suppressSessionLayout` and routes/index.tsx's `suppressPaneLayout`),
+ *  extended by a short grace window after it ends. Every consumer of that
+ *  raw condition that reads a value continuously, in real time (the nav,
+ *  the content pane — both plain native-flow position reads) is already
+ *  perfectly in step with the box without needing this extension. The one
+ *  exception is anything downstream of `useStickyTop`, which deliberately
+ *  debounces its own correction against the box's per-frame reflow (see
+ *  that hook's own comment) and can still be a beat behind once the raw
+ *  condition above has already reverted — this hook is for exactly those
+ *  consumers (DataToolbar's own `layout` gate, and `useStickyTop`'s
+ *  `immediate` flag itself), so the debounce's last, late correction still
+ *  lands as a plain jump instead of its own separate, out-of-sync tween. */
+export function useSuppressSessionLayout() {
+  const { transitionStage, transitionKind } = useSession();
+  const raw = transitionStage === 2 && transitionKind !== "discard";
+  const wasActiveRef = useRef(false);
+  const [graceActive, setGraceActive] = useState(false);
+  useEffect(() => {
+    if (raw) {
+      wasActiveRef.current = true;
+      setGraceActive(true);
+      return;
+    }
+    if (!wasActiveRef.current) return;
+    const id = window.setTimeout(() => {
+      wasActiveRef.current = false;
+      setGraceActive(false);
+    }, SESSION_LAYOUT_SETTLE_GRACE_MS);
+    return () => window.clearTimeout(id);
+  }, [raw]);
+  return raw || graceActive;
+}
+
 // Split out from SessionContextValue: most data cards only need `markDirty`
 // and `resetSignal`, neither of which changes on every tick or transition
 // stage. Reading them through the main context would re-render every card
