@@ -756,7 +756,7 @@ function IndexInner() {
   // then paging to the next card would snap the drawer back down to normal
   // width on every step.
   const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
-  const { status, transitionStage, transitionKind, boxHeightAnimating, pillTraveling } = useSession();
+  const { status, transitionStage, transitionKind, headerReflowActive } = useSession();
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
   // record data" banner and dimmed every card each time a session was
@@ -776,25 +776,22 @@ function IndexInner() {
   // position, so it commits and finishes the pane's FLIP well before the
   // box (and the tab bar and toolbar riding directly on its real height,
   // needing no FLIP at all) actually gets there — the pane visibly arrives
-  // early. Turning `layout` off for exactly the window the box's real
+  // early. Turning `layout` off for exactly the window the header's real
   // height is changing sidesteps this: with no FLIP running, the pane just
   // follows native reflow like any other block, which can't ever be out of
-  // step with what's really above it. `boxHeightAnimating` (see
-  // SessionContext) is the precise version of this window — it's driven
-  // directly off the box's own collapse/expand, so unlike the old
-  // `transitionStage`-based approximation it also covers a plain, unstaged
-  // `pause()` click, not just staged start/resume/discard transitions.
-  // `layout="position"` comes back the instant the box's real height is
-  // done moving, for the discrete-jump cases (tab switches, notification
-  // changes) it's actually meant for.
-  //
-  // `pillTraveling` covers a second, separate real reflow: the mini-session
-  // slot growing/shrinking inside StatusBar's own tab nav, driven by
-  // `isRunning` flipping rather than the box's collapse timing — on a staged
-  // resume this starts well before the box even begins moving, so without
-  // it the pane's FLIP was still active (and lagging) during that earlier
-  // window even though `boxHeightAnimating` was still false.
-  const suppressPaneLayout = boxHeightAnimating || pillTraveling;
+  // step with what's really above it. `headerReflowActive` (SessionContext)
+  // is that window, computed centrally rather than mirrored piecemeal into
+  // this component — the box's own collapse/expand, the dwell before it
+  // starts (during which the tab nav's own `isRunning`-derived margin
+  // already changes), and the mini-session slot's own real height animation
+  // growing/shrinking inside the tab nav, all folded into one signal so
+  // this pane, the tab nav, and the toolbar riding on it can never drift
+  // apart reading it. Also covers a plain, unstaged `pause()` click, which
+  // never touches transitionStage/transitionKind at all.
+  // `layout="position"` comes back the instant the header's real reflow is
+  // done, for the discrete-jump cases (tab switches, notification changes)
+  // it's actually meant for.
+  const suppressPaneLayout = headerReflowActive;
   // See use-initial-layout-settle's own comment — StatusBar's demo-only
   // "Previous Session" row grows its box a beat after mount, which this
   // pane (tracked in the same "session-bar" LayoutGroup) would otherwise
@@ -1203,9 +1200,18 @@ function IndexInner() {
           />
 
           <motion.section
-            layout={suppressPaneLayout ? false : "position"}
+            // `layout="position"` stays on unconditionally (never toggled to
+            // `false`) — see StatusBar's own nav for why: toggling the prop
+            // itself makes Motion re-initialize its projection right as it
+            // re-enables, catching the tail of whatever moved while it was
+            // off and animating THAT with the full transition, which reads
+            // as its own separate, out-of-sync bounce. Zeroing just the
+            // duration (`suppressPaneLayout`/`initialLayoutSettled`) keeps
+            // measurement continuous instead.
+            layout="position"
             transition={{
-              layout: !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+              layout:
+                suppressPaneLayout || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
             }}
             className={cn(
               "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",

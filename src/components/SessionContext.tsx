@@ -62,19 +62,22 @@ interface SessionContextValue {
   // real status change actually commits).
   transitionStage: 0 | 1 | 2;
   transitionKind: TransitionKind;
-  // True while StatusBar's session box is mid a real height change (see
-  // that field's own comment on the SessionProvider below) — every
+  // The session box's own render target and its delayed, real-CSS-height
+  // counterpart — see their shared comment on the SessionProvider below.
+  // StatusBar's box reads both directly; the pill-travel landing-prediction
+  // logic there also needs `collapsed` itself, not just `boxCollapsed`.
+  collapsed: boolean;
+  boxCollapsed: boolean;
+  // True while the mini-session pill is actually traveling between its big
+  // and mini positions (see its own comment below) — StatusBar's visual
+  // travel overlay is driven directly off this shared clock.
+  pillTraveling: boolean;
+  // The single, unified "a real reflow is happening in the header right
+  // now" signal — see its own comment on the SessionProvider below. Every
   // layout-tracked sibling (tab nav, content pane) reads this to give up
   // its own `layout="position"` FLIP for that window, since native reflow
-  // already tracks the box's real, continuous motion without it.
-  boxHeightAnimating: boolean;
-  setBoxHeightAnimating: (v: boolean) => void;
-  // True while the mini-session pill slot inside the tab nav is growing or
-  // shrinking (see that field's own comment on the SessionProvider below) —
-  // a second, separate real reflow inside the header that every
-  // layout-tracked sibling below it also needs to give up FLIP for.
-  pillTraveling: boolean;
-  setPillTraveling: (v: boolean) => void;
+  // already tracks the real, continuous motion without it.
+  headerReflowActive: boolean;
   requestStartNew: () => void;
   requestContinuePrevious: (initialMs: number) => void;
   requestResume: () => void;
@@ -305,37 +308,135 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [runStagedTransition, clearAndDiscard],
   );
 
-  // True for exactly as long as StatusBar's own session box is actually
-  // mid-way through a real CSS height change (collapsing into the mini pill
-  // slot, or expanding back out) — see StatusBar's own `boxHeightAnimating`
-  // effect for how it's driven. This is the ONE thing every layout-tracked
-  // sibling below the header (the tab nav, the content pane) actually needs
-  // to give up their own `layout="position"` FLIP for: while the box's real
-  // height is genuinely changing, their true position is already changing
-  // in step with it via plain native reflow, and a FLIP layered on top of
-  // that can only fall behind the real, continuous motion, never match it.
-  // Covers BOTH a full staged start/resume/discard(-excluded) transition
-  // AND a plain, unstaged `pause()` click (which never touches
-  // transitionStage/transitionKind at all) — the previous approximation,
-  // gating on transitionStage alone, missed that second case, which is
-  // what let the tab nav and pane visibly lag half a beat behind the box
-  // (and, transitively, the sticky Data toolbar sitting right below the
-  // nav) specifically while pausing.
-  const [boxHeightAnimating, setBoxHeightAnimating] = useState(false);
+  const isRunning = status === "running";
 
-  // True while StatusBar's mini-session pill slot inside the tab nav is
-  // growing/shrinking in (its own real, `PILL_TRAVEL_MS`-long height
-  // animation — see StatusBar's `renderMiniPill` comment) — a second, EARLIER
-  // real reflow inside the header that `boxHeightAnimating` alone doesn't
-  // cover, since it's driven by `isRunning` flipping, not by the box's own
-  // collapse timing. On a staged resume this window lands well before the
-  // box's own collapse even starts, so without also suppressing FLIP for
-  // this window, the nav's `layout="position"` (unsuppressed at that point)
-  // was still smoothing toward the pill slot's real, already-moved size,
-  // lagging a few px behind it and the toolbar riding on the same real
-  // reflow. Mirrors StatusBar's own local `pillTraveling` state so routes/
-  // index.tsx's pane can fold this window into its own suppression too.
+  // The session box's own render target: collapsed into the mini pill slot
+  // once genuinely running, or once a staged transition's real commit has
+  // landed (except discard, whose box was already open and stays that way
+  // — only its displayed value swaps). Centralized here — not derived
+  // separately in StatusBar and mirrored out to everything else — so the
+  // box's own real height `animate()`, the tab nav, and the content pane
+  // all read the exact same value on the exact same render, with nothing
+  // to mirror or fall a tick behind.
+  const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
+
+  // Delays `collapsed`'s effect on the box's own real CSS height into a
+  // separate beat ("clock moves, then box closes" — see StatusBar's own
+  // render for the actual `animate={{height}}`) — a fresh start gets an
+  // extra DIGIT_SETTLE_MS head start so the odometer's reset-to-zero spin
+  // is visibly readable before anything starts shrinking. `collapseKindRef`
+  // captures `transitionKind` at the moment collapse begins (not read
+  // directly from `transitionKind` in the timeout below) so a later reset
+  // of `transitionKind` can't retroactively change an already-scheduled
+  // delay.
+  const collapseKindRef = useRef<TransitionKind>(null);
+  const prevCollapsedRef = useRef(collapsed);
+  if (collapsed !== prevCollapsedRef.current) {
+    prevCollapsedRef.current = collapsed;
+    if (collapsed) collapseKindRef.current = transitionKind;
+  }
+  const [boxCollapsed, setBoxCollapsed] = useState(collapsed);
+  useEffect(() => {
+    if (collapsed) {
+      const delay =
+        collapseKindRef.current === "start-new" ? DIGIT_SETTLE_MS + HEADER_MORPH_MS : HEADER_MORPH_MS;
+      const id = window.setTimeout(() => setBoxCollapsed(true), delay);
+      return () => window.clearTimeout(id);
+    }
+    setBoxCollapsed(false);
+  }, [collapsed]);
+
+  // True while the mini-session pill is actually traveling between its big
+  // and mini positions — starts the instant `isRunning` flips (after the
+  // same DIGIT_SETTLE_MS head start as the box's own collapse, for a fresh
+  // start), lasts exactly PILL_TRAVEL_MS. Purely timed rather than tied to
+  // the travel overlay's own animation-complete callback, so StatusBar's
+  // visual travel and every consumer's layout suppression read the same
+  // clock instead of two that could drift apart.
+  const prevIsRunningForPillRef = useRef(isRunning);
+  // Captured once via a ref (not read from `transitionKind` in the
+  // dependency array below) so SessionContext's own later reset of
+  // transitionKind can't cancel an in-progress travel — same reasoning as
+  // `collapseKindRef` above. Without this, `transitionKind` resetting to
+  // null (via `runStagedTransition`'s own dwell timeout) while this travel
+  // timer is still pending re-ran this effect, whose cleanup canceled the
+  // pending "set false" timeout without ever setting `pillTraveling` false
+  // itself — leaving it stuck true forever whenever the dwell timer's own
+  // (single, flat) delay happened to fire before this one's (chained,
+  // settle-then-travel) delay actually finished, which real-world timer
+  // jitter made possible even though the nominal durations left margin.
+  const pillTransitionKindRef = useRef<TransitionKind>(null);
   const [pillTraveling, setPillTraveling] = useState(false);
+  useEffect(() => {
+    if (isRunning === prevIsRunningForPillRef.current) return;
+    prevIsRunningForPillRef.current = isRunning;
+    pillTransitionKindRef.current = transitionKind;
+    const startingFresh = isRunning && pillTransitionKindRef.current === "start-new";
+    let travelTimeoutId: number | undefined;
+    const beginTravel = () => {
+      setPillTraveling(true);
+      travelTimeoutId = window.setTimeout(() => setPillTraveling(false), PILL_TRAVEL_MS);
+    };
+    if (startingFresh) {
+      const settleId = window.setTimeout(beginTravel, DIGIT_SETTLE_MS);
+      return () => {
+        window.clearTimeout(settleId);
+        if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
+      };
+    }
+    beginTravel();
+    return () => {
+      if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning]);
+
+  // True for exactly as long as the box's own real CSS height `animate()`
+  // is mid-transition (collapsing into the mini pill slot, or expanding
+  // back out). The "turn on" edge is set during render (the same
+  // same-component pattern as `prevCollapsedRef` above), not in an effect —
+  // an effect would only fire after this render has already committed,
+  // which is one render too late for a sibling like the tab nav whose own
+  // margin swaps in the very same render `boxCollapsed` changes in (a
+  // `layout="position"` FLIP would snapshot the stale, unsuppressed value
+  // and visibly animate to catch up — this was the actual cause of a
+  // small, separately-timed "hop"/"bounce" on resume and pause, distinct
+  // from the box's own real motion). Setting it here means React bails out
+  // and re-renders with the new flag before anything paints.
+  const prevBoxCollapsedForAnimatingRef = useRef(boxCollapsed);
+  const [boxHeightAnimating, setBoxHeightAnimating] = useState(false);
+  if (boxCollapsed !== prevBoxCollapsedForAnimatingRef.current) {
+    prevBoxCollapsedForAnimatingRef.current = boxCollapsed;
+    setBoxHeightAnimating(true);
+  }
+  useEffect(() => {
+    const duration = boxCollapsed ? BOX_COLLAPSE_MS : HEADER_MORPH_MS;
+    const id = window.setTimeout(() => setBoxHeightAnimating(false), duration);
+    return () => window.clearTimeout(id);
+  }, [boxCollapsed]);
+
+  // The single, unified signal every layout-tracked sibling below the
+  // header (the tab nav, the content pane) reads to give up its own
+  // `layout="position"` FLIP: while any of these is true, the header area
+  // is genuinely reflowing on its own real clock, and a FLIP layered on
+  // top of that can only fall behind, never match it.
+  //   - `collapsed !== boxCollapsed`: the dwell between `collapsed` first
+  //     changing (which is also the exact render `isRunning`-derived
+  //     classes like the tab nav's own margin swap) and the box's real
+  //     height actually starting to move — a pure per-render comparison,
+  //     so it's already true on that very first render, with no effect
+  //     lag at all. This is what closes the resume "hop"/pause "bounce":
+  //     the previous approximation only started suppressing once the box's
+  //     real transition began, missing this earlier dwell entirely.
+  //   - `boxHeightAnimating`: the box's own real transition itself.
+  //   - `pillTraveling`: the mini-session slot's own real height animation
+  //     growing/shrinking directly inside the tab nav, on a separate clock
+  //     from the box (driven by `isRunning`, not by `collapsed`/
+  //     `boxCollapsed`'s own timing).
+  // Covers a plain, unstaged `pause()` click too — that never touches
+  // transitionStage/transitionKind at all, so an approximation gated on
+  // those alone always missed it.
+  const headerReflowActive = collapsed !== boxCollapsed || boxHeightAnimating || pillTraveling;
 
   // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
@@ -356,7 +457,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [saveStatus, performSave]);
 
-  const sessionRunning = status === "running";
+  const sessionRunning = isRunning;
 
   const value = useMemo(
     () => ({
@@ -367,10 +468,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       endAndSubmit,
       transitionStage,
       transitionKind,
-      boxHeightAnimating,
-      setBoxHeightAnimating,
+      collapsed,
+      boxCollapsed,
       pillTraveling,
-      setPillTraveling,
+      headerReflowActive,
       requestStartNew,
       requestContinuePrevious,
       requestResume,
@@ -389,8 +490,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }),
     [
       status, elapsedMs, lastUpdated, pause, endAndSubmit,
-      transitionStage, transitionKind, boxHeightAnimating, setBoxHeightAnimating,
-      pillTraveling, setPillTraveling,
+      transitionStage, transitionKind, collapsed, boxCollapsed,
+      pillTraveling, headerReflowActive,
       requestStartNew, requestContinuePrevious, requestResume, requestDiscard,
       sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer,
       saveStatus, lastSavedAt, markDirty, forceSync, resetSignal,
