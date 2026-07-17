@@ -1223,7 +1223,11 @@ function IndexInner() {
               // the whole width — not just blended under the active tab the way
               // its own -bottom-px overlay (see StatusBar) is meant to.
               tab === "data" && "-mt-px",
-              tab === "schedule" ? "pt-2" : tab === "data" ? "pt-0" : "pt-5",
+              // Info/Notifications/Settings each already carry their own
+              // top margin (mt-6) on their own inner wrapper — adding pt-5
+              // here too just doubled the gap above them (44px total)
+              // instead of the single ~24px every other tab settles for.
+              tab === "schedule" ? "pt-2" : "pt-0",
             )}
           >
             {tab === "data" && (

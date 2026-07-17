@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, CheckCircle2, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { CheckCircle2, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { PersonPill } from "@/components/StaffDirectory";
-import { Avatar } from "@/components/Avatar";
-import { PhotoZoomButton, PhotoZoomDialog } from "@/components/PhotoZoom";
+import { PhotoZoomButton, BlurredPhotoZoomButton } from "@/components/PhotoZoom";
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { AccordionRow } from "./AccordionRow";
@@ -21,17 +20,11 @@ import { useScheduleData, type Appointment } from "@/components/ScheduleContext"
 import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
-import { cn } from "@/lib/utils";
 import phineasPhoto from "@/assets/images/people/phineas.jpeg";
 import lindaPhoto from "@/assets/images/people/linda.jpeg";
 import lawrencePhoto from "@/assets/images/people/lawrence.jpeg";
 import hondaOdysseyPhoto from "@/assets/images/vehicles/honda-odyssey.webp";
 import toyotaCamryPhoto from "@/assets/images/vehicles/toyota-camry.jpeg";
-
-// How long a revealed client photo stays unblurred before hiding itself
-// again — long enough to actually register a face, short enough that the
-// screen doesn't sit showing it indefinitely.
-const REVEAL_MS = 3000;
 
 // Request Edit's textarea auto-grows to fit its content between these two
 // bounds — MIN keeps a short field (e.g. "No") from rendering as a single
@@ -224,7 +217,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
         <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
           {GUARDIANS.map((g) => (
             <div key={g.id} className="flex items-center gap-3 p-3">
-              <PhotoZoomButton avatar={g.avatar} label={g.name} size="size-10" />
+              <BlurredPhotoZoomButton avatar={g.avatar} label={g.name} size="size-10" iconClassName="size-4" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{g.name}</p>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -691,7 +684,14 @@ function ClientHeader() {
   });
   return (
     <div className="flex items-center gap-4">
-      <ClientAvatar />
+      <BlurredPhotoZoomButton
+        avatar={CLIENT.avatar}
+        label={`${CLIENT.firstName} ${CLIENT.lastName}`}
+        size="size-20"
+        bgClassName="bg-blue-100"
+        ringClassName="border-2 border-blue-300"
+        iconClassName="size-6"
+      />
       <div className="min-w-0">
         <h1 className="font-display text-3xl font-bold leading-none truncate">
           {CLIENT.firstName}
@@ -704,91 +704,5 @@ function ClientHeader() {
         </p>
       </div>
     </div>
-  );
-}
-
-// Starts blurred with a small "tap to reveal" hint; a tap unblurs it for
-// REVEAL_MS before it hides itself again. A SECOND tap while it's revealed
-// doesn't just re-blur early — it opens the same full-size zoom every other
-// photo in this pane uses (see PhotoZoomButton), since at that point the
-// user has already chosen to look at it and is asking to look closer.
-function ClientAvatar() {
-  const [revealed, setRevealed] = useState(false);
-  const [zoomOpen, setZoomOpen] = useState(false);
-  const reblurTimerRef = useRef<number | null>(null);
-
-  const scheduleReblur = () => {
-    if (reblurTimerRef.current !== null) window.clearTimeout(reblurTimerRef.current);
-    reblurTimerRef.current = window.setTimeout(() => setRevealed(false), REVEAL_MS);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (reblurTimerRef.current !== null) window.clearTimeout(reblurTimerRef.current);
-    };
-  }, []);
-
-  const handleClick = () => {
-    if (!revealed) {
-      setRevealed(true);
-      scheduleReblur();
-    } else {
-      setZoomOpen(true);
-      if (reblurTimerRef.current !== null) window.clearTimeout(reblurTimerRef.current);
-    }
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label={
-          revealed
-            ? `${CLIENT.firstName}'s photo — tap to enlarge`
-            : `Tap to reveal ${CLIENT.firstName}'s photo`
-        }
-        className="relative size-20 shrink-0"
-      >
-        {/* Its own overflow-hidden/clip-path box, separate from the ring
-            below — a blur filter's bleed only reliably clips to the exact
-            rounded shape when it lives inside its own circular clip; sharing
-            that box with the ring (a border on the same element) was letting
-            the blur spill a sliver past the circle's edge, clipped to the
-            element's square border-box instead. */}
-        <div className="absolute inset-0 overflow-hidden rounded-full [clip-path:circle(50%)] bg-blue-100">
-          <Avatar
-            value={CLIENT.avatar}
-            className={cn(
-              "h-full w-full object-cover transition-[filter] duration-300",
-              !revealed && "blur-md",
-            )}
-          />
-        </div>
-        {/* The ring, drawn as its own layer on top of the clipping circle
-            above instead of sharing its box — see that div's comment. */}
-        <div
-          className="absolute inset-0 rounded-full border-2 border-blue-300 pointer-events-none"
-          aria-hidden
-        />
-        {!revealed && (
-          // Centered (not corner-pinned) and bare — a corner badge got
-          // clipped by the circle's own rounded edge (a square positioned
-          // near a circle's bounding-box corner sits mostly outside the
-          // circle itself), and the white pill/shadow behind it read as a
-          // button when it's only ever a passive hint.
-          <Eye className="absolute inset-0 m-auto size-6 text-white opacity-50" aria-hidden />
-        )}
-      </button>
-      <PhotoZoomDialog
-        open={zoomOpen}
-        onOpenChange={(open) => {
-          setZoomOpen(open);
-          if (!open) scheduleReblur();
-        }}
-        avatar={CLIENT.avatar}
-        label={`${CLIENT.firstName} ${CLIENT.lastName}`}
-      />
-    </>
   );
 }
