@@ -408,7 +408,7 @@ export function ScheduleView({
     setFlashRowId(id);
     setFlashGen((n) => n + 1);
   };
-  const stickyTop = useStickyTop();
+  const stickyTop = useStickyTop(false);
   const [stickyCompact, setStickyCompact] = useState(false);
   const togglesSentinelRef = useRef<HTMLDivElement>(null);
 

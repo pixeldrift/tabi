@@ -24,6 +24,7 @@ import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
+import { useSuppressSessionLayout } from "@/components/SessionContext";
 import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { cn } from "@/lib/utils";
@@ -116,6 +117,16 @@ export function DataToolbar({
   // synced with the tab nav and pane, but still a visible drop on every
   // fresh page load) before it's had a chance to genuinely settle.
   const initialLayoutSettled = useInitialLayoutSettled();
+  // See useSuppressSessionLayout's own comment: the session box's real
+  // height `animate()` is what actually pushes this sticky toolbar's `top`
+  // (by way of `stickyTop`, which is ALSO given this same grace-extended
+  // condition as its own `immediate` flag — see useStickyTop's call site in
+  // routes/index.tsx) during a start/pause/resume/discard(-excluded)
+  // transition, on its own clock — not something this `layout="position"`
+  // FLIP (which only snapshots a target once per render) can stay in step
+  // with. Without this, the toolbar was visibly detaching from the pane and
+  // tab nav during those transitions instead of moving as one linked unit.
+  const suppressSessionLayout = useSuppressSessionLayout();
 
   // Re-centers the popover horizontally on the viewport after Radix
   // positions it (which otherwise hugs the button's own left-of-center
@@ -212,7 +223,10 @@ export function DataToolbar({
       // growth (see both hooks' own comments) — into a single frame.
       layout="position"
       transition={{
-        layout: !layoutReady || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+        layout:
+          !layoutReady || !initialLayoutSettled || suppressSessionLayout
+            ? { duration: 0 }
+            : NOTIFICATION_AREA_TRANSITION,
       }}
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
       style={{ top: stickyTop }}

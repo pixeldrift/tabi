@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { User, ChevronDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { EmailIcon } from "./icons/EmailIcon";
@@ -111,14 +110,14 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
 
 /** A person's name, styled as a pill — same look everywhere it appears
  *  (Info tab's plan/BCBA/team rows). Staff members (anyone with a
- *  `STAFF_DIRECTORY` entry) open a small Profile/Phone/Email/Chat menu;
- *  the client themself has no staff record, so their pill stays a plain,
- *  non-interactive label. `size="sm"` matches the compact inline pills
- *  used in denser rows (StatusBar's "Previous Session ... by" line) —
- *  same interaction, just smaller text/icon/padding. */
+ *  `STAFF_DIRECTORY` entry) open their profile card directly — its own
+ *  Phone/Email/Chat buttons sit right at the top, so there's no separate
+ *  menu step first. The client themself has no staff record, so their pill
+ *  stays a plain, non-interactive label. `size="sm"` matches the compact
+ *  inline pills used in denser rows (StatusBar's "Previous Session ... by"
+ *  line) — same interaction, just smaller text/icon/padding. */
 export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
   const staff = STAFF_DIRECTORY[name];
-  const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-sm";
   const iconSize = size === "sm" ? "size-2.5" : "size-3";
@@ -134,85 +133,19 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
 
   return (
     <>
-      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
-              sizeClasses,
-            )}
-          >
-            <User className={iconSize} fill="currentColor" strokeWidth={0} />
-            <span>{name}</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          side="bottom"
-          align="center"
-          sideOffset={8}
-          // z-[80]: PersonPill can be invoked from inside another already-
-          // open popover (e.g. SaveIndicator's own "Saved by" row, z-[70]) —
-          // without a z-index above every known container it might be
-          // nested in, this menu paints partially underneath its own
-          // parent's box instead of on top of it.
-          className="group z-[80] w-48 rounded-xl border-2 border-blue-300 bg-card p-1 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-        >
-          <MenuButton
-            icon={<User className="size-3.5" />}
-            label="Profile"
-            onClick={() => {
-              setMenuOpen(false);
-              setProfileOpen(true);
-            }}
-          />
-          <MenuLink icon={<PhoneIcon className="size-3.5" />} label="Phone" href={`tel:${staff.phone}`} />
-          <MenuLink icon={<EmailIcon className="size-3.5" />} label="Email" href={`mailto:${staff.email}`} />
-          {/* No chat surface exists in this app yet — closes the menu rather
-              than linking anywhere real. */}
-          <MenuButton icon={<ChatIcon className="size-3.5" />} label="Chat" onClick={() => setMenuOpen(false)} />
-          {/* Arrow — same rotated-square idiom as every other popup in the
-              app (NumberKeypad, the filter popover, the rating picker),
-              flipping which edge is drawn depending on which side Radix
-              actually placed the content. */}
-          <div
-            className={cn(
-              "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
-              "-top-[6px] border-l-2 border-t-2",
-              "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[6px]",
-              "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
-              "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
-            )}
-          />
-        </PopoverContent>
-      </Popover>
+      <button
+        type="button"
+        onClick={() => setProfileOpen(true)}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
+          sizeClasses,
+        )}
+      >
+        <User className={iconSize} fill="currentColor" strokeWidth={0} />
+        <span>{name}</span>
+      </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
-  );
-}
-
-function MenuButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground/80 hover:bg-stone-100 hover:text-foreground transition-colors"
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-function MenuLink({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
-  return (
-    <a
-      href={href}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground/80 hover:bg-stone-100 hover:text-foreground transition-colors"
-    >
-      {icon}
-      {label}
-    </a>
   );
 }
 

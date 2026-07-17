@@ -195,7 +195,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
   // session state — a fixed scroll-margin guess undershoots it whenever the
   // banner's expanded, leaving a jumped-to section's heading tucked out of
   // sight underneath. Same live measurement DataDetailsDrawer already uses.
-  const stickyTop = useStickyTop();
+  const stickyTop = useStickyTop(false);
   const jumpTo = (id: string) => {
     const el = document.getElementById(id);
     if (!el) return;
