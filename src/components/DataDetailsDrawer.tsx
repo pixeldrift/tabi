@@ -27,6 +27,17 @@ import { cn } from "@/lib/utils";
  *  into the panel's already-tight body width. */
 const DRAWER_TILE_GAP_PX = 6;
 
+/** Module-level (not React state) — flips true once, the first time ANY
+ *  DataDetailsDrawer instance's mount effect fires, and then stays true for
+ *  the rest of the page's life. Only the very first instance the app ever
+ *  mounts is at risk of a hydration mismatch (it's the one whose closed
+ *  state, if any, was actually part of the server-rendered HTML this
+ *  client render has to match on its first pass) — every later instance,
+ *  including every prev/next remount, mounts well after that initial
+ *  hydration has already committed, so it's safe for it to render its real
+ *  content immediately instead of repeating the same one-tick delay. */
+let hasHydratedOnce = false;
+
 /** How long the outgoing card's content plays its exit slide before the
  *  real prev/next callback fires (see triggerPrev/triggerNext) — the
  *  parent doesn't actually switch `activeId` until this elapses, so the
@@ -269,6 +280,16 @@ export function DataDetailsDrawer({
   // showing — measured directly here (rather than threaded down as a prop)
   // since it's a different element than whatever positions this drawer.
   const toolbarRowHeight = useElementHeight("[data-toolbar-row]");
+  // Gates rendering until this instance is safely past any hydration risk —
+  // see `hasHydratedOnce`'s own comment. `false` here (server, or the app's
+  // very first client render) means this render must stay a no-op to match
+  // whatever the server produced; the mount effect below then flips it once
+  // hydration has actually committed. Any LATER instance — including every
+  // prev/next remount — reads `hasHydratedOnce` already `true` at this
+  // exact point (it can only become true after the first hydration
+  // finishes, which always happens before a user could trigger a remount),
+  // so it starts `true` here and skips the wait entirely.
+  const [mounted, setMounted] = useState(() => typeof document !== "undefined" && hasHydratedOnce);
   const [arrowTop, setArrowTop] = useState(0);
   // Lazily measured up front (not just `null`, corrected a frame later by
   // the layout effect below) — `x`'s own useMotionValue call just below only
@@ -333,10 +354,10 @@ export function DataDetailsDrawer({
 
   // Guards every window.innerWidth read below — this app's dev server does
   // an initial SSR pass where `window` doesn't exist yet (see the
-  // `typeof document` gate further down, which already assumes a browser
-  // and reads window there safely). 0 is never actually seen on screen —
-  // first real paint happens client-side, by which point window is real
-  // and this recomputes.
+  // `mounted`-gated JSX further down, which already assumes a browser and
+  // reads window there safely). 0 is never actually seen on screen — first
+  // real paint happens client-side, by which point window is real and this
+  // recomputes.
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
 
   // The panel's own resting width, in px, for whichever non-full state it's
@@ -548,6 +569,16 @@ export function DataDetailsDrawer({
     exitTimeoutRef.current = window.setTimeout(() => onNextCard(), EXIT_MS);
   };
 
+  // Only the very first instance (mounted false above) needs this — it
+  // flips both its own flag (unblocking its JSX below) and the shared
+  // module-level one, so every instance mounted from here on already
+  // starts past the gate (see `mounted`'s own comment).
+  useEffect(() => {
+    hasHydratedOnce = true;
+    if (!mounted) setMounted(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // useLayoutEffect (not useEffect) — this runs before the browser paints,
   // so a freshly-mounted instance (after a prev/next card switch) measures
   // and settles arrowTop/hugWidth in the same frame it first renders,
@@ -659,21 +690,7 @@ export function DataDetailsDrawer({
     onOpenChange(true);
   };
 
-  // A plain synchronous environment check (not a `useState`/`useEffect`
-  // "mounted" flag, which this used to be) — that pattern forced every
-  // fresh instance, including every prev/next remount (a NEW instance each
-  // time — see slideFrom's own comment), to render nothing at all for one
-  // commit before its effect flipped the flag true a tick later. For the
-  // very first mount of the app that's invisible (nothing was on screen
-  // yet anyway), but for a remount replacing an already-open, full-width
-  // drawer it was a real one-frame flash of the card list underneath
-  // before the drawer reappeared — easy to misread as the drawer itself
-  // shrinking and springing back. This check needs no state or effect: the
-  // only time it's ever false is the dev server's initial SSR pass, where
-  // `document` (like `window` above) genuinely doesn't exist yet — true on
-  // every real client-side render, including every remount, from the very
-  // first one.
-  if (typeof document === "undefined") return null;
+  if (!mounted) return null;
 
   // Kept below the toolbar-covered strip at the panel's own top (the arrow
   // only ever points at a card in the pane, never into the toolbar itself).
@@ -889,8 +906,12 @@ export function DataDetailsDrawer({
                 actually drags open/closed (see the pan-gesture rewrite
                 above), just toggles on tap, so a single directional chevron
                 that flips 180° now matches the real interaction better than
-                a "drag either way" glyph. Same rotate-on-state-change idiom
-                as the Select trigger's own chevron. */}
+                a "drag either way" glyph. Points left at normal width
+                (tapping expands further left, toward full) and right at
+                full width (tapping collapses back right, toward normal) —
+                the chevron always points the way the panel's own edge is
+                about to travel. Same rotate-on-state-change idiom as the
+                Select trigger's own chevron. */}
             {open && (
               <button
                 type="button"
@@ -908,7 +929,7 @@ export function DataDetailsDrawer({
                 <TimeChevronIcon
                   className={cn(
                     "size-3.5 transition-transform duration-200",
-                    widthMode === "full" && "rotate-180",
+                    widthMode !== "full" && "rotate-180",
                   )}
                 />
               </button>
