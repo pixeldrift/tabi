@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   Check,
   CheckCircle2,
@@ -23,6 +24,7 @@ import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
+import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
@@ -139,13 +141,29 @@ export function DataToolbar({
     (filters.showHidden ? 1 : 0);
 
   return (
-    <div
+    <motion.div
       // Named so the drawer's own top offset can be measured off this
       // element's rendered bottom edge (see useElementBottom) — the drawer
       // is bounded to below the toolbar (including the "Start session"
       // banner below the row, when it's showing) rather than the full
       // viewport.
       data-toolbar
+      // `stickyTop` (from useStickyTop's ResizeObserver) only updates once
+      // the header's real box has already resized — a render or more behind
+      // Framer's own per-frame projection updates for the tab nav
+      // (motion.nav, layout="position") and the content pane below
+      // (motion.section, same LayoutGroup id="session-bar" in
+      // routes/index.tsx). Without `layout="position"` here too, this div's
+      // CSS `top` jumps to each new stickyTop value instantly (a plain React
+      // commit, no transition) while its LayoutGroup siblings glide —
+      // reading as the toolbar freezing, then teleporting, disconnected
+      // from everything around it. Adding it to the same tracked layout
+      // group turns each of those instant jumps into a FLIP tween batched
+      // into the same frame-by-frame motion as the nav and the pane, so all
+      // three move as one linked unit relative to the header instead of on
+      // three separate clocks.
+      layout="position"
+      transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
       style={{ top: stickyTop }}
     >
@@ -347,7 +365,7 @@ export function DataToolbar({
         </div>
       </div>
       {children}
-    </div>
+    </motion.div>
   );
 }
 
