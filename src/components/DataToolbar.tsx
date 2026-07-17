@@ -25,6 +25,7 @@ import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
 import { NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
+import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
@@ -39,6 +40,18 @@ const KIND_META: Record<
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
   timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
 };
+
+/** Module-level (not React state) — flips true once, the first time ANY
+ *  DataToolbar instance's mount effect fires, and stays true for the rest of
+ *  the page's life. The Data tab is the default tab (see routes/index.tsx),
+ *  so this component is part of the initial SSR/hydration pass — the server
+ *  can't measure `[data-status-bar]`'s real pixel height, so `useStickyTop`
+ *  necessarily starts at a placeholder there, corrected a tick later once
+ *  the client actually lays out. Only THIS very first instance is at risk of
+ *  animating that placeholder->real correction as a real move (see
+ *  `layoutReady` below); every later mount (leaving the Data tab and coming
+ *  back) is client-side only, with no SSR placeholder to correct away from. */
+let hasHydratedOnce = false;
 
 export interface DataToolbarProps {
   stickyTop: number;
@@ -78,6 +91,31 @@ export function DataToolbar({
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterContentRef = useRef<HTMLDivElement>(null);
   const [filterArrowLeft, setFilterArrowLeft] = useState(16);
+
+  // Gates the `layout="position"` FLIP tracking below until this instance
+  // is safely past any hydration risk — see `hasHydratedOnce`'s own
+  // comment. `false` here (server, or the page's very first client render)
+  // means `layout` starts out OFF, so Framer registers this element's
+  // projection node fresh once `useStickyTop`'s placeholder->real
+  // correction has already landed, with nothing stale to FLIP away from —
+  // instead of turning that one-tick correction into a visible "starts too
+  // high, drops into place" animation on every page load. Any LATER mount
+  // (leaving the Data tab and coming back) reads `hasHydratedOnce` already
+  // `true` here, so `layout` is on from its very first render, in step with
+  // the tab nav and content pane's own tracking in the same LayoutGroup.
+  const [layoutReady, setLayoutReady] = useState(() => typeof document !== "undefined" && hasHydratedOnce);
+  useEffect(() => {
+    hasHydratedOnce = true;
+    if (!layoutReady) setLayoutReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Also waits on the shared "session-bar" LayoutGroup settle flag — see
+  // use-initial-layout-settle's own comment. StatusBar's box grows once
+  // its demo-only "Previous Session" row appears a beat after mount, and
+  // without this, the toolbar would track THAT one-time growth (correctly
+  // synced with the tab nav and pane, but still a visible drop on every
+  // fresh page load) before it's had a chance to genuinely settle.
+  const initialLayoutSettled = useInitialLayoutSettled();
 
   // Re-centers the popover horizontally on the viewport after Radix
   // positions it (which otherwise hugs the button's own left-of-center
@@ -161,9 +199,21 @@ export function DataToolbar({
       // group turns each of those instant jumps into a FLIP tween batched
       // into the same frame-by-frame motion as the nav and the pane, so all
       // three move as one linked unit relative to the header instead of on
-      // three separate clocks.
+      // three separate clocks. `layout="position"` stays on unconditionally
+      // (never toggled off/on) — see the tab nav's own `suppressNavLayout`
+      // comment in StatusBar: toggling the boolean itself makes Framer
+      // re-initialize its projection right as it re-enables, catching the
+      // tail of whatever moved while it was off and animating THAT with
+      // the full transition, which is worse than what it's meant to fix.
+      // Zeroing just the duration (below) instead keeps measurement
+      // continuous and collapses anything that happens before this
+      // instance is ready — `layoutReady`'s own one-tick hydration
+      // correction, or `initialLayoutSettled`'s one-time StatusBar-driven
+      // growth (see both hooks' own comments) — into a single frame.
       layout="position"
-      transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
+      transition={{
+        layout: !layoutReady || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+      }}
       className="sticky z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
       style={{ top: stickyTop }}
     >
