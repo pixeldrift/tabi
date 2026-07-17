@@ -442,11 +442,10 @@ export function StatusBar({
               <h1 className="min-w-0 font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
               {/* Independent of the title's own text, so it stays visible
                   (shrink-0) even once the title itself has to truncate on a
-                  narrow screen — a quick "am I on the latest build" check
-                  shouldn't be the first thing that gets clipped. The commit
-                  count alone answers "is this newer than that other
-                  screenshot" at a glance; the full SHA behind the tap is for
-                  the rarer case of pinning a bug to one exact build. */}
+                  narrow screen. __APP_VERSION__ (vite.config.ts) is a static
+                  string bumped by hand per release, not derived from git —
+                  the full commit SHA behind the tap is still real, for the
+                  rarer case of pinning a bug to one exact build. */}
               <button
                 type="button"
                 onClick={() => setShowCommitSha((v) => !v)}

@@ -7,12 +7,15 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import svgr from "vite-plugin-svgr";
 
-// Shown in the header next to the data sheet title — the repo's total
-// commit count, so it climbs on its own with every push instead of needing
-// a manual bump per release. Falls back to "dev" wherever git isn't
-// available (e.g. an archive/tarball build). The short SHA is exact-build
-// detail a glance at the count doesn't give you — tucked behind a tap in
-// the UI (see StatusBar) rather than shown by default.
+// Shown in the header next to the data sheet title. Static — bump this by
+// hand with each release rather than deriving it from the commit count, so
+// it only changes when someone deliberately decides this is a new version.
+const APP_VERSION = "v542";
+
+// Falls back to "dev" wherever git isn't available (e.g. an archive/tarball
+// build). Exact-build detail a glance at the version above doesn't give
+// you — tucked behind a tap in the UI (see StatusBar) rather than shown by
+// default.
 function gitOutput(command: string, fallback: string): string {
   try {
     return execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
@@ -20,7 +23,6 @@ function gitOutput(command: string, fallback: string): string {
     return fallback;
   }
 }
-const APP_VERSION = `v${gitOutput("git rev-list --count HEAD", "0")}`;
 const APP_COMMIT_SHA = gitOutput("git rev-parse --short HEAD", "dev");
 
 export default defineConfig({
