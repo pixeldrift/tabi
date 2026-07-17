@@ -914,8 +914,7 @@ function SaveIndicator({
           collisionPadding={16}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
-          // z-50) needs to paint above that or its "Saved by" pill (which
-          // now opens its own nested Profile/Phone/Email/Chat menu) sits
+          // z-50) needs to paint above that or its "Saved by" pill sits
           // underneath the toolbar and its clicks get intercepted there.
           className="relative z-[70] w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
