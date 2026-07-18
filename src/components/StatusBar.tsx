@@ -897,17 +897,19 @@ export function StatusBar({
           }
         }}
       >
-        {/* max-h so a review with several open sections can't grow past the
-            viewport — same 2rem-total margin convention the width already
-            uses (see w-[calc(100%-2rem)]), just applied to height too.
-            flex-col + the scroll area's own flex-1 min-h-0 keeps the title
-            and buttons pinned in place while only the middle content
-            scrolls, rather than the whole dialog (including its own
-            header/footer) scrolling as one block. Each section's own list
-            still caps and scrolls independently on top of that (see
-            ReviewSection). */}
-        <DialogContent className="w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
-          <DialogHeader className="text-left sm:text-left shrink-0">
+        {/* Fixed height (not just a max) — same 2rem-total margin
+            convention the width already uses (see w-[calc(100%-2rem)]),
+            applied on every side, so the dialog consistently fills most of
+            the viewport instead of shrink-wrapping to content and forcing
+            more scrolling than it needs to. flex-col + the scroll area's
+            own flex-1 min-h-0 keeps the title and buttons pinned in place
+            while only the middle content scrolls; the border-b/border-t on
+            the header/footer read as a divider marking that boundary
+            instead of content just getting clipped with no explanation.
+            Each section's own list still caps and scrolls independently on
+            top of that (see ReviewSection). */}
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm h-[calc(100vh-2rem)] flex flex-col overflow-hidden border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
+          <DialogHeader className="text-left sm:text-left shrink-0 border-b border-border pb-4">
             <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
             <DialogDescription className="text-left">
               {hasAnyReviewData
@@ -975,7 +977,7 @@ export function StatusBar({
               </ReviewSection>
             )}
           </div>
-          <DialogFooter className="shrink-0 flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+          <DialogFooter className="shrink-0 border-t border-border pt-4 flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
             <button
               onClick={() => {
                 endAndSubmit();
