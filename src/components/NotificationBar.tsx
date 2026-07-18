@@ -704,28 +704,6 @@ export function NotificationsPane() {
 
   return (
     <div className="pb-8">
-      <div className="max-w-2xl mx-auto mt-6 px-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Notifications</h2>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setGroupByType((v) => !v)}
-              aria-pressed={groupByType}
-              aria-label={groupByType ? "Show one combined list" : "Group notifications by type"}
-              className={cn(
-                "grid place-items-center size-6 rounded-full transition-colors",
-                groupByType ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-              )}
-            >
-              <Group className="size-4" />
-            </button>
-            <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
-              Clear all
-            </button>
-          </div>
-        </div>
-      </div>
       {/* Sticky filter bar — same idiom as Schedule's own toggles row: full-
           bleed background (breaking out of the max-w-2xl content column via
           the negative margins below) so the sticky strip spans the whole
@@ -733,7 +711,12 @@ export function NotificationsPane() {
           the content above/below it. No pill backgrounds (unlike the Data
           toolbar's own kind chips) — just icon + label, color signaling
           selection, so five of them read as compact filters rather than a
-          row of bubbles. */}
+          row of bubbles. Group-by-type and Clear All live here too, pinned
+          to the right, rather than a separate non-sticky header row above —
+          there's no other persistent "Notifications" heading now; the
+          centered label below stands in for it whenever compacting has
+          actually freed up room for one. */}
+      <div className="mt-3" />
       <div ref={filterSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
@@ -770,8 +753,9 @@ export function NotificationsPane() {
             );
           })}
           {/* Centered label, mirroring Schedule's own centered schedule-name
-              fade-in — gives the compacted, icon-only bar an identity
-              instead of reading as an anonymous row of buttons. */}
+              fade-in — only actually shown once compacting the filters
+              above has freed up middle space to put it in; the row's
+              natural width already fills that space while expanded. */}
           <div
             className={cn(
               "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
@@ -780,6 +764,29 @@ export function NotificationsPane() {
             aria-hidden={!stickyCompact}
           >
             <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">Notifications</span>
+          </div>
+          {/* Right-pinned utilities — always present, not part of the
+              filters' own compact/expand choreography. */}
+          <div className="ml-auto flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setGroupByType((v) => !v)}
+              aria-pressed={groupByType}
+              aria-label={groupByType ? "Show one combined list" : "Group notifications by type"}
+              className={cn(
+                "shrink-0",
+                groupByType ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+              )}
+            >
+              <Group className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="shrink-0 whitespace-nowrap font-medium text-blue-500 hover:text-blue-600"
+            >
+              Clear all
+            </button>
           </div>
         </div>
       </div>
