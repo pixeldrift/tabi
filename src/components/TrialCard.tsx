@@ -180,11 +180,12 @@ export function TrialCard({
     : "Min not met";
 
   const { markDirty, resetSignal, sessionRunning } = useCardSession();
-  const summary =
-    target > 0
-      ? `${completedCount}/${target} trials, ${percentCorrectDisplay} correct`
-      : `${completedCount} trials, ${percentCorrectDisplay} correct`;
-  useReportCardStatus(cardKey, completedCount > 0, isComplete, title, summary);
+  useReportCardStatus(cardKey, completedCount > 0, isComplete, {
+    title,
+    kind: "trial",
+    value: percentCorrectReady ? percentCorrectDisplay : `${completedCount}/${target || "–"}`,
+    unit: percentCorrectReady ? "% Correct" : "Trials",
+  });
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {

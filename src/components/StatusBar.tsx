@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
+import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { PersonPill } from "./StaffDirectory";
 import { markInitialLayoutSettled, useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import {
@@ -45,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { useDataToolbar } from "@/components/DataToolbarContext";
+import { DATA_TYPE_INFO } from "@/lib/dataTypeInfo";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
 import {
@@ -213,27 +215,32 @@ export function StatusBar({
 
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
-  // Every mounted card reports its own title/summary/completion here
-  // (see useReportCardStatus) — read fresh each time the end-session
-  // dialog opens, so its review list always reflects this session's actual
+  const [untouchedOpen, setUntouchedOpen] = useState(false);
+  // Every mounted card reports its own title/kind/key-figure here (see
+  // useReportCardStatus) — read fresh each time the end-session dialog
+  // opens, so its review list always reflects this session's actual
   // results rather than a stale snapshot from when StatusBar first mounted.
   const { hasData: cardHasData, completion: cardCompletion, cardMeta } = useDataToolbar();
   const allReviewCards = Object.keys(cardMeta).map((id) => ({
     id,
     title: cardMeta[id].title,
-    summary: cardMeta[id].summary,
+    kind: cardMeta[id].kind,
+    value: cardMeta[id].value,
+    unit: cardMeta[id].unit,
     hasData: cardHasData[id] ?? false,
     isComplete: cardCompletion[id] ?? false,
   }));
   // Cards that never got any data this session are left out of the itemized
-  // list (nothing was attempted, so there's nothing to warn about missing)
-  // but still counted below, so a tech can see at a glance that a target
-  // was skipped entirely rather than just quietly disappearing.
+  // list (nothing was attempted, so there's nothing to headline a number
+  // for) — they surface instead in the collapsed "no data recorded"
+  // disclosure below, so a tech can still see a target was skipped
+  // entirely rather than it just quietly disappearing.
   const reviewCards = allReviewCards
     .filter((c) => c.hasData)
     .sort((a, b) => Number(a.isComplete) - Number(b.isComplete) || a.title.localeCompare(b.title));
-  const incompleteCount = reviewCards.filter((c) => !c.isComplete).length;
-  const untouchedCount = allReviewCards.length - reviewCards.length;
+  const untouchedCards = allReviewCards
+    .filter((c) => !c.hasData)
+    .sort((a, b) => a.title.localeCompare(b.title));
   const [showCommitSha, setShowCommitSha] = useState(false);
   // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
   // when the box collapses — except for discard, where the box was already
@@ -791,7 +798,13 @@ export function StatusBar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={endOpen} onOpenChange={setEndOpen}>
+      <Dialog
+        open={endOpen}
+        onOpenChange={(open) => {
+          setEndOpen(open);
+          if (!open) setUntouchedOpen(false);
+        }}
+      >
         <DialogContent className="w-[calc(100%-2rem)] max-w-sm border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
@@ -802,38 +815,82 @@ export function StatusBar({
             </DialogDescription>
           </DialogHeader>
           {reviewCards.length > 0 && (
-            <>
-              {/* Scrolls on its own, capped height — the summary paragraph
-                  below is a sibling, not a child, specifically so it's
-                  never clipped by this box's own scroll bounds regardless
-                  of how many cards are in the list. */}
-              <div className="max-h-56 overflow-y-auto -mx-1 px-1">
-                <ul className="flex flex-col gap-1.5">
-                  {reviewCards.map((c) => (
-                    <li key={c.id} className="flex items-start gap-2 rounded-lg bg-stone-50 px-2.5 py-2">
-                      {c.isComplete ? (
-                        <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-green-600" />
-                      ) : (
-                        <TriangleAlert className="size-4 shrink-0 mt-0.5 text-amber-500" />
-                      )}
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">{c.title}</div>
-                        <div className="text-xs text-muted-foreground">{c.summary}</div>
+            // No fixed count of targets a caseload might have — this scrolls
+            // on its own, capped height, rather than growing the dialog
+            // unbounded.
+            <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+              <ul className="flex flex-col gap-1.5">
+                {reviewCards.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 rounded-lg bg-stone-50 px-2.5 py-2">
+                    {c.isComplete ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-green-600" />
+                    ) : (
+                      <TriangleAlert className="size-4 shrink-0 text-amber-500" />
+                    )}
+                    <div className="min-w-0 flex-1 text-sm font-medium text-foreground truncate">{c.title}</div>
+                    {/* The number is the thing a tech actually scans for —
+                        large/bold and right-aligned, with its unit as a
+                        small label underneath rather than folded into one
+                        sentence. */}
+                    <div className="shrink-0 text-right">
+                      <div className="text-xl font-bold leading-none text-foreground tabular-nums">{c.value}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+                        {c.unit}
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {untouchedCards.length > 0 && (
+            <div className="border-t border-border pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!untouchedOpen) playSoundEffect("twirldown");
+                  setUntouchedOpen((v) => !v);
+                }}
+                aria-expanded={untouchedOpen}
+                aria-label={
+                  untouchedOpen ? "Hide targets with no data" : "Show targets with no data"
+                }
+                className="flex w-full items-center justify-between gap-2 text-xs text-muted-foreground"
+              >
+                <span>
+                  {untouchedCards.length} target{untouchedCards.length === 1 ? "" : "s"}{" "}
+                  {untouchedCards.length === 1 ? "has" : "have"} no data recorded.
+                </span>
+                <TimeChevronIcon
+                  className={cn(
+                    "size-3.5 shrink-0 transition-transform duration-200",
+                    untouchedOpen && "translate-y-0.5 rotate-90",
+                  )}
+                />
+              </button>
+              {/* Same twirldown idiom as TrialCard/TaskAnalysisCard's own
+                  "show all" toggle — animated height via grid-template-rows
+                  rather than max-height, so it doesn't need a guessed cap. */}
+              <div
+                className={cn(
+                  "grid transition-[grid-template-rows] duration-200 ease-out",
+                  untouchedOpen ? "grid-rows-[1fr] mt-2" : "grid-rows-[0fr]",
+                )}
+              >
+                <div className="overflow-hidden">
+                  <ul className="max-h-40 overflow-y-auto flex flex-col gap-1 -mx-1 px-1">
+                    {untouchedCards.map((c) => (
+                      <li key={c.id} className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
+                        <span className="shrink-0 [&>svg]:size-3.5">
+                          {DATA_TYPE_INFO[c.kind].icon}
+                        </span>
+                        <span className="truncate">{c.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              {(incompleteCount > 0 || untouchedCount > 0) && (
-                <p className="text-xs text-muted-foreground">
-                  {incompleteCount > 0 &&
-                    `${incompleteCount} target${incompleteCount === 1 ? "" : "s"} above ${incompleteCount === 1 ? "hasn't met its" : "haven't met their"} minimum and won't be graphed.`}
-                  {incompleteCount > 0 && untouchedCount > 0 && " "}
-                  {untouchedCount > 0 &&
-                    `${untouchedCount} more target${untouchedCount === 1 ? "" : "s"} ${untouchedCount === 1 ? "has" : "have"} no data recorded.`}
-                </p>
-              )}
-            </>
+            </div>
           )}
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
             <button

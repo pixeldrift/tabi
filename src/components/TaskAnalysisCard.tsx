@@ -277,13 +277,12 @@ export function TaskAnalysisCard({
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const isComplete = completed >= steps.length;
   const remaining = Math.max(0, steps.length - completed);
-  useReportCardStatus(
-    cardKey,
-    completed > 0,
-    isComplete,
+  useReportCardStatus(cardKey, completed > 0, isComplete, {
     title,
-    `${independent}/${steps.length} independent`,
-  );
+    kind: "task-analysis",
+    value: `${independent}/${steps.length}`,
+    unit: "Independent",
+  });
 
   // Steps must be scored in order — a step can't be scored while an earlier
   // one is still blank, so its own score buttons stay disabled until the

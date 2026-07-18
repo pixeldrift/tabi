@@ -112,15 +112,15 @@ export function RateCard({
   const isComplete = minDurationSec !== undefined ? elapsed / 1000 >= minDurationSec : count > 0 || elapsed > 0;
   // The clock (elapsed) ticks the moment a session starts regardless of
   // whether anyone's tallied anything — it's the denominator a rate needs
-  // — so a summary of instance count alone would read as "0 instances"
-  // even on a card that's genuinely been collecting data the whole time.
-  useReportCardStatus(
-    cardKey,
-    count > 0 || elapsed > 0,
-    isComplete,
+  // — so hasData is true (there's a real clock running) well before any
+  // instance is tallied, and the rate itself is 0 rather than undefined.
+  const ratePerMin = elapsed > 0 ? count / (elapsed / 60_000) : 0;
+  useReportCardStatus(cardKey, count > 0 || elapsed > 0, isComplete, {
     title,
-    `${count} instance${count === 1 ? "" : "s"} over ${formatTime(elapsed)}`,
-  );
+    kind: "rate",
+    value: ratePerMin.toFixed(1),
+    unit: "Times per Minute",
+  });
 
   useEffect(() => {
     if (!ticking) return;

@@ -109,14 +109,24 @@ interface DataToolbarContextValue {
    *  session state. */
   hasData: Record<string, boolean>;
   completion: Record<string, boolean>;
-  /** Each card's own title and a one-line, human-readable readout of what
-   *  it's actually recorded so far (e.g. "8/10 trials, 75% correct") — same
-   *  reporting path as hasData/completion above, for the pre-submission
-   *  review screen (see StatusBar's endOpen dialog). */
-  cardMeta: Record<string, { title: string; summary: string }>;
+  /** Each card's own title, kind, and its single key figure — a value
+   *  (e.g. "75%", "3", "1.2") plus the unit describing it (e.g.
+   *  "% Correct", "Total Count", "Times per Minute") — same reporting path
+   *  as hasData/completion above, for the pre-submission review screen
+   *  (see StatusBar's endOpen dialog). Kept as a value/unit pair rather
+   *  than one pre-joined string so the review screen can style the number
+   *  distinctly (large/bold) from its label. */
+  cardMeta: Record<string, { title: string; kind: CardKind; value: string; unit: string }>;
   reportCardStatus: (
     id: string,
-    status: { hasData: boolean; isComplete: boolean; title: string; summary: string },
+    status: {
+      hasData: boolean;
+      isComplete: boolean;
+      title: string;
+      kind: CardKind;
+      value: string;
+      unit: string;
+    },
   ) => void;
 }
 
@@ -152,7 +162,9 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
   const [order, setOrderState] = useState<string[]>([]);
   const [hasData, setHasData] = useState<Record<string, boolean>>({});
   const [completion, setCompletion] = useState<Record<string, boolean>>({});
-  const [cardMeta, setCardMeta] = useState<Record<string, { title: string; summary: string }>>({});
+  const [cardMeta, setCardMeta] = useState<
+    Record<string, { title: string; kind: CardKind; value: string; unit: string }>
+  >({});
 
   useEffect(() => {
     const stored = loadPersisted();
@@ -239,15 +251,28 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
   const reportCardStatus = useCallback(
     (
       id: string,
-      status: { hasData: boolean; isComplete: boolean; title: string; summary: string },
+      status: {
+        hasData: boolean;
+        isComplete: boolean;
+        title: string;
+        kind: CardKind;
+        value: string;
+        unit: string;
+      },
     ) => {
       setHasData((prev) => (prev[id] === status.hasData ? prev : { ...prev, [id]: status.hasData }));
       setCompletion((prev) => (prev[id] === status.isComplete ? prev : { ...prev, [id]: status.isComplete }));
-      setCardMeta((prev) =>
-        prev[id]?.title === status.title && prev[id]?.summary === status.summary
-          ? prev
-          : { ...prev, [id]: { title: status.title, summary: status.summary } },
-      );
+      setCardMeta((prev) => {
+        const existing = prev[id];
+        if (
+          existing?.title === status.title &&
+          existing?.kind === status.kind &&
+          existing?.value === status.value &&
+          existing?.unit === status.unit
+        )
+          return prev;
+        return { ...prev, [id]: { title: status.title, kind: status.kind, value: status.value, unit: status.unit } };
+      });
     },
     [],
   );
@@ -292,28 +317,29 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
 }
 
 /** Cards call this with their own live "has any data been recorded" /
- *  "has this met its own minimum" booleans (plus a title and a one-line
- *  human-readable summary of what's actually been recorded) so the
- *  toolbar's dataFilter/completionFilter and the pre-submission review
- *  screen (StatusBar's endOpen dialog) have something to read — only the
- *  card itself knows what counts as "data" or "complete" for its own type,
- *  and how to describe its own results in plain language. */
+ *  "has this met its own minimum" booleans, plus a title/kind and their
+ *  single key figure as a value/unit pair (e.g. value "75", unit
+ *  "% Correct") so the toolbar's dataFilter/completionFilter and the
+ *  pre-submission review screen (StatusBar's endOpen dialog) have
+ *  something to read — only the card itself knows what counts as "data" or
+ *  "complete" for its own type, and which figure is the meaningful one to
+ *  headline for its kind. */
 export function useReportCardStatus(
   id: string,
   hasData: boolean,
   isComplete: boolean,
-  title: string,
-  summary: string,
+  info: { title: string; kind: CardKind; value: string; unit: string },
 ) {
   const { reportCardStatus } = useDataToolbar();
+  const { title, kind, value, unit } = info;
   // Chimes once per genuine incomplete -> complete transition, never on
   // mount (a card that loads already complete, e.g. resuming a previous
   // session, shouldn't announce it) and never on the reverse edge (a reset
   // or an edit that un-completes a card isn't a "success").
   const wasCompleteRef = useRef(isComplete);
   useEffect(() => {
-    reportCardStatus(id, { hasData, isComplete, title, summary });
+    reportCardStatus(id, { hasData, isComplete, title, kind, value, unit });
     if (isComplete && !wasCompleteRef.current) playSoundEffect("success");
     wasCompleteRef.current = isComplete;
-  }, [id, hasData, isComplete, title, summary, reportCardStatus]);
+  }, [id, hasData, isComplete, title, kind, value, unit, reportCardStatus]);
 }

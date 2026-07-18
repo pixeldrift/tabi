@@ -147,7 +147,12 @@ export function DurationCard({
   const isComplete = minDurationSec !== undefined ? totalSec >= minDurationSec : totalMs > 0;
   const remaining =
     minDurationSec !== undefined ? Math.max(0, Math.ceil(minDurationSec - totalSec)) : 0;
-  useReportCardStatus(cardKey, totalMs > 0, isComplete, title, formatTime(totalMs));
+  useReportCardStatus(cardKey, totalMs > 0, isComplete, {
+    title,
+    kind: "duration",
+    value: formatTime(totalMs),
+    unit: "Total Time",
+  });
 
   const flushLive = () => {
     if (running && runningIdx !== null) {
