@@ -20,11 +20,11 @@ export type SoundEffectKey =
   | "success";
 
 // The filename (without extension) each key resolves to under
-// src/assets/audio/effects/ — kebab-case, matching this repo's existing
-// audio asset naming (chime01.wav etc. one level up). Drop a .wav or .mp3
-// with one of these names into that folder and playSoundEffect() below
-// picks it up automatically, no code changes needed — see that folder's
-// own README.
+// src/assets/audio/ — same folder as the existing alarm sounds
+// (chime01.wav etc. — see alarmSounds.ts), kebab-case. Drop a .wav or .mp3
+// with one of these names in there and playSoundEffect() below picks it up
+// automatically, no code changes needed — see the README's own "Sound
+// effects" section for the full reference table.
 const SOUND_EFFECT_FILENAMES: Record<SoundEffectKey, string> = {
   startup: "startup",
   sessionStart: "session-start",
@@ -47,13 +47,15 @@ const SOUND_EFFECT_FILENAMES: Record<SoundEffectKey, string> = {
   success: "success",
 };
 
-// Eagerly globs whatever audio files actually exist under effects/ at build
-// time, resolved to their served URL — e.g. "tally-up.wav" and
+// Eagerly globs whatever audio files actually exist in src/assets/audio/ at
+// build time, resolved to their served URL — e.g. "tally-up.wav" and
 // "tally-up.mp3" both resolve to the "tally-up" key, so either format
 // works. A key with no matching file simply isn't in this map; nothing
 // errors at build or call time either way, which is what lets every
-// trigger below be wired up before a single sound file exists.
-const effectUrls = import.meta.glob<string>("/src/assets/audio/effects/*.{wav,mp3}", {
+// trigger below be wired up before a single sound file exists. Also
+// matches alarmSounds.ts's own chime01.wav etc. — those just aren't
+// looked up by any key here, so they're harmless extra entries.
+const effectUrls = import.meta.glob<string>("/src/assets/audio/*.{wav,mp3}", {
   eager: true,
   query: "?url",
   import: "default",
@@ -79,9 +81,9 @@ function getAudioElement(key: SoundEffectKey): HTMLAudioElement | null {
 }
 
 /** Plays the named UI sound effect — a silent no-op until a matching file
- *  is dropped into src/assets/audio/effects/ (see SOUND_EFFECT_FILENAMES
- *  and that folder's README). Every call site below is triggered directly
- *  by the user gesture that should play it (a tap, a toggle, a dialog
+ *  is dropped into src/assets/audio/ (see SOUND_EFFECT_FILENAMES and the
+ *  README's "Sound effects" section). Every call site below is triggered
+ *  directly by the user gesture that should play it (a tap, a toggle, a dialog
  *  opening), so — unlike alarmSounds.ts's timer-driven alerts — none of
  *  these need the priming/unlock dance; they're always already inside a
  *  gesture's own call stack. The one exception is "startup", which plays
