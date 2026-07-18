@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, CalendarDays, X, Check, Volume2, VolumeX, ArrowRight, ArrowDownToLine } from "lucide-react";
+import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, CalendarDays, Group, X, Check, Volume2, VolumeX, ArrowRight, ArrowDownToLine } from "lucide-react";
 import {
   useNotifications,
   isAlert,
@@ -648,6 +648,9 @@ export function NotificationsPane() {
       return next;
     });
   };
+  // Separate from the filter chips — this controls how the (already
+  // filtered) list is laid out, not which notifications are in it.
+  const [groupByType, setGroupByType] = useState(false);
 
   const allOrdered = [...notifications].sort((a, b) => b.createdAt - a.createdAt);
   const ordered =
@@ -664,15 +667,40 @@ export function NotificationsPane() {
     );
   }
 
+  const renderRow = (n: Notification) => (
+    <NotificationListRow key={n.id} n={n} onClear={() => clear(n.id)} onActivate={() => activate(n)} />
+  );
+
   return (
     <div className="max-w-2xl mx-auto mt-6 px-4 pb-8">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Notifications</h2>
-        <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
-          Clear all
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setGroupByType((v) => !v)}
+            aria-pressed={groupByType}
+            aria-label={groupByType ? "Show one combined list" : "Group notifications by type"}
+            className={cn(
+              "grid place-items-center size-6 rounded-full transition-colors",
+              groupByType ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+            )}
+          >
+            <Group className="size-4" />
+          </button>
+          <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
+            Clear all
+          </button>
+        </div>
       </div>
       <div className="mb-3 flex flex-wrap gap-1.5">
+        {/* Label-only (no icon), unlike every category chip below it — reads
+            as the "reset" action rather than one more category to pick. */}
+        <ToggleChip
+          label="See All"
+          selected={categoryFilter.size === 0}
+          onClick={() => setCategoryFilter(new Set())}
+        />
         {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
           const Icon = CATEGORY_ICON[category];
           return (
@@ -690,13 +718,24 @@ export function NotificationsPane() {
         <p className="py-8 text-center text-sm text-muted-foreground">
           No notifications match the selected filters.
         </p>
+      ) : groupByType ? (
+        <div className="space-y-4">
+          {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
+            const items = ordered.filter((n) => categoryForKind(n.kind) === category);
+            if (items.length === 0) return null;
+            return (
+              <div key={category}>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</h3>
+                <div className="space-y-2">
+                  <AnimatePresence initial={false}>{items.map(renderRow)}</AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-2">
-          <AnimatePresence initial={false}>
-            {ordered.map((n) => (
-              <NotificationListRow key={n.id} n={n} onClear={() => clear(n.id)} onActivate={() => activate(n)} />
-            ))}
-          </AnimatePresence>
+          <AnimatePresence initial={false}>{ordered.map(renderRow)}</AnimatePresence>
         </div>
       )}
     </div>
