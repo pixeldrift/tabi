@@ -897,7 +897,14 @@ export function StatusBar({
           }
         }}
       >
-        <DialogContent className="w-[calc(100%-2rem)] max-w-sm border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
+        {/* max-h/overflow so a review with several open sections scrolls as
+            a whole rather than getting clipped by the viewport — same
+            2rem-total margin convention the width already uses (see
+            w-[calc(100%-2rem)]), just applied to height too. Each
+            section's own list still caps and scrolls independently (see
+            ReviewSection) — this is just the outer safety net for when
+            multiple sections are open at once. */}
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
             <DialogDescription className="text-left">
