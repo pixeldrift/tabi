@@ -132,7 +132,7 @@ export type NotificationCategory = "alarms" | "program-changes" | "messages" | "
 
 export const NOTIFICATION_CATEGORIES: { category: NotificationCategory; label: string }[] = [
   { category: "alarms", label: "Alarms" },
-  { category: "program-changes", label: "Program Changes" },
+  { category: "program-changes", label: "Program" },
   { category: "messages", label: "Messages" },
   { category: "edits", label: "Edits" },
   { category: "schedule", label: "Schedule" },

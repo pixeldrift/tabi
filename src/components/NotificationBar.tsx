@@ -15,7 +15,7 @@ import {
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
-import { ToggleChip } from "./DataToolbar";
+import { useStickyTop } from "@/hooks/use-sticky-top";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICON: Record<NotificationCategory, ComponentType<{ className?: string }>> = {
@@ -652,6 +652,37 @@ export function NotificationsPane() {
   // filtered) list is laid out, not which notifications are in it.
   const [groupByType, setGroupByType] = useState(false);
 
+  // Sticky filter bar, same idiom as Schedule's own toggles row: a
+  // zero-height sentinel placed right before it tracks the real geometry
+  // directly (rather than IntersectionObserver, whose batched callbacks lag
+  // the actual stick/unstick moment by a frame or more), driving a compact
+  // mode where each label collapses and its icon slides into the space that
+  // frees up.
+  const stickyTop = useStickyTop();
+  const [stickyCompact, setStickyCompact] = useState(false);
+  const filterSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = filterSentinelRef.current;
+    if (!el) return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      setStickyCompact(el.getBoundingClientRect().top <= stickyTop);
+    };
+    const onScrollOrResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [stickyTop]);
+
   const allOrdered = [...notifications].sort((a, b) => b.createdAt - a.createdAt);
   const ordered =
     categoryFilter.size === 0
@@ -672,48 +703,87 @@ export function NotificationsPane() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto mt-6 px-4 pb-8">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Notifications</h2>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setGroupByType((v) => !v)}
-            aria-pressed={groupByType}
-            aria-label={groupByType ? "Show one combined list" : "Group notifications by type"}
-            className={cn(
-              "grid place-items-center size-6 rounded-full transition-colors",
-              groupByType ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-            )}
-          >
-            <Group className="size-4" />
-          </button>
-          <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
-            Clear all
-          </button>
+    <div className="pb-8">
+      <div className="max-w-2xl mx-auto mt-6 px-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">Notifications</h2>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setGroupByType((v) => !v)}
+              aria-pressed={groupByType}
+              aria-label={groupByType ? "Show one combined list" : "Group notifications by type"}
+              className={cn(
+                "grid place-items-center size-6 rounded-full transition-colors",
+                groupByType ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+              )}
+            >
+              <Group className="size-4" />
+            </button>
+            <button type="button" onClick={clearAll} className="text-xs font-medium text-blue-500 hover:text-blue-600">
+              Clear all
+            </button>
+          </div>
         </div>
       </div>
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {/* Label-only (no icon), unlike every category chip below it — reads
-            as the "reset" action rather than one more category to pick. */}
-        <ToggleChip
-          label="See All"
-          selected={categoryFilter.size === 0}
-          onClick={() => setCategoryFilter(new Set())}
-        />
-        {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
-          const Icon = CATEGORY_ICON[category];
-          return (
-            <ToggleChip
-              key={category}
-              icon={<Icon className="size-3" />}
-              label={label}
-              selected={categoryFilter.has(category)}
-              onClick={() => toggleCategory(category)}
-            />
-          );
-        })}
+      {/* Sticky filter bar — same idiom as Schedule's own toggles row: full-
+          bleed background (breaking out of the max-w-2xl content column via
+          the negative margins below) so the sticky strip spans the whole
+          viewport once pinned, while its actual buttons stay lined up with
+          the content above/below it. No pill backgrounds (unlike the Data
+          toolbar's own kind chips) — just icon + label, color signaling
+          selection, so five of them read as compact filters rather than a
+          row of bubbles. */}
+      <div ref={filterSentinelRef} className="h-0" aria-hidden />
+      <div
+        className={cn(
+          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-8",
+          stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
+        )}
+        style={{ top: stickyTop }}
+      >
+        <div className="relative flex items-center gap-3 text-xs max-w-2xl mx-auto">
+          {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
+            const Icon = CATEGORY_ICON[category];
+            const selected = categoryFilter.has(category);
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => toggleCategory(category)}
+                aria-pressed={selected}
+                className={cn(
+                  "flex items-center gap-1.5 shrink-0",
+                  selected ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                <span
+                  className={cn(
+                    "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
+                    stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[100px] opacity-100 delay-300",
+                  )}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+          {/* Centered label, mirroring Schedule's own centered schedule-name
+              fade-in — gives the compacted, icon-only bar an identity
+              instead of reading as an anonymous row of buttons. */}
+          <div
+            className={cn(
+              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
+              stickyCompact ? "opacity-100 delay-300" : "opacity-0 delay-0",
+            )}
+            aria-hidden={!stickyCompact}
+          >
+            <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">Notifications</span>
+          </div>
+        </div>
       </div>
+      <div className="max-w-2xl mx-auto px-4 pt-3">
       {ordered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           No notifications match the selected filters.
@@ -738,6 +808,7 @@ export function NotificationsPane() {
           <AnimatePresence initial={false}>{ordered.map(renderRow)}</AnimatePresence>
         </div>
       )}
+      </div>
     </div>
   );
 }
