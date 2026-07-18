@@ -168,9 +168,5 @@ and scheduling items below all need to respect that split.
       notification — there's no access-level distinction or approve/deny
       handling yet, so every submission behaves the same regardless of who's
       submitting it.
-- [ ] Auto-expire/fade preference for the Notifications tab's persistent list
-      (e.g. auto-clear after an hour, a day, etc.). Today notifications
-      persist there indefinitely until manually cleared — no such
-      preference exists yet, this is just noting the idea for later.
 
 *Roadmap last updated: 2026-07-17*
