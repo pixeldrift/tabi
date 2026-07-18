@@ -30,11 +30,26 @@ function getAudioElement(style: AlarmSoundStyle): HTMLAudioElement {
   return el;
 }
 
+// Bumped on every REAL playAlarmSound() call for a style, so primeAlarmAudio
+// (below) can tell whether a genuine chime claimed an element while its own
+// muted priming play() was still in flight. Without this, priming's delayed
+// `.then()` cleanup — pause/rewind/unmute, fired whenever the browser gets
+// around to resolving that promise — races the real playback: it can land
+// AFTER a real chime already reset the same shared element to play audibly,
+// silently cutting that chime off mid-word, or (worse, on engines where the
+// mute flag doesn't suppress output for the first few ms of a first-ever
+// play — the exact class of quirk these comments already call out for
+// mobile Safari) let a sliver of real, unmuted audio through as a stray
+// blip. Real playback should always win a race against the one-time unlock.
+const playGeneration = new Map<AlarmSoundStyle, number>();
+
 /** Plays the given alarm style's audio file — used both by the Settings
  *  pane (so picking a style is an audible choice, not a guess from its
  *  label alone) and by live in-app alerts. */
 export function playAlarmSound(style: AlarmSoundStyle) {
+  playGeneration.set(style, (playGeneration.get(style) ?? 0) + 1);
   const audio = getAudioElement(style);
+  audio.muted = false;
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }
@@ -49,18 +64,26 @@ export function playAlarmSound(style: AlarmSoundStyle) {
  *  timer-driven repeats unblocked. Priming each element directly inside a
  *  genuine gesture's own call stack — muted, then immediately paused and
  *  rewound — is what actually earns each one the browser's ongoing
- *  playback permission, before any alarm has a real reason to fire. */
+ *  playback permission, before any alarm has a real reason to fire.
+ *
+ *  That same first gesture (e.g. tapping Start Session) can also be the
+ *  thing that triggers a genuine alert — see playGeneration above — so this
+ *  only tears down what it itself started, never a real chime that's since
+ *  taken over the element. */
 export function primeAlarmAudio() {
   for (const style of Object.keys(ALARM_SOUND_FILES) as AlarmSoundStyle[]) {
     const el = getAudioElement(style);
+    const generationAtStart = playGeneration.get(style) ?? 0;
     el.muted = true;
     el.play()
       .then(() => {
+        if ((playGeneration.get(style) ?? 0) !== generationAtStart) return;
         el.pause();
         el.currentTime = 0;
         el.muted = false;
       })
       .catch(() => {
+        if ((playGeneration.get(style) ?? 0) !== generationAtStart) return;
         el.muted = false;
       });
   }
