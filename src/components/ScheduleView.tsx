@@ -47,7 +47,7 @@ import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
-import { useSettings, DEFAULT_DAY_START, DEFAULT_DAY_END } from "@/components/SettingsContext";
+import { useSettings } from "@/components/SettingsContext";
 import {
   useScheduleData,
   PHINEAS_APPTS,
@@ -56,7 +56,6 @@ import {
   type AlertMode,
   type AlertSettings,
   type PrimingSettings,
-  type ApptTag,
   type Appointment,
 } from "@/components/ScheduleContext";
 
@@ -143,11 +142,13 @@ const DEFAULT_ALERT: AlertSettings = {
   allowSnooze: true,
   autofade: true,
 };
+// Defaults — TODO: surface in user settings.
+const DEFAULT_PRIMING_MINUTES = 5;
 const DEFAULT_PRIMING: PrimingSettings = {
   mode: "off",
   allowSnooze: true,
   autofade: true,
-  minutesPrior: 5, // DEFAULT_PRIMING_MINUTES (declared below)
+  minutesPrior: DEFAULT_PRIMING_MINUTES,
 };
 
 type ScheduleItem = {
@@ -190,9 +191,6 @@ const EDGE_ADD_ACTIVITY_PX = 48;
 // this one has no second case to account for.
 const APPT_HALO_COLOR = "#f0fdf4";
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
-
-// Defaults — TODO: surface in user settings.
-const DEFAULT_PRIMING_MINUTES = 5;
 
 // Animation timing — TODO: surface in user settings.
 const EDIT_MODE_DURATION_MS = 350;

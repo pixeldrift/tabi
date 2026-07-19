@@ -159,8 +159,6 @@ export function DurationCard({
     minDurationSec === undefined && behaviorRole === "interfering" && hasElapsedTime;
   const isComplete =
     minDurationSec !== undefined ? totalSec >= minDurationSec : totalMs > 0 || zeroCountsAsData;
-  const remaining =
-    minDurationSec !== undefined ? Math.max(0, Math.ceil(minDurationSec - totalSec)) : 0;
   useReportCardStatus(cardKey, totalMs > 0 || zeroCountsAsData, isComplete, {
     title,
     kind: "duration",
