@@ -715,50 +715,64 @@ export function NotificationsPane() {
           to the right, rather than a separate non-sticky header row above —
           there's no other persistent "Notifications" heading now; the
           centered label below stands in for it whenever compacting has
-          actually freed up room for one. */}
-      <div className="mt-3" />
+          actually freed up room for one. Three explicit grid columns
+          (filters / center label / utilities) rather than a flex row with
+          an absolutely-centered overlay — that way the center column's
+          width IS the leftover space between the other two, so the label
+          can never overlap either icon group at any width. */}
+      <div className="mt-1" />
       <div ref={filterSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-8",
+          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-4",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
         style={{ top: stickyTop }}
       >
-        <div className="relative flex items-center gap-3 text-xs max-w-2xl mx-auto">
-          {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
-            const Icon = CATEGORY_ICON[category];
-            const selected = categoryFilter.has(category);
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => toggleCategory(category)}
-                aria-pressed={selected}
-                className={cn(
-                  "flex items-center gap-1.5 shrink-0",
-                  selected ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
-                )}
-              >
-                <Icon className="size-3.5 shrink-0" />
-                <span
+        <div className="grid grid-cols-[minmax(0,auto)_1fr_auto] items-center gap-3 text-xs max-w-2xl mx-auto">
+          {/* min-w-0 + overflow-x-auto (rather than a plain flex row) so
+              that at narrow widths — where five full labels plus the
+              center label and the right-pinned utilities can't all fit —
+              this column scrolls internally instead of forcing the grid
+              wider and overlapping the other two columns. Only matters
+              pre-compact; once stickyCompact collapses the labels, five
+              icons alone always fit. */}
+          <div className="flex items-center gap-3 min-w-0 overflow-x-auto">
+            {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
+              const Icon = CATEGORY_ICON[category];
+              const selected = categoryFilter.has(category);
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => toggleCategory(category)}
+                  aria-pressed={selected}
                   className={cn(
-                    "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                    stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[100px] opacity-100 delay-300",
+                    "flex items-center gap-1.5 shrink-0",
+                    selected ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
                   )}
                 >
-                  {label}
-                </span>
-              </button>
-            );
-          })}
+                  <Icon className="size-3.5 shrink-0" />
+                  <span
+                    className={cn(
+                      "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
+                      stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[100px] opacity-100 delay-300",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           {/* Centered label, mirroring Schedule's own centered schedule-name
               fade-in — only actually shown once compacting the filters
-              above has freed up middle space to put it in; the row's
-              natural width already fills that space while expanded. */}
+              above has freed up middle space to put it in; sits in the
+              grid's own middle column so it's centered in whatever room is
+              actually left between the two icon groups. */}
           <div
             className={cn(
-              "absolute left-1/2 -translate-x-1/2 flex items-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
+              "flex items-center justify-center min-w-0 overflow-hidden transition-opacity duration-300 ease-out pointer-events-none",
               stickyCompact ? "opacity-100 delay-300" : "opacity-0 delay-0",
             )}
             aria-hidden={!stickyCompact}
@@ -767,7 +781,7 @@ export function NotificationsPane() {
           </div>
           {/* Right-pinned utilities — always present, not part of the
               filters' own compact/expand choreography. */}
-          <div className="ml-auto flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={() => setGroupByType((v) => !v)}
