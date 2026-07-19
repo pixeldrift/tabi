@@ -894,11 +894,15 @@ export function StatusBar({
           }
         }}
       >
-        {/* Fixed height (not just a max) — same 2rem-total margin
-            convention the width already uses (see w-[calc(100%-2rem)]),
-            applied on every side, so the dialog consistently fills most of
-            the viewport instead of shrink-wrapping to content and forcing
-            more scrolling than it needs to. flex-col + the scroll area's
+        {/* Fixed height (not just a max) — a wider vertical margin than the
+            width's own 2rem-total (see w-[calc(100%-2rem)]) because mobile
+            Safari's collapsing address/tab bar means the visible viewport
+            shrinks after load; 100dvh (not 100vh) already tracks that, but
+            the extra rem of slack on top keeps the dialog from reading as
+            clipped in the brief window before/if that chrome re-expands.
+            So the dialog consistently fills most of the viewport instead
+            of shrink-wrapping to content and forcing more scrolling than
+            it needs to. flex-col + the scroll area's
             own flex-1 min-h-0 keeps the title and buttons pinned in place
             while only the middle content scrolls — one scrollbar for the
             whole list, not one per section (see ReviewSection). Header
@@ -911,7 +915,7 @@ export function StatusBar({
             gap of matching background sat between wherever the list
             happened to clip and that divider line, reading as an
             unexplained dead zone rather than a real boundary. */}
-        <DialogContent className="w-[calc(100%-2rem)] max-w-sm h-[calc(100vh-2rem)] flex flex-col gap-0 overflow-hidden border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm h-[calc(100dvh-4rem)] flex flex-col gap-0 overflow-hidden border-2 border-green-400/80 ring-2 ring-inset ring-green-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left shrink-0 border-b border-border pb-4">
             <DialogTitle className="text-green-600">End Session & Graph Data</DialogTitle>
             <DialogDescription className="text-left">
