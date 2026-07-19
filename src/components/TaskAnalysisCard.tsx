@@ -19,6 +19,7 @@ import { UNSPECIFIED_LEVEL, PROMPT_LEVEL_ICONS } from "@/lib/promptLevels";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { playSoundEffect } from "@/lib/soundEffects";
+import { ACTION_BUTTON_COLORS } from "@/lib/actionButtonColors";
 import { cn } from "@/lib/utils";
 
 export type StepStatus = "independent" | "prompted" | "error" | null;
@@ -69,8 +70,7 @@ const OPTIONS: {
     label: "Error",
     icon: X,
     strokeWidth: 3,
-    classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-    selectedClasses: "bg-red-500 border-red-600 text-white",
+    ...ACTION_BUTTON_COLORS.red,
   },
   {
     value: "prompted",
@@ -79,16 +79,14 @@ const OPTIONS: {
     // HandHelping has much more path detail than Check/X, so the same
     // strokeWidth reads noticeably heavier — thinned to match their weight.
     strokeWidth: 1.75,
-    classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    selectedClasses: "bg-amber-500 border-amber-600 text-white",
+    ...ACTION_BUTTON_COLORS.amber,
   },
   {
     value: "independent",
     label: "Independent",
     icon: Check,
     strokeWidth: 3,
-    classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-    selectedClasses: "bg-green-500 border-green-600 text-white",
+    ...ACTION_BUTTON_COLORS.green,
   },
 ];
 
@@ -959,8 +957,8 @@ function TaskAnalysisPromptLevelButton({
           whileTap={{ scale: 0.96 }}
           className={cn(
             "flex-1 min-w-0 h-10 rounded-full border-2 flex flex-col items-center justify-center transition-colors disabled:opacity-40",
-            "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
+            ACTION_BUTTON_COLORS.amber.classes,
+            selected && cn("btn-bevel", ACTION_BUTTON_COLORS.amber.selectedClasses),
           )}
         >
           <span className="flex items-center gap-1">
@@ -1051,8 +1049,8 @@ function ListTaskAnalysisPromptLevelButton({
           aria-haspopup
           className={cn(
             "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
-            "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
+            ACTION_BUTTON_COLORS.amber.classes,
+            selected && cn("btn-bevel", ACTION_BUTTON_COLORS.amber.selectedClasses),
           )}
         >
           <HandHelping className="size-3.5 -translate-y-0.5" strokeWidth={1.75} />
@@ -1126,8 +1124,8 @@ function RowPromptLevelButton({
           disabled={disabled}
           className={cn(
             "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
-            "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-            selected && "btn-bevel bg-amber-500 border-amber-600 text-white",
+            ACTION_BUTTON_COLORS.amber.classes,
+            selected && cn("btn-bevel", ACTION_BUTTON_COLORS.amber.selectedClasses),
           )}
         >
           <HandHelping className="size-3.5" strokeWidth={1.75} />
