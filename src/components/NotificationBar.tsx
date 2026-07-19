@@ -38,6 +38,7 @@ import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICON: Record<NotificationCategory, ComponentType<{ className?: string }>> = {
@@ -730,36 +731,15 @@ export function NotificationsPane() {
   // filtered) list is laid out, not which notifications are in it.
   const [groupByType, setGroupByType] = useState(false);
 
-  // Sticky filter bar, same idiom as Schedule's own toggles row: a
-  // zero-height sentinel placed right before it tracks the real geometry
-  // directly (rather than IntersectionObserver, whose batched callbacks lag
-  // the actual stick/unstick moment by a frame or more), driving a compact
-  // mode where each label collapses and its icon slides into the space that
-  // frees up.
+  // Sticky filter bar, same idiom as Schedule's own toggles row (both share
+  // useStickyCompact): a zero-height sentinel placed right before it tracks
+  // the real geometry directly (rather than IntersectionObserver, whose
+  // batched callbacks lag the actual stick/unstick moment by a frame or
+  // more), driving a compact mode where each label collapses and its icon
+  // slides into the space that frees up.
   const stickyTop = useStickyTop();
-  const [stickyCompact, setStickyCompact] = useState(false);
   const filterSentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = filterSentinelRef.current;
-    if (!el) return;
-    let raf = 0;
-    const check = () => {
-      raf = 0;
-      setStickyCompact(el.getBoundingClientRect().top <= stickyTop);
-    };
-    const onScrollOrResize = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(check);
-    };
-    check();
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
-    window.addEventListener("resize", onScrollOrResize);
-    return () => {
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [stickyTop]);
+  const stickyCompact = useStickyCompact(filterSentinelRef, stickyTop);
 
   const allOrdered = [...notifications].sort((a, b) => b.createdAt - a.createdAt);
   const ordered =
