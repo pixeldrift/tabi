@@ -278,7 +278,6 @@ export function DurationCard({
       <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full h-full">
         <MiniTileShell
           title={title}
-          description={description}
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
@@ -313,9 +312,13 @@ export function DurationCard({
                   { label: "Total Time", value: formatTime(totalMs) },
                 ]}
               />
-              {teachingProcedure && (
+              {(teachingProcedure || description) && (
                 <div className="mt-4">
-                  <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
+                  <TeachingProcedureAccordion
+                    description={description}
+                    data={teachingProcedure}
+                    kind="duration"
+                  />
                 </div>
               )}
             </>
@@ -493,7 +496,6 @@ export function DurationCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<DurationIcon />}
         kind="duration"
         dataTypeLabel="Duration"
@@ -529,9 +531,13 @@ export function DurationCard({
                 { label: "Total Time", value: formatTime(totalMs) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="duration"
+                />
               </div>
             )}
           </>
@@ -600,7 +606,6 @@ export function DurationCard({
         dataType="Duration"
         dataTypeIcon={<DurationIcon />}
         kind="duration"
-        description={description}
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -646,9 +651,13 @@ export function DurationCard({
                 { label: "Total Time", value: formatTime(totalMs) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="duration"
+                />
               </div>
             )}
           </>

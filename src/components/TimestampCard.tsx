@@ -440,9 +440,10 @@ export function TimestampCard({
           className="shrink-0"
         />
       </div>
-      {teachingProcedure && (
+      {(teachingProcedure || description) && (
         <div className="mt-4">
           <TeachingProcedureAccordion
+            description={description}
             data={teachingProcedure}
             kind="timestamp"
             measurementLabelOverride={measurementLabelOverride}
@@ -457,7 +458,6 @@ export function TimestampCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -560,7 +560,6 @@ export function TimestampCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<TimestampIcon />}
         kind="timestamp"
         dataTypeLabel="Timestamp"
@@ -617,7 +616,6 @@ export function TimestampCard({
         dataType="Timestamp"
         dataTypeIcon={<TimestampIcon />}
         kind="timestamp"
-        description={description}
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}

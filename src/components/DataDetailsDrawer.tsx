@@ -10,10 +10,9 @@ import {
   type RefObject,
 } from "react";
 import { motion, useMotionValue, useTransform, animate, type PanInfo } from "motion/react";
-import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, AlignLeft } from "lucide-react";
+import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
-import { AccordionRow } from "./AccordionRow";
 import { useElementHeight, useElementRight } from "@/hooks/use-element-height";
 import { cn } from "@/lib/utils";
 
@@ -133,13 +132,11 @@ const DrawerTitle = memo(function DrawerTitle({
 /** Same reasoning as DrawerTitle above — kept separate from the panel's
  *  own frequently re-rendering state. */
 const DrawerContent = memo(function DrawerContent({
-  description,
   details,
   slideFrom,
   exitDir,
   contentScrollRef,
 }: {
-  description?: string;
   details?: ReactNode;
   slideFrom?: "left" | "right" | null;
   exitDir: "prev" | "next" | null;
@@ -147,12 +144,6 @@ const DrawerContent = memo(function DrawerContent({
 }) {
   const entered = useEnterPhase(slideFrom);
   const entering = slideFrom && !entered;
-  // Own local twirldown, same as TeachingProcedureAccordion's rows below it —
-  // starts (and, since this never gets a fresh mount of its own on a
-  // prev/next page, stays) collapsed until the tech actually wants it,
-  // rather than always-visible text competing with Quick Facts/Procedure
-  // for space every time the drawer opens.
-  const [descCollapsed, setDescCollapsed] = useState(true);
   return (
     <div
       ref={contentScrollRef}
@@ -173,19 +164,6 @@ const DrawerContent = memo(function DrawerContent({
         }
         transition={entering ? { duration: 0 } : SLIDE_TRANSITION}
       >
-        {description && (
-          <div className="mb-3 divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden text-sm">
-            <AccordionRow
-              id="description"
-              icon={<AlignLeft className="size-3.5" />}
-              label="Description"
-              collapsed={descCollapsed}
-              onToggle={() => setDescCollapsed((v) => !v)}
-            >
-              {description}
-            </AccordionRow>
-          </div>
-        )}
         {details && <div className="text-sm">{details}</div>}
       </motion.div>
     </div>
@@ -196,11 +174,6 @@ export interface DataDetailsDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  /** Short "what to tally/score" instruction for this target — its own
-   *  twirldown above `details`, collapsed by default (see DrawerContent's
-   *  own AccordionRow). Distinct from a teaching procedure's own `goal`
-   *  (the longer-term clinical objective) where both exist. */
-  description?: string;
   details?: ReactNode;
   /** Skip to the previous/next card in display order without closing the
    *  drawer — rendered as small circular arrows flanking the title. Omit
@@ -279,7 +252,6 @@ export function DataDetailsDrawer({
   open,
   onOpenChange,
   title,
-  description,
   details,
   onPrevCard,
   onNextCard,
@@ -1018,7 +990,6 @@ export function DataDetailsDrawer({
           </div>
         </div>
         <DrawerContent
-          description={description}
           details={details}
           slideFrom={slideFrom}
           exitDir={exitDir}

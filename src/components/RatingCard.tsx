@@ -115,7 +115,6 @@ export function RatingCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -147,10 +146,15 @@ export function RatingCard({
                 { label: "Current score", value: rating > 0 ? String(rating) : "Not yet scored" },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
                 <TeachingProcedureAccordion
-                  data={{ ...teachingProcedure, measurement: { scale: scaleRows } }}
+                  description={description}
+                  data={
+                    teachingProcedure
+                      ? { ...teachingProcedure, measurement: { scale: scaleRows } }
+                      : undefined
+                  }
                   kind="rating"
                 />
               </div>
@@ -199,7 +203,6 @@ export function RatingCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<Star />}
         kind="rating"
         dataTypeLabel="Score"
@@ -232,10 +235,15 @@ export function RatingCard({
                 { label: "Current score", value: rating > 0 ? String(rating) : "Not yet scored" },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
                 <TeachingProcedureAccordion
-                  data={{ ...teachingProcedure, measurement: { scale: scaleRows } }}
+                  description={description}
+                  data={
+                    teachingProcedure
+                      ? { ...teachingProcedure, measurement: { scale: scaleRows } }
+                      : undefined
+                  }
                   kind="rating"
                 />
               </div>
@@ -262,7 +270,6 @@ export function RatingCard({
       dataType="Score"
       dataTypeIcon={<Star />}
       kind="rating"
-      description={description}
       isActive={isActive}
       onActivate={onActivate}
       reorderEditing={reorderEditing}
@@ -296,10 +303,15 @@ export function RatingCard({
               { label: "Current score", value: rating > 0 ? String(rating) : "Not yet scored" },
             ]}
           />
-          {teachingProcedure && (
+          {(teachingProcedure || description) && (
             <div className="mt-4">
               <TeachingProcedureAccordion
-                data={{ ...teachingProcedure, measurement: { scale: scaleRows } }}
+                description={description}
+                data={
+                  teachingProcedure
+                    ? { ...teachingProcedure, measurement: { scale: scaleRows } }
+                    : undefined
+                }
                 kind="rating"
               />
             </div>

@@ -79,7 +79,6 @@ export interface CardShellProps extends CardEditAndDrawerProps {
   dataType?: string;
   /** Small outline icon shown to the left of the dataType label. */
   dataTypeIcon?: ReactNode;
-  description?: string;
   isActive?: boolean;
   onActivate?: () => void;
   /** 0–100 progress. Pass null/undefined to hide the progress bar entirely. */
@@ -107,7 +106,6 @@ export function CardShell({
   phase = "Intervention",
   dataType,
   dataTypeIcon,
-  description,
   isActive = true,
   onActivate,
   reorderEditing = false,
@@ -249,7 +247,6 @@ export function CardShell({
             open={detailsOpen}
             onOpenChange={onDetailsOpenChange ?? (() => {})}
             title={title}
-            description={description}
             details={details}
             onPrevCard={onPrevCard}
             onNextCard={onNextCard}

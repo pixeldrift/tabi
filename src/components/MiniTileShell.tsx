@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 export interface MiniTileShellProps extends CardEditAndDrawerProps {
   title: string;
-  description?: string;
   details?: ReactNode;
   isActive?: boolean;
   onActivate?: () => void;
@@ -49,7 +48,6 @@ const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
  *  instance whenever the element type at a given position changes. */
 export function MiniTileShell({
   title,
-  description,
   details,
   isActive = true,
   onActivate,
@@ -192,7 +190,6 @@ export function MiniTileShell({
               // that margin, so they keep the default breathing-room gap.
               hugGapPx={density === "large" ? -14 : undefined}
               title={title}
-              description={description}
               details={details}
               onPrevCard={onPrevCard}
               onNextCard={onNextCard}

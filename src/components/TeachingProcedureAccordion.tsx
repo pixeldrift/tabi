@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  AlignLeft,
   Target,
   Brain,
   ClipboardList,
@@ -35,6 +36,7 @@ export interface TeachingProcedure {
 }
 
 const ROW_IDS = [
+  "description",
   "goal",
   "rationale",
   "procedure",
@@ -69,11 +71,18 @@ const DEFAULT_EXPANDED = new Set<string>(["procedure", "measurement"]);
  *  a session can jump straight to just the row they need (usually
  *  Procedure or Measurement) instead of scrolling a wall of text. */
 export function TeachingProcedureAccordion({
+  description,
   data,
   kind,
   measurementLabelOverride,
 }: {
-  data: TeachingProcedure;
+  /** Short "what to tally/score" instruction for this target — its own row,
+   *  directly before Goal, collapsed by default like the rest. Independent
+   *  of `data`: a card can have a description with no full teaching
+   *  procedure (e.g. a single end-of-session rating), in which case this is
+   *  the only row the table renders. */
+  description?: string;
+  data?: TeachingProcedure;
   kind: CardKind;
   /** Overrides the kind's default positive/negative row labels — for a card
    *  whose own scoring buttons use bespoke wording (e.g. a Timestamp card
@@ -102,50 +111,63 @@ export function TeachingProcedureAccordion({
 
   return (
     <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden text-sm">
-      <AccordionRow
-        id="goal"
-        icon={<Target className="size-3.5" />}
-        label="Goal"
-        collapsed={collapsedIds.has("goal")}
-        onToggle={toggleRow}
-      >
-        {data.goal}
-      </AccordionRow>
-      <AccordionRow
-        id="rationale"
-        icon={<Brain className="size-3.5" />}
-        label="Rationale"
-        collapsed={collapsedIds.has("rationale")}
-        onToggle={toggleRow}
-      >
-        {data.rationale}
-      </AccordionRow>
-      <AccordionRow
-        id="procedure"
-        icon={<ClipboardList className="size-3.5" />}
-        label="Procedure"
-        collapsed={collapsedIds.has("procedure")}
-        onToggle={toggleRow}
-      >
-        {data.procedure}
-      </AccordionRow>
-      <AccordionRow
-        id="sd"
-        icon={<ArrowRight className="size-3.5" />}
-        label="SD"
-        collapsed={collapsedIds.has("sd")}
-        onToggle={toggleRow}
-      >
-        {data.sd}
-      </AccordionRow>
-      <AccordionRow
-        id="measurement"
-        icon={<Ruler className="size-3.5" />}
-        label="Measurement"
-        collapsed={collapsedIds.has("measurement")}
-        onToggle={toggleRow}
-      >
-        {/* Correct/error live together under one twirl rather than each
+      {description && (
+        <AccordionRow
+          id="description"
+          icon={<AlignLeft className="size-3.5" />}
+          label="Description"
+          collapsed={collapsedIds.has("description")}
+          onToggle={toggleRow}
+        >
+          {description}
+        </AccordionRow>
+      )}
+      {data && (
+        <>
+          <AccordionRow
+            id="goal"
+            icon={<Target className="size-3.5" />}
+            label="Goal"
+            collapsed={collapsedIds.has("goal")}
+            onToggle={toggleRow}
+          >
+            {data.goal}
+          </AccordionRow>
+          <AccordionRow
+            id="rationale"
+            icon={<Brain className="size-3.5" />}
+            label="Rationale"
+            collapsed={collapsedIds.has("rationale")}
+            onToggle={toggleRow}
+          >
+            {data.rationale}
+          </AccordionRow>
+          <AccordionRow
+            id="procedure"
+            icon={<ClipboardList className="size-3.5" />}
+            label="Procedure"
+            collapsed={collapsedIds.has("procedure")}
+            onToggle={toggleRow}
+          >
+            {data.procedure}
+          </AccordionRow>
+          <AccordionRow
+            id="sd"
+            icon={<ArrowRight className="size-3.5" />}
+            label="SD"
+            collapsed={collapsedIds.has("sd")}
+            onToggle={toggleRow}
+          >
+            {data.sd}
+          </AccordionRow>
+          <AccordionRow
+            id="measurement"
+            icon={<Ruler className="size-3.5" />}
+            label="Measurement"
+            collapsed={collapsedIds.has("measurement")}
+            onToggle={toggleRow}
+          >
+            {/* Correct/error live together under one twirl rather than each
             getting its own — you almost always want both at once when
             checking how to score something, not one at a time. Each badge
             below is a small copy of the actual scoring button it refers to
@@ -155,97 +177,99 @@ export function TeachingProcedureAccordion({
             instead of a binary correct/error, so they get one row per
             level (same badge + bold-label + description shape, just
             repeated) rather than the fixed positive/negative pair. */}
-        <div className="space-y-2">
-          {"scale" in data.measurement ? (
-            data.measurement.scale.map((level) => (
-              <p key={level.value} className="flex gap-1.5">
-                <span
-                  aria-hidden
-                  className="shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px] border-blue-300 bg-blue-50 text-blue-700"
-                >
-                  <Star className="size-2.5" strokeWidth={3} />
-                </span>
-                <span>
-                  <span className="font-semibold">Score {level.value}: </span>
-                  {level.description}
-                </span>
-              </p>
-            ))
-          ) : (
-            <>
-              <p className="flex gap-1.5">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "shrink-0 mt-0.5 grid place-items-center size-4 rounded-full",
-                    isTally
-                      ? "bg-blue-500 text-white"
-                      : "border-[1.5px] border-green-300 bg-green-50 text-green-700",
-                  )}
-                >
-                  {isTally ? (
-                    <Plus className="size-2.5" strokeWidth={3} />
-                  ) : (
-                    <Check className="size-2.5" strokeWidth={3} />
-                  )}
-                </span>
-                <span>
-                  <span className="font-semibold">{measurementLabels.positive}: </span>
-                  {data.measurement.markCorrect}
-                </span>
-              </p>
-              <p className="flex gap-1.5">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px]",
-                    isTally
-                      ? "border-border bg-white text-foreground/70"
-                      : "border-red-300 bg-red-50 text-red-700",
-                  )}
-                >
-                  {isTally ? (
-                    <Minus className="size-2.5" strokeWidth={3} />
-                  ) : (
-                    <X className="size-2.5" strokeWidth={3} />
-                  )}
-                </span>
-                <span>
-                  <span className="font-semibold">{measurementLabels.negative}: </span>
-                  {data.measurement.markError}
-                </span>
-              </p>
-            </>
-          )}
-        </div>
-      </AccordionRow>
-      <AccordionRow
-        id="correction"
-        icon={<HandHelping className="size-3.5" />}
-        label="Correction"
-        collapsed={collapsedIds.has("correction")}
-        onToggle={toggleRow}
-      >
-        {data.correction}
-      </AccordionRow>
-      <AccordionRow
-        id="materials"
-        icon={<Package className="size-3.5" />}
-        label="Materials"
-        collapsed={collapsedIds.has("materials")}
-        onToggle={toggleRow}
-      >
-        {data.materials}
-      </AccordionRow>
-      <AccordionRow
-        id="notes"
-        icon={<Lightbulb className="size-3.5" />}
-        label="Instructional Notes"
-        collapsed={collapsedIds.has("notes")}
-        onToggle={toggleRow}
-      >
-        {data.instructionalNotes}
-      </AccordionRow>
+            <div className="space-y-2">
+              {"scale" in data.measurement ? (
+                data.measurement.scale.map((level) => (
+                  <p key={level.value} className="flex gap-1.5">
+                    <span
+                      aria-hidden
+                      className="shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px] border-blue-300 bg-blue-50 text-blue-700"
+                    >
+                      <Star className="size-2.5" strokeWidth={3} />
+                    </span>
+                    <span>
+                      <span className="font-semibold">Score {level.value}: </span>
+                      {level.description}
+                    </span>
+                  </p>
+                ))
+              ) : (
+                <>
+                  <p className="flex gap-1.5">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "shrink-0 mt-0.5 grid place-items-center size-4 rounded-full",
+                        isTally
+                          ? "bg-blue-500 text-white"
+                          : "border-[1.5px] border-green-300 bg-green-50 text-green-700",
+                      )}
+                    >
+                      {isTally ? (
+                        <Plus className="size-2.5" strokeWidth={3} />
+                      ) : (
+                        <Check className="size-2.5" strokeWidth={3} />
+                      )}
+                    </span>
+                    <span>
+                      <span className="font-semibold">{measurementLabels.positive}: </span>
+                      {data.measurement.markCorrect}
+                    </span>
+                  </p>
+                  <p className="flex gap-1.5">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px]",
+                        isTally
+                          ? "border-border bg-white text-foreground/70"
+                          : "border-red-300 bg-red-50 text-red-700",
+                      )}
+                    >
+                      {isTally ? (
+                        <Minus className="size-2.5" strokeWidth={3} />
+                      ) : (
+                        <X className="size-2.5" strokeWidth={3} />
+                      )}
+                    </span>
+                    <span>
+                      <span className="font-semibold">{measurementLabels.negative}: </span>
+                      {data.measurement.markError}
+                    </span>
+                  </p>
+                </>
+              )}
+            </div>
+          </AccordionRow>
+          <AccordionRow
+            id="correction"
+            icon={<HandHelping className="size-3.5" />}
+            label="Correction"
+            collapsed={collapsedIds.has("correction")}
+            onToggle={toggleRow}
+          >
+            {data.correction}
+          </AccordionRow>
+          <AccordionRow
+            id="materials"
+            icon={<Package className="size-3.5" />}
+            label="Materials"
+            collapsed={collapsedIds.has("materials")}
+            onToggle={toggleRow}
+          >
+            {data.materials}
+          </AccordionRow>
+          <AccordionRow
+            id="notes"
+            icon={<Lightbulb className="size-3.5" />}
+            label="Instructional Notes"
+            collapsed={collapsedIds.has("notes")}
+            onToggle={toggleRow}
+          >
+            {data.instructionalNotes}
+          </AccordionRow>
+        </>
+      )}
     </div>
   );
 }

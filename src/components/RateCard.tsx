@@ -195,7 +195,6 @@ export function RateCard({
       <div ref={cardRef} className="w-full h-full">
         <MiniTileShell
           title={title}
-          description={description}
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
@@ -230,9 +229,13 @@ export function RateCard({
                   { label: "Period", value: formatTime(elapsed) },
                 ]}
               />
-              {teachingProcedure && (
+              {(teachingProcedure || description) && (
                 <div className="mt-4">
-                  <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
+                  <TeachingProcedureAccordion
+                    description={description}
+                    data={teachingProcedure}
+                    kind="rate"
+                  />
                 </div>
               )}
             </>
@@ -337,7 +340,6 @@ export function RateCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<RateIcon />}
         kind="rate"
         dataTypeLabel="Rate / Min"
@@ -373,9 +375,13 @@ export function RateCard({
                 { label: "Period", value: formatTime(elapsed) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="rate"
+                />
               </div>
             )}
           </>
@@ -433,7 +439,6 @@ export function RateCard({
         dataType="Rate / Min"
         dataTypeIcon={<RateIcon />}
         kind="rate"
-        description={description}
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -469,9 +474,13 @@ export function RateCard({
                 { label: "Period", value: formatTime(elapsed) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="rate"
+                />
               </div>
             )}
           </>

@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 export interface DataListRowProps extends CardEditAndDrawerProps {
   title: string;
-  description?: string;
   /** Which data-type info modal to open when the leading icon is tapped —
    *  see DataTypeInfoLabel. */
   kind: CardKind;
@@ -44,7 +43,6 @@ export interface DataListRowProps extends CardEditAndDrawerProps {
  *  would just duplicate the pull-tab in a view where space is tight. */
 export function DataListRow({
   title,
-  description,
   kind,
   dataTypeIcon,
   dataTypeLabel,
@@ -175,7 +173,6 @@ export function DataListRow({
           open={detailsOpen}
           onOpenChange={onDetailsOpenChange ?? (() => {})}
           title={title}
-          description={description}
           details={details}
           onPrevCard={onPrevCard}
           onNextCard={onNextCard}

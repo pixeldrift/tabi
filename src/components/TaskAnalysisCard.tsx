@@ -312,7 +312,6 @@ export function TaskAnalysisCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -351,9 +350,13 @@ export function TaskAnalysisCard({
                 { label: "Independent", value: `${independent} / ${steps.length}` },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="task-analysis" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="task-analysis"
+                />
               </div>
             )}
           </>
@@ -503,7 +506,6 @@ export function TaskAnalysisCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<TaskAnalysisIcon />}
         kind="task-analysis"
         dataTypeLabel="Task Analysis"
@@ -543,9 +545,13 @@ export function TaskAnalysisCard({
                 { label: "Independent", value: `${independent} / ${steps.length}` },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="task-analysis" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="task-analysis"
+                />
               </div>
             )}
           </>
@@ -597,7 +603,6 @@ export function TaskAnalysisCard({
       dataType="Task Analysis"
       dataTypeIcon={<TaskAnalysisIcon />}
       kind="task-analysis"
-      description={description}
       isActive={isActive}
       onActivate={onActivate}
       reorderEditing={reorderEditing}
@@ -655,9 +660,13 @@ export function TaskAnalysisCard({
               { label: "Independent", value: `${independent} / ${steps.length}` },
             ]}
           />
-          {teachingProcedure && (
+          {(teachingProcedure || description) && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} kind="task-analysis" />
+              <TeachingProcedureAccordion
+                description={description}
+                data={teachingProcedure}
+                kind="task-analysis"
+              />
             </div>
           )}
         </>

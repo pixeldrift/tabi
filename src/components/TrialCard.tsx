@@ -310,7 +310,6 @@ export function TrialCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -345,9 +344,13 @@ export function TrialCard({
                 { label: "Correct", value: percentCorrectDisplay },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="trial"
+                />
               </div>
             )}
           </>
@@ -466,7 +469,6 @@ export function TrialCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<PercentCorrectIcon />}
         kind="trial"
         dataTypeLabel={dataType}
@@ -502,9 +504,13 @@ export function TrialCard({
                 { label: "Correct", value: percentCorrectDisplay },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="trial"
+                />
               </div>
             )}
           </>
@@ -647,7 +653,6 @@ export function TrialCard({
             open={detailsOpen ?? false}
             onOpenChange={onDetailsOpenChange ?? (() => {})}
             title={title}
-            description={description}
             onPrevCard={onPrevCard}
             onNextCard={onNextCard}
             slideFrom={slideFrom}
@@ -664,9 +669,13 @@ export function TrialCard({
                     { label: "Correct", value: percentCorrectDisplay },
                   ]}
                 />
-                {teachingProcedure && (
+                {(teachingProcedure || description) && (
                   <div className="mt-4">
-                    <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                    <TeachingProcedureAccordion
+                      description={description}
+                      data={teachingProcedure}
+                      kind="trial"
+                    />
                   </div>
                 )}
               </>

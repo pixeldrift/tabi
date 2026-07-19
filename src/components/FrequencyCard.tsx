@@ -128,7 +128,6 @@ export function FrequencyCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -160,9 +159,13 @@ export function FrequencyCard({
                 { label: "Tally", value: count },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="frequency"
+                />
               </div>
             )}
           </>
@@ -247,7 +250,6 @@ export function FrequencyCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<FrequencyIcon />}
         kind="frequency"
         dataTypeLabel="Frequency"
@@ -280,9 +282,13 @@ export function FrequencyCard({
                 { label: "Tally", value: count },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="frequency"
+                />
               </div>
             )}
           </>
@@ -339,7 +345,6 @@ export function FrequencyCard({
       dataType="Frequency"
       dataTypeIcon={<FrequencyIcon />}
       kind="frequency"
-      description={description}
       isActive={isActive}
       onActivate={onActivate}
       reorderEditing={reorderEditing}
@@ -383,9 +388,13 @@ export function FrequencyCard({
               { label: "Tally", value: count },
             ]}
           />
-          {teachingProcedure && (
+          {(teachingProcedure || description) && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+              <TeachingProcedureAccordion
+                description={description}
+                data={teachingProcedure}
+                kind="frequency"
+              />
             </div>
           )}
         </>
