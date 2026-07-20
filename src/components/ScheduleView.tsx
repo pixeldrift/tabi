@@ -46,6 +46,7 @@ import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
+import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import { useSettings } from "@/components/SettingsContext";
 import {
@@ -58,6 +59,14 @@ import {
   type PrimingSettings,
   type Appointment,
 } from "@/components/ScheduleContext";
+import {
+  EDIT_MODE_DURATION_MS,
+  EDIT_MODE_STAGGER_MS,
+  APPT_COLLAPSE_STIFFNESS,
+  APPT_COLLAPSE_DAMPING,
+  APPT_COLLAPSE_DURATION_MS,
+  MODE_TRANSITION_DURATION_MS,
+} from "./ScheduleView.animations";
 
 const LOCATIONS = [
   "Treatment Room",
@@ -191,14 +200,6 @@ const EDGE_ADD_ACTIVITY_PX = 48;
 // this one has no second case to account for.
 const APPT_HALO_COLOR = "#f0fdf4";
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
-
-// Animation timing — TODO: surface in user settings.
-const EDIT_MODE_DURATION_MS = 350;
-const EDIT_MODE_STAGGER_MS = 60;
-const APPT_COLLAPSE_STIFFNESS = 320;
-const APPT_COLLAPSE_DAMPING = 32;
-const APPT_COLLAPSE_DURATION_MS = 320;
-const MODE_TRANSITION_DURATION_MS = 220;
 
 const GROUP_A: ScheduleItem[] = [
   {
@@ -759,34 +760,8 @@ export function ScheduleView({
     setFlashGen((n) => n + 1);
   };
   const stickyTop = useStickyTop();
-  const [stickyCompact, setStickyCompact] = useState(false);
   const togglesSentinelRef = useRef<HTMLDivElement>(null);
-
-  // Track compact state via direct geometry checks tied to scroll/resize,
-  // rather than IntersectionObserver: IO callbacks are batched and can fire a
-  // frame or more after the browser's own `position: sticky` snap, which was
-  // making the label crossfade visibly lag the actual stick/unstick moment.
-  useEffect(() => {
-    const el = togglesSentinelRef.current;
-    if (!el) return;
-    let raf = 0;
-    const check = () => {
-      raf = 0;
-      setStickyCompact(el.getBoundingClientRect().top <= stickyTop);
-    };
-    const onScrollOrResize = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(check);
-    };
-    check();
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
-    window.addEventListener("resize", onScrollOrResize);
-    return () => {
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [stickyTop]);
+  const stickyCompact = useStickyCompact(togglesSentinelRef, stickyTop);
 
   const items = active.items;
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
