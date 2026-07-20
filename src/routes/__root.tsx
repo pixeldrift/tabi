@@ -74,13 +74,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ABA DaBa" },
-      { name: "description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
+      {
+        name: "description",
+        content:
+          "A prototype front-end platform for Applied Behavioral Analysis data collection and session management.",
+      },
       { property: "og:title", content: "ABA DaBa" },
-      { property: "og:description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
+      {
+        property: "og:description",
+        content:
+          "A prototype front-end platform for Applied Behavioral Analysis data collection and session management.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "ABA DaBa" },
-      { name: "twitter:description", content: "A prototype front-end platform for Applied Behavioral Analysis data collection and session management." },
+      {
+        name: "twitter:description",
+        content:
+          "A prototype front-end platform for Applied Behavioral Analysis data collection and session management.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

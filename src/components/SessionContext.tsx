@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useIsPresent } from "motion/react";
 import { playSoundEffect } from "@/lib/soundEffects";
 
@@ -196,7 +205,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setLastSavedAt((d) => d ?? new Date());
   }, []);
 
-
   const markDirty = useCallback(() => {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
   }, []);
@@ -242,7 +250,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     playSoundEffect("sessionStart");
   }, [start]);
 
-
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
     setStatus("paused");
@@ -281,37 +288,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => transitionTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
   }, []);
 
-  const runStagedTransition = useCallback((kind: Exclude<TransitionKind, null>, commit: () => void) => {
-    if (transitionBusyRef.current) return;
-    transitionBusyRef.current = true;
-    setTransitionKind(kind);
-    setTransitionStage(1);
-    const t1 = window.setTimeout(() => {
-      setTransitionStage(2);
-      commit();
-      // start-new's own pill travel doesn't begin until DIGIT_SETTLE_MS
-      // after this commits (the odometer settles to zero first — see
-      // DIGIT_SETTLE_MS's own comment), and StatusBar's box-collapse now
-      // waits that same extra beat to avoid overlapping its own "pull nav
-      // up" with the mini-session slot's "push nav down" (which read as a
-      // bounce). This dwell has to stay in step with that or `dimmed`
-      // resets — and stage-2 content reappears — before the box has
-      // actually finished closing.
-      const dwellMs =
-        kind === "discard"
-          ? 0
-          : kind === "start-new"
-            ? DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS
-            : HEADER_MORPH_MS + BOX_COLLAPSE_MS;
-      const t2 = window.setTimeout(() => {
-        setTransitionStage(0);
-        setTransitionKind(null);
-        transitionBusyRef.current = false;
-      }, dwellMs);
-      transitionTimeoutsRef.current.push(t2);
-    }, CARD_EXIT_MS);
-    transitionTimeoutsRef.current.push(t1);
-  }, []);
+  const runStagedTransition = useCallback(
+    (kind: Exclude<TransitionKind, null>, commit: () => void) => {
+      if (transitionBusyRef.current) return;
+      transitionBusyRef.current = true;
+      setTransitionKind(kind);
+      setTransitionStage(1);
+      const t1 = window.setTimeout(() => {
+        setTransitionStage(2);
+        commit();
+        // start-new's own pill travel doesn't begin until DIGIT_SETTLE_MS
+        // after this commits (the odometer settles to zero first — see
+        // DIGIT_SETTLE_MS's own comment), and StatusBar's box-collapse now
+        // waits that same extra beat to avoid overlapping its own "pull nav
+        // up" with the mini-session slot's "push nav down" (which read as a
+        // bounce). This dwell has to stay in step with that or `dimmed`
+        // resets — and stage-2 content reappears — before the box has
+        // actually finished closing.
+        const dwellMs =
+          kind === "discard"
+            ? 0
+            : kind === "start-new"
+              ? DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS
+              : HEADER_MORPH_MS + BOX_COLLAPSE_MS;
+        const t2 = window.setTimeout(() => {
+          setTransitionStage(0);
+          setTransitionKind(null);
+          transitionBusyRef.current = false;
+        }, dwellMs);
+        transitionTimeoutsRef.current.push(t2);
+      }, CARD_EXIT_MS);
+      transitionTimeoutsRef.current.push(t1);
+    },
+    [],
+  );
 
   const requestStartNew = useCallback(
     () => runStagedTransition("start-new", startFresh),
@@ -365,7 +375,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (collapsed) {
       const delay =
-        collapseKindRef.current === "start-new" ? DIGIT_SETTLE_MS + HEADER_MORPH_MS : HEADER_MORPH_MS;
+        collapseKindRef.current === "start-new"
+          ? DIGIT_SETTLE_MS + HEADER_MORPH_MS
+          : HEADER_MORPH_MS;
       const id = window.setTimeout(() => setBoxCollapsed(true), delay);
       return () => window.clearTimeout(id);
     }
@@ -515,12 +527,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       resetSignal,
     }),
     [
-      status, elapsedMs, lastUpdated, pause, endAndSubmit,
-      transitionStage, transitionKind, collapsed, boxCollapsed,
-      pillTraveling, headerReflowActive,
-      requestStartNew, requestContinuePrevious, requestResume, requestDiscard,
-      sessionRunning, subscribeTick, getElapsedMsNow, activeTimers, registerActiveTimer, unregisterActiveTimer,
-      saveStatus, lastSavedAt, markDirty, forceSync, resetSignal,
+      status,
+      elapsedMs,
+      lastUpdated,
+      pause,
+      endAndSubmit,
+      transitionStage,
+      transitionKind,
+      collapsed,
+      boxCollapsed,
+      pillTraveling,
+      headerReflowActive,
+      requestStartNew,
+      requestContinuePrevious,
+      requestResume,
+      requestDiscard,
+      sessionRunning,
+      subscribeTick,
+      getElapsedMsNow,
+      activeTimers,
+      registerActiveTimer,
+      unregisterActiveTimer,
+      saveStatus,
+      lastSavedAt,
+      markDirty,
+      forceSync,
+      resetSignal,
     ],
   );
 

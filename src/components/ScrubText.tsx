@@ -99,7 +99,6 @@ export function ScrubText({
         ...style,
       }}
     >
-
       <span
         ref={innerRef}
         className="inline-block whitespace-nowrap"

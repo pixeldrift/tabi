@@ -115,7 +115,6 @@ export function FrequencyCard({
     playSoundEffect("tallyDown");
   };
 
-
   const commit = (next: number) => {
     setDir(next >= count ? 1 : -1);
     setCount(next);
@@ -124,13 +123,11 @@ export function FrequencyCard({
     markDirty();
   };
 
-
   if (tileDensity) {
     const large = tileDensity === "large";
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -162,9 +159,13 @@ export function FrequencyCard({
                 { label: "Tally", value: count },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="frequency"
+                />
               </div>
             )}
           </>
@@ -249,7 +250,6 @@ export function FrequencyCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<FrequencyIcon />}
         kind="frequency"
         dataTypeLabel="Frequency"
@@ -282,9 +282,13 @@ export function FrequencyCard({
                 { label: "Tally", value: count },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="frequency"
+                />
               </div>
             )}
           </>
@@ -341,7 +345,6 @@ export function FrequencyCard({
       dataType="Frequency"
       dataTypeIcon={<FrequencyIcon />}
       kind="frequency"
-      description={description}
       isActive={isActive}
       onActivate={onActivate}
       reorderEditing={reorderEditing}
@@ -385,9 +388,13 @@ export function FrequencyCard({
               { label: "Tally", value: count },
             ]}
           />
-          {teachingProcedure && (
+          {(teachingProcedure || description) && (
             <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} kind="frequency" />
+              <TeachingProcedureAccordion
+                description={description}
+                data={teachingProcedure}
+                kind="frequency"
+              />
             </div>
           )}
         </>
@@ -410,7 +417,7 @@ export function FrequencyCard({
           onOpenChange={setEditing}
         >
           {({ isEditing, open }) => (
-              <button
+            <button
               type="button"
               onClick={open}
               disabled={!sessionRunning}
@@ -436,7 +443,10 @@ export function FrequencyCard({
                   </motion.span>
                 </AnimatePresence>
                 {isEditing && (
-                  <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
+                  <span
+                    className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80"
+                    aria-hidden
+                  />
                 )}
                 <NumberPadIcon
                   className={cn(

@@ -22,7 +22,10 @@ import {
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
 import { PersonPill } from "./StaffDirectory";
-import { markInitialLayoutSettled, useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
+import {
+  markInitialLayoutSettled,
+  useInitialLayoutSettled,
+} from "@/hooks/use-initial-layout-settle";
 import {
   useSession,
   HEADER_MORPH_MS,
@@ -56,7 +59,6 @@ import {
   TIMER_MORPH_BORDER_MINI,
   TIMER_MORPH_BORDER_FULL,
 } from "@/lib/actionColors";
-
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
@@ -173,7 +175,9 @@ function ReviewFigure({ title, value, unit }: { title: string; value: string; un
       <div className="min-w-0 flex-1 text-sm font-medium text-foreground break-words">{title}</div>
       <div className="shrink-0 text-right">
         <div className="text-xl font-bold leading-none text-foreground tabular-nums">{value}</div>
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{unit}</div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+          {unit}
+        </div>
       </div>
     </>
   );
@@ -325,7 +329,8 @@ export function StatusBar({
   const incompleteCards = allReviewCards.filter((c) => c.hasData && !c.isComplete).sort(byTitle);
   const completeCards = allReviewCards.filter((c) => c.hasData && c.isComplete).sort(byTitle);
   const untouchedCards = allReviewCards.filter((c) => !c.hasData).sort(byTitle);
-  const hasAnyReviewData = incompleteCards.length + completeCards.length + untouchedCards.length > 0;
+  const hasAnyReviewData =
+    incompleteCards.length + completeCards.length + untouchedCards.length > 0;
   const [showCommitSha, setShowCommitSha] = useState(false);
   // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
   // when the box collapses — except for discard, where the box was already
@@ -449,7 +454,8 @@ export function StatusBar({
     // the box frees exactly boxNaturalHeight of vertical space above the
     // nav, so predicting that shift now and landing there directly skips
     // the detour without touching the "land, then collapse" sequencing.
-    const willCollapseAfterLanding = pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
+    const willCollapseAfterLanding =
+      pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
     const to = willCollapseAfterLanding
       ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
       : rawTo;
@@ -492,7 +498,9 @@ export function StatusBar({
   // supposed to sit on down with it, never actually closing the gap.
   const statusBarRef = useRef<HTMLDivElement>(null);
   const tabButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [tabBlend, setTabBlend] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [tabBlend, setTabBlend] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  );
   useLayoutEffect(() => {
     const barEl = statusBarRef.current;
     const tabEl = tabButtonRefs.current.get(activeTab);
@@ -530,100 +538,109 @@ export function StatusBar({
           browser lays both out together on every reflow for free, the same
           way it already does for the title row and the tabs below it. */}
       <div className="sticky top-0 z-40">
-        <div ref={statusBarRef} data-status-bar className="relative overflow-hidden bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
-          {/* Title row — static, never scales or layout-animates */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0 pt-1">
-              <button
-                type="button"
-                aria-label="Back to sessions"
-                title="Back to sessions"
-                className="grid place-items-center size-8 -ml-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors shrink-0"
-              >
-                <ArrowLeft className="size-5" />
-              </button>
-              <h1 className="min-w-0 font-display text-base sm:text-lg leading-tight truncate">{title}</h1>
-              {/* Independent of the title's own text, so it stays visible
+        <div
+          ref={statusBarRef}
+          data-status-bar
+          className="relative overflow-hidden bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80"
+        >
+          <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
+            {/* Title row — static, never scales or layout-animates */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0 pt-1">
+                <button
+                  type="button"
+                  aria-label="Back to sessions"
+                  title="Back to sessions"
+                  className="grid place-items-center size-8 -ml-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors shrink-0"
+                >
+                  <ArrowLeft className="size-5" />
+                </button>
+                <h1 className="min-w-0 font-display text-base sm:text-lg leading-tight truncate">
+                  {title}
+                </h1>
+                {/* Independent of the title's own text, so it stays visible
                   (shrink-0) even once the title itself has to truncate on a
                   narrow screen. __APP_VERSION__ (vite.config.ts) is a static
                   string bumped by hand per release, not derived from git —
                   the full commit SHA behind the tap is still real, for the
                   rarer case of pinning a bug to one exact build. */}
-              <button
-                type="button"
-                onClick={() => setShowCommitSha((v) => !v)}
-                title={showCommitSha ? "Tap to show version" : "Tap to show commit SHA"}
-                className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm overflow-hidden"
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={showCommitSha ? "sha" : "version"}
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={{ duration: 0.15 }}
-                    className="inline-block"
-                  >
-                    ({showCommitSha ? __APP_COMMIT_SHA__ : __APP_VERSION__})
-                  </motion.span>
-                </AnimatePresence>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCommitSha((v) => !v)}
+                  title={showCommitSha ? "Tap to show version" : "Tap to show commit SHA"}
+                  className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm overflow-hidden"
+                >
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={showCommitSha ? "sha" : "version"}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.15 }}
+                      className="inline-block"
+                    >
+                      ({showCommitSha ? __APP_COMMIT_SHA__ : __APP_VERSION__})
+                    </motion.span>
+                  </AnimatePresence>
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
+              </div>
             </div>
 
-            <div className="pt-1">
-              <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
-            </div>
-          </div>
-
-          {/* LayoutGroup for this box/notification-bar/nav trio now lives in
+            {/* LayoutGroup for this box/notification-bar/nav trio now lives in
               routes/index.tsx, wrapping this whole StatusBar plus the panel
               section below it, so the tabs and the panel FLIP in the same
               batch instead of drifting apart — see that file's comment. */}
-          <>
-            {/* Session box area — always rendered; height animates symmetrically both ways.
+            <>
+              {/* Session box area — always rendered; height animates symmetrically both ways.
                 The pill inside is hidden when running so only the mini pill carries the
                 shared layoutId, letting motion morph cleanly between the two positions. */}
-            <motion.div
-              initial={false}
-              animate={{ height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"), opacity: boxCollapsed ? 0 : 1 }}
-              transition={
-                boxCollapsed
-                  ? {
-                      // Quick, decisive snap once it finally starts — by this
-                      // point the pill has already landed in the mini slot and
-                      // the box's own content has long since faded (stage 1's
-                      // `dimmed`), so there's nothing left to see except the
-                      // space closing up.
-                      height: { duration: BOX_COLLAPSE_MS / 1000, ease: SESSION_MORPH_EASE },
-                      opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
-                    }
-                  : {
-                      // Mirrors the collapsed branch (same ease, opacity starting
-                      // together with height rather than after a delay) so the
-                      // box's own fade-in and the tabs/nav's layout push — which
-                      // shares SESSION_MORPH_MS via NOTIFICATION_AREA_TRANSITION —
-                      // move as one instead of the box appearing to lag behind.
-                      // Zeroed instead while `initialLayoutSettled` is still
-                      // false (see its own comment): `boxNaturalHeight`'s very
-                      // first real measurement lands a beat after mount, once
-                      // the demo-only "Previous Session" row appears — without
-                      // this, THIS box played its own real 350ms grow on every
-                      // page load, and every layout-tracked sibling below it
-                      // (correctly) tracked that real, continuous reflow live,
-                      // reading as the whole header/toolbar visibly settling
-                      // in a beat after everything else. Any LATER, genuine
-                      // height change (an actual session collapsing/expanding)
-                      // still gets the real transition.
-                      height: !initialLayoutSettled
-                        ? { duration: 0 }
-                        : { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
-                      opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
-                    }
-              }
-              className="flex justify-center overflow-hidden"
-            >
-              {/* Unstyled, never height-controlled — safe to observe for its
+              <motion.div
+                initial={false}
+                animate={{
+                  height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
+                  opacity: boxCollapsed ? 0 : 1,
+                }}
+                transition={
+                  boxCollapsed
+                    ? {
+                        // Quick, decisive snap once it finally starts — by this
+                        // point the pill has already landed in the mini slot and
+                        // the box's own content has long since faded (stage 1's
+                        // `dimmed`), so there's nothing left to see except the
+                        // space closing up.
+                        height: { duration: BOX_COLLAPSE_MS / 1000, ease: SESSION_MORPH_EASE },
+                        opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
+                      }
+                    : {
+                        // Mirrors the collapsed branch (same ease, opacity starting
+                        // together with height rather than after a delay) so the
+                        // box's own fade-in and the tabs/nav's layout push — which
+                        // shares SESSION_MORPH_MS via NOTIFICATION_AREA_TRANSITION —
+                        // move as one instead of the box appearing to lag behind.
+                        // Zeroed instead while `initialLayoutSettled` is still
+                        // false (see its own comment): `boxNaturalHeight`'s very
+                        // first real measurement lands a beat after mount, once
+                        // the demo-only "Previous Session" row appears — without
+                        // this, THIS box played its own real 350ms grow on every
+                        // page load, and every layout-tracked sibling below it
+                        // (correctly) tracked that real, continuous reflow live,
+                        // reading as the whole header/toolbar visibly settling
+                        // in a beat after everything else. Any LATER, genuine
+                        // height change (an actual session collapsing/expanding)
+                        // still gets the real transition.
+                        height: !initialLayoutSettled
+                          ? { duration: 0 }
+                          : { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
+                        opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
+                      }
+                }
+                className="flex justify-center overflow-hidden"
+              >
+                {/* Unstyled, never height-controlled — safe to observe for its
                   natural content size without the observer feeding back into
                   its own target (which the outer motion.div's height is).
                   The parent is a row flex (`flex justify-center`), so its
@@ -631,36 +648,34 @@ export function StatusBar({
                   child to match the parent's (possibly momentarily-stale)
                   height instead of sizing to its own content — self-start
                   opts out of that stretch. */}
-              <div ref={boxWrapRef} className="self-start shrink-0">
-                <ExpandedSessionBox
-                  status={status}
-                  elapsedMs={pillElapsed}
-                  contextTime={frozenContextTimeRef.current}
-                  renderPill={renderBigPill}
-                  pillVisible={bigPillVisible}
-                  pillRef={bigPillRef}
-                  dimmed={dimmed}
-                  startingNew={dimmed && transitionKind === "start-new"}
-                  onPlay={requestPlay}
-                  onStartNew={requestStartNew}
-                  onEnd={() => {
-                    playSoundEffect("question");
-                    setEndOpen(true);
-                  }}
-                  onRequestDiscard={() => {
-                    playSoundEffect("warning");
-                    setDiscardOpen(true);
-                  }}
-                />
-              </div>
-            </motion.div>
+                <div ref={boxWrapRef} className="self-start shrink-0">
+                  <ExpandedSessionBox
+                    status={status}
+                    elapsedMs={pillElapsed}
+                    contextTime={frozenContextTimeRef.current}
+                    renderPill={renderBigPill}
+                    pillVisible={bigPillVisible}
+                    pillRef={bigPillRef}
+                    dimmed={dimmed}
+                    startingNew={dimmed && transitionKind === "start-new"}
+                    onPlay={requestPlay}
+                    onStartNew={requestStartNew}
+                    onEnd={() => {
+                      playSoundEffect("question");
+                      setEndOpen(true);
+                    }}
+                    onRequestDiscard={() => {
+                      playSoundEffect("warning");
+                      setDiscardOpen(true);
+                    }}
+                  />
+                </div>
+              </motion.div>
 
+              <NotificationBar />
 
-
-            <NotificationBar />
-
-            {/* Tabs row + mini session (when running) */}
-            {/* suppressNavLayout (a prop from routes/index.tsx) zeroes the
+              {/* Tabs row + mini session (when running) */}
+              {/* suppressNavLayout (a prop from routes/index.tsx) zeroes the
                 layout transition's duration during a data-tab display-mode
                 morph. This nav sits sticky at top:0, so its own true
                 position never changes for that reason — but Framer Motion's
@@ -684,105 +699,110 @@ export function StatusBar({
                 animation growing/shrinking directly inside this nav) zeroes
                 it for the unrelated session-transition reason explained
                 there. */}
-            <motion.nav
-              layout="position"
-              transition={{
-                layout:
-                  suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
-                    ? { duration: 0 }
-                    : NOTIFICATION_AREA_TRANSITION,
-              }}
-              className={cn("flex items-end justify-between gap-2 -mb-px", isRunning ? "mt-1" : "mt-1.5")}
-              role="tablist"
-              aria-label="Session sections"
-            >
-              <div className="flex items-end gap-1 -ml-3">
-                {TABS.map((t) => {
-                  const Icon = t.icon;
-                  const isActive = t.id === activeTab;
-                  return (
-                    <button
-                      key={t.id}
-                      ref={(el) => {
-                        if (el) tabButtonRefs.current.set(t.id, el);
-                        else tabButtonRefs.current.delete(t.id);
-                      }}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => onTabChange(t.id)}
-                      className={cn(
-                        "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
-                        isActive
-                          ? "bg-background text-foreground border-border font-medium"
-                          : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
-                      )}
-                    >
-                      <Icon className={cn("size-4", !isActive && "opacity-60")} />
-                      <span className="hidden sm:inline">{t.label}</span>
-                      {t.id === "notifications" && notifCount > 0 && (
-                        <span
-                          key={notifHopGen}
-                          className="absolute -top-1 -right-1 grid place-items-center size-3.5 rounded-full bg-blue-500 text-white text-[9px] font-semibold leading-none animate-bubble-hop"
-                        >
-                          {notifCount}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                <ActiveDurationIndicator timers={runningTimers} activeTab={activeTab} onTabChange={onTabChange} />
-              </div>
-
-              <AnimatePresence initial={false}>
-                {renderMiniPill && (
-                  // -mr-4 cancels the header's own px-4 edge padding, then
-                  // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
-                  // clearance on the right as there is below the pill. Reserves
-                  // its slot in the tabs row whenever it's the resting view OR
-                  // mid-travel (so the destination has somewhere to measure/
-                  // crossfade into); visibility itself is separate, see
-                  // pillVisible below. Animating this slot's OWN height (it
-                  // used to just pop in) means the nav's real height grows
-                  // in smoothly instead of jumping in one frame — that
-                  // instant jump was what made the tabs/panel below visibly
-                  // detach from it, since only a discrete size change like
-                  // that (not a `layout="position"` reposition) needs its
-                  // own transition to not be felt downstream. Targets
-                  // miniSlotHeight (a measured pixel number), never the
-                  // string "auto" — see its comment above.
-                  <motion.div
-                    key="mini-session-slot"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: miniSlotHeight ?? "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
-                    // No overflow-hidden here: the mini pill's -mr-4 below
-                    // needs to bleed past this box's right edge to cancel
-                    // the header's own padding, and CSS won't allow "clip Y
-                    // only, stay visible on X" — any non-"visible" value on
-                    // one axis silently forces the other from "visible" to
-                    // "auto" (which still clips), so it clipped the pill
-                    // regardless of which single axis was targeted. Left
-                    // fully unclipped instead; the brief height animation
-                    // doesn't read as messy without it.
-                  >
-                    <div ref={miniSlotRef} className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
-                      <MiniSession
-                        elapsedMs={pillElapsed}
-                        onPause={pause}
-                        disabled={!isRunning}
-                        pillVisible={miniPillVisible}
-                        pillRef={miniPillRef}
-                      />
-                    </div>
-                  </motion.div>
+              <motion.nav
+                layout="position"
+                transition={{
+                  layout:
+                    suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
+                      ? { duration: 0 }
+                      : NOTIFICATION_AREA_TRANSITION,
+                }}
+                className={cn(
+                  "flex items-end justify-between gap-2 -mb-px",
+                  isRunning ? "mt-1" : "mt-1.5",
                 )}
-              </AnimatePresence>
-            </motion.nav>
+                role="tablist"
+                aria-label="Session sections"
+              >
+                <div className="flex items-end gap-1 -ml-3">
+                  {TABS.map((t) => {
+                    const Icon = t.icon;
+                    const isActive = t.id === activeTab;
+                    return (
+                      <button
+                        key={t.id}
+                        ref={(el) => {
+                          if (el) tabButtonRefs.current.set(t.id, el);
+                          else tabButtonRefs.current.delete(t.id);
+                        }}
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => onTabChange(t.id)}
+                        className={cn(
+                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
+                          isActive
+                            ? "bg-background text-foreground border-border font-medium"
+                            : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
+                        )}
+                      >
+                        <Icon className={cn("size-4", !isActive && "opacity-60")} />
+                        <span className="hidden sm:inline">{t.label}</span>
+                        {t.id === "notifications" && notifCount > 0 && (
+                          <span
+                            key={notifHopGen}
+                            className="absolute -top-1 -right-1 grid place-items-center size-3.5 rounded-full bg-blue-500 text-white text-[9px] font-semibold leading-none animate-bubble-hop"
+                          >
+                            {notifCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <ActiveDurationIndicator
+                    timers={runningTimers}
+                    activeTab={activeTab}
+                    onTabChange={onTabChange}
+                  />
+                </div>
 
-
-          </>
-        </div>
+                <AnimatePresence initial={false}>
+                  {renderMiniPill && (
+                    // -mr-4 cancels the header's own px-4 edge padding, then
+                    // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
+                    // clearance on the right as there is below the pill. Reserves
+                    // its slot in the tabs row whenever it's the resting view OR
+                    // mid-travel (so the destination has somewhere to measure/
+                    // crossfade into); visibility itself is separate, see
+                    // pillVisible below. Animating this slot's OWN height (it
+                    // used to just pop in) means the nav's real height grows
+                    // in smoothly instead of jumping in one frame — that
+                    // instant jump was what made the tabs/panel below visibly
+                    // detach from it, since only a discrete size change like
+                    // that (not a `layout="position"` reposition) needs its
+                    // own transition to not be felt downstream. Targets
+                    // miniSlotHeight (a measured pixel number), never the
+                    // string "auto" — see its comment above.
+                    <motion.div
+                      key="mini-session-slot"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: miniSlotHeight ?? "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
+                      // No overflow-hidden here: the mini pill's -mr-4 below
+                      // needs to bleed past this box's right edge to cancel
+                      // the header's own padding, and CSS won't allow "clip Y
+                      // only, stay visible on X" — any non-"visible" value on
+                      // one axis silently forces the other from "visible" to
+                      // "auto" (which still clips), so it clipped the pill
+                      // regardless of which single axis was targeted. Left
+                      // fully unclipped instead; the brief height animation
+                      // doesn't read as messy without it.
+                    >
+                      <div ref={miniSlotRef} className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
+                        <MiniSession
+                          elapsedMs={pillElapsed}
+                          onPause={pause}
+                          disabled={!isRunning}
+                          pillVisible={miniPillVisible}
+                          pillRef={miniPillRef}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.nav>
+            </>
+          </div>
         </div>
         {dataToolbar}
       </div>
@@ -804,65 +824,68 @@ export function StatusBar({
           duration is actually honored. Rendered outside data-status-bar's
           overflow-hidden so position:fixed isn't clipped. */}
       <AnimatePresence>
-        {visualTravelActive && pillTravelRect && (() => {
-          const toMini = pillView === "mini";
-          const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
-          const digitColor = {
-            from: toMini ? TIMER_MORPH_DIGIT_MINI : TIMER_MORPH_DIGIT_FULL,
-            to: toMini ? TIMER_MORPH_DIGIT_FULL : TIMER_MORPH_DIGIT_MINI,
-          };
-          const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
-          const borderColor = {
-            from: toMini ? TIMER_MORPH_BORDER_MINI : TIMER_MORPH_BORDER_FULL,
-            to: toMini ? TIMER_MORPH_BORDER_FULL : TIMER_MORPH_BORDER_MINI,
-          };
-          return (
-            <motion.div
-              key="pill-travel-overlay"
-              initial={{
-                top: pillTravelRect.from.top,
-                left: pillTravelRect.from.left,
-                width: pillTravelRect.from.width,
-                height: pillTravelRect.from.height,
-                borderColor: borderColor.from,
-                opacity: 1,
-              }}
-              animate={{
-                top: pillTravelRect.to.top,
-                left: pillTravelRect.to.left,
-                width: pillTravelRect.to.width,
-                height: pillTravelRect.to.height,
-                borderColor: borderColor.to,
-                opacity: 1,
-              }}
-              exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
-              transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-              className="fixed z-50 flex items-stretch rounded-full border-2 bg-white pointer-events-none overflow-hidden"
-            >
-              <motion.span
-                initial={{ fontSize: digitPx.from, color: digitColor.from }}
-                animate={{ fontSize: digitPx.to, color: digitColor.to }}
+        {visualTravelActive &&
+          pillTravelRect &&
+          (() => {
+            const toMini = pillView === "mini";
+            const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
+            const digitColor = {
+              from: toMini ? TIMER_MORPH_DIGIT_MINI : TIMER_MORPH_DIGIT_FULL,
+              to: toMini ? TIMER_MORPH_DIGIT_FULL : TIMER_MORPH_DIGIT_MINI,
+            };
+            const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
+            const borderColor = {
+              from: toMini ? TIMER_MORPH_BORDER_MINI : TIMER_MORPH_BORDER_FULL,
+              to: toMini ? TIMER_MORPH_BORDER_FULL : TIMER_MORPH_BORDER_MINI,
+            };
+            return (
+              <motion.div
+                key="pill-travel-overlay"
+                initial={{
+                  top: pillTravelRect.from.top,
+                  left: pillTravelRect.from.left,
+                  width: pillTravelRect.from.width,
+                  height: pillTravelRect.from.height,
+                  borderColor: borderColor.from,
+                  opacity: 1,
+                }}
+                animate={{
+                  top: pillTravelRect.to.top,
+                  left: pillTravelRect.to.left,
+                  width: pillTravelRect.to.width,
+                  height: pillTravelRect.to.height,
+                  borderColor: borderColor.to,
+                  opacity: 1,
+                }}
+                exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
                 transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-                className="flex-1 flex items-center justify-center leading-none font-medium px-2"
+                className="fixed z-50 flex items-stretch rounded-full border-2 bg-white pointer-events-none overflow-hidden"
               >
-                <OdometerDigits text={formatTime(pillElapsed)} />
-              </motion.span>
-              <motion.span
-                initial={{ width: buttonPx.from }}
-                animate={{ width: buttonPx.to }}
-                transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-                className="shrink-0 bg-blue-500"
-              />
-            </motion.div>
-          );
-        })()}
+                <motion.span
+                  initial={{ fontSize: digitPx.from, color: digitColor.from }}
+                  animate={{ fontSize: digitPx.to, color: digitColor.to }}
+                  transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                  className="flex-1 flex items-center justify-center leading-none font-medium px-2"
+                >
+                  <OdometerDigits text={formatTime(pillElapsed)} />
+                </motion.span>
+                <motion.span
+                  initial={{ width: buttonPx.from }}
+                  animate={{ width: buttonPx.to }}
+                  transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                  className="shrink-0 bg-blue-500"
+                />
+              </motion.div>
+            );
+          })()}
       </AnimatePresence>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-400/80 ring-2 ring-inset ring-red-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
             <DialogTitle className="text-red-600">Warning!</DialogTitle>
             <DialogDescription className="text-left">
-              Are you sure? This will end the current session and discard any data collected during the session so far!
+              Are you sure? This will end the current session and discard any data collected during
+              the session so far!
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
@@ -960,7 +983,10 @@ export function StatusBar({
                 onToggle={() => setCompleteOpen((v) => !v)}
               >
                 {completeCards.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2 rounded-lg bg-stone-50 px-2.5 py-2">
+                  <li
+                    key={c.id}
+                    className="flex items-center gap-2 rounded-lg bg-stone-50 px-2.5 py-2"
+                  >
                     <ReviewFigure title={c.title} value={c.value} unit={c.unit} />
                   </li>
                 ))}
@@ -976,7 +1002,10 @@ export function StatusBar({
                 onToggle={() => setUntouchedOpen((v) => !v)}
               >
                 {untouchedCards.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2 py-1 text-xs text-muted-foreground">
+                  <li
+                    key={c.id}
+                    className="flex items-center gap-2 py-1 text-xs text-muted-foreground"
+                  >
                     <span className="shrink-0 [&>svg]:size-3.5">{DATA_TYPE_INFO[c.kind].icon}</span>
                     <span className="break-words">{c.title}</span>
                   </li>
@@ -1009,7 +1038,6 @@ export function StatusBar({
     </>
   );
 }
-
 
 function ActiveDurationIndicator({
   timers,
@@ -1063,7 +1091,9 @@ function ActiveDurationIndicator({
         <motion.div
           key="duration-indicator"
           onClick={handleClick}
-          aria-label={count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`}
+          aria-label={
+            count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`
+          }
           title={count > 1 ? `${count} timers running — tap to cycle` : displayedTimers[0]?.label}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1081,9 +1111,7 @@ function ActiveDurationIndicator({
               <Timer className="size-4" />
             </span>
             {count > 1 && (
-              <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">
-                {count}
-              </sup>
+              <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">{count}</sup>
             )}
           </span>
           {/* Only where there's room to spare — a phone-width tab bar is
@@ -1098,7 +1126,6 @@ function ActiveDurationIndicator({
     </AnimatePresence>
   );
 }
-
 
 function SaveIndicator({
   status,
@@ -1157,7 +1184,9 @@ function SaveIndicator({
 
           <div className="px-5 py-4 space-y-3 text-sm">
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Status
+              </div>
               <div className="flex items-center gap-2">
                 <span className="relative grid place-items-center size-6 text-stone-400 shrink-0">
                   <CloudShape className="absolute inset-0 size-6" />
@@ -1177,14 +1206,18 @@ function SaveIndicator({
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last Saved</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Last Saved
+              </div>
               <div className="tabular-nums leading-tight">
                 <div>{formatFullDate(lastSavedAt)}</div>
                 <div>{formatFullTime(lastSavedAt)}</div>
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saved by</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Saved by
+              </div>
               <PersonPill name="Perry Plat" />
             </div>
           </div>
@@ -1201,7 +1234,13 @@ function SaveIndicator({
           isDirty ? "cursor-pointer" : "cursor-default",
         )}
       >
-        <CloudShape className={cn("absolute inset-0 size-8", cloudColorClass, isDirty && "hover:text-blue-600")} />
+        <CloudShape
+          className={cn(
+            "absolute inset-0 size-8",
+            cloudColorClass,
+            isDirty && "hover:text-blue-600",
+          )}
+        />
         <SymbolIcon
           className={cn("relative text-white", isSaving ? "size-2.5" : "size-3")}
           strokeWidth={3.5}
@@ -1211,8 +1250,6 @@ function SaveIndicator({
     </div>
   );
 }
-
-
 
 function CloudShape({ className }: { className?: string }) {
   // Filled cloud silhouette so the badge reads as a "cloud" with a symbol on top.
@@ -1226,41 +1263,14 @@ function CloudShape({ className }: { className?: string }) {
   );
 }
 
-
-function formatRelativeDay(d: Date | null) {
-  if (!d) return "Never";
-  const now = new Date();
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffDays = Math.round((b.getTime() - a.getTime()) / 86400000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatSavedLabel(status: SaveStatus, d: Date | null) {
-  if (status === "dirty") return "Unsaved";
-  if (!d) return "Never saved";
-  const now = new Date();
-  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffDays = Math.round((b.getTime() - a.getTime()) / 86400000);
-  if (diffDays === 0) return "Data Saved";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-
-function formatTimeOfDay(d: Date | null) {
-  if (!d) return "—";
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
 function formatFullDate(d: Date | null) {
   if (!d) return "—";
-  return d.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function formatFullTime(d: Date | null) {
@@ -1284,7 +1294,8 @@ function formatRelativeFromNow(d: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const days = Math.round((today.getTime() - that.getTime()) / 86400000);
-  const timeStr = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+  const timeStr = d
+    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
     .toLowerCase()
     .replace(/\s*am/g, "a")
     .replace(/\s*pm/g, "p");
@@ -1342,7 +1353,6 @@ function ExpandedSessionBox({
     }
   }, [isPaused]);
 
-
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -1350,9 +1360,6 @@ function ExpandedSessionBox({
     const i = setInterval(() => setTick((n) => n + 1), 30000);
     return () => clearInterval(i);
   }, [contextTime]);
-
-
-
 
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
@@ -1389,7 +1396,8 @@ function ExpandedSessionBox({
         >
           {contextTime && (
             <span className="text-[10px] text-muted-foreground text-center tabular-nums whitespace-nowrap">
-              {formatRelativeFromNow(contextTime)}{"\u00a0"}({formatMDY(contextTime)}) by{"\u00a0"}
+              {formatRelativeFromNow(contextTime)}
+              {"\u00a0"}({formatMDY(contextTime)}) by{"\u00a0"}
               <PersonPill name="Perry Plat" size="sm" />
             </span>
           )}
@@ -1469,11 +1477,9 @@ function ExpandedSessionBox({
           </button>
         )}
       </motion.div>
-
     </div>
   );
 }
-
 
 function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);
@@ -1546,7 +1552,6 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
         )}
       </AnimatePresence>
 
-
       {/* Drag handle: scales up from 0 when armed */}
       <motion.button
         type="button"
@@ -1576,7 +1581,6 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
     </div>
   );
 }
-
 
 function MiniSession({
   elapsedMs,
@@ -1627,9 +1631,6 @@ function formatMDY(d: Date) {
   return `${mm}/${dd}/${yyyy}`;
 }
 
-
-
-
 function formatTime(ms: number) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
@@ -1645,7 +1646,15 @@ function formatTime(ms: number) {
  * used only for the reset-to-zero spin on a fresh session start, so that
  * moment reads as an actual spin instead of the same quick flip a normal
  * per-second tick gets. */
-function OdometerDigits({ text, className, slow = false }: { text: string; className?: string; slow?: boolean }) {
+function OdometerDigits({
+  text,
+  className,
+  slow = false,
+}: {
+  text: string;
+  className?: string;
+  slow?: boolean;
+}) {
   return (
     <span className={cn("inline-flex tabular-nums", className)}>
       {text.split("").map((ch, i) => (

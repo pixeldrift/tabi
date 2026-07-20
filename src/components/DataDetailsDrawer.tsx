@@ -9,13 +9,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import {
-  motion,
-  useMotionValue,
-  useTransform,
-  animate,
-  type PanInfo,
-} from "motion/react";
+import { motion, useMotionValue, useTransform, animate, type PanInfo } from "motion/react";
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -180,7 +174,6 @@ export interface DataDetailsDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description?: string;
   details?: ReactNode;
   /** Skip to the previous/next card in display order without closing the
    *  drawer — rendered as small circular arrows flanking the title. Omit
@@ -259,7 +252,6 @@ export function DataDetailsDrawer({
   open,
   onOpenChange,
   title,
-  description,
   details,
   onPrevCard,
   onNextCard,
@@ -366,7 +358,8 @@ export function DataDetailsDrawer({
   // then. Recomputed fresh every render (no memoization) so it's
   // automatically fresh, including the one triggered by the resize
   // listener below.
-  const rawRestingWidthPx = hugCardRight && hugWidth !== null ? hugWidth : normalWidthPxFn(viewportWidth);
+  const rawRestingWidthPx =
+    hugCardRight && hugWidth !== null ? hugWidth : normalWidthPxFn(viewportWidth);
   // Caps the plain (non-hugCardRight) fallback width so the panel's own
   // normal-width left edge never rests to the left of the view-mode icon
   // cluster's right edge — otherwise, at wider default widths, list/card
@@ -378,7 +371,9 @@ export function DataDetailsDrawer({
     viewModeIconsRight > 0
       ? Math.max(0, viewportWidth - viewModeIconsRight - VIEW_MODE_ICONS_CLEARANCE_PX)
       : Infinity;
-  const restingWidthPx = hugCardRight ? rawRestingWidthPx : Math.min(rawRestingWidthPx, maxRestingWidthPx);
+  const restingWidthPx = hugCardRight
+    ? rawRestingWidthPx
+    : Math.min(rawRestingWidthPx, maxRestingWidthPx);
 
   // Drives the panel's own horizontal position — always rendered at a full
   // viewport width (see the panel's own w-full below) and translated via x
@@ -444,7 +439,11 @@ export function DataDetailsDrawer({
       skipNextSyncRef.current = false;
       return;
     }
-    const target = !open ? window.innerWidth : widthMode === "full" ? 0 : window.innerWidth - restingWidthPx;
+    const target = !open
+      ? window.innerWidth
+      : widthMode === "full"
+        ? 0
+        : window.innerWidth - restingWidthPx;
     const controls = animate(x, target, { type: "spring", stiffness: 340, damping: 34 });
     return () => controls.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -535,7 +534,11 @@ export function DataDetailsDrawer({
     }
 
     const willClose = target.mode === "closed";
-    const mode: "normal" | "full" = willClose ? "normal" : target.mode === "full" ? "full" : "normal";
+    const mode: "normal" | "full" = willClose
+      ? "normal"
+      : target.mode === "full"
+        ? "full"
+        : "normal";
 
     animate(x, target.x, { type: "spring", velocity: vx, stiffness: 340, damping: 34 });
     if (mode !== widthMode || willClose) skipNextSyncRef.current = true;
@@ -921,7 +924,9 @@ export function DataDetailsDrawer({
                   setWidthMode(widthMode === "full" ? "normal" : "full");
                 }}
                 aria-label={
-                  widthMode === "full" ? "Collapse drawer to normal width" : "Expand drawer to full width"
+                  widthMode === "full"
+                    ? "Collapse drawer to normal width"
+                    : "Expand drawer to full width"
                 }
                 aria-expanded={widthMode === "full"}
                 className="-ml-4 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"

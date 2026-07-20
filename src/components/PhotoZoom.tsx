@@ -37,11 +37,21 @@ export function PhotoZoomButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Enlarge photo of ${label}`}
-        className={cn("shrink-0 overflow-hidden rounded-full [clip-path:circle(50%)]", ringClassName, size)}
+        className={cn(
+          "shrink-0 overflow-hidden rounded-full [clip-path:circle(50%)]",
+          ringClassName,
+          size,
+        )}
       >
         <Avatar value={avatar} kind={kind} className="h-full w-full object-cover" />
       </button>
-      <PhotoZoomDialog open={open} onOpenChange={setOpen} avatar={avatar} kind={kind} label={label} />
+      <PhotoZoomDialog
+        open={open}
+        onOpenChange={setOpen}
+        avatar={avatar}
+        kind={kind}
+        label={label}
+      />
     </>
   );
 }
@@ -110,23 +120,39 @@ export function BlurredPhotoZoomButton({
       <button
         type="button"
         onClick={handleClick}
-        aria-label={revealed ? `${label}'s photo — tap to enlarge` : `Tap to reveal ${label}'s photo`}
+        aria-label={
+          revealed ? `${label}'s photo — tap to enlarge` : `Tap to reveal ${label}'s photo`
+        }
         className={cn("relative shrink-0", size)}
       >
-        <div className={cn("absolute inset-0 overflow-hidden rounded-full [clip-path:circle(50%)]", bgClassName)}>
+        <div
+          className={cn(
+            "absolute inset-0 overflow-hidden rounded-full [clip-path:circle(50%)]",
+            bgClassName,
+          )}
+        >
           <Avatar
             value={avatar}
-            className={cn("h-full w-full object-cover transition-[filter] duration-300", !revealed && "blur-md")}
+            className={cn(
+              "h-full w-full object-cover transition-[filter] duration-300",
+              !revealed && "blur-md",
+            )}
           />
         </div>
-        <div className={cn("absolute inset-0 rounded-full pointer-events-none", ringClassName)} aria-hidden />
+        <div
+          className={cn("absolute inset-0 rounded-full pointer-events-none", ringClassName)}
+          aria-hidden
+        />
         {!revealed && (
           // Centered (not corner-pinned) and bare — a corner badge got
           // clipped by the circle's own rounded edge (a square positioned
           // near a circle's bounding-box corner sits mostly outside the
           // circle itself), and the white pill/shadow behind it read as a
           // button when it's only ever a passive hint.
-          <Eye className={cn("absolute inset-0 m-auto text-white opacity-50", iconClassName)} aria-hidden />
+          <Eye
+            className={cn("absolute inset-0 m-auto text-white opacity-50", iconClassName)}
+            aria-hidden
+          />
         )}
       </button>
       <PhotoZoomDialog
@@ -177,7 +203,11 @@ export function PhotoZoomDialog({
             aria-label="Shrink photo"
             className="grid max-h-[70vh] w-[min(85vw,400px)] place-items-center overflow-hidden rounded-2xl border-4 border-white bg-blue-100 shadow-2xl"
           >
-            <Avatar value={avatar} kind={kind} className="max-h-[calc(70vh-8px)] w-full object-contain" />
+            <Avatar
+              value={avatar}
+              kind={kind}
+              className="max-h-[calc(70vh-8px)] w-full object-contain"
+            />
           </button>
         </div>
       </DialogContent>

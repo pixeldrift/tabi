@@ -110,7 +110,9 @@ function formatCompactTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const mm = m.toString().padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
+  return h > 0
+    ? `${h}:${mm}:${s.toString().padStart(2, "0")}`
+    : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 
 /** Where an interval sits relative to `viewIdx` — the position the nav
@@ -133,7 +135,8 @@ function recencyOf(index: number, viewIdx: number): Recency {
 // passed fades out; only a still-unscored future interval stays flat gray.
 function statusColors(status: IntervalStatus, recency: Recency) {
   const fade = recency === "past" ? "opacity-60" : "";
-  if (status === "correct") return { bg: "bg-green-50 border-green-300", text: "text-green-700", fade };
+  if (status === "correct")
+    return { bg: "bg-green-50 border-green-300", text: "text-green-700", fade };
   if (status === "incorrect") return { bg: "bg-red-50 border-red-300", text: "text-red-700", fade };
   if (recency === "future") {
     return { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade: "" };
@@ -192,14 +195,19 @@ export function TimestampCard({
   // extra (unscored, upcoming) interval past whichever one is current —
   // rather than a hard total that either runs out or gets cramped thinner
   // and thinner the longer the session runs.
-  const defaultWindowIntervalCount = Math.max(1, Math.ceil((defaultWindowHours * 60) / intervalMin));
+  const defaultWindowIntervalCount = Math.max(
+    1,
+    Math.ceil((defaultWindowHours * 60) / intervalMin),
+  );
   // The interval boundary that has actually, really just passed — used to
   // grow the display window and to detect exactly when the "time to check"
   // alert should fire (see below). Kept distinct from `currentIndex`
   // (below), which intentionally lags behind this by up to half an interval.
   const rawIndex = Math.floor(elapsed / intervalMs);
   const displayIntervalCount =
-    intervalCount !== undefined ? intervalCount : Math.max(defaultWindowIntervalCount, rawIndex + 2);
+    intervalCount !== undefined
+      ? intervalCount
+      : Math.max(defaultWindowIntervalCount, rawIndex + 2);
   // The interval that's actually "current" — for scoring, highlighting, and
   // the view/nav auto-follow below — stays on the one that just finished
   // (and triggered the alert) until half of the FOLLOWING interval has also
@@ -207,7 +215,8 @@ export function TimestampCard({
   // boundary (and the alert) fires. That gives whoever's responding to the
   // alert a grace window to actually mark it before the card moves on.
   const gracedIndex = Math.max(0, Math.floor((elapsed - intervalMs / 2) / intervalMs));
-  const currentIndex = intervalCount !== undefined ? Math.min(intervalCount - 1, gracedIndex) : gracedIndex;
+  const currentIndex =
+    intervalCount !== undefined ? Math.min(intervalCount - 1, gracedIndex) : gracedIndex;
 
   // Which interval is being browsed/scored — like Task Analysis's own
   // `current` step, navigable with the triangle arrows below, independent
@@ -351,7 +360,8 @@ export function TimestampCard({
         negativeLabel,
         initialStatus: statuses[alertedIndex] ?? null,
         onScore: (value) => score(alertedIndex, value),
-        onScrollToCard: () => cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        onScrollToCard: () =>
+          cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -430,9 +440,10 @@ export function TimestampCard({
           className="shrink-0"
         />
       </div>
-      {teachingProcedure && (
+      {(teachingProcedure || description) && (
         <div className="mt-4">
           <TeachingProcedureAccordion
+            description={description}
             data={teachingProcedure}
             kind="timestamp"
             measurementLabelOverride={measurementLabelOverride}
@@ -447,7 +458,6 @@ export function TimestampCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -513,15 +523,32 @@ export function TimestampCard({
       >
         <div className="flex flex-col items-center gap-0.5">
           <div className="inline-flex items-center gap-1">
-            <span className={cn("font-display leading-none tabular-nums", large ? "text-[32px]" : "text-[24px]")}>
+            <span
+              className={cn(
+                "font-display leading-none tabular-nums",
+                large ? "text-[32px]" : "text-[24px]",
+              )}
+            >
               {viewIdx + 1}
             </span>
-            <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>/</span>
-            <span className={cn("font-display leading-none tabular-nums text-foreground/50", large ? "text-lg" : "text-sm")}>
+            <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>
+              /
+            </span>
+            <span
+              className={cn(
+                "font-display leading-none tabular-nums text-foreground/50",
+                large ? "text-lg" : "text-sm",
+              )}
+            >
               {displayIntervalCount}
             </span>
           </div>
-          <span className={cn("text-muted-foreground tabular-nums", large ? "text-[11px]" : "text-[9px]")}>
+          <span
+            className={cn(
+              "text-muted-foreground tabular-nums",
+              large ? "text-[11px]" : "text-[9px]",
+            )}
+          >
             {intervalLabel(viewIdx, intervalMin)}
           </span>
         </div>
@@ -533,7 +560,6 @@ export function TimestampCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<TimestampIcon />}
         kind="timestamp"
         dataTypeLabel="Timestamp"
@@ -585,88 +611,91 @@ export function TimestampCard({
   return (
     <div ref={cardElRef} className="w-full max-w-md scroll-mt-32">
       <CardShell
-      title={title}
-      phase={phase}
-      dataType="Timestamp"
-      dataTypeIcon={<TimestampIcon />}
-      kind="timestamp"
-      description={description}
-      isActive={isActive}
-      onActivate={onActivate}
-      reorderEditing={reorderEditing}
-      favorited={favorited}
-      onToggleFavorite={onToggleFavorite}
-      cardHidden={cardHidden}
-      onToggleHidden={onToggleHidden}
-      dragControls={dragControls}
-      detailsOpen={detailsOpen}
-      onDetailsOpenChange={onDetailsOpenChange}
-      onOpenDetails={onOpenDetails}
-      stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
-      onPrevCard={onPrevCard}
-      onNextCard={onNextCard}
-      slideFrom={slideFrom}
-      widthMode={widthMode}
-      onWidthModeChange={onWidthModeChange}
-      details={details}
-      expanded={expanded}
-      onToggleExpanded={() => setExpanded((v) => !v)}
-      expandedView={
-        <TimestampExpandedView
-          intervalCount={displayIntervalCount}
-          intervalMin={intervalMin}
-          intervalMs={intervalMs}
-          statuses={statuses}
-          viewIdx={viewIdx}
-          elapsedMs={elapsed}
-          sessionRunning={sessionRunning}
-          positiveLabel={positiveLabel}
-          negativeLabel={negativeLabel}
-          onScore={scoreFromCard}
-          timerPill={timerPill}
-        />
-      }
-    >
-      <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
-        <div className="text-center text-sm font-semibold tabular-nums">
-          {intervalEndLabel(viewIdx, intervalMin)}
-        </div>
-
-        <div className="relative px-10">
-          <TriangleNav direction="left" onClick={() => goTo(viewIdx - 1)} disabled={viewIdx <= 0} />
-          <TriangleNav
-            direction="right"
-            onClick={() => goTo(viewIdx + 1)}
-            disabled={viewIdx >= displayIntervalCount - 1}
-          />
-          <IntervalTimeline
+        title={title}
+        phase={phase}
+        dataType="Timestamp"
+        dataTypeIcon={<TimestampIcon />}
+        kind="timestamp"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
+        widthMode={widthMode}
+        onWidthModeChange={onWidthModeChange}
+        details={details}
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((v) => !v)}
+        expandedView={
+          <TimestampExpandedView
             intervalCount={displayIntervalCount}
-            elapsedMs={elapsed}
+            intervalMin={intervalMin}
             intervalMs={intervalMs}
-            viewIdx={viewIdx}
             statuses={statuses}
+            viewIdx={viewIdx}
+            elapsedMs={elapsed}
+            sessionRunning={sessionRunning}
+            positiveLabel={positiveLabel}
+            negativeLabel={negativeLabel}
+            onScore={scoreFromCard}
             timerPill={timerPill}
           />
-        </div>
+        }
+      >
+        <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
+          <div className="text-center text-sm font-semibold tabular-nums">
+            {intervalEndLabel(viewIdx, intervalMin)}
+          </div>
 
-        <div className="mt-2 flex items-center gap-3">
-          <ScoreButton
-            variant="negative"
-            label={negativeLabel}
-            selected={viewStatus === "incorrect"}
-            disabled={!sessionRunning}
-            onClick={() => scoreFromCard(viewIdx, "incorrect")}
-          />
-          <ScoreButton
-            variant="positive"
-            label={positiveLabel}
-            selected={viewStatus === "correct"}
-            disabled={!sessionRunning}
-            onClick={() => scoreFromCard(viewIdx, "correct")}
-          />
+          <div className="relative px-10">
+            <TriangleNav
+              direction="left"
+              onClick={() => goTo(viewIdx - 1)}
+              disabled={viewIdx <= 0}
+            />
+            <TriangleNav
+              direction="right"
+              onClick={() => goTo(viewIdx + 1)}
+              disabled={viewIdx >= displayIntervalCount - 1}
+            />
+            <IntervalTimeline
+              intervalCount={displayIntervalCount}
+              elapsedMs={elapsed}
+              intervalMs={intervalMs}
+              viewIdx={viewIdx}
+              statuses={statuses}
+              timerPill={timerPill}
+            />
+          </div>
+
+          <div className="mt-2 flex items-center gap-3">
+            <ScoreButton
+              variant="negative"
+              label={negativeLabel}
+              selected={viewStatus === "incorrect"}
+              disabled={!sessionRunning}
+              onClick={() => scoreFromCard(viewIdx, "incorrect")}
+            />
+            <ScoreButton
+              variant="positive"
+              label={positiveLabel}
+              selected={viewStatus === "correct"}
+              disabled={!sessionRunning}
+              onClick={() => scoreFromCard(viewIdx, "correct")}
+            />
+          </div>
         </div>
-      </div>
       </CardShell>
     </div>
   );
@@ -724,7 +753,8 @@ const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as con
 // trailing off on either side, so both directions need to fade out. Narrow
 // and hugging the edge, rather than eating a big chunk of the viewport.
 const HORIZONTAL_FADE_MASK = {
-  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
+  WebkitMaskImage:
+    "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
   maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
 } as const;
 
@@ -771,7 +801,10 @@ function IntervalTimeline({
           draggable/swipeable strip like Percent Correct's trial bubbles),
           gray until scored then colored to match the button that scored
           it. The currently-viewed one grows larger to stand out. */}
-      <div className="relative overflow-hidden" style={{ height: BUBBLE_ROW_H, ...HORIZONTAL_FADE_MASK }}>
+      <div
+        className="relative overflow-hidden"
+        style={{ height: BUBBLE_ROW_H, ...HORIZONTAL_FADE_MASK }}
+      >
         <motion.div
           className="absolute left-1/2 top-0"
           style={{ height: BUBBLE_ROW_H }}
@@ -783,7 +816,11 @@ function IntervalTimeline({
             const { bg, text, fade } = statusColors(statuses[i], recency);
             const isCurrent = recency === "current";
             return (
-              <div key={i} className="absolute bottom-0 -translate-x-1/2" style={{ left: (i + 1) * SEG_W }}>
+              <div
+                key={i}
+                className="absolute bottom-0 -translate-x-1/2"
+                style={{ left: (i + 1) * SEG_W }}
+              >
                 <motion.div
                   className={cn(
                     "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
@@ -792,7 +829,10 @@ function IntervalTimeline({
                     text,
                     fade,
                   )}
-                  animate={{ width: isCurrent ? BUBBLE_CURRENT : BUBBLE, height: isCurrent ? BUBBLE_CURRENT : BUBBLE }}
+                  animate={{
+                    width: isCurrent ? BUBBLE_CURRENT : BUBBLE,
+                    height: isCurrent ? BUBBLE_CURRENT : BUBBLE,
+                  }}
                   transition={{ type: "spring", stiffness: 360, damping: 28 }}
                 >
                   {i + 1}
@@ -847,7 +887,10 @@ function IntervalTimeline({
             return (
               <div
                 key={`seg-${i}`}
-                className={cn("absolute top-0 h-[3px] rounded-full", status === "correct" ? "bg-green-500" : "bg-red-500")}
+                className={cn(
+                  "absolute top-0 h-[3px] rounded-full",
+                  status === "correct" ? "bg-green-500" : "bg-red-500",
+                )}
                 style={{ left: i * SEG_W, width: SEG_W }}
                 aria-hidden
               />
@@ -870,12 +913,18 @@ function IntervalTimeline({
           animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
-          <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0" style={{ left: fillPx }}>
+          <div
+            className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0"
+            style={{ left: fillPx }}
+          >
             <svg
               width="16"
               height="20"
               viewBox="0 0 16 20"
-              style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
+              style={{
+                transform: "rotate(-90deg)",
+                filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))",
+              }}
               aria-hidden
             >
               <path d={NOW_CHEVRON_PATH} fill="var(--color-now-chevron)" />
@@ -981,10 +1030,7 @@ function TimestampExpandedView({
           {timerPill}
         </div>
       </div>
-      <div
-        className="relative overflow-hidden"
-        style={{ height: viewportHeight }}
-      >
+      <div className="relative overflow-hidden" style={{ height: viewportHeight }}>
         <motion.div
           className="absolute left-0 top-0 w-full flex gap-3"
           animate={{ y: trackOffsetPx + CHEVRON_PAD_Y }}
@@ -1001,7 +1047,13 @@ function TimestampExpandedView({
               className="absolute -translate-y-1/2"
               style={{ top: fillPx, right: -CHEVRON_OVERLAP_PX }}
             >
-              <svg width="16" height="20" viewBox="0 0 16 20" style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }} aria-hidden>
+              <svg
+                width="16"
+                height="20"
+                viewBox="0 0 16 20"
+                style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}
+                aria-hidden
+              >
                 <path d={NOW_CHEVRON_PATH} fill="var(--color-now-chevron)" />
               </svg>
             </div>
@@ -1038,7 +1090,10 @@ function TimestampExpandedView({
               return (
                 <div
                   key={`seg-${i}`}
-                  className={cn("absolute right-0 w-[3px] rounded-full", status === "correct" ? "bg-green-500" : "bg-red-500")}
+                  className={cn(
+                    "absolute right-0 w-[3px] rounded-full",
+                    status === "correct" ? "bg-green-500" : "bg-red-500",
+                  )}
                   style={{ top: i * ROW_SLOT, height: ROW_SLOT }}
                   aria-hidden
                 />
@@ -1129,11 +1184,22 @@ function TriangleNav({
         isLeft ? "-left-2" : "-right-2",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]" fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
         {isLeft ? (
-          <path d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z" strokeLinejoin="round" />
+          <path
+            d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z"
+            strokeLinejoin="round"
+          />
         ) : (
-          <path d="M8.5 4.2c-1.1-.7-2.5.1-2.5 1.4v12.8c0 1.3 1.4 2.1 2.5 1.4l8.6-5.8a1.9 1.9 0 0 0 0-3.2L8.5 4.2z" strokeLinejoin="round" />
+          <path
+            d="M8.5 4.2c-1.1-.7-2.5.1-2.5 1.4v12.8c0 1.3 1.4 2.1 2.5 1.4l8.6-5.8a1.9 1.9 0 0 0 0-3.2L8.5 4.2z"
+            strokeLinejoin="round"
+          />
         )}
       </svg>
     </motion.button>

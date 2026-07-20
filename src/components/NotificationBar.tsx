@@ -1,6 +1,28 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { AnimatePresence, motion, useMotionValue, useTransform, animate, type MotionStyle } from "motion/react";
-import { Bell, BellRing, BellOff, Target, MessageSquare, Megaphone, CalendarDays, Group, X, Check, Volume2, VolumeX, ArrowRight, ArrowDownToLine } from "lucide-react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  type MotionStyle,
+} from "motion/react";
+import {
+  Bell,
+  BellRing,
+  BellOff,
+  Target,
+  MessageSquare,
+  Megaphone,
+  CalendarDays,
+  Group,
+  X,
+  Check,
+  Volume2,
+  VolumeX,
+  ArrowRight,
+  ArrowDownToLine,
+} from "lucide-react";
 import {
   useNotifications,
   isAlert,
@@ -66,7 +88,10 @@ const ICON_MAP: Record<NotificationIcon, ComponentType<{ className?: string }>> 
 // Tint per kind — semantic-ish colors using existing palette. `button` matches
 // the same hue as `ring`/`iconFg` so a row's action buttons read as part of
 // the same alert, not a generic fixed blue/gray.
-const KIND_STYLES: Record<NotificationKind, { ring: string; iconFg: string; accent: string; button: string }> = {
+const KIND_STYLES: Record<
+  NotificationKind,
+  { ring: string; iconFg: string; accent: string; button: string }
+> = {
   "alert-now": {
     ring: "border-red-300 bg-red-50",
     iconFg: "text-red-700",
@@ -171,7 +196,8 @@ function NotificationTitle({ title, className }: { title: string; className?: st
 }
 
 export function NotificationBar() {
-  const { live, dismiss, clear, snooze, silence, unsilence, enableChime, activate } = useNotifications();
+  const { live, dismiss, clear, snooze, silence, unsilence, enableChime, activate } =
+    useNotifications();
   const { prefs } = useNotifications();
 
   // Newest on top — show up to maxStackVisible.
@@ -185,7 +211,9 @@ export function NotificationBar() {
   // silenced) one has been waiting longest — muting the current owner or
   // dismissing it hands the shared "audio slot" to the next-oldest one
   // instead of everything going quiet.
-  const chiming = live.filter((n) => isAlert(n.kind) && n.icon === "bell-chime" && n.state === "live");
+  const chiming = live.filter(
+    (n) => isAlert(n.kind) && n.icon === "bell-chime" && n.state === "live",
+  );
   const activeAlarm = chiming.reduce<Notification | null>(
     (oldest, n) => (!oldest || n.createdAt < oldest.createdAt ? n : oldest),
     null,
@@ -221,7 +249,11 @@ export function NotificationBar() {
         visible.length > 0 && "pt-2",
       )}
     >
-      <motion.div layout transition={{ layout: NOTIFICATION_AREA_TRANSITION }} className="max-w-2xl mx-auto flex flex-col gap-2">
+      <motion.div
+        layout
+        transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
+        className="max-w-2xl mx-auto flex flex-col gap-2"
+      >
         <AnimatePresence initial={false}>
           {visible.map((n) => (
             <NotificationRow
@@ -288,9 +320,12 @@ function NotificationRow({
   // re-reading the card's live state on every render.
   const [intervalStatus, setIntervalStatus] = useState(n.timestampCheck?.initialStatus ?? null);
   const dismissTimeoutRef = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (dismissTimeoutRef.current != null) window.clearTimeout(dismissTimeoutRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (dismissTimeoutRef.current != null) window.clearTimeout(dismissTimeoutRef.current);
+    },
+    [],
+  );
   const handleIntervalScore = (value: "correct" | "incorrect") => {
     if (!n.timestampCheck) return;
     setIntervalStatus((prev) => (prev === value ? null : value));
@@ -314,7 +349,8 @@ function NotificationRow({
   // "on"/"muted" behave as the existing mute toggle once chime-capable.
   const audioState: "off" | "on" | "muted" = !isChimeCapable ? "off" : silenced ? "muted" : "on";
   const showAudioButton = alert;
-  const audioAction = audioState === "off" ? onEnableChime : audioState === "muted" ? onUnsilence : onSilence;
+  const audioAction =
+    audioState === "off" ? onEnableChime : audioState === "muted" ? onUnsilence : onSilence;
   const canSwipeRight = showSnooze || showAudioButton;
   const rightAction = showSnooze ? onSnooze : showAudioButton ? audioAction : undefined;
 
@@ -330,14 +366,19 @@ function NotificationRow({
     return () => window.clearInterval(id);
   }, [alert, hasChime, n.kind]);
 
-  const relativeTime = n.activityAt != null ? formatActivityRelativeTime(n.activityAt, nowMs) : null;
+  const relativeTime =
+    n.activityAt != null ? formatActivityRelativeTime(n.activityAt, nowMs) : null;
 
   const threshold = SWIPE_THRESHOLD_PX;
   const dragX = useMotionValue(0);
   const wasDragging = useRef(false);
   // The bubble itself fades out as it clears the threshold, so it's already
   // invisible well before the (larger) offscreen travel finishes.
-  const bubbleOpacity = useTransform(dragX, [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5], [0, 1, 1, 1, 0]);
+  const bubbleOpacity = useTransform(
+    dragX,
+    [-threshold * 2.5, -threshold, 0, threshold, threshold * 2.5],
+    [0, 1, 1, 1, 0],
+  );
 
   const rightIsSnooze = showSnooze;
   const rightIsAudio = !showSnooze && showAudioButton;
@@ -408,7 +449,9 @@ function NotificationRow({
         damping: SWIPE_SPRING_DAMPING,
       });
     }
-    window.setTimeout(() => { wasDragging.current = false; }, 80);
+    window.setTimeout(() => {
+      wasDragging.current = false;
+    }, 80);
   };
 
   return (
@@ -443,10 +486,16 @@ function NotificationRow({
           motion.div's `exit` above) — a commit fling keeps it lit the whole
           way off rather than fading early. */}
       <div className="absolute inset-0 flex items-center justify-between px-5">
-        <motion.span style={{ opacity: leftLabelOpacity }} className={cn("text-sm font-semibold", styles.iconFg)}>
+        <motion.span
+          style={{ opacity: leftLabelOpacity }}
+          className={cn("text-sm font-semibold", styles.iconFg)}
+        >
           {leftLabel}
         </motion.span>
-        <motion.span style={{ opacity: rightLabelOpacity }} className={cn("text-sm font-semibold", styles.iconFg)}>
+        <motion.span
+          style={{ opacity: rightLabelOpacity }}
+          className={cn("text-sm font-semibold", styles.iconFg)}
+        >
           Dismiss
         </motion.span>
       </div>
@@ -461,7 +510,9 @@ function NotificationRow({
         dragElastic={0.15}
         dragMomentum={false}
         style={{ x: dragX, opacity: bubbleOpacity }}
-        onDragStart={() => { wasDragging.current = true; }}
+        onDragStart={() => {
+          wasDragging.current = true;
+        }}
         onDragEnd={handleDragEnd}
         className={cn("relative rounded-full border shadow-sm", styles.ring)}
       >
@@ -512,7 +563,10 @@ function NotificationRow({
             </div>
             {n.timestampCheck && <span className="sr-only">Tap to jump to the card</span>}
             <div className="flex-1 min-w-0">
-              <NotificationTitle title={n.title} className="block text-sm text-foreground truncate" />
+              <NotificationTitle
+                title={n.title}
+                className="block text-sm text-foreground truncate"
+              />
               {n.body && (
                 <div className="text-xs text-muted-foreground truncate">
                   {n.body}
@@ -576,9 +630,17 @@ function NotificationRow({
               <>
                 {showAudioButton && (
                   <RowButton
-                    label={audioState === "off" ? "Turn on alarm" : audioState === "muted" ? "Unmute alarm" : "Mute alarm"}
+                    label={
+                      audioState === "off"
+                        ? "Turn on alarm"
+                        : audioState === "muted"
+                          ? "Unmute alarm"
+                          : "Mute alarm"
+                    }
                     colorClass={cn(
-                      audioState === "off" ? "bg-stone-500 hover:bg-stone-600 active:bg-stone-600" : styles.button,
+                      audioState === "off"
+                        ? "bg-stone-500 hover:bg-stone-600 active:bg-stone-600"
+                        : styles.button,
                       // Muting used to only swap the icon, leaving the button
                       // at full strength — reads as still "on." Fading it
                       // here is what actually sells "this is now off,"
@@ -600,23 +662,39 @@ function NotificationRow({
                         transition={{ duration: 0.15 }}
                         className="grid"
                       >
-                        {audioState === "on" ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                        {audioState === "on" ? (
+                          <Volume2 className="size-4" />
+                        ) : (
+                          <VolumeX className="size-4" />
+                        )}
                       </motion.span>
                     </AnimatePresence>
                   </RowButton>
                 )}
                 {showSnooze && (
-                  <RowButton label="Snooze" colorClass={styles.button} onClick={() => commit(1, onSnooze)}>
+                  <RowButton
+                    label="Snooze"
+                    colorClass={styles.button}
+                    onClick={() => commit(1, onSnooze)}
+                  >
                     <ZzIcon className="size-4" />
                   </RowButton>
                 )}
               </>
             ) : (
-              <RowButton label="Open" colorClass={styles.button} onClick={() => commit(1, onActivate)}>
+              <RowButton
+                label="Open"
+                colorClass={styles.button}
+                onClick={() => commit(1, onActivate)}
+              >
                 <ArrowRight className="size-4" />
               </RowButton>
             )}
-            <RowButton label="Dismiss" colorClass={styles.button} onClick={() => commit(-1, onDismiss)}>
+            <RowButton
+              label="Dismiss"
+              colorClass={styles.button}
+              onClick={() => commit(-1, onDismiss)}
+            >
               <X className="size-4" />
             </RowButton>
           </div>
@@ -693,13 +771,20 @@ export function NotificationsPane() {
     return (
       <div className="max-w-md mx-auto mt-12 rounded-xl border border-dashed border-border bg-white p-8 text-center">
         <h2 className="font-display text-xl">Alerts &amp; announcements</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Messages, reminders, and supervisor notes will appear here.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Messages, reminders, and supervisor notes will appear here.
+        </p>
       </div>
     );
   }
 
   const renderRow = (n: Notification) => (
-    <NotificationListRow key={n.id} n={n} onClear={() => clear(n.id)} onActivate={() => activate(n)} />
+    <NotificationListRow
+      key={n.id}
+      n={n}
+      onClear={() => clear(n.id)}
+      onActivate={() => activate(n)}
+    />
   );
 
   return (
@@ -756,7 +841,9 @@ export function NotificationsPane() {
                   <span
                     className={cn(
                       "overflow-hidden whitespace-nowrap transition-all duration-300 ease-out",
-                      stickyCompact ? "max-w-0 opacity-0 delay-0" : "max-w-[100px] opacity-100 delay-300",
+                      stickyCompact
+                        ? "max-w-0 opacity-0 delay-0"
+                        : "max-w-[100px] opacity-100 delay-300",
                     )}
                   >
                     {label}
@@ -777,7 +864,9 @@ export function NotificationsPane() {
             )}
             aria-hidden={!stickyCompact}
           >
-            <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">Notifications</span>
+            <span className="text-xs font-bold text-stone-700 whitespace-nowrap truncate">
+              Notifications
+            </span>
           </div>
           {/* Right-pinned utilities — always present, not part of the
               filters' own compact/expand choreography. */}
@@ -805,30 +894,32 @@ export function NotificationsPane() {
         </div>
       </div>
       <div className="max-w-2xl mx-auto px-4 pt-3">
-      {ordered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No notifications match the selected filters.
-        </p>
-      ) : groupByType ? (
-        <div className="space-y-4">
-          {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
-            const items = ordered.filter((n) => categoryForKind(n.kind) === category);
-            if (items.length === 0) return null;
-            return (
-              <div key={category}>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</h3>
-                <div className="space-y-2">
-                  <AnimatePresence initial={false}>{items.map(renderRow)}</AnimatePresence>
+        {ordered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No notifications match the selected filters.
+          </p>
+        ) : groupByType ? (
+          <div className="space-y-4">
+            {NOTIFICATION_CATEGORIES.map(({ category, label }) => {
+              const items = ordered.filter((n) => categoryForKind(n.kind) === category);
+              if (items.length === 0) return null;
+              return (
+                <div key={category}>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">
+                    {label}
+                  </h3>
+                  <div className="space-y-2">
+                    <AnimatePresence initial={false}>{items.map(renderRow)}</AnimatePresence>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <AnimatePresence initial={false}>{ordered.map(renderRow)}</AnimatePresence>
-        </div>
-      )}
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>{ordered.map(renderRow)}</AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -897,7 +988,9 @@ function NotificationListRow({
         damping: SWIPE_SPRING_DAMPING,
       });
     }
-    window.setTimeout(() => { wasDragging.current = false; }, 80);
+    window.setTimeout(() => {
+      wasDragging.current = false;
+    }, 80);
   };
 
   return (
@@ -906,17 +999,28 @@ function NotificationListRow({
       initial={{ opacity: 0, y: 12, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeOut" } }}
-      transition={{ layout: NOTIFICATION_AREA_TRANSITION, default: { type: "spring", stiffness: 420, damping: 20 } }}
+      transition={{
+        layout: NOTIFICATION_AREA_TRANSITION,
+        default: { type: "spring", stiffness: 420, damping: 20 },
+      }}
       drag="x"
       dragConstraints={{ left: -threshold * 1.4, right: 0 }}
       dragElastic={0.15}
       dragMomentum={false}
-      onDragStart={() => { wasDragging.current = true; }}
+      onDragStart={() => {
+        wasDragging.current = true;
+      }}
       onDragEnd={handleDragEnd}
       style={{ x: dismissX, opacity: cardOpacity }}
       className="flex items-start gap-3 rounded-xl border border-border bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing"
     >
-      <div className={cn("flex items-center justify-center size-8 shrink-0 rounded-full", styles.ring, styles.iconFg)}>
+      <div
+        className={cn(
+          "flex items-center justify-center size-8 shrink-0 rounded-full",
+          styles.ring,
+          styles.iconFg,
+        )}
+      >
         <Icon className="size-4" />
       </div>
       <div className="flex-1 min-w-0">
@@ -926,7 +1030,9 @@ function NotificationListRow({
           {n.sourceRef && (
             <button
               type="button"
-              onClick={() => { if (!wasDragging.current) onActivate(); }}
+              onClick={() => {
+                if (!wasDragging.current) onActivate();
+              }}
               className="text-xs font-medium text-blue-500 hover:text-blue-600"
             >
               {viewLabel}
@@ -937,7 +1043,9 @@ function NotificationListRow({
       </div>
       <button
         type="button"
-        onClick={() => { if (!wasDragging.current) commitDismiss(); }}
+        onClick={() => {
+          if (!wasDragging.current) commitDismiss();
+        }}
         aria-label="Clear notification"
         className="shrink-0 grid place-items-center size-7 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors"
       >

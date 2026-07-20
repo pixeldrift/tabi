@@ -27,6 +27,7 @@ import { useReportCardStatus } from "./DataToolbarContext";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
+import { ACTION_BUTTON_COLORS } from "@/lib/actionButtonColors";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 
@@ -208,7 +209,9 @@ export function TrialCard({
     if (isMaxReached && trials[idx] === null) return;
     const isToggleOff = trials[idx] === value;
     if (!isToggleOff) {
-      playSoundEffect(value === "correct" ? "correct" : value === "incorrect" ? "error" : "noResponse");
+      playSoundEffect(
+        value === "correct" ? "correct" : value === "incorrect" ? "error" : "noResponse",
+      );
     }
     setTrials((prev) => {
       const next = [...prev];
@@ -307,7 +310,6 @@ export function TrialCard({
     return (
       <MiniTileShell
         title={title}
-        description={description}
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
@@ -342,9 +344,13 @@ export function TrialCard({
                 { label: "Correct", value: percentCorrectDisplay },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="trial"
+                />
               </div>
             )}
           </>
@@ -463,7 +469,6 @@ export function TrialCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<PercentCorrectIcon />}
         kind="trial"
         dataTypeLabel={dataType}
@@ -499,9 +504,13 @@ export function TrialCard({
                 { label: "Correct", value: percentCorrectDisplay },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="trial"
+                />
               </div>
             )}
           </>
@@ -644,7 +653,6 @@ export function TrialCard({
             open={detailsOpen ?? false}
             onOpenChange={onDetailsOpenChange ?? (() => {})}
             title={title}
-            description={description}
             onPrevCard={onPrevCard}
             onNextCard={onNextCard}
             slideFrom={slideFrom}
@@ -661,9 +669,13 @@ export function TrialCard({
                     { label: "Correct", value: percentCorrectDisplay },
                   ]}
                 />
-                {teachingProcedure && (
+                {(teachingProcedure || description) && (
                   <div className="mt-4">
-                    <TeachingProcedureAccordion data={teachingProcedure} kind="trial" />
+                    <TeachingProcedureAccordion
+                      description={description}
+                      data={teachingProcedure}
+                      kind="trial"
+                    />
                   </div>
                 )}
               </>
@@ -1068,14 +1080,16 @@ const ACTION_BUTTON_STYLES = {
   correct: {
     icon: Check,
     label: "Correct",
-    classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-    selectedClasses: "bg-green-500 border-green-600 text-white hover:bg-green-600",
+    classes: ACTION_BUTTON_COLORS.green.classes,
+    // The extra hover here (unlike the same green used elsewhere) is this
+    // card's own choice for its bigger, more prominent scoring buttons.
+    selectedClasses: cn(ACTION_BUTTON_COLORS.green.selectedClasses, "hover:bg-green-600"),
   },
   incorrect: {
     icon: X,
     label: "Error",
-    classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-    selectedClasses: "bg-red-500 border-red-600 text-white hover:bg-red-600",
+    classes: ACTION_BUTTON_COLORS.red.classes,
+    selectedClasses: cn(ACTION_BUTTON_COLORS.red.selectedClasses, "hover:bg-red-600"),
   },
   // Neutral (not positive or negative), same amber used for Task Analysis's
   // Prompted option, so "the target behavior didn't happen at all" reads
@@ -1083,8 +1097,8 @@ const ACTION_BUTTON_STYLES = {
   "no-response": {
     icon: CircleSlash2,
     label: "No Response",
-    classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    selectedClasses: "bg-amber-500 border-amber-600 text-white hover:bg-amber-600",
+    classes: ACTION_BUTTON_COLORS.amber.classes,
+    selectedClasses: cn(ACTION_BUTTON_COLORS.amber.selectedClasses, "hover:bg-amber-600"),
   },
 } as const;
 

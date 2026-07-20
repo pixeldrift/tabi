@@ -36,8 +36,24 @@ export type Appointment = {
 // ClientInfoPane) — Vanessa (SLP) and Jeremy (OT) are Phineas's actual
 // related-service providers, not generic placeholder names.
 export const PHINEAS_APPTS: Appointment[] = [
-  { id: "ap1", start: "11:00", end: "11:30", days: ["Mon", "Wed"], type: "Speech Therapy", provider: "Vanessa Doofenshmirtz", tag: "Co-Treat" },
-  { id: "ap2", start: "13:00", end: "13:30", days: ["Tue", "Thu"], type: "Occupational Therapy", provider: "Jeremy Johnson", tag: "Handoff Session" },
+  {
+    id: "ap1",
+    start: "11:00",
+    end: "11:30",
+    days: ["Mon", "Wed"],
+    type: "Speech Therapy",
+    provider: "Vanessa Doofenshmirtz",
+    tag: "Co-Treat",
+  },
+  {
+    id: "ap2",
+    start: "13:00",
+    end: "13:30",
+    days: ["Tue", "Thu"],
+    type: "Occupational Therapy",
+    provider: "Jeremy Johnson",
+    tag: "Handoff Session",
+  },
 ];
 
 interface ScheduleContextValue {

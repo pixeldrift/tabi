@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { DisplayMode } from "./DataToolbarContext";
 
 export interface SettingDef {
@@ -136,7 +144,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // localStorage on mount to avoid hydration mismatches.
   const [values, setValues] = useState<SettingsValues>(DEFAULTS);
   const [alarmSound, setAlarmSound] = useState<AlarmSoundStyle>(DEFAULT_ALARM_SOUND);
-  const [keepActiveCardCentered, setKeepActiveCardCentered] = useState(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
+  const [keepActiveCardCentered, setKeepActiveCardCentered] = useState(
+    DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+  );
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultDataView, setDefaultDataView] = useState<DisplayMode>(DEFAULT_DATA_VIEW);
@@ -153,7 +163,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored: StoredShape = { values, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView };
+    const stored: StoredShape = {
+      values,
+      alarmSound,
+      keepActiveCardCentered,
+      dayStart,
+      dayEnd,
+      defaultDataView,
+    };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   }, [values, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView]);
 
@@ -175,12 +192,32 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      values, setValue, resetAll, resetOne, alarmSound, setAlarmSound,
-      keepActiveCardCentered, setKeepActiveCardCentered,
-      dayStart, setDayStart, dayEnd, setDayEnd,
-      defaultDataView, setDefaultDataView,
+      values,
+      setValue,
+      resetAll,
+      resetOne,
+      alarmSound,
+      setAlarmSound,
+      keepActiveCardCentered,
+      setKeepActiveCardCentered,
+      dayStart,
+      setDayStart,
+      dayEnd,
+      setDayEnd,
+      defaultDataView,
+      setDefaultDataView,
     }),
-    [values, setValue, resetAll, resetOne, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView],
+    [
+      values,
+      setValue,
+      resetAll,
+      resetOne,
+      alarmSound,
+      keepActiveCardCentered,
+      dayStart,
+      dayEnd,
+      defaultDataView,
+    ],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

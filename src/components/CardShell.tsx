@@ -79,7 +79,6 @@ export interface CardShellProps extends CardEditAndDrawerProps {
   dataType?: string;
   /** Small outline icon shown to the left of the dataType label. */
   dataTypeIcon?: ReactNode;
-  description?: string;
   isActive?: boolean;
   onActivate?: () => void;
   /** 0–100 progress. Pass null/undefined to hide the progress bar entirely. */
@@ -107,7 +106,6 @@ export function CardShell({
   phase = "Intervention",
   dataType,
   dataTypeIcon,
-  description,
   isActive = true,
   onActivate,
   reorderEditing = false,
@@ -140,11 +138,7 @@ export function CardShell({
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
-  const barBg = isComplete
-    ? "bg-green-500/30"
-    : pct >= 50
-      ? "bg-yellow-400/30"
-      : "bg-blue-400/30";
+  const barBg = isComplete ? "bg-green-500/30" : pct >= 50 ? "bg-yellow-400/30" : "bg-blue-400/30";
 
   return (
     <article
@@ -175,148 +169,148 @@ export function CardShell({
           see historical #18 fix) to the card's rounded shape — kept on a
           separate node from the border/shadow above, see that comment. */}
       <div className="relative rounded-xl overflow-hidden">
-      <header className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}>
-        {hasExpandedView && (
+        <header
+          className={cn("flex items-start gap-1 pl-5 pt-2 pb-0", reorderEditing ? "pr-3" : "pr-9")}
+        >
+          {hasExpandedView && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpanded?.();
+              }}
+              aria-expanded={expanded}
+              aria-label={expanded ? "Show standard view" : "Show all"}
+              className="-ml-1.5 mt-[-0.5px] shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+            >
+              <TimeChevronIcon
+                className={cn(
+                  "size-4 transition-transform duration-200",
+                  expanded && "translate-y-0.5 rotate-90",
+                )}
+              />
+            </button>
+          )}
+          <h2 className="font-display text-base leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
+            {renderBreakableTitle(title)}
+          </h2>
+          {reorderEditing ? (
+            <CardEditControls
+              favorited={favorited}
+              onToggleFavorite={onToggleFavorite ?? (() => {})}
+              cardHidden={cardHidden}
+              onToggleHidden={onToggleHidden ?? (() => {})}
+              dragControls={dragControls}
+            />
+          ) : (
+            <div className="text-right leading-tight -mt-0.5">
+              <PhaseInfoLabel
+                phase={phase}
+                className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground hover:text-blue-600 transition-colors"
+              />
+              {dataType && (
+                <DataTypeInfoLabel
+                  kind={kind}
+                  label={dataType}
+                  icon={dataTypeIcon}
+                  className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground hover:text-blue-600 transition-colors"
+                />
+              )}
+            </div>
+          )}
+        </header>
+
+        {/* Universal header/body divider — present in every card and both
+          the standard and expanded views, not just faded in while expanded. */}
+        <div className="mx-[18px] mt-2.5 border-t border-dashed border-border" />
+
+        {/* Positioned so the circle's center sits at the card's own corner-radius
+          center (rounded-xl = 20px), rather than in the header's flex flow.
+          Hidden in edit mode along with the phase/data-type label — no need
+          to jump into a card's info while busy reordering/hiding cards. */}
+        {!reorderEditing && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleExpanded?.();
+              onOpenDetails?.();
             }}
-            aria-expanded={expanded}
-            aria-label={expanded ? "Show standard view" : "Show all"}
-            className="-ml-1.5 mt-[-0.5px] shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
+            aria-label="Card details"
+            className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
           >
-            <TimeChevronIcon
-              className={cn(
-                "size-4 transition-transform duration-200",
-                expanded && "translate-y-0.5 rotate-90",
-              )}
-            />
+            <DetailsIcon className="size-4" strokeWidth={1.5} />
           </button>
         )}
-        <h2 className="font-display text-base leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
-          {renderBreakableTitle(title)}
-        </h2>
-        {reorderEditing ? (
-          <CardEditControls
-            favorited={favorited}
-            onToggleFavorite={onToggleFavorite ?? (() => {})}
-            cardHidden={cardHidden}
-            onToggleHidden={onToggleHidden ?? (() => {})}
-            dragControls={dragControls}
+
+        {isActive && (
+          <DataDetailsDrawer
+            open={detailsOpen}
+            onOpenChange={onDetailsOpenChange ?? (() => {})}
+            title={title}
+            details={details}
+            onPrevCard={onPrevCard}
+            onNextCard={onNextCard}
+            slideFrom={slideFrom}
+            top={stickyTop}
+            toolbarHeight={toolbarHeight}
+            cardRef={articleRef}
+            widthMode={widthMode}
+            onWidthModeChange={onWidthModeChange}
           />
-        ) : (
-          <div className="text-right leading-tight -mt-0.5">
-            <PhaseInfoLabel
-              phase={phase}
-              className="flex items-center justify-end gap-1 text-xs font-medium italic text-muted-foreground hover:text-blue-600 transition-colors"
-            />
-            {dataType && (
-              <DataTypeInfoLabel
-                kind={kind}
-                label={dataType}
-                icon={dataTypeIcon}
-                className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground hover:text-blue-600 transition-colors"
-              />
-            )}
-          </div>
         )}
-      </header>
 
-      {/* Universal header/body divider — present in every card and both
-          the standard and expanded views, not just faded in while expanded. */}
-      <div className="mx-[18px] mt-2.5 border-t border-dashed border-border" />
+        {hasExpandedView ? (
+          <>
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-out",
+                expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+              )}
+            >
+              <div className="overflow-hidden">{children}</div>
+            </div>
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-out",
+                expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+            >
+              <div className="overflow-hidden">{expandedView}</div>
+            </div>
+          </>
+        ) : (
+          children
+        )}
 
-      {/* Positioned so the circle's center sits at the card's own corner-radius
-          center (rounded-xl = 20px), rather than in the header's flex flow.
-          Hidden in edit mode along with the phase/data-type label — no need
-          to jump into a card's info while busy reordering/hiding cards. */}
-      {!reorderEditing && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetails?.();
-          }}
-          aria-label="Card details"
-          className="absolute top-2 right-2 grid size-6 place-items-center rounded-full border border-current text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-        >
-          <DetailsIcon className="size-4" strokeWidth={1.5} />
-        </button>
-      )}
-
-      {isActive && (
-        <DataDetailsDrawer
-          open={detailsOpen}
-          onOpenChange={onDetailsOpenChange ?? (() => {})}
-          title={title}
-          description={description}
-          details={details}
-          onPrevCard={onPrevCard}
-          onNextCard={onNextCard}
-          slideFrom={slideFrom}
-          top={stickyTop}
-          toolbarHeight={toolbarHeight}
-          cardRef={articleRef}
-          widthMode={widthMode}
-          onWidthModeChange={onWidthModeChange}
-        />
-      )}
-
-      {hasExpandedView ? (
-        <>
-          <div
-            className={cn(
-              "grid transition-[grid-template-rows] duration-300 ease-out",
-              expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
-            )}
-          >
-            <div className="overflow-hidden">{children}</div>
-          </div>
-          <div
-            className={cn(
-              "grid transition-[grid-template-rows] duration-300 ease-out",
-              expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-            )}
-          >
-            <div className="overflow-hidden">{expandedView}</div>
-          </div>
-        </>
-      ) : (
-        children
-      )}
-
-      {/* mx-4 mb-3: this used to run edge-to-edge, its own rounded corners
+        {/* mx-4 mb-3: this used to run edge-to-edge, its own rounded corners
           tucked flush against the card's — which read as the bar merging
           into the border frame rather than sitting inside it, especially
           once a selected card's blue ring made that border more prominent.
           Insetting it (with its own now-visible rounded-md corners) keeps a
           clear margin of card background all the way around, so it reads as
           content living inside the border instead of touching it. */}
-      {showProgress && (
-        <div className="relative mt-3 mx-4 mb-3">
-          <div className="relative h-5 rounded-md overflow-hidden">
-            <div className="absolute inset-0 bg-stone-200">
-              <motion.div
-                className={cn("absolute inset-y-0 left-0", barBg)}
-                animate={{ width: `${pct}%` }}
-                transition={{ type: "spring", stiffness: 180, damping: 26 }}
-              />
+        {showProgress && (
+          <div className="relative mt-3 mx-4 mb-3">
+            <div className="relative h-5 rounded-md overflow-hidden">
+              <div className="absolute inset-0 bg-stone-200">
+                <motion.div
+                  className={cn("absolute inset-y-0 left-0", barBg)}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ type: "spring", stiffness: 180, damping: 26 }}
+                />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center px-3 text-[11px] text-foreground/75 leading-none pointer-events-none">
+                {helperText}
+              </div>
             </div>
-            <div className="absolute inset-0 flex items-center justify-center px-3 text-[11px] text-foreground/75 leading-none pointer-events-none">
-              {helperText}
-            </div>
+            {isComplete && (
+              <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                <Starburst />
+              </div>
+            )}
           </div>
-          {isComplete && (
-            <div className="absolute inset-0 grid place-items-center pointer-events-none">
-              <Starburst />
-            </div>
-          )}
-        </div>
-      )}
+        )}
       </div>
-
     </article>
   );
 }

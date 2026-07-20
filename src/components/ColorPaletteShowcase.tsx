@@ -7,11 +7,59 @@ import { ChevronDown } from "lucide-react";
 // the docs list for the same shade and read as visually identical; close
 // enough for a reference census, not meant to be pixel-exact.
 const FAMILY_HEX: Record<string, Record<number, string>> = {
-  stone: { 50: "#fafaf9", 100: "#f5f5f4", 200: "#e7e5e4", 300: "#d6d3d1", 400: "#a8a29e", 500: "#78716c", 600: "#57534e", 700: "#44403c", 800: "#292524", 900: "#1c1917" },
-  blue: { 50: "#eff6ff", 100: "#dbeafe", 200: "#bfdbfe", 300: "#93c5fd", 400: "#60a5fa", 500: "#3b82f6", 600: "#2563eb", 700: "#1d4ed8", 800: "#1e40af", 900: "#1e3a8a" },
-  red: { 50: "#fef2f2", 100: "#fee2e2", 300: "#fca5a5", 400: "#f87171", 500: "#ef4444", 600: "#dc2626", 700: "#b91c1c" },
-  green: { 50: "#f0fdf4", 100: "#dcfce7", 200: "#bbf7d0", 300: "#86efac", 400: "#4ade80", 500: "#22c55e", 600: "#16a34a", 700: "#15803d", 800: "#166534" },
-  amber: { 50: "#fffbeb", 100: "#fef3c7", 300: "#fcd34d", 400: "#fbbf24", 500: "#f59e0b", 600: "#d97706", 700: "#b45309" },
+  stone: {
+    50: "#fafaf9",
+    100: "#f5f5f4",
+    200: "#e7e5e4",
+    300: "#d6d3d1",
+    400: "#a8a29e",
+    500: "#78716c",
+    600: "#57534e",
+    700: "#44403c",
+    800: "#292524",
+    900: "#1c1917",
+  },
+  blue: {
+    50: "#eff6ff",
+    100: "#dbeafe",
+    200: "#bfdbfe",
+    300: "#93c5fd",
+    400: "#60a5fa",
+    500: "#3b82f6",
+    600: "#2563eb",
+    700: "#1d4ed8",
+    800: "#1e40af",
+    900: "#1e3a8a",
+  },
+  red: {
+    50: "#fef2f2",
+    100: "#fee2e2",
+    300: "#fca5a5",
+    400: "#f87171",
+    500: "#ef4444",
+    600: "#dc2626",
+    700: "#b91c1c",
+  },
+  green: {
+    50: "#f0fdf4",
+    100: "#dcfce7",
+    200: "#bbf7d0",
+    300: "#86efac",
+    400: "#4ade80",
+    500: "#22c55e",
+    600: "#16a34a",
+    700: "#15803d",
+    800: "#166534",
+  },
+  amber: {
+    50: "#fffbeb",
+    100: "#fef3c7",
+    300: "#fcd34d",
+    400: "#fbbf24",
+    500: "#f59e0b",
+    600: "#d97706",
+    700: "#b45309",
+  },
   yellow: { 300: "#fde047", 400: "#facc15" },
   violet: { 50: "#f5f3ff", 300: "#c4b5fd", 500: "#8b5cf6", 600: "#7c3aed", 700: "#6d28d9" },
   teal: { 50: "#f0fdfa", 300: "#5eead4", 500: "#14b8a6", 600: "#0d9488", 700: "#0f766e" },
@@ -28,8 +76,14 @@ const FAMILY_HEX: Record<string, Record<number, string>> = {
 // that share one deliberate 50/300/500/600/700 pattern (see
 // NotificationBar.tsx's own NOTIFICATION_STYLES).
 const CORE_PALETTE: { family: string; counts: Record<number, number> }[] = [
-  { family: "stone", counts: { 50: 6, 100: 33, 200: 27, 300: 18, 400: 33, 500: 15, 600: 22, 700: 5, 800: 8, 900: 2 } },
-  { family: "blue", counts: { 50: 38, 100: 13, 200: 4, 300: 21, 400: 51, 500: 90, 600: 110, 700: 39 } },
+  {
+    family: "stone",
+    counts: { 50: 6, 100: 33, 200: 27, 300: 18, 400: 33, 500: 15, 600: 22, 700: 5, 800: 8, 900: 2 },
+  },
+  {
+    family: "blue",
+    counts: { 50: 38, 100: 13, 200: 4, 300: 21, 400: 51, 500: 90, 600: 110, 700: 39 },
+  },
   { family: "red", counts: { 50: 25, 100: 11, 300: 23, 400: 3, 500: 24, 600: 24, 700: 27 } },
   { family: "green", counts: { 50: 17, 100: 10, 300: 14, 400: 3, 500: 20, 600: 18, 700: 22 } },
   { family: "amber", counts: { 50: 14, 100: 8, 300: 17, 400: 1, 500: 13, 600: 13, 700: 16 } },
@@ -49,7 +103,17 @@ const ACCENT_SHAPE = { 50: 1, 300: 1, 500: 2, 600: 1, 700: 2 };
 
 /** One semantic design-system role — shown as its bg/fg pair so a
  *  contrast mismatch would actually be visible, not just its bg color. */
-function TokenPair({ name, bgVar, fgVar, note }: { name: string; bgVar: string; fgVar?: string; note?: string }) {
+function TokenPair({
+  name,
+  bgVar,
+  fgVar,
+  note,
+}: {
+  name: string;
+  bgVar: string;
+  fgVar?: string;
+  note?: string;
+}) {
   return (
     <div
       className="flex flex-col items-center gap-1 w-16"
@@ -58,8 +122,13 @@ function TokenPair({ name, bgVar, fgVar, note }: { name: string; bgVar: string; 
       <div className="flex size-9 overflow-hidden rounded-md border border-black/10 shadow-sm">
         <div className="flex-1" style={{ backgroundColor: `var(${bgVar})` }} />
         {fgVar && (
-          <div className="flex-1 grid place-items-center" style={{ backgroundColor: `var(${bgVar})` }}>
-            <span className="text-[13px] font-semibold" style={{ color: `var(${fgVar})` }}>A</span>
+          <div
+            className="flex-1 grid place-items-center"
+            style={{ backgroundColor: `var(${bgVar})` }}
+          >
+            <span className="text-[13px] font-semibold" style={{ color: `var(${fgVar})` }}>
+              A
+            </span>
           </div>
         )}
       </div>
@@ -72,7 +141,10 @@ function TokenPair({ name, bgVar, fgVar, note }: { name: string; bgVar: string; 
 function TokenSolo({ name, cssVar }: { name: string; cssVar: string }) {
   return (
     <div className="flex flex-col items-center gap-1 w-16" title={`--${name}`}>
-      <div className="size-9 rounded-md border border-black/10 shadow-sm" style={{ backgroundColor: `var(${cssVar})` }} />
+      <div
+        className="size-9 rounded-md border border-black/10 shadow-sm"
+        style={{ backgroundColor: `var(${cssVar})` }}
+      />
       <span className="text-[10px] font-medium leading-none text-center">{name}</span>
     </div>
   );
@@ -86,7 +158,10 @@ function Swatch({ family, shade, count }: { family: string; shade: number; count
       title={`${family}-${shade}  ${hex}  ×${count}`}
     >
       <div className="relative">
-        <div className="size-8 rounded-md border border-black/10 shadow-sm" style={{ backgroundColor: hex }} />
+        <div
+          className="size-8 rounded-md border border-black/10 shadow-sm"
+          style={{ backgroundColor: hex }}
+        />
         <span className="absolute -top-1.5 -right-1.5 rounded-full bg-white border border-stone-200 text-[8px] leading-none px-1 py-0.5 text-stone-500">
           {count}
         </span>
@@ -124,7 +199,11 @@ export function ColorPaletteShowcase() {
             Theme tokens + every color shade in use ({totalSwatches}), for reference.
           </p>
         </div>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0"
+        >
           <ChevronDown className="size-4 text-muted-foreground" />
         </motion.div>
       </button>
@@ -149,12 +228,21 @@ export function ColorPaletteShowcase() {
                 <div className="flex flex-wrap gap-3">
                   <TokenPair name="background" bgVar="--background" fgVar="--foreground" />
                   <TokenPair name="card" bgVar="--card" fgVar="--card-foreground" />
-                  <TokenPair name="popover" bgVar="--popover" fgVar="--popover-foreground" note="= card" />
+                  <TokenPair
+                    name="popover"
+                    bgVar="--popover"
+                    fgVar="--popover-foreground"
+                    note="= card"
+                  />
                   <TokenPair name="primary" bgVar="--primary" fgVar="--primary-foreground" />
                   <TokenPair name="secondary" bgVar="--secondary" fgVar="--secondary-foreground" />
                   <TokenPair name="muted" bgVar="--muted" fgVar="--muted-foreground" />
                   <TokenPair name="accent" bgVar="--accent" fgVar="--accent-foreground" />
-                  <TokenPair name="destructive" bgVar="--destructive" fgVar="--destructive-foreground" />
+                  <TokenPair
+                    name="destructive"
+                    bgVar="--destructive"
+                    fgVar="--destructive-foreground"
+                  />
                   <TokenSolo name="border" cssVar="--border" />
                   <TokenSolo name="input" cssVar="--input" />
                   <TokenSolo name="ring" cssVar="--ring" />
@@ -178,7 +266,9 @@ export function ColorPaletteShowcase() {
                 <div className="space-y-3">
                   {CORE_PALETTE.map(({ family, counts }) => (
                     <div key={family} className="flex items-start gap-3">
-                      <span className="w-12 shrink-0 text-[11px] font-medium capitalize pt-2">{family}</span>
+                      <span className="w-12 shrink-0 text-[11px] font-medium capitalize pt-2">
+                        {family}
+                      </span>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(counts).map(([shade, count]) => (
                           <Swatch key={shade} family={family} shade={Number(shade)} count={count} />
@@ -188,7 +278,8 @@ export function ColorPaletteShowcase() {
                   ))}
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-3">
-                  Neutral family is consistently "stone" — no stray gray/zinc/slate/neutral shades found.
+                  Neutral family is consistently "stone" — no stray gray/zinc/slate/neutral shades
+                  found.
                 </p>
               </div>
 
@@ -202,7 +293,10 @@ export function ColorPaletteShowcase() {
                 <div className="space-y-3">
                   {NOTIFICATION_ACCENTS.map(({ family, category }) => (
                     <div key={family} className="flex items-start gap-3">
-                      <span className="w-32 shrink-0 text-[11px] font-medium pt-2 truncate" title={category}>
+                      <span
+                        className="w-32 shrink-0 text-[11px] font-medium pt-2 truncate"
+                        title={category}
+                      >
                         {category}
                       </span>
                       <div className="flex flex-wrap gap-2">
@@ -235,9 +329,18 @@ export function ColorPaletteShowcase() {
                     { hex: "#f0fdf4", matches: "green-50" },
                     { hex: "#eff6ff", matches: "blue-50" },
                   ].map(({ hex, matches }) => (
-                    <div key={hex} className="flex flex-col items-center gap-0.5 w-16" title={`matches ${matches}`}>
-                      <div className="size-8 rounded-md border border-black/10 shadow-sm" style={{ backgroundColor: hex }} />
-                      <span className="text-[8px] font-mono leading-none text-muted-foreground mt-0.5">{hex}</span>
+                    <div
+                      key={hex}
+                      className="flex flex-col items-center gap-0.5 w-16"
+                      title={`matches ${matches}`}
+                    >
+                      <div
+                        className="size-8 rounded-md border border-black/10 shadow-sm"
+                        style={{ backgroundColor: hex }}
+                      />
+                      <span className="text-[8px] font-mono leading-none text-muted-foreground mt-0.5">
+                        {hex}
+                      </span>
                       <span className="text-[9px] leading-none text-center">{matches}</span>
                     </div>
                   ))}

@@ -145,7 +145,9 @@ export function TimeOfDayKeypad({
   for (let u = 0; u < 2; u++) {
     if (u > 0) {
       unitNodes.push(
-        <span key="sep" className="self-start text-muted-foreground/40">:</span>,
+        <span key="sep" className="self-start text-muted-foreground/40">
+          :
+        </span>,
       );
     }
     const i0 = u * 2;

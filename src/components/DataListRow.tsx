@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 
 export interface DataListRowProps extends CardEditAndDrawerProps {
   title: string;
-  description?: string;
   /** Which data-type info modal to open when the leading icon is tapped —
    *  see DataTypeInfoLabel. */
   kind: CardKind;
@@ -44,7 +43,6 @@ export interface DataListRowProps extends CardEditAndDrawerProps {
  *  would just duplicate the pull-tab in a view where space is tight. */
 export function DataListRow({
   title,
-  description,
   kind,
   dataTypeIcon,
   dataTypeLabel,
@@ -92,55 +90,57 @@ export function DataListRow({
       )}
     >
       <div className="relative rounded-xl overflow-hidden">
-      <div
-        className={cn(
-          // relative z-10: keeps this in-flow content painting above the
-          // progress bar below, which is deliberately an absolutely
-          // positioned background wash now (not a layout sibling the row
-          // grows to fit) — see that div's own comment.
-          "relative z-10 flex items-start gap-1.5 pl-2 py-2",
-          reorderEditing ? "pr-3" : showActions ? "pr-32" : "pr-9",
-        )}
-      >
-        {/* Unconditional — CardEditControls now lives in its own slot on
+        <div
+          className={cn(
+            // relative z-10: keeps this in-flow content painting above the
+            // progress bar below, which is deliberately an absolutely
+            // positioned background wash now (not a layout sibling the row
+            // grows to fit) — see that div's own comment.
+            "relative z-10 flex items-start gap-1.5 pl-2 py-2",
+            reorderEditing ? "pr-3" : showActions ? "pr-32" : "pr-9",
+          )}
+        >
+          {/* Unconditional — CardEditControls now lives in its own slot on
             the right (see below), so there's no layout conflict keeping
             this off during editing like there was when both shared one
             slot. */}
-        <DataTypeInfoLabel
-          kind={kind}
-          label={dataTypeLabel}
-          icon={dataTypeIcon}
-          showLabel={false}
-          className="shrink-0 text-muted-foreground hover:text-blue-600 transition-colors"
-          iconClassName="[&>svg]:size-4"
-        />
-        <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0 break-words">
-          {renderBreakableTitle(title)}
-        </h2>
-        {/* Trails the title (not leading it, like the data-type icon does)
+          <DataTypeInfoLabel
+            kind={kind}
+            label={dataTypeLabel}
+            icon={dataTypeIcon}
+            showLabel={false}
+            className="shrink-0 text-muted-foreground hover:text-blue-600 transition-colors"
+            iconClassName="[&>svg]:size-4"
+          />
+          <h2 className="font-display text-sm leading-[1.15] flex-1 min-w-0 break-words">
+            {renderBreakableTitle(title)}
+          </h2>
+          {/* Trails the title (not leading it, like the data-type icon does)
             so it sits at the row's right edge — same side CardShell's own
             edit controls occupy — and inherits this row's items-start,
             keeping it pinned to the top rather than centering across a
             title that's wrapped the row taller. */}
-        {reorderEditing && (
-          <CardEditControls
-            favorited={favorited}
-            onToggleFavorite={onToggleFavorite ?? (() => {})}
-            cardHidden={cardHidden}
-            onToggleHidden={onToggleHidden ?? (() => {})}
-            dragControls={dragControls}
-          />
-        )}
-      </div>
+          {reorderEditing && (
+            <CardEditControls
+              favorited={favorited}
+              onToggleFavorite={onToggleFavorite ?? (() => {})}
+              cardHidden={cardHidden}
+              onToggleHidden={onToggleHidden ?? (() => {})}
+              dragControls={dragControls}
+            />
+          )}
+        </div>
 
-      {/* Floated (not part of the header's flex flow) so it stays pinned to
+        {/* Floated (not part of the header's flex flow) so it stays pinned to
           this same vertically-centered right edge regardless of whether the
           title above it wraps to one line or two — centered against the
           row's full height (not the header alone) so it reads as equal top
           and bottom margins within the box either way. */}
-      {showActions && <div className="absolute z-10 top-1/2 -translate-y-1/2 right-0.5">{actions}</div>}
+        {showActions && (
+          <div className="absolute z-10 top-1/2 -translate-y-1/2 right-0.5">{actions}</div>
+        )}
 
-      {/* A background wash tucked under the title only — stops well short
+        {/* A background wash tucked under the title only — stops well short
           of the floated actions cluster (rather than running the row's
           full width) so it never sits behind/underneath the buttons.
           Inset from the edges and rounded-full (rather than flush
@@ -149,20 +149,23 @@ export function DataListRow({
           selected row's ring makes that border more prominent. Only
           rendered where a running percentage is meaningful for the data
           type (Trial, Task Analysis); other kinds pass no `progress`. */}
-      {showProgress && (
-        <div
-          className={cn(
-            // left-[30px]: lines up with the title's own left edge (pl-2's
-            // 8px + the data-type icon's 16px + the gap-1.5 between them),
-            // not the icon's — the bar reads as belonging to the title, not
-            // as a random line starting under an unrelated icon.
-            "absolute left-[30px] bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
-            showActions ? "right-32" : "right-9",
-          )}
-        >
-          <div className={cn("h-full transition-[width]", barColor)} style={{ width: `${pct}%` }} />
-        </div>
-      )}
+        {showProgress && (
+          <div
+            className={cn(
+              // left-[30px]: lines up with the title's own left edge (pl-2's
+              // 8px + the data-type icon's 16px + the gap-1.5 between them),
+              // not the icon's — the bar reads as belonging to the title, not
+              // as a random line starting under an unrelated icon.
+              "absolute left-[30px] bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
+              showActions ? "right-32" : "right-9",
+            )}
+          >
+            <div
+              className={cn("h-full transition-[width]", barColor)}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {isActive && (
@@ -170,7 +173,6 @@ export function DataListRow({
           open={detailsOpen}
           onOpenChange={onDetailsOpenChange ?? (() => {})}
           title={title}
-          description={description}
           details={details}
           onPrevCard={onPrevCard}
           onNextCard={onNextCard}

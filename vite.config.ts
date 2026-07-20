@@ -18,7 +18,9 @@ const APP_VERSION = "v542";
 // default.
 function gitOutput(command: string, fallback: string): string {
   try {
-    return execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync(command, { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return fallback;
   }

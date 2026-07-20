@@ -40,7 +40,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ScrubText } from "@/components/ScrubText";
@@ -48,7 +47,7 @@ import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
-import { useSettings, DEFAULT_DAY_START, DEFAULT_DAY_END } from "@/components/SettingsContext";
+import { useSettings } from "@/components/SettingsContext";
 import {
   useScheduleData,
   PHINEAS_APPTS,
@@ -57,10 +56,8 @@ import {
   type AlertMode,
   type AlertSettings,
   type PrimingSettings,
-  type ApptTag,
   type Appointment,
 } from "@/components/ScheduleContext";
-
 
 const LOCATIONS = [
   "Treatment Room",
@@ -96,8 +93,8 @@ const ACTIVITIES = [
 const ACTIVITY_ICONS: Record<string, string> = {
   "Arrive/Pairing": "👋",
   "Sensory Play": "🫘",
-  "Snack": "🍎",
-  "Lunch": "🥪",
+  Snack: "🍎",
+  Lunch: "🥪",
   "Imaginative Play": "🦄",
   "Social Group": "🙋",
   "Arts and Crafts": "🎨",
@@ -106,17 +103,17 @@ const ACTIVITY_ICONS: Record<string, string> = {
   "Client Choice": "⭐",
   "Discreet Trials": "📋",
   "Potty Time": "💩",
-  "Cooking": "🍳",
-  "Cleanup": "🧹",
-  "Reading": "📖",
+  Cooking: "🍳",
+  Cleanup: "🧹",
+  Reading: "📖",
   "Pack Up/Dismissal": "🎒",
-  "Custom": "✨",
+  Custom: "✨",
 };
 
 const LOCATION_ICONS: Record<string, string> = {
   "Treatment Room": "🚪",
-  "Kitchen": "🍽️",
-  "Classroom": "📚",
+  Kitchen: "🍽️",
+  Classroom: "📚",
   "Big Gym": "🏀",
   "Small Gym": "⛺️",
   "Classroom Bathroom": "🚽",
@@ -145,11 +142,13 @@ const DEFAULT_ALERT: AlertSettings = {
   allowSnooze: true,
   autofade: true,
 };
+// Defaults — TODO: surface in user settings.
+const DEFAULT_PRIMING_MINUTES = 5;
 const DEFAULT_PRIMING: PrimingSettings = {
   mode: "off",
   allowSnooze: true,
   autofade: true,
-  minutesPrior: 5, // DEFAULT_PRIMING_MINUTES (declared below)
+  minutesPrior: DEFAULT_PRIMING_MINUTES,
 };
 
 type ScheduleItem = {
@@ -172,9 +171,9 @@ type Schedule = {
   locked?: boolean;
 };
 
-const PX_PER_MIN = 3.6;       // proportional: 5min smallest row ≈ 18px
+const PX_PER_MIN = 3.6; // proportional: 5min smallest row ≈ 18px
 const MIN_ROW_MIN = 5;
-const COLLAPSED_ROW_PX = 36;  // uniform row height in collapsed mode
+const COLLAPSED_ROW_PX = 36; // uniform row height in collapsed mode
 // Proportional edit mode: how tall the before-first/after-last "Add
 // Activity" affordance renders, capped well below its real (often much
 // larger) span — just enough to hold the button, not the whole gap.
@@ -193,9 +192,6 @@ const EDGE_ADD_ACTIVITY_PX = 48;
 const APPT_HALO_COLOR = "#f0fdf4";
 const CLIENT_GROUP = "Group A"; // demo: this client belongs to Group A
 
-// Defaults — TODO: surface in user settings.
-const DEFAULT_PRIMING_MINUTES = 5;
-
 // Animation timing — TODO: surface in user settings.
 const EDIT_MODE_DURATION_MS = 350;
 const EDIT_MODE_STAGGER_MS = 60;
@@ -204,52 +200,309 @@ const APPT_COLLAPSE_DAMPING = 32;
 const APPT_COLLAPSE_DURATION_MS = 320;
 const MODE_TRANSITION_DURATION_MS = 220;
 
-
-
 const GROUP_A: ScheduleItem[] = [
-  { id: "a1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
-  { id: "a2", start: "08:30", end: "09:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "a3", start: "09:15", end: "10:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
-  { id: "a4", start: "10:00", end: "10:30", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "a5", start: "10:30", end: "11:30", activity: "Social Group", location: "Classroom", alert: "audio" },
-  { id: "a6", start: "11:30", end: "12:15", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
-  { id: "a7", start: "12:15", end: "13:00", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "a8", start: "13:00", end: "14:00", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
-  { id: "a9", start: "14:00", end: "15:00", activity: "Peer Play", location: "Small Gym", alert: "audio" },
-  { id: "a10", start: "15:00", end: "15:30", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "a11", start: "15:30", end: "16:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
-  { id: "a12", start: "16:30", end: "17:30", activity: "Client Choice", location: "Small Gym", alert: "off" },
-  { id: "a13", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  {
+    id: "a1",
+    start: "08:00",
+    end: "08:30",
+    activity: "Reading",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "a2",
+    start: "08:30",
+    end: "09:15",
+    activity: "Discreet Trials",
+    location: "Treatment Room",
+    alert: "audio",
+  },
+  {
+    id: "a3",
+    start: "09:15",
+    end: "10:00",
+    activity: "Gross Motor Play",
+    location: "Big Gym",
+    alert: "audio",
+  },
+  {
+    id: "a4",
+    start: "10:00",
+    end: "10:30",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "a5",
+    start: "10:30",
+    end: "11:30",
+    activity: "Social Group",
+    location: "Classroom",
+    alert: "audio",
+  },
+  {
+    id: "a6",
+    start: "11:30",
+    end: "12:15",
+    activity: "Sensory Play",
+    location: "Treatment Room",
+    alert: "off",
+  },
+  {
+    id: "a7",
+    start: "12:15",
+    end: "13:00",
+    activity: "Lunch",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "a8",
+    start: "13:00",
+    end: "14:00",
+    activity: "Arts and Crafts",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "a9",
+    start: "14:00",
+    end: "15:00",
+    activity: "Peer Play",
+    location: "Small Gym",
+    alert: "audio",
+  },
+  {
+    id: "a10",
+    start: "15:00",
+    end: "15:30",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "a11",
+    start: "15:30",
+    end: "16:30",
+    activity: "Imaginative Play",
+    location: "Classroom",
+    alert: "off",
+  },
+  {
+    id: "a12",
+    start: "16:30",
+    end: "17:30",
+    activity: "Client Choice",
+    location: "Small Gym",
+    alert: "off",
+  },
+  {
+    id: "a13",
+    start: "17:30",
+    end: "18:00",
+    activity: "Pack Up/Dismissal",
+    location: "Treatment Room",
+    alert: "audio",
+  },
 ];
 
 const GROUP_B: ScheduleItem[] = [
-  { id: "b1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
-  { id: "b2", start: "08:30", end: "09:30", activity: "Imaginative Play", location: "Classroom", alert: "off" },
-  { id: "b3", start: "09:30", end: "10:30", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "b4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "b5", start: "11:00", end: "12:00", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
-  { id: "b6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "b7", start: "12:45", end: "13:45", activity: "Client Choice", location: "Small Gym", alert: "off" },
-  { id: "b8", start: "13:45", end: "14:45", activity: "Social Group", location: "Classroom", alert: "audio" },
-  { id: "b9", start: "14:45", end: "15:15", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "b10", start: "15:15", end: "16:15", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
-  { id: "b11", start: "16:15", end: "17:15", activity: "Peer Play", location: "Small Gym", alert: "audio" },
-  { id: "b12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  {
+    id: "b1",
+    start: "08:00",
+    end: "08:30",
+    activity: "Reading",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "b2",
+    start: "08:30",
+    end: "09:30",
+    activity: "Imaginative Play",
+    location: "Classroom",
+    alert: "off",
+  },
+  {
+    id: "b3",
+    start: "09:30",
+    end: "10:30",
+    activity: "Discreet Trials",
+    location: "Treatment Room",
+    alert: "audio",
+  },
+  {
+    id: "b4",
+    start: "10:30",
+    end: "11:00",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "b5",
+    start: "11:00",
+    end: "12:00",
+    activity: "Gross Motor Play",
+    location: "Big Gym",
+    alert: "audio",
+  },
+  {
+    id: "b6",
+    start: "12:00",
+    end: "12:45",
+    activity: "Lunch",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "b7",
+    start: "12:45",
+    end: "13:45",
+    activity: "Client Choice",
+    location: "Small Gym",
+    alert: "off",
+  },
+  {
+    id: "b8",
+    start: "13:45",
+    end: "14:45",
+    activity: "Social Group",
+    location: "Classroom",
+    alert: "audio",
+  },
+  {
+    id: "b9",
+    start: "14:45",
+    end: "15:15",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "b10",
+    start: "15:15",
+    end: "16:15",
+    activity: "Arts and Crafts",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "b11",
+    start: "16:15",
+    end: "17:15",
+    activity: "Peer Play",
+    location: "Small Gym",
+    alert: "audio",
+  },
+  {
+    id: "b12",
+    start: "17:15",
+    end: "18:00",
+    activity: "Pack Up/Dismissal",
+    location: "Treatment Room",
+    alert: "audio",
+  },
 ];
 
 const GROUP_C: ScheduleItem[] = [
-  { id: "c1", start: "08:00", end: "08:30", activity: "Reading", location: "Classroom", alert: "visual" },
-  { id: "c2", start: "08:30", end: "09:30", activity: "Sensory Play", location: "Treatment Room", alert: "off" },
-  { id: "c3", start: "09:30", end: "10:30", activity: "Social Group", location: "Classroom", alert: "audio" },
-  { id: "c4", start: "10:30", end: "11:00", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "c5", start: "11:00", end: "12:00", activity: "Arts and Crafts", location: "Classroom", alert: "visual" },
-  { id: "c6", start: "12:00", end: "12:45", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "c7", start: "12:45", end: "13:45", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
-  { id: "c8", start: "13:45", end: "14:45", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "c9", start: "14:45", end: "15:15", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "c10", start: "15:15", end: "16:15", activity: "Imaginative Play", location: "Classroom", alert: "off" },
-  { id: "c11", start: "16:15", end: "17:15", activity: "Peer Play", location: "Small Gym", alert: "audio" },
-  { id: "c12", start: "17:15", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  {
+    id: "c1",
+    start: "08:00",
+    end: "08:30",
+    activity: "Reading",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "c2",
+    start: "08:30",
+    end: "09:30",
+    activity: "Sensory Play",
+    location: "Treatment Room",
+    alert: "off",
+  },
+  {
+    id: "c3",
+    start: "09:30",
+    end: "10:30",
+    activity: "Social Group",
+    location: "Classroom",
+    alert: "audio",
+  },
+  {
+    id: "c4",
+    start: "10:30",
+    end: "11:00",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "c5",
+    start: "11:00",
+    end: "12:00",
+    activity: "Arts and Crafts",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "c6",
+    start: "12:00",
+    end: "12:45",
+    activity: "Lunch",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "c7",
+    start: "12:45",
+    end: "13:45",
+    activity: "Gross Motor Play",
+    location: "Big Gym",
+    alert: "audio",
+  },
+  {
+    id: "c8",
+    start: "13:45",
+    end: "14:45",
+    activity: "Discreet Trials",
+    location: "Treatment Room",
+    alert: "audio",
+  },
+  {
+    id: "c9",
+    start: "14:45",
+    end: "15:15",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "c10",
+    start: "15:15",
+    end: "16:15",
+    activity: "Imaginative Play",
+    location: "Classroom",
+    alert: "off",
+  },
+  {
+    id: "c11",
+    start: "16:15",
+    end: "17:15",
+    activity: "Peer Play",
+    location: "Small Gym",
+    alert: "audio",
+  },
+  {
+    id: "c12",
+    start: "17:15",
+    end: "18:00",
+    activity: "Pack Up/Dismissal",
+    location: "Treatment Room",
+    alert: "audio",
+  },
 ];
 
 // "Sensory Play" (formerly 11:15–11:45) was removed on purpose, leaving a
@@ -257,20 +510,118 @@ const GROUP_C: ScheduleItem[] = [
 // "Add Activity" gap buttons — which now render for any contiguous gap, not
 // just the one before the first item or after the last.
 const PHINEAS: ScheduleItem[] = [
-  { id: "p1", start: "10:00", end: "10:20", activity: "Arrive/Pairing", location: "Treatment Room", alert: "visual" },
-  { id: "p2", start: "10:20", end: "10:30", activity: "Potty Time", location: "Solo Bathroom", alert: "off" },
-  { id: "p3", start: "10:30", end: "11:15", activity: "Discreet Trials", location: "Treatment Room", alert: "audio" },
-  { id: "p5", start: "11:45", end: "12:00", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
-  { id: "p6", start: "12:00", end: "12:30", activity: "Lunch", location: "Kitchen", alert: "visual" },
-  { id: "p7", start: "12:30", end: "13:15", activity: "Gross Motor Play", location: "Big Gym", alert: "audio" },
-  { id: "p8", start: "13:15", end: "13:30", activity: "Potty Time", location: "Classroom Bathroom", alert: "off" },
-  { id: "p9", start: "13:30", end: "14:00", activity: "Snack", location: "Kitchen", alert: "visual" },
-  { id: "p10", start: "14:00", end: "14:45", activity: "Imaginative Play", location: "Classroom", alert: "off" },
-  { id: "p11", start: "14:45", end: "15:30", activity: "Peer Play", location: "Small Gym", alert: "audio" },
-  { id: "p12", start: "15:30", end: "15:45", activity: "Potty Time", location: "Learner Bathroom", alert: "off" },
-  { id: "p13", start: "15:45", end: "16:30", activity: "Client Choice", location: "Classroom", alert: "off" },
-  { id: "p14", start: "16:30", end: "17:30", activity: "Reading", location: "Classroom", alert: "visual" },
-  { id: "p15", start: "17:30", end: "18:00", activity: "Pack Up/Dismissal", location: "Treatment Room", alert: "audio" },
+  {
+    id: "p1",
+    start: "10:00",
+    end: "10:20",
+    activity: "Arrive/Pairing",
+    location: "Treatment Room",
+    alert: "visual",
+  },
+  {
+    id: "p2",
+    start: "10:20",
+    end: "10:30",
+    activity: "Potty Time",
+    location: "Solo Bathroom",
+    alert: "off",
+  },
+  {
+    id: "p3",
+    start: "10:30",
+    end: "11:15",
+    activity: "Discreet Trials",
+    location: "Treatment Room",
+    alert: "audio",
+  },
+  {
+    id: "p5",
+    start: "11:45",
+    end: "12:00",
+    activity: "Potty Time",
+    location: "Learner Bathroom",
+    alert: "off",
+  },
+  {
+    id: "p6",
+    start: "12:00",
+    end: "12:30",
+    activity: "Lunch",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "p7",
+    start: "12:30",
+    end: "13:15",
+    activity: "Gross Motor Play",
+    location: "Big Gym",
+    alert: "audio",
+  },
+  {
+    id: "p8",
+    start: "13:15",
+    end: "13:30",
+    activity: "Potty Time",
+    location: "Classroom Bathroom",
+    alert: "off",
+  },
+  {
+    id: "p9",
+    start: "13:30",
+    end: "14:00",
+    activity: "Snack",
+    location: "Kitchen",
+    alert: "visual",
+  },
+  {
+    id: "p10",
+    start: "14:00",
+    end: "14:45",
+    activity: "Imaginative Play",
+    location: "Classroom",
+    alert: "off",
+  },
+  {
+    id: "p11",
+    start: "14:45",
+    end: "15:30",
+    activity: "Peer Play",
+    location: "Small Gym",
+    alert: "audio",
+  },
+  {
+    id: "p12",
+    start: "15:30",
+    end: "15:45",
+    activity: "Potty Time",
+    location: "Learner Bathroom",
+    alert: "off",
+  },
+  {
+    id: "p13",
+    start: "15:45",
+    end: "16:30",
+    activity: "Client Choice",
+    location: "Classroom",
+    alert: "off",
+  },
+  {
+    id: "p14",
+    start: "16:30",
+    end: "17:30",
+    activity: "Reading",
+    location: "Classroom",
+    alert: "visual",
+  },
+  {
+    id: "p15",
+    start: "17:30",
+    end: "18:00",
+    activity: "Pack Up/Dismissal",
+    location: "Treatment Room",
+    alert: "audio",
+  },
 ];
 
 const PRESETS: Schedule[] = [
@@ -279,7 +630,6 @@ const PRESETS: Schedule[] = [
   { name: "Group B", items: GROUP_B, appointments: [], locked: true },
   { name: "Group C", items: GROUP_C, appointments: [], locked: true },
 ];
-
 
 function toMin(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -446,9 +796,7 @@ export function ScheduleView({
   // "Add Activity" gap buttons below are anchored to.
   const dayStart = toMin(dayStartTime);
   const dayEnd = toMin(dayEndTime);
-  const currentItem = items.find(
-    (i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end),
-  );
+  const currentItem = items.find((i) => nowMin >= toMin(i.start) && nowMin < toMin(i.end));
   const outsideSchedule = !currentItem;
   // An appointment overlay paints on top of (z-20) whatever regular item is
   // happening underneath it — if "now" falls inside one, the line has to
@@ -547,8 +895,6 @@ export function ScheduleView({
     }
   }, [nowMin, items, active.appointments, now, pushNotification, notificationPrefs]);
 
-
-
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
       prev.map((s) => (s.name === activeName ? { ...s, items: mut(s.items) } : s)),
@@ -585,14 +931,10 @@ export function ScheduleView({
     let final = trimmed;
     let n = 2;
     while (schedules.some((s) => s.name === final)) final = `${trimmed} ${n++}`;
-    setSchedules((p) => [
-      ...p,
-      { name: final, items: [], appointments: [] },
-    ]);
+    setSchedules((p) => [...p, { name: final, items: [], appointments: [] }]);
     setActiveName(final);
     setEditMode(true);
   };
-
 
   const renameActive = (newName: string) => {
     if (!newName.trim() || schedules.some((s) => s.name === newName)) return;
@@ -662,11 +1004,16 @@ export function ScheduleView({
     let cursor = dayStart;
     items.forEach((it, idx) => {
       const s = toMin(it.start);
-      if (s > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: s, edge: idx === 0 ? "before" : undefined } });
+      if (s > cursor)
+        out.push({
+          kind: "gap",
+          gap: { startMin: cursor, endMin: s, edge: idx === 0 ? "before" : undefined },
+        });
       out.push({ kind: "item", item: it });
       cursor = Math.max(cursor, toMin(it.end));
     });
-    if (dayEnd > cursor) out.push({ kind: "gap", gap: { startMin: cursor, endMin: dayEnd, edge: "after" } });
+    if (dayEnd > cursor)
+      out.push({ kind: "gap", gap: { startMin: cursor, endMin: dayEnd, edge: "after" } });
     return out;
   }, [items, dayStart, dayEnd]);
 
@@ -718,7 +1065,11 @@ export function ScheduleView({
         return { row, top: 0, height: beforeFirstEditMin * PX_PER_MIN };
       }
       if (row.gap.edge === "after") {
-        return { row, top: (lastBoundaryMin - renderOriginMin) * PX_PER_MIN, height: afterLastEditMin * PX_PER_MIN };
+        return {
+          row,
+          top: (lastBoundaryMin - renderOriginMin) * PX_PER_MIN,
+          height: afterLastEditMin * PX_PER_MIN,
+        };
       }
       const top = (row.gap.startMin - renderOriginMin) * PX_PER_MIN;
       return { row, top, height: (row.gap.endMin - row.gap.startMin) * PX_PER_MIN };
@@ -783,7 +1134,8 @@ export function ScheduleView({
     // nearest useful thing to jump to is whichever item starts next; once
     // we're past the very last item's end, there is no "next" one left, so
     // fall back to the last item instead (the "end of schedule" case).
-    const target = currentItem ?? items.find((i) => toMin(i.start) >= nowMin) ?? items[items.length - 1];
+    const target =
+      currentItem ?? items.find((i) => toMin(i.start) >= nowMin) ?? items[items.length - 1];
     if (!target) return;
     const el = rowRefs.current.get(target.id);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -828,7 +1180,6 @@ export function ScheduleView({
     updateActive((list) => list.map((x) => (x.id === it.id ? { ...x, alert: m } : x)));
   };
 
-
   // Appointment overlays, positioned via rowLayout so collapsed mode also
   // lines up. Always computed regardless of `showAppts` — that toggle just
   // hides the rendered elements via CSS (see `hidden` below), the same
@@ -868,7 +1219,6 @@ export function ScheduleView({
       return { appt: a, top, height: Math.max(bottom - top, MIN_APPT_PX) };
     });
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
-
 
   return (
     <div className="max-w-3xl mx-auto pt-0 pb-12">
@@ -1115,57 +1465,57 @@ export function ScheduleView({
             // the space collapses smoothly instead of jumping on unmount.
             className="mt-6 px-1 space-y-3 overflow-hidden"
           >
-          {/* Appointments editor */}
-          <div className="rounded-xl border border-border bg-white p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
-                <HandHelping className="size-4" /> Appointments
+            {/* Appointments editor */}
+            <div className="rounded-xl border border-border bg-white p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                  <HandHelping className="size-4" /> Appointments
+                </div>
+                <Button
+                  size="sm"
+                  className="h-7 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-3 [&_svg]:size-3"
+                  onClick={() => setCreatingAppt(true)}
+                >
+                  Add <Plus className="ml-1" />
+                </Button>
               </div>
-              <Button
-                size="sm"
-                className="h-7 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white px-3 [&_svg]:size-3"
-                onClick={() => setCreatingAppt(true)}
-              >
-                Add <Plus className="ml-1" />
-              </Button>
-            </div>
-            {active.appointments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No appointments yet.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {active.appointments.map((a) => (
-                  <div key={a.id} className="flex items-center gap-2 text-xs">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        <span className="mr-1">{APPOINTMENT_TYPE_ICONS[a.type] ?? ""}</span>
-                        {a.type} <span className="text-muted-foreground">· {a.provider}</span>
+              {active.appointments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No appointments yet.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {active.appointments.map((a) => (
+                    <div key={a.id} className="flex items-center gap-2 text-xs">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          <span className="mr-1">{APPOINTMENT_TYPE_ICONS[a.type] ?? ""}</span>
+                          {a.type} <span className="text-muted-foreground">· {a.provider}</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
-                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 text-blue-600 [&_svg]:size-3"
+                        onClick={() => setEditingAppt(a)}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-6 text-blue-600 [&_svg]:size-3"
+                        onClick={() => setConfirmApptDelete(a)}
+                      >
+                        <Trash2 />
+                      </Button>
                     </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setEditingAppt(a)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-6 text-blue-600 [&_svg]:size-3"
-                      onClick={() => setConfirmApptDelete(a)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* No standalone "Add Activity" button here — activities can only
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* No standalone "Add Activity" button here — activities can only
               be added into genuine blank space (before the first item /
               after the last), via the gap buttons rendered directly in the
               grid below. */}
@@ -1318,11 +1668,15 @@ export function ScheduleView({
         <div className="grid grid-cols-[40px_1fr_84px_34px] gap-1 px-1.5 py-1 mb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-stone-200 rounded-full">
           <div className="text-right pr-1.5">Time</div>
           <div className="flex items-center gap-1.5">
-            <span className="invisible text-sm leading-none shrink-0" aria-hidden>•</span>
+            <span className="invisible text-sm leading-none shrink-0" aria-hidden>
+              •
+            </span>
             <span>Activity</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="invisible text-xs leading-none shrink-0" aria-hidden>•</span>
+            <span className="invisible text-xs leading-none shrink-0" aria-hidden>
+              •
+            </span>
             <span>Location</span>
           </div>
           <div className="text-center">{editMode ? "Edit" : "Alert"}</div>
@@ -1348,7 +1702,11 @@ export function ScheduleView({
             // permanently out-rank this line the instant "Now" was pressed
             // once, since that bump never resets back down. Staying under
             // the chevron marker (z-30) only.
-            <NowLine top={arrowTop} color={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"} zClassName="z-[25]" />
+            <NowLine
+              top={arrowTop}
+              color={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"}
+              zClassName="z-[25]"
+            />
           )}
           {arrowTop !== null && !editMode && (
             <div
@@ -1395,7 +1753,11 @@ export function ScheduleView({
                 // cream background, stone-100 is nearly invisible.
                 const gapGridLines = Math.max(0, Math.floor((height / PX_PER_MIN - 1) / 5));
                 return (
-                  <div key={`gap-${gap.startMin}`} className="absolute left-0 right-0 z-10" style={{ top, height }}>
+                  <div
+                    key={`gap-${gap.startMin}`}
+                    className="absolute left-0 right-0 z-10"
+                    style={{ top, height }}
+                  >
                     {Array.from({ length: gapGridLines }, (_, i) => (
                       <div
                         key={`gg-${i}`}
@@ -1468,17 +1830,15 @@ export function ScheduleView({
             // locally behind this row's own text (see textHalo).
             const rowHaloColor = isCurrent ? "#eff6ff" : "#fff";
             const displayName =
-              it.activity === "Custom" ? it.customName ?? "Custom" : it.activity;
+              it.activity === "Custom" ? (it.customName ?? "Custom") : it.activity;
             const displayIcon =
               it.activity === "Custom"
-                ? it.customIcon ?? "✨"
-                : ACTIVITY_ICONS[it.activity] ?? "•";
+                ? (it.customIcon ?? "✨")
+                : (ACTIVITY_ICONS[it.activity] ?? "•");
             const alertMode = it.alert;
             const actualDurMin = toMin(it.end) - toMin(it.start);
             const gridLines =
-              layoutMode === "proportional"
-                ? Math.max(0, Math.floor((actualDurMin - 1) / 5))
-                : 0;
+              layoutMode === "proportional" ? Math.max(0, Math.floor((actualDurMin - 1) / 5)) : 0;
             return (
               <div
                 key={it.id}
@@ -1551,7 +1911,12 @@ export function ScheduleView({
                   // underneath it; the shared list-level line (see above)
                   // handles that case instead, at a z that clears the
                   // appointment.
-                  <NowLine top={arrowTop - top} color={arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"} />
+                  <NowLine
+                    top={arrowTop - top}
+                    color={
+                      arrowGray ? "var(--color-now-chevron-muted)" : "var(--color-now-chevron)"
+                    }
+                  />
                 )}
                 <div className="relative h-full grid grid-cols-[40px_1fr_84px_34px] gap-1 items-start pt-1.5 pb-1 px-2">
                   <div
@@ -1610,7 +1975,6 @@ export function ScheduleView({
               </div>
             );
           })}
-
 
           {/* Appointment overlays — top layer, on top of activity rows. A
               single element rolls its height between the collapsed bar and
@@ -1749,7 +2113,6 @@ export function ScheduleView({
         </div>
       </div>
 
-
       <ItemDialog
         open={!!editing || !!creatingNew}
         item={editing}
@@ -1805,7 +2168,6 @@ export function ScheduleView({
         }}
       />
 
-
       <ConfirmDialog
         open={deleteOpen}
         title="Delete Schedule?"
@@ -1821,7 +2183,11 @@ export function ScheduleView({
       <ConfirmDialog
         open={!!confirmItemDelete}
         title="Delete Activity?"
-        body={confirmItemDelete ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start)} will be removed.` : ""}
+        body={
+          confirmItemDelete
+            ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start)} will be removed.`
+            : ""
+        }
         confirmLabel="Delete"
         onCancel={() => setConfirmItemDelete(null)}
         onConfirm={() => {
@@ -1856,7 +2222,10 @@ export function ScheduleView({
 function NowLine({ top, color, zClassName }: { top: number; color: string; zClassName?: string }) {
   return (
     <div
-      className={cn("absolute left-0 right-0 pointer-events-none border-t-2 border-dashed", zClassName)}
+      className={cn(
+        "absolute left-0 right-0 pointer-events-none border-t-2 border-dashed",
+        zClassName,
+      )}
       style={{ top, borderColor: color }}
       aria-hidden
     />
@@ -1917,7 +2286,10 @@ function ConfirmDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            className={cn("rounded-full text-blue-700 hover:bg-blue-50 gap-1.5", "border-2 border-blue-300")}
+            className={cn(
+              "rounded-full text-blue-700 hover:bg-blue-50 gap-1.5",
+              "border-2 border-blue-300",
+            )}
             onClick={onCancel}
           >
             Cancel <X className="size-4" />
@@ -1982,14 +2354,12 @@ function ItemDialog({
   // an inline arrow here would make the *other* field's open/close events
   // clobber whichever field the user actually just touched.
   const [editingField, setEditingField] = useState<"start" | "end" | null>(null);
-  const handleStartEditingChange = useCallback(
-    (editing: boolean) => { if (editing) setEditingField("start"); },
-    [],
-  );
-  const handleEndEditingChange = useCallback(
-    (editing: boolean) => { if (editing) setEditingField("end"); },
-    [],
-  );
+  const handleStartEditingChange = useCallback((editing: boolean) => {
+    if (editing) setEditingField("start");
+  }, []);
+  const handleEndEditingChange = useCallback((editing: boolean) => {
+    if (editing) setEditingField("end");
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -2014,12 +2384,19 @@ function ItemDialog({
   const findPrevious = (beforeMin: number) =>
     existing
       .filter((x) => x.id !== item?.id && toMin(x.end) <= beforeMin)
-      .reduce<ScheduleItem | null>((best, x) => (!best || toMin(x.end) > toMin(best.end) ? x : best), null);
+      .reduce<ScheduleItem | null>(
+        (best, x) => (!best || toMin(x.end) > toMin(best.end) ? x : best),
+        null,
+      );
   const findNext = (afterMin: number) =>
     existing
       .filter((x) => x.id !== item?.id && toMin(x.start) >= afterMin)
-      .reduce<ScheduleItem | null>((best, x) => (!best || toMin(x.start) < toMin(best.start) ? x : best), null);
-  const nameOf = (x: ScheduleItem) => (x.activity === "Custom" ? x.customName ?? "Custom" : x.activity);
+      .reduce<ScheduleItem | null>(
+        (best, x) => (!best || toMin(x.start) < toMin(best.start) ? x : best),
+        null,
+      );
+  const nameOf = (x: ScheduleItem) =>
+    x.activity === "Custom" ? (x.customName ?? "Custom") : x.activity;
 
   // The activities bordering this one's current position — the previous
   // one's end is the floor for a new start time, the next one's start is
@@ -2092,11 +2469,13 @@ function ItemDialog({
   // Contextual hint below the Time row — shown only for whichever field was
   // last touched, and only when there's no active conflict (the conflict
   // headline + its own second line take over that space instead).
-  const hint =
-    error ? null :
-    editingField === "start" && prevItem ? `${nameOf(prevItem)} ends ${fmt12(prevItem.end)}.` :
-    editingField === "end" && nextItem ? `${nameOf(nextItem)} starts ${fmt12(nextItem.start)}.` :
-    null;
+  const hint = error
+    ? null
+    : editingField === "start" && prevItem
+      ? `${nameOf(prevItem)} ends ${fmt12(prevItem.end)}.`
+      : editingField === "end" && nextItem
+        ? `${nameOf(nextItem)} starts ${fmt12(nextItem.start)}.`
+        : null;
 
   const handleSave = () => {
     if (error) return;
@@ -2137,9 +2516,10 @@ function ItemDialog({
         className="w-[calc(100vw-3rem)] max-w-sm rounded-2xl border-2 border-blue-400 shadow-xl transition-[translate] duration-150"
         style={keyboardInsetStyle(keyboardInset)}
       >
-
         <DialogHeader className="text-left">
-          <DialogTitle className="capitalize">{item ? "Edit Activity" : "Add Activity"}</DialogTitle>
+          <DialogTitle className="capitalize">
+            {item ? "Edit Activity" : "Add Activity"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -2189,7 +2569,9 @@ function ItemDialog({
           <div>
             <Label className="text-xs">Activity</Label>
             <Select value={activity} onValueChange={setActivity}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {ACTIVITIES.map((a) => (
                   <SelectItem key={a} value={a}>
@@ -2224,7 +2606,9 @@ function ItemDialog({
           <div>
             <Label className="text-xs">Location</Label>
             <Select value={location} onValueChange={setLocation}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {LOCATIONS.map((l) => (
                   <SelectItem key={l} value={l}>
@@ -2234,7 +2618,12 @@ function ItemDialog({
               </SelectContent>
             </Select>
           </div>
-          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
+          <AlertsBlock
+            alert={alertCfg}
+            setAlert={setAlertCfg}
+            priming={priming}
+            setPriming={setPriming}
+          />
         </div>
         <DialogFooter className="flex-row justify-end gap-2">
           <Button
@@ -2340,7 +2729,9 @@ function AppointmentDialog({
         style={keyboardInsetStyle(keyboardInset)}
       >
         <DialogHeader className="text-left">
-          <DialogTitle className="capitalize">{appt ? "Edit Appointment" : "Add Appointment"}</DialogTitle>
+          <DialogTitle className="capitalize">
+            {appt ? "Edit Appointment" : "Add Appointment"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -2381,7 +2772,9 @@ function AppointmentDialog({
           <div>
             <Label className="text-xs">Type</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {APPOINTMENT_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
@@ -2406,7 +2799,12 @@ function AppointmentDialog({
             checked={coTreat}
             onChange={setCoTreat}
           />
-          <AlertsBlock alert={alertCfg} setAlert={setAlertCfg} priming={priming} setPriming={setPriming} />
+          <AlertsBlock
+            alert={alertCfg}
+            setAlert={setAlertCfg}
+            priming={priming}
+            setPriming={setPriming}
+          />
           {error && <p className="text-xs text-blue-700">{error}</p>}
         </div>
         <DialogFooter className="flex-row justify-end gap-2">
@@ -2451,13 +2849,7 @@ const ZzIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function AlertModeSelect({
-  mode,
-  onMode,
-}: {
-  mode: AlertMode;
-  onMode: (m: AlertMode) => void;
-}) {
+function AlertModeSelect({ mode, onMode }: { mode: AlertMode; onMode: (m: AlertMode) => void }) {
   return (
     <Select value={mode} onValueChange={(v) => onMode(v as AlertMode)}>
       <SelectTrigger className="h-9 px-3 text-xs">
@@ -2548,7 +2940,10 @@ function AlertsBlock({
       <div>
         <Label className="text-xs">5min Warning</Label>
         <div className="mt-1 space-y-2">
-          <AlertModeSelect mode={priming.mode} onMode={(m) => setPriming({ ...priming, mode: m })} />
+          <AlertModeSelect
+            mode={priming.mode}
+            onMode={(m) => setPriming({ ...priming, mode: m })}
+          />
           <div className="flex flex-col items-start gap-1 pl-1">
             <TapToggle
               label="Till Dismissed"
@@ -2624,7 +3019,9 @@ function TimeField({
       onClick={onReset}
       disabled={!resetActive}
       aria-label={
-        resetSide === "left" ? "Extend start to fill the available gap" : "Extend end to fill the available gap"
+        resetSide === "left"
+          ? "Extend start to fill the available gap"
+          : "Extend end to fill the available gap"
       }
       className={cn(
         "grid h-9 w-7 shrink-0 place-items-center transition-colors",
@@ -2646,9 +3043,6 @@ function TimeField({
     </div>
   );
 }
-
-
-
 
 function NewScheduleDialog({
   open,
@@ -2720,5 +3114,3 @@ function NewScheduleDialog({
     </Dialog>
   );
 }
-
-

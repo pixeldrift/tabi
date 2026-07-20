@@ -1,8 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound, primeAlarmAudio } from "@/lib/alarmSounds";
-
-
 
 export type NotificationKind =
   | "alert-now"
@@ -34,8 +41,8 @@ export interface Notification {
   body?: string;
   icon: NotificationIcon;
   createdAt: number;
-  autofadeMs?: number;        // undefined = persist until acted on
-  allowSnooze?: boolean;      // alerts only
+  autofadeMs?: number; // undefined = persist until acted on
+  allowSnooze?: boolean; // alerts only
   sourceRef?: { type: "activity" | "goal" | "thread" | "info"; id: string };
   state: NotificationState;
   // internal — when in 'snoozed' state, time at which it should re-fire as live
@@ -275,12 +282,20 @@ export function useNotifications() {
 
 const MAX_RETAINED = 50;
 
-export function NotificationProvider({ children, onActivate }: { children: ReactNode; onActivate?: (n: Notification) => void }) {
+export function NotificationProvider({
+  children,
+  onActivate,
+}: {
+  children: ReactNode;
+  onActivate?: (n: Notification) => void;
+}) {
   const prefs = useUserPrefs();
   const [notifications, setNotifications] = useState<Notification[]>(seedNotifications);
   const dedupeRef = useRef<Map<string, string>>(new Map()); // dedupeKey -> id
   const onActivateRef = useRef(onActivate);
-  useEffect(() => { onActivateRef.current = onActivate; }, [onActivate]);
+  useEffect(() => {
+    onActivateRef.current = onActivate;
+  }, [onActivate]);
 
   // Unlocks alarm audio the moment the user makes ANY first gesture
   // anywhere in the app — long before a real alert has a reason to fire —
@@ -305,7 +320,6 @@ export function NotificationProvider({ children, onActivate }: { children: React
     setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, state: "archived" } : x)));
   }, []);
 
-
   const archive = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, state: "archived" } : n)));
   }, []);
@@ -317,21 +331,15 @@ export function NotificationProvider({ children, onActivate }: { children: React
   // Distinct from dismiss: the notification stays visible (so it's still
   // there to reference or dismiss later), it just stops chiming/vibrating.
   const silence = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, state: "silenced" } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, state: "silenced" } : n)));
   }, []);
 
   const unsilence = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, state: "live" } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, state: "live" } : n)));
   }, []);
 
   const enableChime = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, icon: "bell-chime" } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, icon: "bell-chime" } : n)));
   }, []);
 
   const snooze = useCallback(
@@ -356,58 +364,65 @@ export function NotificationProvider({ children, onActivate }: { children: React
     dedupeRef.current.clear();
   }, []);
 
-  const clearByDedupeKey = useCallback((dedupeKey: string) => {
-    const id = dedupeRef.current.get(dedupeKey);
-    if (id) clear(id);
-  }, [clear]);
+  const clearByDedupeKey = useCallback(
+    (dedupeKey: string) => {
+      const id = dedupeRef.current.get(dedupeKey);
+      if (id) clear(id);
+    },
+    [clear],
+  );
 
-  const push = useCallback((input: PushInput): string | null => {
-    const dedupeKey = input.dedupeKey ?? input.id;
-    if (dedupeKey) {
-      const existingId = dedupeRef.current.get(dedupeKey);
-      if (existingId) {
-        let stillLive = false;
-        setNotifications((prev) => {
-          const found = prev.find((n) => n.id === existingId);
-          if (found && found.state !== "archived") stillLive = true;
-          return prev;
-        });
-        if (stillLive) return null;
+  const push = useCallback(
+    (input: PushInput): string | null => {
+      const dedupeKey = input.dedupeKey ?? input.id;
+      if (dedupeKey) {
+        const existingId = dedupeRef.current.get(dedupeKey);
+        if (existingId) {
+          let stillLive = false;
+          setNotifications((prev) => {
+            const found = prev.find((n) => n.id === existingId);
+            if (found && found.state !== "archived") stillLive = true;
+            return prev;
+          });
+          if (stillLive) return null;
+        }
       }
-    }
-    const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const next: Notification = {
-      id,
-      kind: input.kind,
-      title: input.title,
-      body: input.body,
-      icon: input.icon,
-      createdAt: Date.now(),
-      autofadeMs: input.autofadeMs,
-      allowSnooze: input.allowSnooze,
-      sourceRef: input.sourceRef,
-      activityAt: input.activityAt,
-      soundOverride: input.soundOverride,
-      timestampCheck: input.timestampCheck,
-      state: "live",
-    };
-    if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
-    setNotifications((prev) => {
-      const trimmed = prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
-      return [...trimmed, next];
-    });
-    // Alert kinds get their own repeating chime for as long as they're
-    // visible in the banner (see NotificationBar's own effect, keyed to
-    // that row actually being on screen) — this is everything else's only
-    // sound, a single chime the moment it's created, using the same
-    // Settings-configured alarm style so all notifications share one
-    // consistent alarm system rather than some being silent.
-    if (!isAlert(input.kind)) {
-      playAlarmSound(prefs.alarmSound);
-      vibrate(40);
-    }
-    return id;
-  }, [prefs.alarmSound]);
+      const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const next: Notification = {
+        id,
+        kind: input.kind,
+        title: input.title,
+        body: input.body,
+        icon: input.icon,
+        createdAt: Date.now(),
+        autofadeMs: input.autofadeMs,
+        allowSnooze: input.allowSnooze,
+        sourceRef: input.sourceRef,
+        activityAt: input.activityAt,
+        soundOverride: input.soundOverride,
+        timestampCheck: input.timestampCheck,
+        state: "live",
+      };
+      if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
+      setNotifications((prev) => {
+        const trimmed =
+          prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
+        return [...trimmed, next];
+      });
+      // Alert kinds get their own repeating chime for as long as they're
+      // visible in the banner (see NotificationBar's own effect, keyed to
+      // that row actually being on screen) — this is everything else's only
+      // sound, a single chime the moment it's created, using the same
+      // Settings-configured alarm style so all notifications share one
+      // consistent alarm system rather than some being silent.
+      if (!isAlert(input.kind)) {
+        playAlarmSound(prefs.alarmSound);
+        vibrate(40);
+      }
+      return id;
+    },
+    [prefs.alarmSound],
+  );
 
   // Tick: handle autofade expiration + snooze re-fire.
   useEffect(() => {
@@ -424,7 +439,12 @@ export function NotificationProvider({ children, onActivate }: { children: React
           }
           if (n.state === "snoozed" && n.snoozeUntil && now >= n.snoozeUntil) {
             changed = true;
-            return { ...n, state: "live" as NotificationState, createdAt: now, snoozeUntil: undefined };
+            return {
+              ...n,
+              state: "live" as NotificationState,
+              createdAt: now,
+              snoozeUntil: undefined,
+            };
           }
           return n;
         });
@@ -440,10 +460,39 @@ export function NotificationProvider({ children, onActivate }: { children: React
   );
 
   const value = useMemo<NotificationContextValue>(
-    () => ({ notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, clearByDedupeKey, activate, prefs }),
-    [notifications, live, push, dismiss, snooze, silence, unsilence, enableChime, archive, clear, clearAll, clearByDedupeKey, activate, prefs],
+    () => ({
+      notifications,
+      live,
+      push,
+      dismiss,
+      snooze,
+      silence,
+      unsilence,
+      enableChime,
+      archive,
+      clear,
+      clearAll,
+      clearByDedupeKey,
+      activate,
+      prefs,
+    }),
+    [
+      notifications,
+      live,
+      push,
+      dismiss,
+      snooze,
+      silence,
+      unsilence,
+      enableChime,
+      archive,
+      clear,
+      clearAll,
+      clearByDedupeKey,
+      activate,
+      prefs,
+    ],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
-
 }

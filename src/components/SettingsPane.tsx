@@ -14,7 +14,13 @@ import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +45,20 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
 
 export function SettingsPane() {
   const {
-    values, setValue, resetAll, resetOne, alarmSound, setAlarmSound,
-    keepActiveCardCentered, setKeepActiveCardCentered,
-    dayStart, setDayStart, dayEnd, setDayEnd,
-    defaultDataView, setDefaultDataView,
+    values,
+    setValue,
+    resetAll,
+    resetOne,
+    alarmSound,
+    setAlarmSound,
+    keepActiveCardCentered,
+    setKeepActiveCardCentered,
+    dayStart,
+    setDayStart,
+    dayEnd,
+    setDayEnd,
+    defaultDataView,
+    setDefaultDataView,
   } = useSettings();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
 
@@ -51,7 +67,9 @@ export function SettingsPane() {
       <div className="flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 className="font-display text-lg leading-tight">Settings</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Notification and data-view behavior.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Notification and data-view behavior.
+          </p>
         </div>
         {groups.length > 0 && (
           <Button
@@ -102,7 +120,9 @@ export function SettingsPane() {
                       </div>
                     </div>
                     {setting.description && (
-                      <p className="text-xs text-muted-foreground/80 mt-0.5">{setting.description}</p>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
+                        {setting.description}
+                      </p>
                     )}
                     <Slider
                       id={setting.key}
@@ -183,7 +203,10 @@ export function SettingsPane() {
             </div>
             <button
               type="button"
-              onClick={() => { setDayStart(DEFAULT_DAY_START); setDayEnd(DEFAULT_DAY_END); }}
+              onClick={() => {
+                setDayStart(DEFAULT_DAY_START);
+                setDayEnd(DEFAULT_DAY_END);
+              }}
               disabled={dayStart === DEFAULT_DAY_START && dayEnd === DEFAULT_DAY_END}
               aria-label="Reset clinic hours to default"
               className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none"

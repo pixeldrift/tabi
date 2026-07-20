@@ -1212,11 +1212,14 @@ function IndexInner() {
   };
   useEffect(() => {
     if (tab !== "data" || pendingCardNavRef.current === null) return;
-    const id = window.setTimeout(() => {
-      if (pendingCardNavRef.current === null) return;
-      setActiveId(pendingCardNavRef.current);
-      pendingCardNavRef.current = null;
-    }, CARD_MORPH_TRANSITION.duration * 1000 + 50);
+    const id = window.setTimeout(
+      () => {
+        if (pendingCardNavRef.current === null) return;
+        setActiveId(pendingCardNavRef.current);
+        pendingCardNavRef.current = null;
+      },
+      CARD_MORPH_TRANSITION.duration * 1000 + 50,
+    );
     return () => window.clearTimeout(id);
   }, [tab]);
 
@@ -1268,7 +1271,10 @@ function IndexInner() {
                           initial={{ y: -16 }}
                           animate={{ y: 0 }}
                           exit={{ y: -16 }}
-                          transition={{ duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+                          transition={{
+                            duration: DATA_BANNER_EXIT_MS / 1000,
+                            ease: [0.4, 0, 0.2, 1],
+                          }}
                           className="py-1.5 px-8 text-center"
                         >
                           <span className="text-sm text-muted-foreground">
@@ -1295,7 +1301,9 @@ function IndexInner() {
             layout="position"
             transition={{
               layout:
-                suppressPaneLayout || !initialLayoutSettled ? { duration: 0 } : NOTIFICATION_AREA_TRANSITION,
+                suppressPaneLayout || !initialLayoutSettled
+                  ? { duration: 0 }
+                  : NOTIFICATION_AREA_TRANSITION,
             }}
             className={cn(
               "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",

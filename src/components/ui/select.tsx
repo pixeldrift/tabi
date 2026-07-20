@@ -63,7 +63,9 @@ const SelectTrigger = React.forwardRef<
         <TimeChevronIcon
           className={cn(
             "h-3 w-3 shrink-0 opacity-60 transition-transform duration-200",
-            side === "top" ? "group-data-[state=open]:-rotate-90" : "group-data-[state=open]:rotate-90",
+            side === "top"
+              ? "group-data-[state=open]:-rotate-90"
+              : "group-data-[state=open]:rotate-90",
           )}
         />
       </SelectPrimitive.Icon>

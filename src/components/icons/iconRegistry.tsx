@@ -1,9 +1,51 @@
 import {
-  GripVertical, Heart, EyeOff, Minus, Plus, X, ChevronUp, ChevronDown, Check, CircleSlash2,
-  Frown, Pencil, Search, Star, Target, Delete, RotateCcw, Volume2, HandHelping, Play, Pause,
-  Sparkles, Link2, Bell, BellRing, BellOff, MessageSquare, Megaphone, ArrowRight, VolumeX, User,
-  Timer, ClipboardList, CalendarDays, Trash2, ArrowUp, ArrowLeft, RefreshCw, Upload,
-  Settings as SettingsIcon, PencilOff, Pin, Rows3, TriangleAlert, ArrowLeftToLine, ArrowRightToLine, Copy,
+  GripVertical,
+  Heart,
+  EyeOff,
+  Minus,
+  Plus,
+  X,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  CircleSlash2,
+  Frown,
+  Pencil,
+  Search,
+  Star,
+  Target,
+  Delete,
+  RotateCcw,
+  Volume2,
+  HandHelping,
+  Play,
+  Pause,
+  Sparkles,
+  Link2,
+  Bell,
+  BellRing,
+  BellOff,
+  MessageSquare,
+  Megaphone,
+  ArrowRight,
+  VolumeX,
+  User,
+  Timer,
+  ClipboardList,
+  CalendarDays,
+  Trash2,
+  ArrowUp,
+  ArrowLeft,
+  RefreshCw,
+  Upload,
+  Settings as SettingsIcon,
+  PencilOff,
+  Pin,
+  Rows3,
+  TriangleAlert,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  Copy,
 } from "lucide-react";
 import { PercentCorrectIcon } from "./PercentCorrectIcon";
 import { FrequencyIcon } from "./FrequencyIcon";
@@ -52,12 +94,26 @@ export interface IconGroup {
   icons: IconEntry[];
 }
 
-const lucide = (name: string, usage: string, Icon: React.ComponentType<{ className?: string }>): IconEntry => ({
-  name, usage, source: "lucide", Icon,
+const lucide = (
+  name: string,
+  usage: string,
+  Icon: React.ComponentType<{ className?: string }>,
+): IconEntry => ({
+  name,
+  usage,
+  source: "lucide",
+  Icon,
 });
 
-const custom = (name: string, usage: string, Icon: React.ComponentType<{ className?: string }>): IconEntry => ({
-  name, usage, source: "custom", Icon,
+const custom = (
+  name: string,
+  usage: string,
+  Icon: React.ComponentType<{ className?: string }>,
+): IconEntry => ({
+  name,
+  usage,
+  source: "custom",
+  Icon,
 });
 
 /** Every icon used anywhere in the app, grouped by what it's for — the data
@@ -97,8 +153,8 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Modeling Prompt", "Trial prompt-level picker", ModelingPromptIcon),
       custom("Partial Physical Prompt", "Trial prompt-level picker", PartialPhysicalPromptIcon),
       custom("Full Physical Prompt", "Trial prompt-level picker", FullPhysicalPromptIcon),
-      lucide("HandHelping", "Task Analysis \"prompted\" response", HandHelping),
-      lucide("CircleSlash2", "Trial \"no opportunity\" state", CircleSlash2),
+      lucide("HandHelping", 'Task Analysis "prompted" response', HandHelping),
+      lucide("CircleSlash2", 'Trial "no opportunity" state', CircleSlash2),
     ],
   },
   {
@@ -121,10 +177,10 @@ export const ICON_GROUPS: IconGroup[] = [
     icons: [
       custom("Filter", "Data toolbar filter popover", FilterIcon),
       lucide("Search", "Data toolbar search box", Search),
-      lucide("Frown", "\"Interfering behavior\" filter", Frown),
-      lucide("Target", "\"Target goal\" filter / notification", Target),
+      lucide("Frown", '"Interfering behavior" filter', Frown),
+      lucide("Target", '"Target goal" filter / notification', Target),
       lucide("Heart", "Favorite toggle", Heart),
-      lucide("EyeOff", "Hidden toggle / \"Hidden\" filter chip", EyeOff),
+      lucide("EyeOff", 'Hidden toggle / "Hidden" filter chip', EyeOff),
     ],
   },
   {
@@ -137,7 +193,7 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("Copy", "Duplicate Schedule appointment", Copy),
       lucide("Trash2", "Delete session / appointment", Trash2),
       lucide("RefreshCw", "Resume session", RefreshCw),
-      custom("Number Pad", "\"Tap to edit\" hint beside numeric values", NumberPadIcon),
+      custom("Number Pad", '"Tap to edit" hint beside numeric values', NumberPadIcon),
       custom("Details", "Open card details drawer", DetailsIcon),
     ],
   },

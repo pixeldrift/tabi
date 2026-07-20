@@ -31,6 +31,7 @@ export function NumberKeypad({
   onOpenChange,
   children,
 }: NumberKeypadProps) {
+  void value; // currently unused; reserved for future "edit current" mode
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const hiddenInputRef = useRef<HTMLInputElement>(null);

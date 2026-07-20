@@ -47,11 +47,7 @@ export interface DataToolbarProps {
   children?: React.ReactNode;
 }
 
-export function DataToolbar({
-  availableKinds,
-  availablePhases,
-  children,
-}: DataToolbarProps) {
+export function DataToolbar({ availableKinds, availablePhases, children }: DataToolbarProps) {
   const {
     displayMode,
     setDisplayMode,

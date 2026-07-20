@@ -124,7 +124,12 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
 
   if (!staff) {
     return (
-      <span className={cn("inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700", sizeClasses)}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700",
+          sizeClasses,
+        )}
+      >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
         <span>{name}</span>
       </span>
@@ -174,8 +179,16 @@ function StaffProfileDialog({
         </DialogHeader>
 
         <div className="flex items-center justify-center gap-2">
-          <ContactButton icon={<PhoneIcon className="size-4" />} label="Phone" href={`tel:${staff.phone}`} />
-          <ContactButton icon={<EmailIcon className="size-4" />} label="Email" href={`mailto:${staff.email}`} />
+          <ContactButton
+            icon={<PhoneIcon className="size-4" />}
+            label="Phone"
+            href={`tel:${staff.phone}`}
+          />
+          <ContactButton
+            icon={<EmailIcon className="size-4" />}
+            label="Email"
+            href={`mailto:${staff.email}`}
+          />
           <ContactButton icon={<ChatIcon className="size-4" />} label="Chat" href={undefined} />
         </div>
 
@@ -195,7 +208,9 @@ function StaffProfileDialog({
             className="flex w-full items-center justify-between text-sm font-semibold text-foreground/80"
           >
             Assigned Clients
-            <ChevronDown className={cn("size-4 transition-transform", clientsOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn("size-4 transition-transform", clientsOpen && "rotate-180")}
+            />
           </button>
           {clientsOpen && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -222,7 +237,15 @@ function StaffProfileDialog({
   );
 }
 
-function ContactButton({ icon, label, href }: { icon: React.ReactNode; label: string; href?: string }) {
+function ContactButton({
+  icon,
+  label,
+  href,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  href?: string;
+}) {
   const className =
     "flex flex-1 flex-col items-center gap-1 rounded-lg border border-border py-2 text-[11px] font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors";
   if (!href) {

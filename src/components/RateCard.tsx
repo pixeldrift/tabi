@@ -109,7 +109,8 @@ export function RateCard({
   });
   // No minimum window means every instance already counts — ready to graph
   // as soon as there's any data, rather than gated behind a threshold.
-  const isComplete = minDurationSec !== undefined ? elapsed / 1000 >= minDurationSec : count > 0 || elapsed > 0;
+  const isComplete =
+    minDurationSec !== undefined ? elapsed / 1000 >= minDurationSec : count > 0 || elapsed > 0;
   // The clock (elapsed) ticks the moment a session starts regardless of
   // whether anyone's tallied anything — it's the denominator a rate needs
   // — so hasData is true (there's a real clock running) well before any
@@ -158,9 +159,6 @@ export function RateCard({
     markDirty();
   };
 
-
-
-
   const triggerFlash = () => {
     setFlash(true);
     window.setTimeout(() => setFlash(false), 450);
@@ -197,7 +195,6 @@ export function RateCard({
       <div ref={cardRef} className="w-full h-full">
         <MiniTileShell
           title={title}
-          description={description}
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
@@ -232,9 +229,13 @@ export function RateCard({
                   { label: "Period", value: formatTime(elapsed) },
                 ]}
               />
-              {teachingProcedure && (
+              {(teachingProcedure || description) && (
                 <div className="mt-4">
-                  <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
+                  <TeachingProcedureAccordion
+                    description={description}
+                    data={teachingProcedure}
+                    kind="rate"
+                  />
                 </div>
               )}
             </>
@@ -317,9 +318,17 @@ export function RateCard({
                 </button>
               )}
             </NumberKeypad>
-            <span className={cn("font-display text-foreground/30", large ? "text-xl" : "text-base")}>/</span>
+            <span
+              className={cn("font-display text-foreground/30", large ? "text-xl" : "text-base")}
+            >
+              /
+            </span>
             <RateIcon
-              className={cn("text-blue-500", ticking && "animate-pulse-scale", large ? "size-3.5" : "size-3")}
+              className={cn(
+                "text-blue-500",
+                ticking && "animate-pulse-scale",
+                large ? "size-3.5" : "size-3",
+              )}
             />
           </div>
         </MiniTileShell>
@@ -331,7 +340,6 @@ export function RateCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<RateIcon />}
         kind="rate"
         dataTypeLabel="Rate / Min"
@@ -367,9 +375,13 @@ export function RateCard({
                 { label: "Period", value: formatTime(elapsed) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="rate"
+                />
               </div>
             )}
           </>
@@ -421,196 +433,201 @@ export function RateCard({
 
   return (
     <div ref={cardRef} className="w-full max-w-md scroll-mt-32">
-    <CardShell
-      title={title}
-      phase={phase}
-      dataType="Rate / Min"
-      dataTypeIcon={<RateIcon />}
-      kind="rate"
-      description={description}
-      isActive={isActive}
-      onActivate={onActivate}
-      reorderEditing={reorderEditing}
-      favorited={favorited}
-      onToggleFavorite={onToggleFavorite}
-      cardHidden={cardHidden}
-      onToggleHidden={onToggleHidden}
-      dragControls={dragControls}
-      detailsOpen={detailsOpen}
-      onDetailsOpenChange={onDetailsOpenChange}
-      onOpenDetails={onOpenDetails}
-      stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
-      onPrevCard={onPrevCard}
-      onNextCard={onNextCard}
-      slideFrom={slideFrom}
-      widthMode={widthMode}
-      onWidthModeChange={onWidthModeChange}
-      progress={null}
-      editing={editing}
-      details={
-        <>
-          <DrawerQuickFacts
-            icon={<RateIcon />}
-            kind="rate"
-            dataTypeLabel="Rate (per minute)"
-            phase={phase}
-            stats={[
-              ...(minDurationSec !== undefined
-                ? [{ label: "Minimum", value: `${minDurationSec}s` }]
-                : []),
-              { label: "Count", value: count },
-              { label: "Period", value: formatTime(elapsed) },
-            ]}
-          />
-          {teachingProcedure && (
-            <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} kind="rate" />
-            </div>
-          )}
-        </>
-      }
-    >
-      <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">
-        <button
-          onClick={dec}
-          disabled={!sessionRunning || count === 0}
-          aria-label="Decrement"
-          className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-border bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
-        >
-          <Minus className="size-5" strokeWidth={2.5} />
-        </button>
-
-        <NumberKeypad
-          value={count}
-          onReplace={(v) => commit(v)}
-          onAdd={(delta) => commit(count + delta)}
-          onOpenChange={setEditing}
-        >
-          {({ isEditing, open }) => (
-            <div className="flex flex-col items-center justify-center min-w-[6rem] px-3 py-1">
-              <button
-                type="button"
-                onClick={open}
-                disabled={!sessionRunning}
-                className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label={`Current tally is ${count}. Tap to edit.`}
-              >
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={bumpKey}
-                    initial={{ y: dir > 0 ? "100%" : "-100%", opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
-                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-                    className={cn(
-                      "block font-display text-4xl leading-none tabular-nums",
-                      isEditing ? "text-blue-600" : "text-foreground",
-                      flash && "text-blue-600",
-                    )}
-                  >
-                    {count}
-                  </motion.span>
-                </AnimatePresence>
-                {isEditing && (
-                  <span className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80" aria-hidden />
-                )}
-                <NumberPadIcon
-                  className={cn(
-                    "pointer-events-none absolute -right-3.5 -top-1 size-3 transition-colors",
-                    isEditing ? "text-blue-400" : "text-muted-foreground/50",
-                  )}
-                  aria-hidden
+      <CardShell
+        title={title}
+        phase={phase}
+        dataType="Rate / Min"
+        dataTypeIcon={<RateIcon />}
+        kind="rate"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
+        widthMode={widthMode}
+        onWidthModeChange={onWidthModeChange}
+        progress={null}
+        editing={editing}
+        details={
+          <>
+            <DrawerQuickFacts
+              icon={<RateIcon />}
+              kind="rate"
+              dataTypeLabel="Rate (per minute)"
+              phase={phase}
+              stats={[
+                ...(minDurationSec !== undefined
+                  ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                  : []),
+                { label: "Count", value: count },
+                { label: "Period", value: formatTime(elapsed) },
+              ]}
+            />
+            {(teachingProcedure || description) && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="rate"
                 />
-              </button>
-              <div
-                className={cn(
-                  "mt-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors",
-                  isEditing ? "text-blue-500" : "text-muted-foreground",
-                )}
-              >
-                <span>Instances in</span>
-                <span className="inline-flex items-center">
-                  {locked ? (
-                    <>
-                      <span
-                        aria-label="Elapsed time (linked to session)"
-                        className="inline-flex items-center border border-border bg-stone-100 pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full text-muted-foreground"
-                      >
-                        {formatCompactTime(elapsed)}
-                      </span>
-                      <span
-                        aria-label="Timer is linked to session"
-                        className="grid size-5 place-items-center rounded-r-full bg-stone-300 text-stone-600"
-                      >
-                        <Link2 className="size-3 rotate-45 -translate-x-0.5" strokeWidth={2.5} />
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <TimeKeypad
-                        valueMs={elapsed}
-                        onReplace={(ms) => setElapsedMs(ms)}
-                        onAdd={(ms) => setElapsedMs(elapsed + ms)}
-                      >
-                        {({ open: openTime }) => (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openTime();
-                            }}
-                            disabled={!sessionRunning}
-                            aria-label="Edit elapsed time"
-                            className={cn(
-                              "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
-                              running ? "text-foreground" : "text-muted-foreground",
-                            )}
-                          >
-                            {formatCompactTime(elapsed)}
-                          </button>
-                        )}
-                      </TimeKeypad>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggle();
-                        }}
-                        disabled={!sessionRunning}
-                        aria-label={running ? "Pause timer" : "Resume timer"}
-                        className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-40"
-                      >
-                        {running ? (
-                          <Pause className="size-3 -translate-x-0.5" fill="currentColor" />
-                        ) : (
-                          <Play className="size-3 -translate-x-0.5" fill="currentColor" />
-                        )}
-                      </button>
-                    </>
-                  )}
-                </span>
               </div>
-            </div>
-          )}
-        </NumberKeypad>
+            )}
+          </>
+        }
+      >
+        <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">
+          <button
+            onClick={dec}
+            disabled={!sessionRunning || count === 0}
+            aria-label="Decrement"
+            className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-border bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
+          >
+            <Minus className="size-5" strokeWidth={2.5} />
+          </button>
 
+          <NumberKeypad
+            value={count}
+            onReplace={(v) => commit(v)}
+            onAdd={(delta) => commit(count + delta)}
+            onOpenChange={setEditing}
+          >
+            {({ isEditing, open }) => (
+              <div className="flex flex-col items-center justify-center min-w-[6rem] px-3 py-1">
+                <button
+                  type="button"
+                  onClick={open}
+                  disabled={!sessionRunning}
+                  className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label={`Current tally is ${count}. Tap to edit.`}
+                >
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={bumpKey}
+                      initial={{ y: dir > 0 ? "100%" : "-100%", opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                      style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                      className={cn(
+                        "block font-display text-4xl leading-none tabular-nums",
+                        isEditing ? "text-blue-600" : "text-foreground",
+                        flash && "text-blue-600",
+                      )}
+                    >
+                      {count}
+                    </motion.span>
+                  </AnimatePresence>
+                  {isEditing && (
+                    <span
+                      className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80"
+                      aria-hidden
+                    />
+                  )}
+                  <NumberPadIcon
+                    className={cn(
+                      "pointer-events-none absolute -right-3.5 -top-1 size-3 transition-colors",
+                      isEditing ? "text-blue-400" : "text-muted-foreground/50",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                <div
+                  className={cn(
+                    "mt-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors",
+                    isEditing ? "text-blue-500" : "text-muted-foreground",
+                  )}
+                >
+                  <span>Instances in</span>
+                  <span className="inline-flex items-center">
+                    {locked ? (
+                      <>
+                        <span
+                          aria-label="Elapsed time (linked to session)"
+                          className="inline-flex items-center border border-border bg-stone-100 pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full text-muted-foreground"
+                        >
+                          {formatCompactTime(elapsed)}
+                        </span>
+                        <span
+                          aria-label="Timer is linked to session"
+                          className="grid size-5 place-items-center rounded-r-full bg-stone-300 text-stone-600"
+                        >
+                          <Link2 className="size-3 rotate-45 -translate-x-0.5" strokeWidth={2.5} />
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <TimeKeypad
+                          valueMs={elapsed}
+                          onReplace={(ms) => setElapsedMs(ms)}
+                          onAdd={(ms) => setElapsedMs(elapsed + ms)}
+                        >
+                          {({ open: openTime }) => (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openTime();
+                              }}
+                              disabled={!sessionRunning}
+                              aria-label="Edit elapsed time"
+                              className={cn(
+                                "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                                running ? "text-foreground" : "text-muted-foreground",
+                              )}
+                            >
+                              {formatCompactTime(elapsed)}
+                            </button>
+                          )}
+                        </TimeKeypad>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle();
+                          }}
+                          disabled={!sessionRunning}
+                          aria-label={running ? "Pause timer" : "Resume timer"}
+                          className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-40"
+                        >
+                          {running ? (
+                            <Pause className="size-3 -translate-x-0.5" fill="currentColor" />
+                          ) : (
+                            <Play className="size-3 -translate-x-0.5" fill="currentColor" />
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+          </NumberKeypad>
 
-        <motion.button
-          onClick={inc}
-          disabled={!sessionRunning}
-          whileTap={{ scale: 0.94 }}
-          aria-label="Increment"
-          className={cn(
-            "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors disabled:opacity-40",
-            "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
-          )}
-        >
-          <Plus className="size-6" strokeWidth={3} />
-        </motion.button>
-      </div>
-    </CardShell>
+          <motion.button
+            onClick={inc}
+            disabled={!sessionRunning}
+            whileTap={{ scale: 0.94 }}
+            aria-label="Increment"
+            className={cn(
+              "btn-bevel-solid size-14 shrink-0 aspect-square rounded-full grid place-items-center text-white transition-colors disabled:opacity-40",
+              "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
+            )}
+          >
+            <Plus className="size-6" strokeWidth={3} />
+          </motion.button>
+        </div>
+      </CardShell>
     </div>
   );
 }
@@ -635,5 +652,7 @@ function formatCompactTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const mm = m.toString().padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
+  return h > 0
+    ? `${h}:${mm}:${s.toString().padStart(2, "0")}`
+    : `${mm}:${s.toString().padStart(2, "0")}`;
 }

@@ -1,6 +1,7 @@
 import { type ReactNode, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { ACTION_BUTTON_COLORS } from "@/lib/actionButtonColors";
 
 /** Bare value — the current trial/step number, or a raw count/tally — that
  *  sits just left of a List row's action buttons. No bubble/background of
@@ -21,7 +22,9 @@ export function ListActionBadge({
     <span
       className={cn(
         "grid shrink-0 place-items-center min-w-[1.25rem] h-7 tabular-nums",
-        weight === "bold" ? "text-[15px] font-bold text-foreground" : "text-[11px] font-semibold text-foreground/60",
+        weight === "bold"
+          ? "text-[15px] font-bold text-foreground"
+          : "text-[11px] font-semibold text-foreground/60",
       )}
     >
       {/* The colon reads as "position N, of the data that follows" — only
@@ -31,37 +34,6 @@ export function ListActionBadge({
     </span>
   );
 }
-
-const LIST_BUTTON_VARIANTS = {
-  neutral: {
-    classes: "border-stone-200 bg-white text-foreground/70 hover:bg-stone-50",
-    selectedClasses: "bg-stone-500 border-stone-600 text-white",
-  },
-  red: {
-    classes: "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-    selectedClasses: "bg-red-500 border-red-600 text-white",
-  },
-  amber: {
-    classes: "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
-    selectedClasses: "bg-amber-500 border-amber-600 text-white",
-  },
-  green: {
-    classes: "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-    selectedClasses: "bg-green-500 border-green-600 text-white",
-  },
-  blue: {
-    classes: "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100",
-    selectedClasses: "bg-blue-500 border-blue-600 text-white",
-  },
-  // Always filled/solid, never just outlined — for direct-action buttons
-  // like Frequency/Rate's Increment that have no on/off "selected" state of
-  // their own (they just fire), matching Card mode's own solid blue plus
-  // button instead of reading as an unselected toggle.
-  "blue-solid": {
-    classes: "border-blue-600 bg-blue-500 text-white hover:bg-blue-600",
-    selectedClasses: "bg-blue-500 border-blue-600 text-white",
-  },
-} as const;
 
 /** Small circular icon-only button for a List row's floating action group —
  *  the same color language every full-size action button already uses
@@ -80,14 +52,14 @@ export function ListActionButton({
   onClick,
 }: {
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-  variant: keyof typeof LIST_BUTTON_VARIANTS;
+  variant: keyof typeof ACTION_BUTTON_COLORS;
   selected?: boolean;
   disabled?: boolean;
   hasMenu?: boolean;
   ariaLabel: string;
   onClick: (e: React.MouseEvent) => void;
 }) {
-  const { classes, selectedClasses } = LIST_BUTTON_VARIANTS[variant];
+  const { classes, selectedClasses } = ACTION_BUTTON_COLORS[variant];
   return (
     <button
       type="button"

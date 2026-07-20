@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 export interface MiniTileShellProps extends CardEditAndDrawerProps {
   title: string;
-  description?: string;
   details?: ReactNode;
   isActive?: boolean;
   onActivate?: () => void;
@@ -49,7 +48,6 @@ const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
  *  instance whenever the element type at a given position changes. */
 export function MiniTileShell({
   title,
-  description,
   details,
   isActive = true,
   onActivate,
@@ -109,113 +107,114 @@ export function MiniTileShell({
           large ? "rounded-[18px]" : "rounded-[14px]",
         )}
       >
-      <div
-        className={cn(
-          // relative z-10: keeps this in-flow content painting above the
-          // progress bar below, which is an absolutely positioned
-          // background wash now rather than a layout sibling this wrapper
-          // shrinks to make room for — see that div's own comment.
-          "relative z-10 flex-1 min-h-0 flex flex-col",
-          large ? "p-3.5 gap-2" : "p-2.5 gap-1.5",
-        )}
-      >
-      <div className="flex items-start gap-1">
-        <h2
+        <div
           className={cn(
-            // A 2-line clamp otherwise truncates a title after only its
-            // first couple of words, dropping an entire trailing word
-            // ("Holds hand during..." losing "transition" outright) rather
-            // than actually needing a third line's worth of room. Large
-            // tiles have that room to spare (confirmed — a third line
-            // there still leaves the body's own content full-size); small
-            // tiles don't — their body content (e.g. the bubble strip's own
-            // circles) has so little vertical slack already that a third
-            // title line squeezes it down to an illegible sliver, which is
-            // worse than the truncation it would avoid. So only large gets
-            // the taller clamp; small keeps 2 lines. No reserved right-side
-            // padding here anymore — that was only clearing space for the
-            // per-tile details button (removed; the drawer's own pull-tab
-            // is the one way to open it now), so the title gets that width
-            // back.
-            "font-display font-bold flex-1 min-w-0 break-words",
-            // leading-[…] MUST come after text-[…] here — tailwind-merge
-            // treats an arbitrary text-size and leading as the same
-            // conflict group (real Tailwind size utilities like text-sm
-            // bundle their own line-height), so whichever comes LAST in
-            // the merged string wins the whole group. With leading first,
-            // it was silently discarded and this was rendering at the
-            // browser's ~1.5x default the entire time.
-            // 1.05 (matching Card/List's own ratio) still clips descenders
-            // here specifically — line-clamp hard-caps the box at exactly
-            // lines × line-height with no allowance for glyph overhang,
-            // unlike Card/List's plain wrapping text (no line-clamp, so an
-            // ascender/descender bleeding a hair past the line box just
-            // renders — there's no hard edge there to clip against). 1.2
-            // gives real headroom for that overhang without reading as
-            // loose.
-            large ? "text-[13px] line-clamp-3 leading-[1.2]" : "text-[10.5px] line-clamp-2 leading-[1.2]",
+            // relative z-10: keeps this in-flow content painting above the
+            // progress bar below, which is an absolutely positioned
+            // background wash now rather than a layout sibling this wrapper
+            // shrinks to make room for — see that div's own comment.
+            "relative z-10 flex-1 min-h-0 flex flex-col",
+            large ? "p-3.5 gap-2" : "p-2.5 gap-1.5",
           )}
         >
-          {renderBreakableTitle(title)}
-        </h2>
-        {reorderEditing && (
-          <MiniEditControls
-            favorited={favorited}
-            onToggleFavorite={onToggleFavorite ?? (() => {})}
-            cardHidden={cardHidden}
-            onToggleHidden={onToggleHidden ?? (() => {})}
-            dragControls={dragControls}
-            large={large}
-          />
-        )}
-      </div>
+          <div className="flex items-start gap-1">
+            <h2
+              className={cn(
+                // A 2-line clamp otherwise truncates a title after only its
+                // first couple of words, dropping an entire trailing word
+                // ("Holds hand during..." losing "transition" outright) rather
+                // than actually needing a third line's worth of room. Large
+                // tiles have that room to spare (confirmed — a third line
+                // there still leaves the body's own content full-size); small
+                // tiles don't — their body content (e.g. the bubble strip's own
+                // circles) has so little vertical slack already that a third
+                // title line squeezes it down to an illegible sliver, which is
+                // worse than the truncation it would avoid. So only large gets
+                // the taller clamp; small keeps 2 lines. No reserved right-side
+                // padding here anymore — that was only clearing space for the
+                // per-tile details button (removed; the drawer's own pull-tab
+                // is the one way to open it now), so the title gets that width
+                // back.
+                "font-display font-bold flex-1 min-w-0 break-words",
+                // leading-[…] MUST come after text-[…] here — tailwind-merge
+                // treats an arbitrary text-size and leading as the same
+                // conflict group (real Tailwind size utilities like text-sm
+                // bundle their own line-height), so whichever comes LAST in
+                // the merged string wins the whole group. With leading first,
+                // it was silently discarded and this was rendering at the
+                // browser's ~1.5x default the entire time.
+                // 1.05 (matching Card/List's own ratio) still clips descenders
+                // here specifically — line-clamp hard-caps the box at exactly
+                // lines × line-height with no allowance for glyph overhang,
+                // unlike Card/List's plain wrapping text (no line-clamp, so an
+                // ascender/descender bleeding a hair past the line box just
+                // renders — there's no hard edge there to clip against). 1.2
+                // gives real headroom for that overhang without reading as
+                // loose.
+                large
+                  ? "text-[13px] line-clamp-3 leading-[1.2]"
+                  : "text-[10.5px] line-clamp-2 leading-[1.2]",
+              )}
+            >
+              {renderBreakableTitle(title)}
+            </h2>
+            {reorderEditing && (
+              <MiniEditControls
+                favorited={favorited}
+                onToggleFavorite={onToggleFavorite ?? (() => {})}
+                cardHidden={cardHidden}
+                onToggleHidden={onToggleHidden ?? (() => {})}
+                dragControls={dragControls}
+                large={large}
+              />
+            )}
+          </div>
 
-      {isActive && (
-        <DataDetailsDrawer
-          open={detailsOpen}
-          onOpenChange={onDetailsOpenChange ?? (() => {})}
-          // Tiles keep their own grid's normal per-column width when the
-          // drawer opens (see index.tsx's `stackToLeftColumn`) rather than
-          // the pane compressing — so a fixed normalWidthPx guess can't
-          // reliably reach exactly this tile's own right edge the way it
-          // can for card/list's more predictable half-viewport split.
-          // hugCardRight measures the real thing instead.
-          hugCardRight
-          // Large tiles center their content/actions with real margin to
-          // spare on the right edge (see PROGRESS_BAR_WIDTH / the actions
-          // wrapper's own self-center above), so a small negative gap here
-          // lets the panel's left edge read as confidently wider — reaching
-          // slightly onto the tile — without the (still further-out) arrow
-          // landing on anything clickable. Small tiles are too narrow for
-          // that margin, so they keep the default breathing-room gap.
-          hugGapPx={density === "large" ? -14 : undefined}
-          title={title}
-          description={description}
-          details={details}
-          onPrevCard={onPrevCard}
-          onNextCard={onNextCard}
-          slideFrom={slideFrom}
-          top={stickyTop}
-          toolbarHeight={toolbarHeight}
-          cardRef={articleRef}
-          widthMode={widthMode}
-          onWidthModeChange={onWidthModeChange}
-        />
-      )}
+          {isActive && (
+            <DataDetailsDrawer
+              open={detailsOpen}
+              onOpenChange={onDetailsOpenChange ?? (() => {})}
+              // Tiles keep their own grid's normal per-column width when the
+              // drawer opens (see index.tsx's `stackToLeftColumn`) rather than
+              // the pane compressing — so a fixed normalWidthPx guess can't
+              // reliably reach exactly this tile's own right edge the way it
+              // can for card/list's more predictable half-viewport split.
+              // hugCardRight measures the real thing instead.
+              hugCardRight
+              // Large tiles center their content/actions with real margin to
+              // spare on the right edge (see PROGRESS_BAR_WIDTH / the actions
+              // wrapper's own self-center above), so a small negative gap here
+              // lets the panel's left edge read as confidently wider — reaching
+              // slightly onto the tile — without the (still further-out) arrow
+              // landing on anything clickable. Small tiles are too narrow for
+              // that margin, so they keep the default breathing-room gap.
+              hugGapPx={density === "large" ? -14 : undefined}
+              title={title}
+              details={details}
+              onPrevCard={onPrevCard}
+              onNextCard={onNextCard}
+              slideFrom={slideFrom}
+              top={stickyTop}
+              toolbarHeight={toolbarHeight}
+              cardRef={articleRef}
+              widthMode={widthMode}
+              onWidthModeChange={onWidthModeChange}
+            />
+          )}
 
-      <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">{children}</div>
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">
+            {children}
+          </div>
 
-      {actions && (
-        // self-center (rather than the flex-col parent's default stretch)
-        // so this wrapper shrinks to the actions row's own natural width
-        // instead of stretching to the full column width.
-        <div className="shrink-0 self-center">
-          {actions}
+          {actions && (
+            // self-center (rather than the flex-col parent's default stretch)
+            // so this wrapper shrinks to the actions row's own natural width
+            // instead of stretching to the full column width.
+            <div className="shrink-0 self-center">{actions}</div>
+          )}
         </div>
-      )}
-      </div>
 
-      {/* A background wash behind the tile's own content (z-10 above, see
+        {/* A background wash behind the tile's own content (z-10 above, see
           that wrapper's comment) rather than a layout sibling it shrinks to
           make room for — so scoring a trial doesn't nudge everything else
           up a few px. Skinnier than CardShell's own labeled version since
@@ -228,17 +227,17 @@ export function MiniTileShell({
           rendered where a running percentage is meaningful for the data
           type (Trial, Task Analysis); Frequency/Rate/Duration/Rating pass
           no `progress`. */}
-      {showProgress && (
-        <div
-          className="absolute left-1/2 -translate-x-1/2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80"
-          style={{ width: progressBarWidth }}
-        >
+        {showProgress && (
           <div
-            className={cn("h-full transition-[width]", barColor)}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
+            className="absolute left-1/2 -translate-x-1/2 bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80"
+            style={{ width: progressBarWidth }}
+          >
+            <div
+              className={cn("h-full transition-[width]", barColor)}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
       </div>
     </article>
   );
@@ -275,7 +274,11 @@ function MiniEditControls({
           onClick={onToggleFavorite}
           aria-pressed={favorited}
           aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-          className={cn("grid place-items-center rounded-full transition-colors", size, favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+          className={cn(
+            "grid place-items-center rounded-full transition-colors",
+            size,
+            favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+          )}
         >
           <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
         </button>
@@ -284,7 +287,11 @@ function MiniEditControls({
           onClick={onToggleHidden}
           aria-pressed={cardHidden}
           aria-label={cardHidden ? "Unhide card" : "Hide card"}
-          className={cn("grid place-items-center rounded-full transition-colors", size, cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600")}
+          className={cn(
+            "grid place-items-center rounded-full transition-colors",
+            size,
+            cardHidden ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
+          )}
         >
           <EyeOff className={icon} />
         </button>
@@ -295,7 +302,10 @@ function MiniEditControls({
         // even though the two touch-target boxes are mathematically
         // centered the same distance in — nudging just this control right
         // closes that optical gap without touching the favorite/hidden pair.
-        className={cn("-mr-0.5 cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing", size)}
+        className={cn(
+          "-mr-0.5 cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing",
+          size,
+        )}
         onPointerDown={(e) => {
           e.preventDefault();
           dragControls?.start(e);

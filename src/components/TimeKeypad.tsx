@@ -97,7 +97,9 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
   for (let u = 0; u < 3; u++) {
     if (u > 0) {
       unitNodes.push(
-        <span key={`sep-${u}`} className="self-start text-muted-foreground/40">:</span>,
+        <span key={`sep-${u}`} className="self-start text-muted-foreground/40">
+          :
+        </span>,
       );
     }
     const i0 = u * 2;
@@ -105,10 +107,14 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
     unitNodes.push(
       <span key={`unit-${u}`} className="flex flex-col items-center">
         <span className="flex">
-          <span className={i0 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}>
+          <span
+            className={i0 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}
+          >
             {padded[i0]}
           </span>
-          <span className={i1 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}>
+          <span
+            className={i1 >= MAX_DIGITS - entered ? "text-blue-600" : "text-muted-foreground/40"}
+          >
             {padded[i1]}
           </span>
         </span>

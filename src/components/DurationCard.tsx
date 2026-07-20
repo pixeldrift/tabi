@@ -115,7 +115,10 @@ export function DurationCard({
   // and correcting it after the CSS animation has already begun jumps its
   // phase instead of cleanly establishing it.
   const [pulseDelayMs, setPulseDelayMs] = useState(0);
-  const pulseStyle = { animationDuration: `${PULSE_BEAT_MS}ms`, animationDelay: `${pulseDelayMs}ms` };
+  const pulseStyle = {
+    animationDuration: `${PULSE_BEAT_MS}ms`,
+    animationDelay: `${pulseDelayMs}ms`,
+  };
 
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
   useEffect(() => {
@@ -129,7 +132,6 @@ export function DurationCard({
     setRunningIdx(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
-
 
   // Tick in unison with the master session timer.
   useEffect(() => {
@@ -157,8 +159,6 @@ export function DurationCard({
     minDurationSec === undefined && behaviorRole === "interfering" && hasElapsedTime;
   const isComplete =
     minDurationSec !== undefined ? totalSec >= minDurationSec : totalMs > 0 || zeroCountsAsData;
-  const remaining =
-    minDurationSec !== undefined ? Math.max(0, Math.ceil(minDurationSec - totalSec)) : 0;
   useReportCardStatus(cardKey, totalMs > 0 || zeroCountsAsData, isComplete, {
     title,
     kind: "duration",
@@ -255,10 +255,7 @@ export function DurationCard({
   };
 
   const stepWidth = BUBBLE + GAP;
-  const trackOffset = useMemo(
-    () => -(viewIdx * stepWidth + CENTER_W / 2),
-    [viewIdx, stepWidth],
-  );
+  const trackOffset = useMemo(() => -(viewIdx * stepWidth + CENTER_W / 2), [viewIdx, stepWidth]);
 
   const isViewingRunning = running && runningIdx === viewIdx;
   const isIdxRunning = (i: number) => running && runningIdx === i;
@@ -281,7 +278,6 @@ export function DurationCard({
       <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full h-full">
         <MiniTileShell
           title={title}
-          description={description}
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
@@ -316,16 +312,23 @@ export function DurationCard({
                   { label: "Total Time", value: formatTime(totalMs) },
                 ]}
               />
-              {teachingProcedure && (
+              {(teachingProcedure || description) && (
                 <div className="mt-4">
-                  <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
+                  <TeachingProcedureAccordion
+                    description={description}
+                    data={teachingProcedure}
+                    kind="duration"
+                  />
                 </div>
               )}
             </>
           }
         >
           <div
-            className={cn("flex flex-wrap items-center justify-center", large ? "gap-1.5" : "gap-1")}
+            className={cn(
+              "flex flex-wrap items-center justify-center",
+              large ? "gap-1.5" : "gap-1",
+            )}
             aria-hidden
           >
             {instances.map((ms, i) => {
@@ -362,7 +365,10 @@ export function DurationCard({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.4 }}
                   transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                  className={cn("rounded-full shrink-0 bg-stone-300", large ? "size-1" : "size-[3px]")}
+                  className={cn(
+                    "rounded-full shrink-0 bg-stone-300",
+                    large ? "size-1" : "size-[3px]",
+                  )}
                 />
               )}
             </AnimatePresence>
@@ -418,7 +424,9 @@ export function DurationCard({
                             // actually needs to, which reads as a sudden
                             // jolt right as the button shifts over with it.
                             "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
-                            large ? "px-3 text-lg min-w-[4.5rem]" : "px-2 text-[13px] min-w-[3.25rem]",
+                            large
+                              ? "px-3 text-lg min-w-[4.5rem]"
+                              : "px-2 text-[13px] min-w-[3.25rem]",
                           )}
                         >
                           {formatCompactTime(instanceMs(i))}
@@ -439,9 +447,17 @@ export function DurationCard({
                       )}
                     >
                       {running ? (
-                        <Pause className={large ? "size-[17px]" : "size-3.5"} fill="currentColor" strokeWidth={0} />
+                        <Pause
+                          className={large ? "size-[17px]" : "size-3.5"}
+                          fill="currentColor"
+                          strokeWidth={0}
+                        />
                       ) : (
-                        <Play className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")} fill="currentColor" strokeWidth={0} />
+                        <Play
+                          className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")}
+                          fill="currentColor"
+                          strokeWidth={0}
+                        />
                       )}
                     </button>
                   </div>
@@ -480,7 +496,6 @@ export function DurationCard({
     return (
       <DataListRow
         title={title}
-        description={description}
         dataTypeIcon={<DurationIcon />}
         kind="duration"
         dataTypeLabel="Duration"
@@ -516,9 +531,13 @@ export function DurationCard({
                 { label: "Total Time", value: formatTime(totalMs) },
               ]}
             />
-            {teachingProcedure && (
+            {(teachingProcedure || description) && (
               <div className="mt-4">
-                <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="duration"
+                />
               </div>
             )}
           </>
@@ -581,234 +600,243 @@ export function DurationCard({
 
   return (
     <div ref={cardRef as React.RefObject<HTMLDivElement>} className="w-full max-w-md scroll-mt-32">
-    <CardShell
-      title={title}
-      phase={phase}
-      dataType="Duration"
-      dataTypeIcon={<DurationIcon />}
-      kind="duration"
-      description={description}
-      isActive={isActive}
-      onActivate={onActivate}
-      reorderEditing={reorderEditing}
-      favorited={favorited}
-      onToggleFavorite={onToggleFavorite}
-      cardHidden={cardHidden}
-      onToggleHidden={onToggleHidden}
-      dragControls={dragControls}
-      detailsOpen={detailsOpen}
-      onDetailsOpenChange={onDetailsOpenChange}
-      onOpenDetails={onOpenDetails}
-      stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
-      onPrevCard={onPrevCard}
-      onNextCard={onNextCard}
-      slideFrom={slideFrom}
-      widthMode={widthMode}
-      onWidthModeChange={onWidthModeChange}
-      progress={null}
-      isComplete={isComplete}
-      expanded={expanded}
-      onToggleExpanded={() => setExpanded((v) => !v)}
-      helperText={
-        <span>
-          Combined Total{" "}
-          <span className="normal-case tracking-normal tabular-nums text-foreground">
-            {formatTime(totalMs)}
+      <CardShell
+        title={title}
+        phase={phase}
+        dataType="Duration"
+        dataTypeIcon={<DurationIcon />}
+        kind="duration"
+        isActive={isActive}
+        onActivate={onActivate}
+        reorderEditing={reorderEditing}
+        favorited={favorited}
+        onToggleFavorite={onToggleFavorite}
+        cardHidden={cardHidden}
+        onToggleHidden={onToggleHidden}
+        dragControls={dragControls}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={onDetailsOpenChange}
+        onOpenDetails={onOpenDetails}
+        stickyTop={stickyTop}
+        toolbarHeight={toolbarHeight}
+        onPrevCard={onPrevCard}
+        onNextCard={onNextCard}
+        slideFrom={slideFrom}
+        widthMode={widthMode}
+        onWidthModeChange={onWidthModeChange}
+        progress={null}
+        isComplete={isComplete}
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((v) => !v)}
+        helperText={
+          <span>
+            Combined Total{" "}
+            <span className="normal-case tracking-normal tabular-nums text-foreground">
+              {formatTime(totalMs)}
+            </span>
           </span>
-        </span>
-      }
-      details={
-        <>
-          <DrawerQuickFacts
-            icon={<DurationIcon />}
-            kind="duration"
-            dataTypeLabel="Frequency / Duration"
-            phase={phase}
-            stats={[
-              ...(minDurationSec !== undefined
-                ? [{ label: "Minimum", value: `${minDurationSec}s` }]
-                : []),
-              { label: "Instances", value: instances.length },
-              { label: "Total Time", value: formatTime(totalMs) },
-            ]}
-          />
-          {teachingProcedure && (
-            <div className="mt-4">
-              <TeachingProcedureAccordion data={teachingProcedure} kind="duration" />
-            </div>
-          )}
-        </>
-      }
-      expandedView={
-        <ol className="px-3 pt-2 pb-3 space-y-1">
-          {instances.map((ms, i) => {
-            const isRunning = isIdxRunning(i);
-            const hasData = ms > 0;
-            // A never-started instance is just the trailing "next" slot the
-            // auto-push logic always keeps ready (see setInstanceMs/
-            // toggleInstance) — showing it a number implies it's actually
-            // in progress, so it stays hidden (not just dimmed) until it
-            // genuinely has one, at which point it fades in already
-            // colored (gray, or blue once/while actively running).
-            const started = hasData || isRunning;
-            return (
-              <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
-                <span
-                  className={cn(
-                    "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-opacity",
-                    isRunning ? "bg-blue-500 text-white" : "bg-stone-100 text-muted-foreground",
-                    started ? "opacity-100" : "opacity-0",
-                  )}
-                  aria-hidden={!started}
-                >
-                  {i + 1}
-                </span>
-                {/* The instance actually running gets bold blue text — every
+        }
+        details={
+          <>
+            <DrawerQuickFacts
+              icon={<DurationIcon />}
+              kind="duration"
+              dataTypeLabel="Frequency / Duration"
+              phase={phase}
+              stats={[
+                ...(minDurationSec !== undefined
+                  ? [{ label: "Minimum", value: `${minDurationSec}s` }]
+                  : []),
+                { label: "Instances", value: instances.length },
+                { label: "Total Time", value: formatTime(totalMs) },
+              ]}
+            />
+            {(teachingProcedure || description) && (
+              <div className="mt-4">
+                <TeachingProcedureAccordion
+                  description={description}
+                  data={teachingProcedure}
+                  kind="duration"
+                />
+              </div>
+            )}
+          </>
+        }
+        expandedView={
+          <ol className="px-3 pt-2 pb-3 space-y-1">
+            {instances.map((ms, i) => {
+              const isRunning = isIdxRunning(i);
+              const hasData = ms > 0;
+              // A never-started instance is just the trailing "next" slot the
+              // auto-push logic always keeps ready (see setInstanceMs/
+              // toggleInstance) — showing it a number implies it's actually
+              // in progress, so it stays hidden (not just dimmed) until it
+              // genuinely has one, at which point it fades in already
+              // colored (gray, or blue once/while actively running).
+              const started = hasData || isRunning;
+              return (
+                <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+                  <span
+                    className={cn(
+                      "grid place-items-center size-6 rounded-full text-[11px] font-medium shrink-0 transition-opacity",
+                      isRunning ? "bg-blue-500 text-white" : "bg-stone-100 text-muted-foreground",
+                      started ? "opacity-100" : "opacity-0",
+                    )}
+                    aria-hidden={!started}
+                  >
+                    {i + 1}
+                  </span>
+                  {/* The instance actually running gets bold blue text — every
                     other row (including ones with recorded time) stays
                     regular weight, so there's exactly one obvious highlight. */}
-                <TimeKeypad
-                  valueMs={instanceMs(i)}
-                  onReplace={(next) => setInstanceMs(i, next)}
-                  onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
-                >
-                  {({ open }) => (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        open();
-                      }}
-                      disabled={!sessionRunning}
-                      aria-label={`Edit time for instance ${i + 1}`}
-                      className={cn(
-                        "flex-1 text-left tabular-nums text-sm rounded-md transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                        isRunning ? "font-bold text-blue-600" : "font-normal text-foreground/80",
-                      )}
-                    >
-                      {formatTime(instanceMs(i))}
-                    </button>
-                  )}
-                </TimeKeypad>
-                <button
-                  type="button"
-                  onClick={() => toggleInstance(i)}
-                  disabled={!sessionRunning}
-                  aria-label={isRunning ? "Pause this instance" : "Start this instance"}
-                  className={cn(
-                    "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40",
-                    "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
-                  )}
-                >
-                  {isRunning ? (
-                    <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
-                  ) : (
-                    <Play className="size-3.5 translate-x-px" fill="currentColor" strokeWidth={0} />
-                  )}
-                </button>
-              </li>
-            );
-          })}
-          <li className="flex items-center gap-2 px-2 py-2 mt-1 border-t border-dashed border-border">
-            <span className="size-6 shrink-0" aria-hidden />
-            <span className="tabular-nums text-sm font-bold text-foreground">{formatTime(totalMs)}</span>
-            <span className="text-sm font-bold text-foreground">Total</span>
-          </li>
-        </ol>
-      }
-    >
-      <div className="relative px-2 pt-2 pb-4">
-        <div className="relative h-[68px]">
-          <TriangleNav
-            direction="left"
-            onClick={() => goTo(viewIdx - 1)}
-            disabled={viewIdx === 0}
-          />
-          <TriangleNav
-            direction="right"
-            onClick={() => goTo(viewIdx + 1)}
-            disabled={viewIdx >= instances.length - 1}
-          />
-
-          <div
-            className="relative h-full overflow-hidden"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-              maskImage:
-                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-            }}
-          >
-            <motion.div
-              className="absolute top-1/2 left-1/2 flex items-center"
-              style={{ gap: GAP, x: dragX, translateY: "-50%" }}
-              animate={{ x: trackOffset }}
-              transition={{ type: "spring", stiffness: 320, damping: 34 }}
-              drag="x"
-              dragConstraints={{ left: -((instances.length - 1) * stepWidth) - 200, right: 200 }}
-              dragElastic={0.08}
-              onDragEnd={handleDragEnd}
-            >
-              {instances.map((_, i) => {
-                const isCenter = i === viewIdx;
-                const centerRunning = isCenter && isViewingRunning;
-                const itemRunning = isIdxRunning(i);
-                const activated = isActivated(i);
-                return (
-                  <motion.div
-                    key={i}
-                    className="relative shrink-0 grid place-items-center select-none"
-                    animate={{
-                      width: isCenter ? CENTER_W : BUBBLE,
-                      height: isCenter ? CENTER_H : BUBBLE,
-                    }}
-                    transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                  <TimeKeypad
+                    valueMs={instanceMs(i)}
+                    onReplace={(next) => setInstanceMs(i, next)}
+                    onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
                   >
-                    {isCenter ? (
-                      <CenterPill
-                        index={i}
-                        ms={instanceMs(i)}
-                        running={centerRunning}
-                        activated={activated}
+                    {({ open }) => (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          open();
+                        }}
                         disabled={!sessionRunning}
-                        onToggle={togglePause}
-                        onEditTime={(ms) => setInstanceMs(i, ms)}
-                        pulseStyle={pulseStyle}
-                      />
+                        aria-label={`Edit time for instance ${i + 1}`}
+                        className={cn(
+                          "flex-1 text-left tabular-nums text-sm rounded-md transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
+                          isRunning ? "font-bold text-blue-600" : "font-normal text-foreground/80",
+                        )}
+                      >
+                        {formatTime(instanceMs(i))}
+                      </button>
+                    )}
+                  </TimeKeypad>
+                  <button
+                    type="button"
+                    onClick={() => toggleInstance(i)}
+                    disabled={!sessionRunning}
+                    aria-label={isRunning ? "Pause this instance" : "Start this instance"}
+                    className={cn(
+                      "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40",
+                      "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
+                    )}
+                  >
+                    {isRunning ? (
+                      <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
                     ) : (
-                      <SideBubble
-                        index={i}
-                        running={itemRunning}
-                        activated={activated}
-                        onClick={() => goTo(i)}
-                        pulseStyle={pulseStyle}
+                      <Play
+                        className="size-3.5 translate-x-px"
+                        fill="currentColor"
+                        strokeWidth={0}
                       />
                     )}
-                  </motion.div>
-                );
-              })}
-            </motion.div>
+                  </button>
+                </li>
+              );
+            })}
+            <li className="flex items-center gap-2 px-2 py-2 mt-1 border-t border-dashed border-border">
+              <span className="size-6 shrink-0" aria-hidden />
+              <span className="tabular-nums text-sm font-bold text-foreground">
+                {formatTime(totalMs)}
+              </span>
+              <span className="text-sm font-bold text-foreground">Total</span>
+            </li>
+          </ol>
+        }
+      >
+        <div className="relative px-2 pt-2 pb-4">
+          <div className="relative h-[68px]">
+            <TriangleNav
+              direction="left"
+              onClick={() => goTo(viewIdx - 1)}
+              disabled={viewIdx === 0}
+            />
+            <TriangleNav
+              direction="right"
+              onClick={() => goTo(viewIdx + 1)}
+              disabled={viewIdx >= instances.length - 1}
+            />
+
+            <div
+              className="relative h-full overflow-hidden"
+              style={{
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+              }}
+            >
+              <motion.div
+                className="absolute top-1/2 left-1/2 flex items-center"
+                style={{ gap: GAP, x: dragX, translateY: "-50%" }}
+                animate={{ x: trackOffset }}
+                transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                drag="x"
+                dragConstraints={{ left: -((instances.length - 1) * stepWidth) - 200, right: 200 }}
+                dragElastic={0.08}
+                onDragEnd={handleDragEnd}
+              >
+                {instances.map((_, i) => {
+                  const isCenter = i === viewIdx;
+                  const centerRunning = isCenter && isViewingRunning;
+                  const itemRunning = isIdxRunning(i);
+                  const activated = isActivated(i);
+                  return (
+                    <motion.div
+                      key={i}
+                      className="relative shrink-0 grid place-items-center select-none"
+                      animate={{
+                        width: isCenter ? CENTER_W : BUBBLE,
+                        height: isCenter ? CENTER_H : BUBBLE,
+                      }}
+                      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                    >
+                      {isCenter ? (
+                        <CenterPill
+                          index={i}
+                          ms={instanceMs(i)}
+                          running={centerRunning}
+                          activated={activated}
+                          disabled={!sessionRunning}
+                          onToggle={togglePause}
+                          onEditTime={(ms) => setInstanceMs(i, ms)}
+                          pulseStyle={pulseStyle}
+                        />
+                      ) : (
+                        <SideBubble
+                          index={i}
+                          running={itemRunning}
+                          activated={activated}
+                          onClick={() => goTo(i)}
+                          pulseStyle={pulseStyle}
+                        />
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
+            <span>
+              Instance{" "}
+              <span className="normal-case tracking-normal tabular-nums text-foreground">
+                {viewIdx + 1}
+              </span>{" "}
+              of{" "}
+              <span className="normal-case tracking-normal tabular-nums text-foreground">
+                {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
+              </span>
+              {" | Total: "}
+              <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
+                {formatShortTime(totalMs)}
+              </strong>
+            </span>
           </div>
         </div>
-
-        <div className="mt-1 flex items-center justify-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground h-4">
-          <span>
-            Instance{" "}
-            <span className="normal-case tracking-normal tabular-nums text-foreground">
-              {viewIdx + 1}
-            </span>{" "}
-            of{" "}
-            <span className="normal-case tracking-normal tabular-nums text-foreground">
-              {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
-            </span>
-            {" | Total: "}
-            <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
-              {formatShortTime(totalMs)}
-            </strong>
-          </span>
-        </div>
-      </div>
-    </CardShell>
+      </CardShell>
     </div>
   );
 }
@@ -922,11 +950,7 @@ function SideBubble({
   pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="absolute inset-0 grid place-items-center"
-    >
+    <button type="button" onClick={onClick} className="absolute inset-0 grid place-items-center">
       <span
         className={cn(
           "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums",
@@ -946,7 +970,6 @@ function SideBubble({
           aria-hidden
         />
       )}
-
     </button>
   );
 }
@@ -1011,7 +1034,9 @@ function formatCompactTime(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const mm = m.toString().padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${s.toString().padStart(2, "0")}` : `${mm}:${s.toString().padStart(2, "0")}`;
+  return h > 0
+    ? `${h}:${mm}:${s.toString().padStart(2, "0")}`
+    : `${mm}:${s.toString().padStart(2, "0")}`;
 }
 
 function formatShortTime(ms: number) {

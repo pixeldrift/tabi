@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { ListViewIcon } from "@/components/icons/ListViewIcon";
 import { CardViewIcon } from "@/components/icons/CardViewIcon";
 import { GridViewIcon } from "@/components/icons/GridViewIcon";
@@ -6,14 +15,19 @@ import { SmallGridViewIcon } from "@/components/icons/SmallGridViewIcon";
 import { useSettings } from "./SettingsContext";
 import { playSoundEffect } from "@/lib/soundEffects";
 
-export type CardKind = "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating" | "timestamp";
+export type CardKind =
+  "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating" | "timestamp";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 
 /** Single source of truth for each view mode's label + icon, shared by the
  *  Data toolbar's segmented toggle and the Settings "Default data view"
  *  picker so the two never drift apart. */
-export const DISPLAY_MODES: { mode: DisplayMode; label: string; icon: (props: { className?: string }) => React.ReactNode }[] = [
+export const DISPLAY_MODES: {
+  mode: DisplayMode;
+  label: string;
+  icon: (props: { className?: string }) => React.ReactNode;
+}[] = [
   { mode: "list", label: "List", icon: (p) => <ListViewIcon {...p} /> },
   { mode: "card", label: "Card", icon: (p) => <CardViewIcon {...p} /> },
   { mode: "grid-large", label: "Large Grid", icon: (p) => <GridViewIcon {...p} /> },
@@ -204,13 +218,19 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
   const cycleDataFilter = useCallback(() => {
     setFilters((f) => ({
       ...f,
-      dataFilter: f.dataFilter === "all" ? "with-data" : f.dataFilter === "with-data" ? "no-data" : "all",
+      dataFilter:
+        f.dataFilter === "all" ? "with-data" : f.dataFilter === "with-data" ? "no-data" : "all",
     }));
   }, []);
   const cycleCompletionFilter = useCallback(() => {
     setFilters((f) => ({
       ...f,
-      completionFilter: f.completionFilter === "all" ? "reached" : f.completionFilter === "reached" ? "incomplete" : "all",
+      completionFilter:
+        f.completionFilter === "all"
+          ? "reached"
+          : f.completionFilter === "reached"
+            ? "incomplete"
+            : "all",
     }));
   }, []);
   const setFavoritesOnly = useCallback((v: boolean) => {
@@ -223,7 +243,11 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
     setFilters((f) => ({
       ...f,
       behaviorFilter:
-        f.behaviorFilter === "both" ? "interfering" : f.behaviorFilter === "interfering" ? "target" : "both",
+        f.behaviorFilter === "both"
+          ? "interfering"
+          : f.behaviorFilter === "interfering"
+            ? "target"
+            : "both",
     }));
   }, []);
   const clearFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
@@ -260,8 +284,12 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
         unit: string;
       },
     ) => {
-      setHasData((prev) => (prev[id] === status.hasData ? prev : { ...prev, [id]: status.hasData }));
-      setCompletion((prev) => (prev[id] === status.isComplete ? prev : { ...prev, [id]: status.isComplete }));
+      setHasData((prev) =>
+        prev[id] === status.hasData ? prev : { ...prev, [id]: status.hasData },
+      );
+      setCompletion((prev) =>
+        prev[id] === status.isComplete ? prev : { ...prev, [id]: status.isComplete },
+      );
       setCardMeta((prev) => {
         const existing = prev[id];
         if (
@@ -271,7 +299,10 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
           existing?.unit === status.unit
         )
           return prev;
-        return { ...prev, [id]: { title: status.title, kind: status.kind, value: status.value, unit: status.unit } };
+        return {
+          ...prev,
+          [id]: { title: status.title, kind: status.kind, value: status.value, unit: status.unit },
+        };
       });
     },
     [],
@@ -306,10 +337,29 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
       reportCardStatus,
     }),
     [
-      displayMode, editMode, setEditMode, searchQuery, filters,
-      toggleKindFilter, togglePhaseFilter, cycleDataFilter, cycleCompletionFilter,
-      setFavoritesOnly, setShowHidden, cycleBehaviorFilter, clearFilters,
-      favorites, toggleFavorite, hidden, toggleHidden, order, setOrder, hasData, completion, cardMeta, reportCardStatus,
+      displayMode,
+      editMode,
+      setEditMode,
+      searchQuery,
+      filters,
+      toggleKindFilter,
+      togglePhaseFilter,
+      cycleDataFilter,
+      cycleCompletionFilter,
+      setFavoritesOnly,
+      setShowHidden,
+      cycleBehaviorFilter,
+      clearFilters,
+      favorites,
+      toggleFavorite,
+      hidden,
+      toggleHidden,
+      order,
+      setOrder,
+      hasData,
+      completion,
+      cardMeta,
+      reportCardStatus,
     ],
   );
 

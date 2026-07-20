@@ -45,7 +45,10 @@ export function DrawerInfoModal({
             since this element's fixed size means "stretch" alignment
             wouldn't otherwise do anything — its own row, beneath the
             (left-aligned) title bar above it rather than part of it. */}
-        <span className="grid place-items-center mx-auto size-12 text-stone-500 [&>svg]:size-8" aria-hidden>
+        <span
+          className="grid place-items-center mx-auto size-12 text-stone-500 [&>svg]:size-8"
+          aria-hidden
+        >
           {icon}
         </span>
 

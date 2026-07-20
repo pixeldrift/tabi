@@ -217,7 +217,12 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
         <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
           {GUARDIANS.map((g) => (
             <div key={g.id} className="flex items-center gap-3 p-3">
-              <BlurredPhotoZoomButton avatar={g.avatar} label={g.name} size="size-10" iconClassName="size-4" />
+              <BlurredPhotoZoomButton
+                avatar={g.avatar}
+                label={g.name}
+                size="size-10"
+                iconClassName="size-4"
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{g.name}</p>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
