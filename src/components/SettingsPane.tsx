@@ -1,6 +1,7 @@
 import { RotateCcw, Volume2 } from "lucide-react";
 import {
   ALARM_SOUND_OPTIONS,
+  COLOR_THEME_OPTIONS,
   DEFAULT_DAY_END,
   DEFAULT_DAY_START,
   SETTINGS,
@@ -59,6 +60,8 @@ export function SettingsPane() {
     setDayEnd,
     defaultDataView,
     setDefaultDataView,
+    colorTheme,
+    setColorTheme,
   } = useSettings();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
 
@@ -86,6 +89,47 @@ export function SettingsPane() {
       </div>
 
       <div className="mt-6 space-y-8">
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Appearance
+          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label className="text-sm font-medium">Color theme</label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                {COLOR_THEME_OPTIONS.find((o) => o.value === colorTheme)?.description}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setColorTheme("default")}
+              disabled={colorTheme === "default"}
+              aria-label="Reset color theme to default"
+              className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none"
+            >
+              <RotateCcw className="size-3" />
+            </button>
+          </div>
+          <div className="mt-2 flex items-center gap-1 rounded-full border border-border bg-stone-100/60 p-1 w-fit">
+            {COLOR_THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setColorTheme(opt.value)}
+                aria-pressed={colorTheme === opt.value}
+                className={cn(
+                  "h-8 rounded-full px-4 text-sm font-medium transition-colors",
+                  colorTheme === opt.value
+                    ? "btn-bevel bg-blue-500 text-white"
+                    : "text-stone-500 hover:text-stone-800",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {groups.map((group) => (
           <section key={group}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">

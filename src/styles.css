@@ -107,6 +107,144 @@
   --ring: oklch(0.78 0.14 50);
 }
 
+/* Settings > Appearance's "Alternate" color theme — an early, still-light
+   experiment (see SettingsContext's own ColorTheme comment), not the
+   `.dark` block above. Toggled via `data-theme="alt"` on <html> rather
+   than reusing `.dark`, so the two stay independent: this can keep
+   evolving on its own without accidentally wiring up shadcn's unfinished
+   dark scaffold before it's actually ready.
+
+   Sand / Sage / Rust / Slate / Ochre / Mustard — an earthy palette from a
+   reference moodboard (pet-app icon + swatches), approximated here by eye
+   rather than picked from exact hex/oklch values, so treat these as a
+   starting point to refine, not a precise match. Sand and Ink (the
+   reference's own cream/near-black pair) land close to :root's existing
+   warm cream/ink, so backgrounds/text barely move — Slate (a deep, muted
+   pine-teal) replaces blue as the primary action color, Sage becomes the
+   secondary tint, and Rust — muting Tailwind's default red toward the
+   reference's orange-red — the destructive/danger color. Ochre reads as a
+   genuine brown here (not a golden accent — see --accent-foreground,
+   where its color actually shows up), and Mustard is a separate, more
+   yellow hue that takes over Amber's old role as the no-response/neutral
+   color used throughout the data cards. */
+[data-theme="alt"] {
+  --background: oklch(0.97 0.02 78); /* Sand */
+  --foreground: oklch(0.22 0.02 65); /* Ink */
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 65);
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+
+  --primary: oklch(0.38 0.07 193); /* Slate (pine-teal) */
+  --primary-foreground: oklch(0.98 0.01 190);
+
+  --secondary: oklch(0.93 0.03 152); /* Sage, tinted */
+  --secondary-foreground: oklch(0.3 0.04 155);
+
+  --muted: oklch(0.95 0.015 78); /* Sand, tinted */
+  --muted-foreground: oklch(0.5 0.02 70);
+
+  /* --accent has to stay light — it's only ever used as a hover/active
+     wash (see Button's ghost variant, Dialog's close button), always
+     paired with a dark foreground painted on top of it. Ochre's actual
+     identity as a brown lives in that foreground color, not the wash
+     itself, the same way Sand (a near-white background) doesn't look
+     "sandy" until Ink text sits on top of it. */
+  --accent: oklch(0.89 0.045 62); /* Ochre, light wash */
+  --accent-foreground: oklch(0.32 0.07 58); /* Ochre, the actual brown */
+
+  /* Rust — closer to the reference's orange-red than Tailwind's default
+     destructive red, but still clearly in the same "danger" family. Only
+     this one semantic token, not the literal red-* scale error/correct
+     buttons hardcode throughout the data cards — those carry pass/fail
+     meaning, not just decoration, so this palette swap leaves them alone. */
+  --destructive: oklch(0.6 0.16 35); /* Rust */
+  --destructive-foreground: oklch(0.98 0.01 60);
+
+  --border: oklch(0.9 0.02 75);
+  --input: oklch(0.92 0.02 75);
+  --ring: oklch(0.38 0.07 193);
+
+  --gradient-warm: linear-gradient(135deg, oklch(0.97 0.03 75), oklch(0.92 0.06 55));
+  --gradient-primary: linear-gradient(135deg, oklch(0.45 0.07 193), oklch(0.32 0.06 193));
+  --shadow-soft: 0 1px 2px oklch(0.3 0.03 60 / 0.04), 0 8px 24px -8px oklch(0.3 0.03 60 / 0.12);
+  --shadow-lift: 0 2px 4px oklch(0.3 0.03 60 / 0.06), 0 24px 48px -16px oklch(0.3 0.03 60 / 0.18);
+
+  --color-now-chevron: #2f5d59; /* Slate (pine-teal) */
+  --color-now-chevron-muted: #a8a29e; /* stone-400 — unchanged, see below */
+
+  /* Everything above is this app's own semantic tokens — the rest of the
+     app overwhelmingly hardcodes Tailwind's literal palette classes
+     directly (bg-stone-50, text-blue-600, text-amber-700, bg-green-500,
+     border-red-300, etc.) instead of those tokens, so redefining
+     Tailwind's own default-theme color-scale variables here re-colors
+     every one of those classes too, app-wide, without touching any
+     component file:
+     - blue-* -> Slate's same pine-teal as --primary above (same
+       lightness progression as Tailwind's own blue scale, hue/chroma
+       shifted).
+     - amber-* -> Mustard — muted and more yellow than Tailwind's fairly
+       vivid orange-leaning default, deliberately kept distinct in hue
+       from Ochre/--accent-foreground above so "brown" and "yellow"
+       don't start looking like the same color with two names.
+     - red-* -> Rust, green-* -> Sage. These DO include the literal
+       Error/Correct/Independent scoring colors the data cards hardcode
+       (TrialCard, TaskAnalysisCard, etc.) — first left alone on the
+       theory that pass/fail meaning shouldn't shift with a palette
+       reskin, but muted rust/sage read as clearly "red-ish"/"green-ish"
+       as Tailwind's own default shades once you're actually looking at
+       the rest of this palette next to them, not as a still-unstyled
+       leftover clashing with it.
+     stone-* is left at its Tailwind default, already a warm neutral
+     close to Sand/Ink. */
+  --color-blue-50: oklch(97% 0.008 193);
+  --color-blue-100: oklch(93% 0.018 193);
+  --color-blue-200: oklch(87% 0.032 193);
+  --color-blue-300: oklch(78% 0.05 193);
+  --color-blue-400: oklch(68% 0.07 193);
+  --color-blue-500: oklch(58% 0.08 193);
+  --color-blue-600: oklch(48% 0.075 193);
+  --color-blue-700: oklch(40% 0.065 193);
+  --color-blue-800: oklch(32% 0.05 193);
+  --color-blue-900: oklch(26% 0.04 193);
+
+  --color-amber-50: oklch(97% 0.02 90);
+  --color-amber-100: oklch(94% 0.035 88);
+  --color-amber-200: oklch(89% 0.06 87);
+  --color-amber-300: oklch(83% 0.09 86);
+  --color-amber-400: oklch(76% 0.11 85);
+  --color-amber-500: oklch(68% 0.12 84);
+  --color-amber-600: oklch(58% 0.11 82);
+  --color-amber-700: oklch(48% 0.095 80);
+
+  /* Rust — same hue as --destructive above, extended into a full scale. */
+  --color-red-50: oklch(97% 0.015 40);
+  --color-red-100: oklch(94% 0.03 38);
+  --color-red-200: oklch(89% 0.05 37);
+  --color-red-300: oklch(81% 0.08 36);
+  --color-red-400: oklch(71% 0.12 35);
+  --color-red-500: oklch(63% 0.15 35);
+  --color-red-600: oklch(56% 0.155 35);
+  --color-red-700: oklch(48% 0.135 35);
+  --color-red-800: oklch(42% 0.11 35);
+  --color-red-900: oklch(37% 0.09 35);
+
+  /* Sage — same hue as --secondary above, much lower chroma than
+     Tailwind's own fairly vivid default green at every step, so it reads
+     as a muted, grayed-down green rather than a brighter one. */
+  --color-green-50: oklch(97% 0.012 150);
+  --color-green-100: oklch(94% 0.022 150);
+  --color-green-200: oklch(89% 0.035 150);
+  --color-green-300: oklch(82% 0.05 150);
+  --color-green-400: oklch(74% 0.065 150);
+  --color-green-500: oklch(66% 0.075 150);
+  --color-green-600: oklch(56% 0.07 150);
+  --color-green-700: oklch(47% 0.06 150);
+  --color-green-800: oklch(40% 0.05 150);
+  --color-green-900: oklch(35% 0.04 150);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

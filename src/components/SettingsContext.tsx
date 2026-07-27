@@ -63,13 +63,30 @@ const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
 const DEFAULT_DATA_VIEW: DisplayMode = "card";
 
+export type ColorTheme = "default" | "alt";
+
+export const COLOR_THEME_OPTIONS: { value: ColorTheme; label: string; description: string }[] = [
+  { value: "default", label: "Default", description: "Warm cream and ink — the original palette." },
+  {
+    value: "alt",
+    label: "Alternate",
+    description:
+      "Sand, sage, rust, slate, ochre & mustard — an in-progress experiment, not final. A future dark mode will likely build on this same toggle.",
+  },
+];
+
+const DEFAULT_COLOR_THEME: ColorTheme = "default";
+
 // Clinic hours the Schedule tab's grid is bounded to — 24h "HH:MM".
 export const DEFAULT_DAY_START = "08:00";
 export const DEFAULT_DAY_END = "18:00";
 
 const DEFAULTS: SettingsValues = Object.fromEntries(SETTINGS.map((s) => [s.key, s.default]));
 
-const STORAGE_KEY = "aba-daba-settings-v2";
+// Exported so __root.tsx's blocking pre-paint script (which sets
+// data-theme before hydration, avoiding a flash of the wrong palette) reads
+// the same key rather than a second hardcoded copy of it.
+export const STORAGE_KEY = "aba-daba-settings-v2";
 
 interface SettingsContextValue {
   values: SettingsValues;
@@ -93,6 +110,13 @@ interface SettingsContextValue {
    *  DataToolbarProvider's own comment on why it's adopted only once. */
   defaultDataView: DisplayMode;
   setDefaultDataView: (v: DisplayMode) => void;
+  /** Which color palette the app renders in — see the `[data-theme="alt"]`
+   *  block in styles.css. Applied to `<html data-theme>` by a blocking
+   *  inline script in __root.tsx (so the very first paint already has it,
+   *  no flash) and kept in sync afterward by SettingsProvider's own effect
+   *  below. */
+  colorTheme: ColorTheme;
+  setColorTheme: (v: ColorTheme) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -110,6 +134,7 @@ interface StoredShape {
   dayStart: string;
   dayEnd: string;
   defaultDataView: DisplayMode;
+  colorTheme: ColorTheme;
 }
 
 function loadStored(): StoredShape {
@@ -120,6 +145,7 @@ function loadStored(): StoredShape {
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
     defaultDataView: DEFAULT_DATA_VIEW,
+    colorTheme: DEFAULT_COLOR_THEME,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -133,10 +159,22 @@ function loadStored(): StoredShape {
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
       defaultDataView: parsed.defaultDataView ?? DEFAULT_DATA_VIEW,
+      colorTheme: parsed.colorTheme ?? DEFAULT_COLOR_THEME,
     };
   } catch {
     return fallback;
   }
+}
+
+/** Mirrors __root.tsx's own blocking inline script (which sets this
+ *  attribute before first paint, reading the same localStorage key
+ *  directly, so there's no flash of the wrong theme on load) — this is
+ *  what keeps it in sync after that, both on mount (a harmless no-op,
+ *  already matching) and on every later toggle. */
+function applyColorThemeToDom(theme: ColorTheme) {
+  if (typeof document === "undefined") return;
+  if (theme === "default") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -150,6 +188,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultDataView, setDefaultDataView] = useState<DisplayMode>(DEFAULT_DATA_VIEW);
+  const [colorTheme, setColorThemeState] = useState<ColorTheme>(DEFAULT_COLOR_THEME);
 
   useEffect(() => {
     const stored = loadStored();
@@ -159,6 +198,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
     setDefaultDataView(stored.defaultDataView);
+    setColorThemeState(stored.colorTheme);
+    // Already applied pre-paint by __root.tsx's blocking script — this is
+    // just keeping the two in sync, a no-op in the common case.
+    applyColorThemeToDom(stored.colorTheme);
   }, []);
 
   useEffect(() => {
@@ -170,12 +213,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       dayStart,
       dayEnd,
       defaultDataView,
+      colorTheme,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  }, [values, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView]);
+  }, [values, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView, colorTheme]);
 
   const setValue = useCallback((key: string, value: number) => {
     setValues((v) => ({ ...v, [key]: value }));
+  }, []);
+
+  const setColorTheme = useCallback((v: ColorTheme) => {
+    setColorThemeState(v);
+    applyColorThemeToDom(v);
   }, []);
 
   const resetAll = useCallback(() => {
@@ -185,7 +234,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
     setDefaultDataView(DEFAULT_DATA_VIEW);
-  }, []);
+    setColorTheme(DEFAULT_COLOR_THEME);
+  }, [setColorTheme]);
   const resetOne = useCallback((key: string) => {
     setValues((v) => ({ ...v, [key]: DEFAULTS[key] }));
   }, []);
@@ -206,6 +256,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setDayEnd,
       defaultDataView,
       setDefaultDataView,
+      colorTheme,
+      setColorTheme,
     }),
     [
       values,
@@ -217,6 +269,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       dayStart,
       dayEnd,
       defaultDataView,
+      colorTheme,
+      setColorTheme,
     ],
   );
 
