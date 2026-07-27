@@ -10,6 +10,17 @@ import {
 import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { STORAGE_KEY } from "../components/SettingsContext";
+
+// Sets data-theme before the browser paints anything, so a returning user
+// who picked the alternate palette doesn't see the default one flash first
+// — React/SettingsProvider only take over syncing this after hydration
+// (see its own applyColorThemeToDom). Reads the same localStorage key/shape
+// SettingsContext itself writes, kept minimal and dependency-free since it
+// runs as a raw inline script, outside any bundling step.
+const THEME_INIT_SCRIPT = `(function(){try{var r=localStorage.getItem(${JSON.stringify(
+  STORAGE_KEY,
+)});if(!r)return;var p=JSON.parse(r);if(p&&p.colorTheme==="alt"){document.documentElement.setAttribute("data-theme","alt");}}catch(e){}})();`;
 
 function NotFoundComponent() {
   return (
@@ -112,9 +123,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: THEME_INIT_SCRIPT below sets data-theme on
+    // this element before React hydrates, on purpose (see its own
+    // comment) — without this, React logs a hydration-mismatch warning
+    // for an attribute difference it was never going to reconcile anyway,
+    // the same well-known tradeoff next-themes' own docs call out for this
+    // exact pattern.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         {children}

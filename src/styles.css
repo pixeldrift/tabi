@@ -107,6 +107,93 @@
   --ring: oklch(0.78 0.14 50);
 }
 
+/* Settings > Appearance's "Alternate" color theme — an early, still-light
+   experiment (see SettingsContext's own ColorTheme comment), not the
+   `.dark` block above. Toggled via `data-theme="alt"` on <html> rather
+   than reusing `.dark`, so the two stay independent: this can keep
+   evolving on its own without accidentally wiring up shadcn's unfinished
+   dark scaffold before it's actually ready.
+
+   Same tonal *structure* as :root's warm cream/ink default (card floats
+   lighter than the page background, foreground reads dark against both,
+   border/input/ring track the same relationships) — just a cooler hue
+   direction, so contrast relationships tuned against the default palette
+   still roughly hold here too. */
+[data-theme="alt"] {
+  --background: oklch(0.98 0.006 247);
+  --foreground: oklch(0.208 0.042 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 265);
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+
+  --primary: oklch(0.6 0.118 184.7); /* teal-600 */
+  --primary-foreground: oklch(0.99 0.014 181);
+
+  --secondary: oklch(0.94 0.012 255);
+  --secondary-foreground: oklch(0.28 0.04 257);
+
+  --muted: oklch(0.94 0.008 250);
+  --muted-foreground: oklch(0.5 0.045 257);
+
+  --accent: oklch(0.78 0.096 181); /* teal-400-ish */
+  --accent-foreground: oklch(0.22 0.04 185);
+
+  /* Unchanged from :root — error/correct/no-response carry pass/fail/
+     neutral meaning throughout the data cards, not just decoration, so
+     this palette swap leaves them alone rather than remapping what a
+     card's own scoring colors mean. */
+  --destructive: oklch(0.55 0.21 25);
+  --destructive-foreground: oklch(0.985 0.01 85);
+
+  --border: oklch(0.9 0.012 255);
+  --input: oklch(0.92 0.012 255);
+  --ring: oklch(0.6 0.118 184.7);
+
+  --gradient-warm: linear-gradient(135deg, oklch(0.97 0.025 210), oklch(0.93 0.05 220));
+  --gradient-primary: linear-gradient(135deg, oklch(0.65 0.118 184.7), oklch(0.5 0.118 184.7));
+  --shadow-soft: 0 1px 2px oklch(0.25 0.04 260 / 0.04), 0 8px 24px -8px oklch(0.25 0.04 260 / 0.12);
+  --shadow-lift:
+    0 2px 4px oklch(0.25 0.04 260 / 0.06), 0 24px 48px -16px oklch(0.25 0.04 260 / 0.18);
+
+  --color-now-chevron: #0d9488; /* teal-600 */
+  --color-now-chevron-muted: #94a3b8; /* slate-400 */
+
+  /* Everything above is this app's own semantic tokens — the rest of the
+     app overwhelmingly hardcodes Tailwind's literal palette classes
+     directly (bg-stone-50, text-blue-600, etc.) instead of those tokens,
+     so redefining Tailwind's own default-theme color-scale variables here
+     re-colors every one of those classes too, app-wide, without touching
+     any component file. Swapped for same-shape slate/teal scales (same
+     lightness/chroma progression as stone/blue, different hue) rather
+     than hand-picked values, so contrast relationships tuned against the
+     *default* palette still hold. Left as its own separate block (not
+     merged above) since it's a fundamentally different mechanism —
+     overriding Tailwind's theme layer, not this app's own tokens. */
+  --color-stone-50: var(--color-slate-50);
+  --color-stone-100: var(--color-slate-100);
+  --color-stone-200: var(--color-slate-200);
+  --color-stone-300: var(--color-slate-300);
+  --color-stone-400: var(--color-slate-400);
+  --color-stone-500: var(--color-slate-500);
+  --color-stone-600: var(--color-slate-600);
+  --color-stone-700: var(--color-slate-700);
+  --color-stone-800: var(--color-slate-800);
+  --color-stone-900: var(--color-slate-900);
+
+  --color-blue-50: var(--color-teal-50);
+  --color-blue-100: var(--color-teal-100);
+  --color-blue-200: var(--color-teal-200);
+  --color-blue-300: var(--color-teal-300);
+  --color-blue-400: var(--color-teal-400);
+  --color-blue-500: var(--color-teal-500);
+  --color-blue-600: var(--color-teal-600);
+  --color-blue-700: var(--color-teal-700);
+  --color-blue-800: var(--color-teal-800);
+  --color-blue-900: var(--color-teal-900);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
