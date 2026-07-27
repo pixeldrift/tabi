@@ -176,18 +176,27 @@
 
   /* Everything above is this app's own semantic tokens — the rest of the
      app overwhelmingly hardcodes Tailwind's literal palette classes
-     directly (bg-stone-50, text-blue-600, text-amber-700, etc.) instead
-     of those tokens, so redefining Tailwind's own default-theme
-     color-scale variables here re-colors every one of those classes too,
-     app-wide, without touching any component file. blue-* moves to
-     Slate's same pine-teal as --primary above (same lightness
-     progression as Tailwind's own blue scale, hue/chroma shifted), and
-     amber-* moves to Mustard — muted and more yellow than Tailwind's
-     fairly vivid orange-leaning default, and deliberately kept distinct
-     in hue from Ochre/--accent-foreground above so "brown" and "yellow"
-     don't start looking like the same color with two names. red-* and
-     green-* are left alone, same reasoning as --destructive above.
-     stone-* is also left at its Tailwind default, already a warm neutral
+     directly (bg-stone-50, text-blue-600, text-amber-700, bg-green-500,
+     border-red-300, etc.) instead of those tokens, so redefining
+     Tailwind's own default-theme color-scale variables here re-colors
+     every one of those classes too, app-wide, without touching any
+     component file:
+     - blue-* -> Slate's same pine-teal as --primary above (same
+       lightness progression as Tailwind's own blue scale, hue/chroma
+       shifted).
+     - amber-* -> Mustard — muted and more yellow than Tailwind's fairly
+       vivid orange-leaning default, deliberately kept distinct in hue
+       from Ochre/--accent-foreground above so "brown" and "yellow"
+       don't start looking like the same color with two names.
+     - red-* -> Rust, green-* -> Sage. These DO include the literal
+       Error/Correct/Independent scoring colors the data cards hardcode
+       (TrialCard, TaskAnalysisCard, etc.) — first left alone on the
+       theory that pass/fail meaning shouldn't shift with a palette
+       reskin, but muted rust/sage read as clearly "red-ish"/"green-ish"
+       as Tailwind's own default shades once you're actually looking at
+       the rest of this palette next to them, not as a still-unstyled
+       leftover clashing with it.
+     stone-* is left at its Tailwind default, already a warm neutral
      close to Sand/Ink. */
   --color-blue-50: oklch(97% 0.008 193);
   --color-blue-100: oklch(93% 0.018 193);
@@ -208,6 +217,32 @@
   --color-amber-500: oklch(68% 0.12 84);
   --color-amber-600: oklch(58% 0.11 82);
   --color-amber-700: oklch(48% 0.095 80);
+
+  /* Rust — same hue as --destructive above, extended into a full scale. */
+  --color-red-50: oklch(97% 0.015 40);
+  --color-red-100: oklch(94% 0.03 38);
+  --color-red-200: oklch(89% 0.05 37);
+  --color-red-300: oklch(81% 0.08 36);
+  --color-red-400: oklch(71% 0.12 35);
+  --color-red-500: oklch(63% 0.15 35);
+  --color-red-600: oklch(56% 0.155 35);
+  --color-red-700: oklch(48% 0.135 35);
+  --color-red-800: oklch(42% 0.11 35);
+  --color-red-900: oklch(37% 0.09 35);
+
+  /* Sage — same hue as --secondary above, much lower chroma than
+     Tailwind's own fairly vivid default green at every step, so it reads
+     as a muted, grayed-down green rather than a brighter one. */
+  --color-green-50: oklch(97% 0.012 150);
+  --color-green-100: oklch(94% 0.022 150);
+  --color-green-200: oklch(89% 0.035 150);
+  --color-green-300: oklch(82% 0.05 150);
+  --color-green-400: oklch(74% 0.065 150);
+  --color-green-500: oklch(66% 0.075 150);
+  --color-green-600: oklch(56% 0.07 150);
+  --color-green-700: oklch(47% 0.06 150);
+  --color-green-800: oklch(40% 0.05 150);
+  --color-green-900: oklch(35% 0.04 150);
 }
 
 @layer base {
