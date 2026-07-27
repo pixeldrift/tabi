@@ -114,15 +114,19 @@
    evolving on its own without accidentally wiring up shadcn's unfinished
    dark scaffold before it's actually ready.
 
-   Sand / Sage / Rust / Slate / Ochre — an earthy palette from a reference
-   moodboard (pet-app icon + swatches), approximated here by eye rather
-   than picked from exact hex/oklch values, so treat these as a starting
-   point to refine, not a precise match. Sand and Ink (the palette's own
-   cream/near-black pair) land close to :root's existing warm cream/ink,
-   so backgrounds/text barely move — Slate (a deep, muted pine-teal)
-   replaces blue as the primary action color, Sage becomes the secondary
-   tint, Ochre the accent, and Rust — muting Tailwind's default red toward
-   the reference's orange-red — the destructive/danger color. */
+   Sand / Sage / Rust / Slate / Ochre / Mustard — an earthy palette from a
+   reference moodboard (pet-app icon + swatches), approximated here by eye
+   rather than picked from exact hex/oklch values, so treat these as a
+   starting point to refine, not a precise match. Sand and Ink (the
+   reference's own cream/near-black pair) land close to :root's existing
+   warm cream/ink, so backgrounds/text barely move — Slate (a deep, muted
+   pine-teal) replaces blue as the primary action color, Sage becomes the
+   secondary tint, and Rust — muting Tailwind's default red toward the
+   reference's orange-red — the destructive/danger color. Ochre reads as a
+   genuine brown here (not a golden accent — see --accent-foreground,
+   where its color actually shows up), and Mustard is a separate, more
+   yellow hue that takes over Amber's old role as the no-response/neutral
+   color used throughout the data cards. */
 [data-theme="alt"] {
   --background: oklch(0.97 0.02 78); /* Sand */
   --foreground: oklch(0.22 0.02 65); /* Ink */
@@ -141,15 +145,20 @@
   --muted: oklch(0.95 0.015 78); /* Sand, tinted */
   --muted-foreground: oklch(0.5 0.02 70);
 
-  --accent: oklch(0.78 0.12 78); /* Ochre */
-  --accent-foreground: oklch(0.28 0.05 60);
+  /* --accent has to stay light — it's only ever used as a hover/active
+     wash (see Button's ghost variant, Dialog's close button), always
+     paired with a dark foreground painted on top of it. Ochre's actual
+     identity as a brown lives in that foreground color, not the wash
+     itself, the same way Sand (a near-white background) doesn't look
+     "sandy" until Ink text sits on top of it. */
+  --accent: oklch(0.89 0.045 62); /* Ochre, light wash */
+  --accent-foreground: oklch(0.32 0.07 58); /* Ochre, the actual brown */
 
   /* Rust — closer to the reference's orange-red than Tailwind's default
      destructive red, but still clearly in the same "danger" family. Only
-     this one semantic token, not the literal red-* scale error/correct/
-     no-response buttons hardcode throughout the data cards — those carry
-     pass/fail/neutral meaning, not just decoration, so this palette swap
-     leaves them alone. */
+     this one semantic token, not the literal red-* scale error/correct
+     buttons hardcode throughout the data cards — those carry pass/fail
+     meaning, not just decoration, so this palette swap leaves them alone. */
   --destructive: oklch(0.6 0.16 35); /* Rust */
   --destructive-foreground: oklch(0.98 0.01 60);
 
@@ -167,15 +176,19 @@
 
   /* Everything above is this app's own semantic tokens — the rest of the
      app overwhelmingly hardcodes Tailwind's literal palette classes
-     directly (bg-stone-50, text-blue-600, etc.) instead of those tokens,
-     so redefining Tailwind's own default-theme color-scale variables here
-     re-colors every one of those classes too, app-wide, without touching
-     any component file. Only blue-* moves (to the same Slate pine-teal
-     as --primary above, same lightness progression as Tailwind's own
-     blue scale, hue/chroma shifted) — stone-* is left at its Tailwind
-     default since it's already a warm neutral close to Sand/Ink, needing
-     no override once the semantic tokens above have already shifted the
-     page's actual background/text. */
+     directly (bg-stone-50, text-blue-600, text-amber-700, etc.) instead
+     of those tokens, so redefining Tailwind's own default-theme
+     color-scale variables here re-colors every one of those classes too,
+     app-wide, without touching any component file. blue-* moves to
+     Slate's same pine-teal as --primary above (same lightness
+     progression as Tailwind's own blue scale, hue/chroma shifted), and
+     amber-* moves to Mustard — muted and more yellow than Tailwind's
+     fairly vivid orange-leaning default, and deliberately kept distinct
+     in hue from Ochre/--accent-foreground above so "brown" and "yellow"
+     don't start looking like the same color with two names. red-* and
+     green-* are left alone, same reasoning as --destructive above.
+     stone-* is also left at its Tailwind default, already a warm neutral
+     close to Sand/Ink. */
   --color-blue-50: oklch(97% 0.008 193);
   --color-blue-100: oklch(93% 0.018 193);
   --color-blue-200: oklch(87% 0.032 193);
@@ -186,6 +199,15 @@
   --color-blue-700: oklch(40% 0.065 193);
   --color-blue-800: oklch(32% 0.05 193);
   --color-blue-900: oklch(26% 0.04 193);
+
+  --color-amber-50: oklch(97% 0.02 90);
+  --color-amber-100: oklch(94% 0.035 88);
+  --color-amber-200: oklch(89% 0.06 87);
+  --color-amber-300: oklch(83% 0.09 86);
+  --color-amber-400: oklch(76% 0.11 85);
+  --color-amber-500: oklch(68% 0.12 84);
+  --color-amber-600: oklch(58% 0.11 82);
+  --color-amber-700: oklch(48% 0.095 80);
 }
 
 @layer base {

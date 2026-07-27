@@ -71,7 +71,7 @@ export const COLOR_THEME_OPTIONS: { value: ColorTheme; label: string; descriptio
     value: "alt",
     label: "Alternate",
     description:
-      "Sand, sage, rust, slate & ochre — an in-progress experiment, not final. A future dark mode will likely build on this same toggle.",
+      "Sand, sage, rust, slate, ochre & mustard — an in-progress experiment, not final. A future dark mode will likely build on this same toggle.",
   },
 ];
 
