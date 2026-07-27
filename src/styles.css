@@ -114,84 +114,78 @@
    evolving on its own without accidentally wiring up shadcn's unfinished
    dark scaffold before it's actually ready.
 
-   Same tonal *structure* as :root's warm cream/ink default (card floats
-   lighter than the page background, foreground reads dark against both,
-   border/input/ring track the same relationships) — just a cooler hue
-   direction, so contrast relationships tuned against the default palette
-   still roughly hold here too. */
+   Sand / Sage / Rust / Slate / Ochre — an earthy palette from a reference
+   moodboard (pet-app icon + swatches), approximated here by eye rather
+   than picked from exact hex/oklch values, so treat these as a starting
+   point to refine, not a precise match. Sand and Ink (the palette's own
+   cream/near-black pair) land close to :root's existing warm cream/ink,
+   so backgrounds/text barely move — Slate (a deep, muted pine-teal)
+   replaces blue as the primary action color, Sage becomes the secondary
+   tint, Ochre the accent, and Rust — muting Tailwind's default red toward
+   the reference's orange-red — the destructive/danger color. */
 [data-theme="alt"] {
-  --background: oklch(0.98 0.006 247);
-  --foreground: oklch(0.208 0.042 265);
+  --background: oklch(0.97 0.02 78); /* Sand */
+  --foreground: oklch(0.22 0.02 65); /* Ink */
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.208 0.042 265);
+  --card-foreground: oklch(0.22 0.02 65);
   --popover: var(--card);
   --popover-foreground: var(--card-foreground);
 
-  --primary: oklch(0.6 0.118 184.7); /* teal-600 */
-  --primary-foreground: oklch(0.99 0.014 181);
+  --primary: oklch(0.38 0.07 193); /* Slate (pine-teal) */
+  --primary-foreground: oklch(0.98 0.01 190);
 
-  --secondary: oklch(0.94 0.012 255);
-  --secondary-foreground: oklch(0.28 0.04 257);
+  --secondary: oklch(0.93 0.03 152); /* Sage, tinted */
+  --secondary-foreground: oklch(0.3 0.04 155);
 
-  --muted: oklch(0.94 0.008 250);
-  --muted-foreground: oklch(0.5 0.045 257);
+  --muted: oklch(0.95 0.015 78); /* Sand, tinted */
+  --muted-foreground: oklch(0.5 0.02 70);
 
-  --accent: oklch(0.78 0.096 181); /* teal-400-ish */
-  --accent-foreground: oklch(0.22 0.04 185);
+  --accent: oklch(0.78 0.12 78); /* Ochre */
+  --accent-foreground: oklch(0.28 0.05 60);
 
-  /* Unchanged from :root — error/correct/no-response carry pass/fail/
-     neutral meaning throughout the data cards, not just decoration, so
-     this palette swap leaves them alone rather than remapping what a
-     card's own scoring colors mean. */
-  --destructive: oklch(0.55 0.21 25);
-  --destructive-foreground: oklch(0.985 0.01 85);
+  /* Rust — closer to the reference's orange-red than Tailwind's default
+     destructive red, but still clearly in the same "danger" family. Only
+     this one semantic token, not the literal red-* scale error/correct/
+     no-response buttons hardcode throughout the data cards — those carry
+     pass/fail/neutral meaning, not just decoration, so this palette swap
+     leaves them alone. */
+  --destructive: oklch(0.6 0.16 35); /* Rust */
+  --destructive-foreground: oklch(0.98 0.01 60);
 
-  --border: oklch(0.9 0.012 255);
-  --input: oklch(0.92 0.012 255);
-  --ring: oklch(0.6 0.118 184.7);
+  --border: oklch(0.9 0.02 75);
+  --input: oklch(0.92 0.02 75);
+  --ring: oklch(0.38 0.07 193);
 
-  --gradient-warm: linear-gradient(135deg, oklch(0.97 0.025 210), oklch(0.93 0.05 220));
-  --gradient-primary: linear-gradient(135deg, oklch(0.65 0.118 184.7), oklch(0.5 0.118 184.7));
-  --shadow-soft: 0 1px 2px oklch(0.25 0.04 260 / 0.04), 0 8px 24px -8px oklch(0.25 0.04 260 / 0.12);
-  --shadow-lift:
-    0 2px 4px oklch(0.25 0.04 260 / 0.06), 0 24px 48px -16px oklch(0.25 0.04 260 / 0.18);
+  --gradient-warm: linear-gradient(135deg, oklch(0.97 0.03 75), oklch(0.92 0.06 55));
+  --gradient-primary: linear-gradient(135deg, oklch(0.45 0.07 193), oklch(0.32 0.06 193));
+  --shadow-soft: 0 1px 2px oklch(0.3 0.03 60 / 0.04), 0 8px 24px -8px oklch(0.3 0.03 60 / 0.12);
+  --shadow-lift: 0 2px 4px oklch(0.3 0.03 60 / 0.06), 0 24px 48px -16px oklch(0.3 0.03 60 / 0.18);
 
-  --color-now-chevron: #0d9488; /* teal-600 */
-  --color-now-chevron-muted: #94a3b8; /* slate-400 */
+  --color-now-chevron: #2f5d59; /* Slate (pine-teal) */
+  --color-now-chevron-muted: #a8a29e; /* stone-400 — unchanged, see below */
 
   /* Everything above is this app's own semantic tokens — the rest of the
      app overwhelmingly hardcodes Tailwind's literal palette classes
      directly (bg-stone-50, text-blue-600, etc.) instead of those tokens,
      so redefining Tailwind's own default-theme color-scale variables here
      re-colors every one of those classes too, app-wide, without touching
-     any component file. Swapped for same-shape slate/teal scales (same
-     lightness/chroma progression as stone/blue, different hue) rather
-     than hand-picked values, so contrast relationships tuned against the
-     *default* palette still hold. Left as its own separate block (not
-     merged above) since it's a fundamentally different mechanism —
-     overriding Tailwind's theme layer, not this app's own tokens. */
-  --color-stone-50: var(--color-slate-50);
-  --color-stone-100: var(--color-slate-100);
-  --color-stone-200: var(--color-slate-200);
-  --color-stone-300: var(--color-slate-300);
-  --color-stone-400: var(--color-slate-400);
-  --color-stone-500: var(--color-slate-500);
-  --color-stone-600: var(--color-slate-600);
-  --color-stone-700: var(--color-slate-700);
-  --color-stone-800: var(--color-slate-800);
-  --color-stone-900: var(--color-slate-900);
-
-  --color-blue-50: var(--color-teal-50);
-  --color-blue-100: var(--color-teal-100);
-  --color-blue-200: var(--color-teal-200);
-  --color-blue-300: var(--color-teal-300);
-  --color-blue-400: var(--color-teal-400);
-  --color-blue-500: var(--color-teal-500);
-  --color-blue-600: var(--color-teal-600);
-  --color-blue-700: var(--color-teal-700);
-  --color-blue-800: var(--color-teal-800);
-  --color-blue-900: var(--color-teal-900);
+     any component file. Only blue-* moves (to the same Slate pine-teal
+     as --primary above, same lightness progression as Tailwind's own
+     blue scale, hue/chroma shifted) — stone-* is left at its Tailwind
+     default since it's already a warm neutral close to Sand/Ink, needing
+     no override once the semantic tokens above have already shifted the
+     page's actual background/text. */
+  --color-blue-50: oklch(97% 0.008 193);
+  --color-blue-100: oklch(93% 0.018 193);
+  --color-blue-200: oklch(87% 0.032 193);
+  --color-blue-300: oklch(78% 0.05 193);
+  --color-blue-400: oklch(68% 0.07 193);
+  --color-blue-500: oklch(58% 0.08 193);
+  --color-blue-600: oklch(48% 0.075 193);
+  --color-blue-700: oklch(40% 0.065 193);
+  --color-blue-800: oklch(32% 0.05 193);
+  --color-blue-900: oklch(26% 0.04 193);
 }
 
 @layer base {
