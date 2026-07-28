@@ -169,7 +169,6 @@ export function TimestampCard({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop,
-  toolbarHeight,
   tileDensity,
   listMode,
   teachingProcedure,
@@ -471,7 +470,6 @@ export function TimestampCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -574,7 +572,6 @@ export function TimestampCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -628,7 +625,6 @@ export function TimestampCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}

@@ -61,7 +61,6 @@ export function RatingCard({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop,
-  toolbarHeight,
   tileDensity,
   listMode,
   teachingProcedure,
@@ -128,7 +127,6 @@ export function RatingCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -217,7 +215,6 @@ export function RatingCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -282,7 +279,6 @@ export function RatingCard({
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
       onPrevCard={onPrevCard}
       onNextCard={onNextCard}
       slideFrom={slideFrom}

@@ -31,6 +31,12 @@ export type StepStatus = "independent" | "prompted" | "error" | null;
 export type StepPlanLevel = string;
 
 export interface TaskAnalysisCardProps extends CardEditAndDrawerProps {
+  /** The toolbar's own rendered height, in px — combined with `stickyTop` as
+   *  the prompt-level popover's collision padding, so it never renders
+   *  underneath the sticky toolbar. Not part of CardEditAndDrawerProps since
+   *  most card kinds don't need it — only kinds with their own popover
+   *  positioned relative to the toolbar do. */
+  toolbarHeight?: number;
   id?: string;
   title: string;
   phase?: string;
@@ -325,7 +331,6 @@ export function TaskAnalysisCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
         onPrevCard={onPrevCard}
@@ -520,7 +525,6 @@ export function TaskAnalysisCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         progress={progress}
         isComplete={isComplete}
         onPrevCard={onPrevCard}
@@ -615,7 +619,6 @@ export function TaskAnalysisCard({
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
       onPrevCard={onPrevCard}
       onNextCard={onNextCard}
       slideFrom={slideFrom}

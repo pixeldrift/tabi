@@ -35,10 +35,6 @@ export interface CardEditAndDrawerProps {
    *  drawer now starts here (not below the toolbar) so it slides out on
    *  top of it, passed through to the shared drawer. */
   stickyTop?: number;
-  /** The toolbar's own rendered height, in px — passed through so the
-   *  drawer's pull tab can straddle the seam between the toolbar and the
-   *  pane below it instead of the drawer's own (now higher) top edge. */
-  toolbarHeight?: number;
   /** Set for the two quick-action grid modes — swaps this card's own
    *  full-size markup for a compact aspect-square tile rendering the same
    *  underlying state (see MiniTileShell), rather than mounting a separate
@@ -118,7 +114,6 @@ export function CardShell({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop = 0,
-  toolbarHeight = 0,
   progress,
   isComplete = false,
   helperText,
@@ -252,7 +247,6 @@ export function CardShell({
             onNextCard={onNextCard}
             slideFrom={slideFrom}
             top={stickyTop}
-            toolbarHeight={toolbarHeight}
             cardRef={articleRef}
             widthMode={widthMode}
             onWidthModeChange={onWidthModeChange}

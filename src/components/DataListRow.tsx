@@ -57,7 +57,6 @@ export function DataListRow({
   detailsOpen = false,
   onDetailsOpenChange,
   stickyTop = 0,
-  toolbarHeight = 0,
   actions,
   progress,
   isComplete = false,
@@ -178,7 +177,6 @@ export function DataListRow({
           onNextCard={onNextCard}
           slideFrom={slideFrom}
           top={stickyTop}
-          toolbarHeight={toolbarHeight}
           cardRef={rowRef}
           widthMode={widthMode}
           onWidthModeChange={onWidthModeChange}

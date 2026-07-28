@@ -136,11 +136,18 @@ const DrawerContent = memo(function DrawerContent({
   slideFrom,
   exitDir,
   contentScrollRef,
+  reserveBottomSpace,
 }: {
   details?: ReactNode;
   slideFrom?: "left" | "right" | null;
   exitDir: "prev" | "next" | null;
   contentScrollRef: RefObject<HTMLDivElement | null>;
+  /** True while the "scroll to card" button is floating over this drawer's
+   *  own bottom-left corner (offDirection === "below" — see its own
+   *  comment). Adds enough extra bottom padding that the last twirldown
+   *  row can never be scrolled underneath that fixed-position button,
+   *  where it would sit both visually covered and unclickable. */
+  reserveBottomSpace: boolean;
 }) {
   const entered = useEnterPhase(slideFrom);
   const entering = slideFrom && !entered;
@@ -152,7 +159,10 @@ const DrawerContent = memo(function DrawerContent({
       // card list (still scrollable behind the drawer) picks up whatever
       // scroll delta this div didn't consume, so flicking past the end of
       // the drawer's content also visibly scrolls the pane behind it.
-      className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-4"
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2",
+        reserveBottomSpace ? "pb-16" : "pb-4",
+      )}
     >
       <motion.div
         animate={
@@ -193,11 +203,6 @@ export interface DataDetailsDrawerProps {
    *  drawer starts here (not below the toolbar) so it slides out on top of
    *  the toolbar's filter/sort/search row, not just the pane below it. */
   top: number;
-  /** The toolbar's own rendered height, in px — the pull tab is pinned to
-   *  straddle the seam between the toolbar and the pane below it (this far
-   *  down from the panel's own top), rather than the panel's literal top
-   *  edge, which now sits higher up at the toolbar's own top. */
-  toolbarHeight: number;
   /** The card this drawer's contents describe — its on-screen position
    *  drives the arrow pointing back at it. */
   cardRef: RefObject<HTMLElement | null>;
@@ -257,7 +262,6 @@ export function DataDetailsDrawer({
   onNextCard,
   slideFrom,
   top,
-  toolbarHeight,
   cardRef,
   normalWidthPx: normalWidthPxFn = (vw) => (vw < 640 ? vw * 0.88 : vw * 0.5 + 14),
   hugCardRight = false,
@@ -283,6 +287,25 @@ export function DataDetailsDrawer({
   // so it starts `true` here and skips the wait entirely.
   const [mounted, setMounted] = useState(() => typeof document !== "undefined" && hasHydratedOnce);
   const [arrowTop, setArrowTop] = useState(0);
+  // The drawer's own header (title/prev/next/close) — measured locally
+  // rather than via useElementHeight's document.querySelector, since every
+  // card mounts its own DataDetailsDrawer instance (open or not, see
+  // CardShell's own comment), so a shared selector could just as easily
+  // measure a different card's closed instance. A two-line title (long
+  // card name) makes this taller than a one-line one, and the arrow/
+  // off-direction button below both need to clear whatever this instance's
+  // own header actually renders at, not a guessed constant.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const commit = () => setHeaderHeight(el.getBoundingClientRect().height);
+    commit();
+    const ro = new ResizeObserver(commit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [title]);
   // Lazily measured up front (not just `null`, corrected a frame later by
   // the layout effect below) — `x`'s own useMotionValue call just below only
   // ever reads its initializer argument once, on this exact first render, so
@@ -608,13 +631,15 @@ export function DataDetailsDrawer({
       if (hugCardRight) setHugWidth(window.innerWidth - rect.right - hugGapPx);
       // Same thresholds as clampedArrowTop below (minArrowTop/maxArrowTop) —
       // switch to the scroll-to-card button as soon as the arrow's natural
-      // position would need clamping to the drawer's top (toolbar) or
-      // bottom edge, rather than waiting for the card to scroll fully out
-      // of view. A clamped-but-still-a-diamond arrow sitting pinned at that
-      // edge for a while first (while the card is still mostly visible)
-      // read as pointing at nothing in particular; this way the switch
-      // happens right as the arrow would have started sitting still.
-      const minTop = toolbarHeight + 24;
+      // position would need clamping to the drawer's OWN header (title/
+      // prev/next/close — headerHeight, not the outer app toolbar the panel
+      // already starts below) or its bottom edge, rather than waiting for
+      // the card to scroll fully out of view.
+      // A clamped-but-still-a-diamond arrow sitting pinned at that edge for
+      // a while first (while the card is still mostly visible) read as
+      // pointing at nothing in particular; this way the switch happens
+      // right as the arrow would have started sitting still.
+      const minTop = headerHeight + 24;
       const maxTop = Math.max(minTop, window.innerHeight - top - 24);
       if (midY < minTop) setOffDirection("above");
       else if (midY > maxTop) setOffDirection("below");
@@ -635,7 +660,7 @@ export function DataDetailsDrawer({
       window.removeEventListener("resize", update);
       ro.disconnect();
     };
-  }, [open, top, toolbarHeight, cardRef, hugCardRight, hugGapPx]);
+  }, [open, top, headerHeight, cardRef, hugCardRight, hugGapPx]);
 
   useEffect(() => {
     if (!open) return;
@@ -695,9 +720,11 @@ export function DataDetailsDrawer({
 
   if (!mounted) return null;
 
-  // Kept below the toolbar-covered strip at the panel's own top (the arrow
-  // only ever points at a card in the pane, never into the toolbar itself).
-  const minArrowTop = toolbarHeight + 24;
+  // Kept below the drawer's own header (title/prev/next/close), which sits
+  // inside the panel itself and needs clearing regardless of the outer
+  // app's own toolbar height — the arrow only ever points at a card in the
+  // pane, never into that header.
+  const minArrowTop = headerHeight + 24;
   const maxArrowTop = Math.max(minArrowTop, window.innerHeight - top - 24);
   const clampedArrowTop = Math.min(Math.max(arrowTop, minArrowTop), maxArrowTop);
 
@@ -750,10 +777,10 @@ export function DataDetailsDrawer({
       {/* Pull tab — attached to the panel's own left edge (a child of the
           same animated element) so it rides along with the slide instead of
           staying fixed in the toolbar while the panel moves out from under
-          it. Sized to toolbarRowHeight (the toolbar's own primary row, not
-          `toolbarHeight`, which also includes the "Start session" banner's
-          variable height below the row — that isn't part of "the filter
-          bar" this tab should span). No border on the right so it blends
+          it. Sized to toolbarRowHeight (the toolbar's own primary row —
+          deliberately not the taller height including the "Start session"
+          banner's variable height below the row, which isn't part of "the
+          filter bar" this tab should span). No border on the right so it blends
           seamlessly into the drawer — `border-r-0` has to come after the
           border-color/width utilities below (not just after `border-r-0` in
           this string) or `cn`'s tailwind-merge treats `border-2`/`border` as
@@ -840,14 +867,22 @@ export function DataDetailsDrawer({
           }
           title="Scroll to active card"
           className={cn(
-            "absolute left-3 z-10 grid place-items-center size-7 rounded-full border-2 border-blue-400/80 bg-background text-blue-600 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.25)] hover:bg-blue-50 transition-colors active:scale-95",
+            // Negative left offset (not left-3) — same treatment as the
+            // diamond arrow it replaces (-left-[13px]) and the pull tab
+            // (-left-7): straddles the panel's own left edge rather than
+            // sitting fully inset, reading as attached to that edge.
+            "absolute -left-3 z-10 grid place-items-center size-7 rounded-full border-2 border-blue-400/80 bg-background text-blue-600 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.25)] hover:bg-blue-50 transition-colors active:scale-95",
             offDirection === "below" && "bottom-3",
           )}
-          // "above" sits just below the sticky header instead of a flat
-          // top-3 — that used to land right on top of the title/nav/close
-          // row (all live in the first toolbarHeight-tall band), blocking
-          // them instead of just pointing the way back to the card.
-          style={offDirection === "above" ? { top: toolbarHeight + 12 } : undefined}
+          // "above" sits just below the drawer's own header instead of a
+          // flat top-3 — that used to land right on top of the title/nav/
+          // close row (all live in the first headerHeight-tall band),
+          // blocking them instead of just pointing the way back to the
+          // card. "below" stays anchored to the panel's own bottom edge —
+          // see DrawerContent's own matching bottom padding, which is what
+          // actually keeps scrolled content (e.g. the last twirldown row)
+          // from ending up underneath this fixed position instead.
+          style={offDirection === "above" ? { top: headerHeight + 12 } : undefined}
         >
           {offDirection === "above" ? (
             <ChevronUp className="size-4" />
@@ -881,6 +916,7 @@ export function DataDetailsDrawer({
             arrows, and the title's own top line all sit in one flex row and
             align naturally instead of needing separately-matched offsets. */}
         <div
+          ref={headerRef}
           className="shrink-0 border-b border-border/70 bg-background py-1.5 px-4"
           style={{ minHeight: toolbarRowHeight }}
         >
@@ -994,6 +1030,7 @@ export function DataDetailsDrawer({
           slideFrom={slideFrom}
           exitDir={exitDir}
           contentScrollRef={contentScrollRef}
+          reserveBottomSpace={offDirection === "below"}
         />
       </motion.div>
     </motion.div>,

@@ -50,7 +50,6 @@ export function FrequencyCard({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop,
-  toolbarHeight,
   tileDensity,
   listMode,
   teachingProcedure,
@@ -141,7 +140,6 @@ export function FrequencyCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -264,7 +262,6 @@ export function FrequencyCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -357,7 +354,6 @@ export function FrequencyCard({
       onDetailsOpenChange={onDetailsOpenChange}
       onOpenDetails={onOpenDetails}
       stickyTop={stickyTop}
-      toolbarHeight={toolbarHeight}
       onPrevCard={onPrevCard}
       onNextCard={onNextCard}
       slideFrom={slideFrom}

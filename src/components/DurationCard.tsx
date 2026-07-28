@@ -57,7 +57,6 @@ export function DurationCard({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop,
-  toolbarHeight,
   tileDensity,
   listMode,
   teachingProcedure,
@@ -291,7 +290,6 @@ export function DurationCard({
           onDetailsOpenChange={onDetailsOpenChange}
           onOpenDetails={onOpenDetails}
           stickyTop={stickyTop}
-          toolbarHeight={toolbarHeight}
           onPrevCard={onPrevCard}
           onNextCard={onNextCard}
           slideFrom={slideFrom}
@@ -510,7 +508,6 @@ export function DurationCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -618,7 +615,6 @@ export function DurationCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}

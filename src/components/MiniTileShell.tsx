@@ -61,7 +61,6 @@ export function MiniTileShell({
   detailsOpen = false,
   onDetailsOpenChange,
   stickyTop = 0,
-  toolbarHeight = 0,
   children,
   actions,
   progress,
@@ -195,7 +194,6 @@ export function MiniTileShell({
               onNextCard={onNextCard}
               slideFrom={slideFrom}
               top={stickyTop}
-              toolbarHeight={toolbarHeight}
               cardRef={articleRef}
               widthMode={widthMode}
               onWidthModeChange={onWidthModeChange}
