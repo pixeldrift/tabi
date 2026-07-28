@@ -1351,13 +1351,21 @@ function IndexInner() {
           >
             {tab === "data" && (
               <>
-                {/* -mx-2 cancels 8px of the section's px-5, so the cards sit 12px
-              from the viewport edge — the same as the gap-3 between them,
-              instead of the wider 20px inherited from the shared tab padding.
-              The two quick-action grids get a touch less top margin than
-              list/card — their own tiles already sit close under the
-              toolbar with little breathing room built into the tile itself,
-              so the fuller list/card margin read as an oversized gap there. */}
+                {/* -mx-5 fully cancels the section's own px-5, so THIS div's
+              own edge — the overflow-x-clip boundary below — sits flush
+              with the viewport instead of 20px in from it. The inner
+              width-transition wrapper then reapplies px-3 on its own, so
+              the cards themselves still land 12px from the viewport edge —
+              the same as the gap-3 between them — but that 12px now sits
+              INSIDE the clip boundary rather than exactly ON it. A single
+              -mx-3 net offset would have put the clip edge and the card's
+              own edge at the same spot, giving each card's box-shadow zero
+              room to fade before getting clipped — a hard-edged crop
+              instead of a soft one (the bug this split fixes). The two
+              quick-action grids get a touch less top margin than list/card
+              — their own tiles already sit close under the toolbar with
+              little breathing room built into the tile itself, so the
+              fuller list/card margin read as an oversized gap there. */}
                 {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
               slides the whole card grid a full extra width off to the
               side — without this, that briefly inflates the document's
@@ -1380,13 +1388,13 @@ function IndexInner() {
               inflation just as well as `hidden` did. */}
                 <div
                   className={cn(
-                    "relative flex flex-col items-center -mx-2 overflow-x-clip overflow-y-visible",
+                    "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
                     isGridDisplayMode ? "pt-4" : "pt-5",
                   )}
                 >
                   <div
                     className={cn(
-                      "transition-[opacity,width] duration-300",
+                      "px-3 transition-[opacity,width] duration-300",
                       !sessionActive && "opacity-50",
                       // Card mode's own cards are dense enough (button labels,
                       // wrapped text) that squeezing them into a narrower column
