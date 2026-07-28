@@ -142,18 +142,20 @@ and scheduling items below all need to respect that split.
     actively timing/scoring). Any other authorized RBT can join as an
     **observer** — read-only, sees live data as it's entered — without
     taking over
-  - **Explicit handoff**: no silent takeover. A second RBT requests to
-    become driver, the current driver (if reachable) accepts, and the
-    switch is logged (who handed off to whom, when)
-  - **Orphaned sessions**: define what happens when the driver's device
-    disconnects mid-session — sit locked until they reconnect, or let
-    another RBT force-claim it after a visibility window? Implicit
-    takeover is simpler but risks two people scoring concurrently;
-    requiring explicit handoff is safer but adds friction exactly when a
-    tech is already juggling a client. Needs a real answer, not a default
+  - **Handoff is a courtesy, never a lock.** A session must never require
+    the current/previous driver's permission, presence, or an
+    administrator to unlock it — a session can always be picked up by any
+    other authorized RBT, no waiting. "Requesting" a handoff (if the
+    current driver is reachable) just makes the transition legible to
+    both people; if they're not reachable, anyone can simply become the
+    new driver outright. The data doesn't care who's driving — this is
+    purely to keep the mental model clear for staff, not a permission gate
   - **Visibility**: surface who's currently driving, who's observing, and
-    who last handed the session off — a running custody record, not just
-    input for handoff decisions
+    who last handed the session off — a running custody record, useful
+    context for a handoff, never a requirement to unlock one
+  - **Open-sessions dashboard** (later): a view listing all currently
+    open/running sessions across clients, so anyone can see what's active
+    and jump in — the discoverability half of "never locked out"
   - Clarify what "ending a shift" means vs. the client's own schedule, and
     when to pause/park a session vs. end it outright
   - No auth/multi-user model exists in the app today — this needs one
