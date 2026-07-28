@@ -174,8 +174,6 @@ const cards: CardConfig[] = [
       },
       correction:
         'Model the hand-hold by gently guiding his hand to yours (partial physical), narrate "hand together," and continue the transition. Do not repeat the SD — the transition continues either way, just with support.',
-      materials:
-        "None — this target is embedded in naturally occurring transitions throughout the day.",
       instructionalNotes:
         "Fades from full physical guidance to a gestural offer as he becomes more reliable; note which prompt level he needed in your session notes even though this card only scores correct/error.",
     },
@@ -263,8 +261,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "None — nothing to correct. If the count is consistently low across sessions, that's a signal to revisit the activity choice or pacing, not the child's response.",
-      materials:
-        "Whatever the chosen play activity calls for (see the day's activity plan) — no dedicated materials for the tally itself.",
       instructionalNotes:
         "If laughter seems forced or scripted rather than spontaneous, use clinical judgment and don't tally it — the goal is genuine engagement, not a performance.",
     },
@@ -291,7 +287,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Do not deliver attention or comment in the moment (planned ignoring for the behavior itself). Keep the original demand or transition expectation active and calmly restate it once he's back up, rather than dropping it.",
-      materials: "Stopwatch or the session timer; no other materials.",
       instructionalNotes:
         "This card's timer is a plain observation window, not linked to the session clock — start/stop it to bound a specific block you want rate data for, not necessarily the whole session.",
     },
@@ -348,8 +343,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Block the trajectory or move materials out of reach if safety requires it, but avoid extended verbal attention. Once calm, represent the original task/demand rather than letting the throw successfully end it.",
-      materials:
-        "None specific to this card, but keep breakable/valuable items out of easy reach during high-risk activities.",
       instructionalNotes:
         "If throwing reliably follows removal of a specific preferred item, flag it for the team — a scheduled, predictable transition warning may reduce the antecedent altogether.",
     },
@@ -406,7 +399,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Keep instructions minimal and avoid negotiating during the episode. Once he's calm for a sustained moment, redirect to the original expectation rather than dropping it.",
-      materials: "None.",
       instructionalNotes:
         "Onset/offset thresholds: 10 continuous seconds before starting the timer, 60 continuous quiet seconds before the instance is considered over. If a tantrum resumes within that 60-second window, keep the same instance running (pause/resume) instead of closing it out and starting a new one.",
     },
@@ -518,6 +510,25 @@ const cards: CardConfig[] = [
       "Full Physical",
     ],
     promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
+    teachingProcedure: {
+      goal: "Phineas will complete the 7-step tooth-brushing sequence with no more than 1 prompted step, across 3 consecutive probes.",
+      rationale:
+        "Tooth-brushing is a daily-living self-care skill needed for oral hygiene and independence at home; task analysis lets us pinpoint exactly which step(s) still need support.",
+      procedure:
+        "Present each step in sequence, waiting 3-5 seconds for a response before scoring or prompting. Score each step Independent (I), Prompted (P), or Error (E); for a Prompted step, also record the least-to-most prompt level required (Verbal through Full Physical) before moving to the next step regardless of how the current one was scored.",
+      sd: '"Brush your teeth" at the sink, given once at the start of the sequence — no further verbal SD is given per step; each step\'s own natural cue (e.g., toothpaste already on the brush) should occasion the next action.',
+      measurement: {
+        markCorrect: "Completes the step within the window with no prompt beyond the initial SD.",
+        markError:
+          "Does not attempt the step, or attempts it incorrectly, within the window with no prompt given in that moment (contrast with Prompted, used when help was given).",
+      },
+      correction:
+        "For a Prompted score, select the least intrusive prompt level that gets the step done (Verbal through Full Physical) and move on to the next step — don't repeat the whole sequence from the start.",
+      materials:
+        "Toothbrush, toothpaste, and an accessible sink or cup; step stool if needed for sink height.",
+      instructionalNotes:
+        "Mastery is expected to cascade forward from the first step (the opposite order from Washing hands) — if an early, normally-independent step slips to Prompted, treat it as a real regression rather than noise.",
+    },
   },
   {
     id: "overall-session-engagement",
@@ -534,6 +545,22 @@ const cards: CardConfig[] = [
       "Consistently engaged with minimal prompting.",
       "Fully engaged and cooperative throughout the session.",
     ],
+    teachingProcedure: {
+      goal: "Track Phineas's overall session engagement each session so the team can spot trends across activities, staff, or phases, rather than relying on memory of how a session generally felt.",
+      rationale:
+        "A single holistic engagement score, tracked consistently over time, surfaces trends that trial-by-trial accuracy data can't on its own — e.g. engagement quietly declining across a specific activity or time of day even while accuracy holds steady.",
+      procedure:
+        "Score once, at the end of the session, based on your overall impression of Phineas's engagement and cooperation across the whole session — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
+      // No SD, Correction, or Materials — a holistic end-of-session rating
+      // has no single discriminative stimulus that occasions it, no single
+      // incorrect response to correct, and nothing to gather beforehand,
+      // the way a scored trial does. Overridden by the card's own level
+      // descriptions at render time — this placeholder only exists to
+      // satisfy the shared type.
+      measurement: { scale: [] },
+      instructionalNotes:
+        "Score the session as a whole, not just how it ended — a strong finish after a rocky start shouldn't erase the rocky start, and vice versa.",
+    },
   },
   {
     id: "readiness-to-learn",
@@ -554,13 +581,13 @@ const cards: CardConfig[] = [
         "A learner who isn't regulated can't access instruction no matter how good the teaching procedure is — this score gives the team an at-a-glance signal for whether a low session total reflects the plan or the state the learner arrived in.",
       procedure:
         "Score once, at the end of the session, based on your overall impression of how available Phineas was for instruction — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
-      sd: "None — this is a holistic end-of-session judgment call, not a response to a specific instruction.",
-      // Overridden by the card's own level descriptions at render time —
-      // this placeholder only exists to satisfy the shared type.
+      // No SD, Correction, or Materials — a holistic end-of-session rating
+      // has no single discriminative stimulus that occasions it, no single
+      // incorrect response to correct, and nothing to gather beforehand,
+      // the way a scored trial does. Overridden by the card's own level
+      // descriptions at render time — this placeholder only exists to
+      // satisfy the shared type.
       measurement: { scale: [] },
-      correction:
-        "Not applicable — there's nothing to correct on a score; a consistently low score across sessions is a cue to loop in the BCBA about antecedent strategies, not something to fix in the moment.",
-      materials: "None.",
       instructionalNotes:
         'Rate what you observed, not what you hoped for — a generous "Fully ready" on a rough session makes the data less useful for spotting real patterns.',
     },

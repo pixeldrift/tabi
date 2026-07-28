@@ -49,7 +49,6 @@ export function RateCard({
   onDetailsOpenChange,
   onOpenDetails,
   stickyTop,
-  toolbarHeight,
   locked = false,
   tileDensity,
   listMode,
@@ -208,7 +207,6 @@ export function RateCard({
           onDetailsOpenChange={onDetailsOpenChange}
           onOpenDetails={onOpenDetails}
           stickyTop={stickyTop}
-          toolbarHeight={toolbarHeight}
           onPrevCard={onPrevCard}
           onNextCard={onNextCard}
           slideFrom={slideFrom}
@@ -354,7 +352,6 @@ export function RateCard({
         detailsOpen={detailsOpen}
         onDetailsOpenChange={onDetailsOpenChange}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}
@@ -451,7 +448,6 @@ export function RateCard({
         onDetailsOpenChange={onDetailsOpenChange}
         onOpenDetails={onOpenDetails}
         stickyTop={stickyTop}
-        toolbarHeight={toolbarHeight}
         onPrevCard={onPrevCard}
         onNextCard={onNextCard}
         slideFrom={slideFrom}

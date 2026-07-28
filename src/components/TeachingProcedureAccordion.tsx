@@ -23,15 +23,28 @@ export interface TeachingProcedure {
   goal: string;
   rationale: string;
   procedure: string;
-  sd: string;
+  /** Omit entirely (not "None"/"Not applicable") for a card with nothing
+   *  meaningful to say here — a holistic, once-per-session rating has no
+   *  single discriminative stimulus that occasions it the way a discrete
+   *  trial does, so the row itself doesn't apply, not just its answer. */
+  sd?: string;
   /** Most kinds score a binary correct/error distinction; rating cards
    *  instead have a multi-point scale — one row per level rather than a
    *  fixed positive/negative pair. */
   measurement:
     | { markCorrect: string; markError: string }
     | { scale: { value: number; description: string }[] };
-  correction: string;
-  materials: string;
+  /** Omit entirely, same reasoning as `sd` — a subjective end-of-session
+   *  rating has no single incorrect response to correct the way a scored
+   *  trial does. */
+  correction?: string;
+  /** Omit entirely (not "None") when there's nothing to actually gather or
+   *  prepare — most behavior-tracking cards are a plain tally or timed
+   *  observation with no dedicated materials, so the row would otherwise
+   *  just repeat "None" across most cards in the set for no benefit. Keep
+   *  it wherever a tech genuinely needs to source or set up something
+   *  specific beforehand. */
+  materials?: string;
   instructionalNotes: string;
 }
 
@@ -151,15 +164,17 @@ export function TeachingProcedureAccordion({
           >
             {data.procedure}
           </AccordionRow>
-          <AccordionRow
-            id="sd"
-            icon={<ArrowRight className="size-3.5" />}
-            label="SD"
-            collapsed={collapsedIds.has("sd")}
-            onToggle={toggleRow}
-          >
-            {data.sd}
-          </AccordionRow>
+          {data.sd && (
+            <AccordionRow
+              id="sd"
+              icon={<ArrowRight className="size-3.5" />}
+              label="SD"
+              collapsed={collapsedIds.has("sd")}
+              onToggle={toggleRow}
+            >
+              {data.sd}
+            </AccordionRow>
+          )}
           <AccordionRow
             id="measurement"
             icon={<Ruler className="size-3.5" />}
@@ -241,24 +256,28 @@ export function TeachingProcedureAccordion({
               )}
             </div>
           </AccordionRow>
-          <AccordionRow
-            id="correction"
-            icon={<HandHelping className="size-3.5" />}
-            label="Correction"
-            collapsed={collapsedIds.has("correction")}
-            onToggle={toggleRow}
-          >
-            {data.correction}
-          </AccordionRow>
-          <AccordionRow
-            id="materials"
-            icon={<Package className="size-3.5" />}
-            label="Materials"
-            collapsed={collapsedIds.has("materials")}
-            onToggle={toggleRow}
-          >
-            {data.materials}
-          </AccordionRow>
+          {data.correction && (
+            <AccordionRow
+              id="correction"
+              icon={<HandHelping className="size-3.5" />}
+              label="Correction"
+              collapsed={collapsedIds.has("correction")}
+              onToggle={toggleRow}
+            >
+              {data.correction}
+            </AccordionRow>
+          )}
+          {data.materials && (
+            <AccordionRow
+              id="materials"
+              icon={<Package className="size-3.5" />}
+              label="Materials"
+              collapsed={collapsedIds.has("materials")}
+              onToggle={toggleRow}
+            >
+              {data.materials}
+            </AccordionRow>
+          )}
           <AccordionRow
             id="notes"
             icon={<Lightbulb className="size-3.5" />}
