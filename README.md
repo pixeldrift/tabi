@@ -144,10 +144,18 @@ and scheduling items below all need to respect that split.
       workflow to pick a data-collection type and fill in its details (TA
       steps; correct/incorrect/no-response/prompt-level options; min/max for
       others), plus free-text sections for the standard drawer content
-      (rationale, procedure, etc.) with the ability to hide/delete standard
-      sections and add custom ones. Ideally shows a live preview of the
-      resulting card as the form is filled in, and supports editing in place
-      afterward (access permitting)
+      (rationale, procedure, etc.). Leaving a standard section blank should
+      simply omit it from the resulting card's drawer, matching today's
+      SD/Correction/Materials behavior — or a checkbox per section could let
+      the BCBA explicitly opt sections in/out instead — plus an area to add
+      one or more custom sections beyond the standard set. Ideally shows a
+      live preview of the resulting card as the form is filled in, and
+      supports editing in place afterward (access permitting)
+- [ ] Hierarchical goal structure: organize targets into categories and
+      sub-categories (a learning tree) instead of today's flat card list —
+      a data-model change, not just a UI one. Will likely pair with
+      breadcrumb-style navigation in the Info Drawer later, showing where
+      the active card sits in that hierarchy
 - [ ] Robust "primer timer" feature — a few visual styles (sand, hatching
       egg, wheel, wedge, Pac-Man dots, etc.), color themes, sounds, and
       finale effects, with the ability to save a combination as the default
@@ -162,4 +170,4 @@ and scheduling items below all need to respect that split.
       handling yet, so every submission behaves the same regardless of who's
       submitting it.
 
-_Roadmap last updated: 2026-07-17_
+_Roadmap last updated: 2026-07-28_
