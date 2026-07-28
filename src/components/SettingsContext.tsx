@@ -66,12 +66,16 @@ const DEFAULT_DATA_VIEW: DisplayMode = "card";
 export type ColorTheme = "default" | "alt";
 
 export const COLOR_THEME_OPTIONS: { value: ColorTheme; label: string; description: string }[] = [
-  { value: "default", label: "Default", description: "Warm cream and ink — the original palette." },
+  {
+    value: "default",
+    label: "Default",
+    description:
+      "Sand, sage, rust, slate, ochre & mustard — an earthy palette, still evolving. A future dark mode will likely build on this same toggle.",
+  },
   {
     value: "alt",
     label: "Alternate",
-    description:
-      "Sand, sage, rust, slate, ochre & mustard — an in-progress experiment, not final. A future dark mode will likely build on this same toggle.",
+    description: "Warm cream and ink — the original palette.",
   },
 ];
 
