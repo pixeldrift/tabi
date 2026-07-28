@@ -174,8 +174,6 @@ const cards: CardConfig[] = [
       },
       correction:
         'Model the hand-hold by gently guiding his hand to yours (partial physical), narrate "hand together," and continue the transition. Do not repeat the SD — the transition continues either way, just with support.',
-      materials:
-        "None — this target is embedded in naturally occurring transitions throughout the day.",
       instructionalNotes:
         "Fades from full physical guidance to a gestural offer as he becomes more reliable; note which prompt level he needed in your session notes even though this card only scores correct/error.",
     },
@@ -263,8 +261,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "None — nothing to correct. If the count is consistently low across sessions, that's a signal to revisit the activity choice or pacing, not the child's response.",
-      materials:
-        "Whatever the chosen play activity calls for (see the day's activity plan) — no dedicated materials for the tally itself.",
       instructionalNotes:
         "If laughter seems forced or scripted rather than spontaneous, use clinical judgment and don't tally it — the goal is genuine engagement, not a performance.",
     },
@@ -291,7 +287,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Do not deliver attention or comment in the moment (planned ignoring for the behavior itself). Keep the original demand or transition expectation active and calmly restate it once he's back up, rather than dropping it.",
-      materials: "Stopwatch or the session timer; no other materials.",
       instructionalNotes:
         "This card's timer is a plain observation window, not linked to the session clock — start/stop it to bound a specific block you want rate data for, not necessarily the whole session.",
     },
@@ -348,8 +343,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Block the trajectory or move materials out of reach if safety requires it, but avoid extended verbal attention. Once calm, represent the original task/demand rather than letting the throw successfully end it.",
-      materials:
-        "None specific to this card, but keep breakable/valuable items out of easy reach during high-risk activities.",
       instructionalNotes:
         "If throwing reliably follows removal of a specific preferred item, flag it for the team — a scheduled, predictable transition warning may reduce the antecedent altogether.",
     },
@@ -406,7 +399,6 @@ const cards: CardConfig[] = [
       },
       correction:
         "Keep instructions minimal and avoid negotiating during the episode. Once he's calm for a sustained moment, redirect to the original expectation rather than dropping it.",
-      materials: "None.",
       instructionalNotes:
         "Onset/offset thresholds: 10 continuous seconds before starting the timer, 60 continuous quiet seconds before the instance is considered over. If a tantrum resumes within that 60-second window, keep the same instance running (pause/resume) instead of closing it out and starting a new one.",
     },
@@ -559,13 +551,13 @@ const cards: CardConfig[] = [
         "A single holistic engagement score, tracked consistently over time, surfaces trends that trial-by-trial accuracy data can't on its own — e.g. engagement quietly declining across a specific activity or time of day even while accuracy holds steady.",
       procedure:
         "Score once, at the end of the session, based on your overall impression of Phineas's engagement and cooperation across the whole session — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
-      // No SD or Correction — a holistic end-of-session rating has no
-      // single discriminative stimulus that occasions it, and no single
-      // incorrect response to correct, the way a scored trial does.
-      // Overridden by the card's own level descriptions at render time —
-      // this placeholder only exists to satisfy the shared type.
+      // No SD, Correction, or Materials — a holistic end-of-session rating
+      // has no single discriminative stimulus that occasions it, no single
+      // incorrect response to correct, and nothing to gather beforehand,
+      // the way a scored trial does. Overridden by the card's own level
+      // descriptions at render time — this placeholder only exists to
+      // satisfy the shared type.
       measurement: { scale: [] },
-      materials: "None.",
       instructionalNotes:
         "Score the session as a whole, not just how it ended — a strong finish after a rocky start shouldn't erase the rocky start, and vice versa.",
     },
@@ -589,13 +581,13 @@ const cards: CardConfig[] = [
         "A learner who isn't regulated can't access instruction no matter how good the teaching procedure is — this score gives the team an at-a-glance signal for whether a low session total reflects the plan or the state the learner arrived in.",
       procedure:
         "Score once, at the end of the session, based on your overall impression of how available Phineas was for instruction — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
-      // No SD or Correction — a holistic end-of-session rating has no
-      // single discriminative stimulus that occasions it, and no single
-      // incorrect response to correct, the way a scored trial does.
-      // Overridden by the card's own level descriptions at render time —
-      // this placeholder only exists to satisfy the shared type.
+      // No SD, Correction, or Materials — a holistic end-of-session rating
+      // has no single discriminative stimulus that occasions it, no single
+      // incorrect response to correct, and nothing to gather beforehand,
+      // the way a scored trial does. Overridden by the card's own level
+      // descriptions at render time — this placeholder only exists to
+      // satisfy the shared type.
       measurement: { scale: [] },
-      materials: "None.",
       instructionalNotes:
         'Rate what you observed, not what you hoped for — a generous "Fully ready" on a rough session makes the data less useful for spotting real patterns.',
     },

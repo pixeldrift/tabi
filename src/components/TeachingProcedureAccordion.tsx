@@ -38,7 +38,13 @@ export interface TeachingProcedure {
    *  rating has no single incorrect response to correct the way a scored
    *  trial does. */
   correction?: string;
-  materials: string;
+  /** Omit entirely (not "None") when there's nothing to actually gather or
+   *  prepare — most behavior-tracking cards are a plain tally or timed
+   *  observation with no dedicated materials, so the row would otherwise
+   *  just repeat "None" across most cards in the set for no benefit. Keep
+   *  it wherever a tech genuinely needs to source or set up something
+   *  specific beforehand. */
+  materials?: string;
   instructionalNotes: string;
 }
 
@@ -261,15 +267,17 @@ export function TeachingProcedureAccordion({
               {data.correction}
             </AccordionRow>
           )}
-          <AccordionRow
-            id="materials"
-            icon={<Package className="size-3.5" />}
-            label="Materials"
-            collapsed={collapsedIds.has("materials")}
-            onToggle={toggleRow}
-          >
-            {data.materials}
-          </AccordionRow>
+          {data.materials && (
+            <AccordionRow
+              id="materials"
+              icon={<Package className="size-3.5" />}
+              label="Materials"
+              collapsed={collapsedIds.has("materials")}
+              onToggle={toggleRow}
+            >
+              {data.materials}
+            </AccordionRow>
+          )}
           <AccordionRow
             id="notes"
             icon={<Lightbulb className="size-3.5" />}
