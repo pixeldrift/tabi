@@ -518,6 +518,25 @@ const cards: CardConfig[] = [
       "Full Physical",
     ],
     promptLevels: ["Verbal", "Gestural", "Modeling", "Partial Physical", "Full Physical"],
+    teachingProcedure: {
+      goal: "Phineas will complete the 7-step tooth-brushing sequence with no more than 1 prompted step, across 3 consecutive probes.",
+      rationale:
+        "Tooth-brushing is a daily-living self-care skill needed for oral hygiene and independence at home; task analysis lets us pinpoint exactly which step(s) still need support.",
+      procedure:
+        "Present each step in sequence, waiting 3-5 seconds for a response before scoring or prompting. Score each step Independent (I), Prompted (P), or Error (E); for a Prompted step, also record the least-to-most prompt level required (Verbal through Full Physical) before moving to the next step regardless of how the current one was scored.",
+      sd: '"Brush your teeth" at the sink, given once at the start of the sequence — no further verbal SD is given per step; each step\'s own natural cue (e.g., toothpaste already on the brush) should occasion the next action.',
+      measurement: {
+        markCorrect: "Completes the step within the window with no prompt beyond the initial SD.",
+        markError:
+          "Does not attempt the step, or attempts it incorrectly, within the window with no prompt given in that moment (contrast with Prompted, used when help was given).",
+      },
+      correction:
+        "For a Prompted score, select the least intrusive prompt level that gets the step done (Verbal through Full Physical) and move on to the next step — don't repeat the whole sequence from the start.",
+      materials:
+        "Toothbrush, toothpaste, and an accessible sink or cup; step stool if needed for sink height.",
+      instructionalNotes:
+        "Mastery is expected to cascade forward from the first step (the opposite order from Washing hands) — if an early, normally-independent step slips to Prompted, treat it as a real regression rather than noise.",
+    },
   },
   {
     id: "overall-session-engagement",
@@ -534,6 +553,22 @@ const cards: CardConfig[] = [
       "Consistently engaged with minimal prompting.",
       "Fully engaged and cooperative throughout the session.",
     ],
+    teachingProcedure: {
+      goal: "Track Phineas's overall session engagement each session so the team can spot trends across activities, staff, or phases, rather than relying on memory of how a session generally felt.",
+      rationale:
+        "A single holistic engagement score, tracked consistently over time, surfaces trends that trial-by-trial accuracy data can't on its own — e.g. engagement quietly declining across a specific activity or time of day even while accuracy holds steady.",
+      procedure:
+        "Score once, at the end of the session, based on your overall impression of Phineas's engagement and cooperation across the whole session — not tied to any single trial or activity. Updating the score later in the session simply overwrites the current score rather than adding a new entry.",
+      sd: "None — this is a holistic end-of-session judgment call, not a response to a specific instruction.",
+      // Overridden by the card's own level descriptions at render time —
+      // this placeholder only exists to satisfy the shared type.
+      measurement: { scale: [] },
+      correction:
+        "Not applicable — there's nothing to correct on a score; a consistently low score across sessions is a cue to loop in the BCBA about antecedent strategies or reinforcement, not something to fix in the moment.",
+      materials: "None.",
+      instructionalNotes:
+        "Score the session as a whole, not just how it ended — a strong finish after a rocky start shouldn't erase the rocky start, and vice versa.",
+    },
   },
   {
     id: "readiness-to-learn",
