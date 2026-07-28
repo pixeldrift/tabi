@@ -128,10 +128,36 @@ and scheduling items below all need to respect that split.
 - [ ] Data Revision mode: edit/update session data while the session timer
       isn't running (paused, not yet submitted) — e.g. adding tallies
       without skewing rate data by leaving the timer running
-- [ ] Session handoff / shift boundaries: clarify what "ending a shift"
-      means vs. the client's own schedule, and when to pause/park a session
-      vs. end it outright. User-centric visibility into who's currently in
-      a session, who last ran it, and who else is accessing it concurrently
+- [ ] **Session lifecycle & handoff model** — RBT priority: this is the core
+      mobile, in-session workflow (vs. curriculum/admin tooling, which is
+      laptop-side and less time-pressured), so it should be sequenced ahead
+      of BCBA-facing features like goal creation
+  - Pause vs. Stop/Submit are different things and the UI should say so:
+    **Pause** stops the timer but leaves the session live and claimed —
+    data stays editable, nothing is finalized, anyone authorized can resume
+    it. **Stop/Submit** is the only terminal action; it locks the data and
+    requires an explicit "submitted by" attribution (a compliance record,
+    not just a UI state)
+  - **Presence model**: a session has one "driver" at a time (whoever's
+    actively timing/scoring). Any other authorized RBT can join as an
+    **observer** — read-only, sees live data as it's entered — without
+    taking over
+  - **Explicit handoff**: no silent takeover. A second RBT requests to
+    become driver, the current driver (if reachable) accepts, and the
+    switch is logged (who handed off to whom, when)
+  - **Orphaned sessions**: define what happens when the driver's device
+    disconnects mid-session — sit locked until they reconnect, or let
+    another RBT force-claim it after a visibility window? Implicit
+    takeover is simpler but risks two people scoring concurrently;
+    requiring explicit handoff is safer but adds friction exactly when a
+    tech is already juggling a client. Needs a real answer, not a default
+  - **Visibility**: surface who's currently driving, who's observing, and
+    who last handed the session off — a running custody record, not just
+    input for handoff decisions
+  - Clarify what "ending a shift" means vs. the client's own schedule, and
+    when to pause/park a session vs. end it outright
+  - No auth/multi-user model exists in the app today — this needs one
+    built underneath it, not bolted on after
 - [ ] Full calendar/scheduling integration, not just clinical appointments —
       surface handoffs ("Transfer session to [person]"), make it clear who's
       recording data vs. who's submitting it, and let a tech see their
