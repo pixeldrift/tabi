@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
@@ -99,6 +107,11 @@ const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
 // physical (something arriving somewhere), so it gets a more pronounced
 // ease-out than the rest of the header's snappier, mechanical transitions.
 const PILL_TRAVEL_EASE = [0.22, 1, 0.36, 1] as const;
+// ExpandedSessionBox's own action-button row (Start New Session <-> End &
+// Submit/Discard) animates its height over this long whenever `isPaused`
+// flips — see that component's own comment on why it's a measured pixel
+// number, not "auto".
+const ACTIONS_HEIGHT_MS = 250;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
  *  Good Data / No Data) — a colored icon + label + count and its subtitle
@@ -364,12 +377,47 @@ export function StatusBar({
   // which was bleeding into the tabs/nav below as a brief desync. A
   // ResizeObserver keeps this current through any content change, not just
   // the specific ones a dependency array would need to know about.
+  //
+  // ExpandedSessionBox's own action-button row lives inside this same
+  // wrapper and animates ITS OWN height over ACTIONS_HEIGHT_MS whenever
+  // isPaused flips (see its own comment) — a real CSS/Motion height tween,
+  // not an instant snap, so `scrollHeight` keeps reporting a different,
+  // still-climbing number on basically every frame of that inner animation,
+  // not just once at the start and once at the end. Left alone, the
+  // ResizeObserver below fires on every one of those frames too, so this
+  // box's OWN height animation kept getting retargeted mid-flight toward a
+  // constantly-receding number — which read as a long stall (chasing a
+  // target that kept moving) followed by an abrupt catch-up jump once the
+  // inner transition finally stopped changing. Guessing a fixed suppression
+  // window didn't hold up — real click-to-paint latency (and the inner
+  // ResizeObserver's own firing cadence) varies enough that a timer either
+  // fired too early (still mid-contamination) or added needless lag.
+  // actionsRowSettlingRef instead tracks the REAL thing: suppressed exactly
+  // while isPaused's own height tween is in flight, and released the moment
+  // Motion itself reports that tween complete (via onActionsHeightSettled,
+  // passed down to the actions row's own onAnimationComplete) — no guessing.
   const boxWrapRef = useRef<HTMLDivElement>(null);
   const [boxNaturalHeight, setBoxNaturalHeight] = useState<number | null>(null);
+  const actionsRowSettlingRef = useRef(false);
+  const wasPausedForActionsRef = useRef(status === "paused");
+  useLayoutEffect(() => {
+    const isPaused = status === "paused";
+    if (isPaused === wasPausedForActionsRef.current) return;
+    wasPausedForActionsRef.current = isPaused;
+    actionsRowSettlingRef.current = true;
+  }, [status]);
+  const handleActionsHeightSettled = useCallback(() => {
+    actionsRowSettlingRef.current = false;
+    const el = boxWrapRef.current;
+    if (el) setBoxNaturalHeight(el.scrollHeight);
+  }, []);
   useLayoutEffect(() => {
     const el = boxWrapRef.current;
     if (!el) return;
-    const measure = () => setBoxNaturalHeight(el.scrollHeight);
+    const measure = () => {
+      if (actionsRowSettlingRef.current) return;
+      setBoxNaturalHeight(el.scrollHeight);
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -673,6 +721,7 @@ export function StatusBar({
                       playSoundEffect("warning");
                       setDiscardOpen(true);
                     }}
+                    onActionsHeightSettled={handleActionsHeightSettled}
                   />
                 </div>
               </motion.div>
@@ -1324,6 +1373,7 @@ function ExpandedSessionBox({
   onStartNew,
   onEnd,
   onRequestDiscard,
+  onActionsHeightSettled,
 }: {
   status: SessionStatus;
   elapsedMs: number;
@@ -1337,6 +1387,11 @@ function ExpandedSessionBox({
   onStartNew: () => void;
   onEnd: () => void;
   onRequestDiscard: () => void;
+  /** Fires once the action-button row's own height tween below actually
+   *  finishes (Motion's real onAnimationComplete, not a guessed timer) — see
+   *  StatusBar's own boxNaturalHeight comment for why the outer box needs
+   *  this signal instead of just watching scrollHeight live. */
+  onActionsHeightSettled?: () => void;
 }) {
   const isPaused = status === "paused";
   const label = isPaused ? "Session Paused:" : "Previous Session:";
@@ -1454,7 +1509,8 @@ function ExpandedSessionBox({
       <motion.div
         ref={actionsRef}
         animate={{ opacity: dimmed ? 0 : 1, height: actionsHeight ?? "auto" }}
-        transition={{ duration: 0.25, ease }}
+        transition={{ duration: ACTIONS_HEIGHT_MS / 1000, ease }}
+        onAnimationComplete={onActionsHeightSettled}
         className="flex flex-col gap-1 overflow-hidden"
       >
         {isPaused ? (
