@@ -53,6 +53,7 @@ import { useDataToolbar } from "@/components/DataToolbarContext";
 import { DATA_TYPE_INFO } from "@/lib/dataTypeInfo";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
+import { useSettings } from "@/components/SettingsContext";
 import {
   TIMER_MORPH_DIGIT_MINI,
   TIMER_MORPH_DIGIT_FULL,
@@ -211,6 +212,10 @@ export function StatusBar({
     lastSavedAt,
     forceSync,
   } = useSession();
+  // The pill travel overlay's digit/border colors are theme-aware (see
+  // actionColors.ts's own comment) — need the current theme to pick the
+  // right pair, not just the "mini" ones, which stay stone in every theme.
+  const { colorTheme } = useSettings();
 
   // See use-initial-layout-settle's own comment — this box's demo-only
   // "Previous Session" row growing the box shortly after mount is real,
@@ -828,15 +833,17 @@ export function StatusBar({
           pillTravelRect &&
           (() => {
             const toMini = pillView === "mini";
+            const digitFull = TIMER_MORPH_DIGIT_FULL[colorTheme];
+            const borderFull = TIMER_MORPH_BORDER_FULL[colorTheme];
             const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
             const digitColor = {
-              from: toMini ? TIMER_MORPH_DIGIT_MINI : TIMER_MORPH_DIGIT_FULL,
-              to: toMini ? TIMER_MORPH_DIGIT_FULL : TIMER_MORPH_DIGIT_MINI,
+              from: toMini ? TIMER_MORPH_DIGIT_MINI : digitFull,
+              to: toMini ? digitFull : TIMER_MORPH_DIGIT_MINI,
             };
             const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
             const borderColor = {
-              from: toMini ? TIMER_MORPH_BORDER_MINI : TIMER_MORPH_BORDER_FULL,
-              to: toMini ? TIMER_MORPH_BORDER_FULL : TIMER_MORPH_BORDER_MINI,
+              from: toMini ? TIMER_MORPH_BORDER_MINI : borderFull,
+              to: toMini ? borderFull : TIMER_MORPH_BORDER_MINI,
             };
             return (
               <motion.div
