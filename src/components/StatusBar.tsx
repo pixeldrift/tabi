@@ -1404,9 +1404,14 @@ function ExpandedSessionBox({
   // Motion's "auto" height resolution wasn't reliable here (the collapse
   // kept resolving in under 40ms instead of easing over 250) — measuring
   // the real pixel height ourselves and animating between two concrete
-  // numbers (never "auto") sidesteps that entirely. scrollHeight reports the
-  // full content size even while overflow-hidden is clipping it to 0, so
-  // this stays accurate regardless of the current animated state.
+  // numbers (never "auto") sidesteps that entirely. actionsRef sits on a
+  // plain, never-height-animated wrapper INSIDE the motion.div below, not
+  // on the motion.div itself — see that div's own comment for why: an
+  // element's scrollHeight can't reveal a SMALLER new content size while
+  // its own explicit height is still the old, larger one (nothing
+  // overflows it, so the browser just echoes that height back), which
+  // silently broke this measurement specifically for the "shrinking"
+  // direction (e.g. resume's paused 2-button set collapsing to 1 button).
   const actionsRef = useRef<HTMLDivElement>(null);
   const [actionsHeight, setActionsHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -1507,38 +1512,54 @@ function ExpandedSessionBox({
           swaps (isPaused's button set), via the measured actionsHeight
           number — never "auto", see the comment above. */}
       <motion.div
-        ref={actionsRef}
         animate={{ opacity: dimmed ? 0 : 1, height: actionsHeight ?? "auto" }}
         transition={{ duration: ACTIONS_HEIGHT_MS / 1000, ease }}
         onAnimationComplete={onActionsHeightSettled}
-        className="flex flex-col gap-1 overflow-hidden"
+        className="overflow-hidden"
       >
-        {isPaused ? (
-          <button
-            onClick={onEnd}
-            className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-          >
-            End & Submit Data
-            <Upload className="size-3.5" strokeWidth={2.5} />
-          </button>
-        ) : (
-          <button
-            onClick={onStartNew}
-            className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-          >
-            Start New Session
-            <RefreshCw className="size-3.5" strokeWidth={2.5} />
-          </button>
-        )}
-        {isPaused && (
-          <button
-            onClick={onRequestDiscard}
-            className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
-          >
-            End & Discard Session!
-            <Trash2 className="size-3" />
-          </button>
-        )}
+        {/* Measured (not the motion.div above) — scrollHeight on an element
+            that ITSELF carries the animated explicit height can't detect a
+            SMALLER new content size: a browser reports scrollHeight as at
+            least the element's own current height whenever content doesn't
+            overflow it, so mid-shrink (e.g. resume's 2-button paused set
+            collapsing back to 1 button) it just echoed back the still-large
+            OLD height instead of the new, smaller natural one — silently
+            stalling this row's own animation at its previous peak size
+            until something unrelated (dimmed finally clearing) forced a
+            correction far later. This plain, unconstrained wrapper is never
+            itself height-animated, so its scrollHeight always reflects the
+            CURRENT content's true natural size regardless of what height
+            the motion.div above happens to be mid-transition to — the same
+            "measure via an unconstrained child" pattern boxWrapRef already
+            uses for the outer box, for the exact same reason. */}
+        <div ref={actionsRef} className="flex flex-col gap-1">
+          {isPaused ? (
+            <button
+              onClick={onEnd}
+              className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+            >
+              End & Submit Data
+              <Upload className="size-3.5" strokeWidth={2.5} />
+            </button>
+          ) : (
+            <button
+              onClick={onStartNew}
+              className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+            >
+              Start New Session
+              <RefreshCw className="size-3.5" strokeWidth={2.5} />
+            </button>
+          )}
+          {isPaused && (
+            <button
+              onClick={onRequestDiscard}
+              className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
+            >
+              End & Discard Session!
+              <Trash2 className="size-3" />
+            </button>
+          )}
+        </div>
       </motion.div>
     </div>
   );
