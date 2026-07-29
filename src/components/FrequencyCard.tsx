@@ -65,7 +65,7 @@ export function FrequencyCard({
   const [dir, setDir] = useState<1 | -1>(1);
   const [flash, setFlash] = useState(false);
   const [editing, setEditing] = useState(false);
-  const { markDirty, resetSignal, sessionRunning, hasElapsedTime } = useCardSession();
+  const { markDirty, resetSignal, canRecordData, hasElapsedTime } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export function FrequencyCard({
                 e.stopPropagation();
                 dec();
               }}
-              disabled={!sessionRunning || count === 0}
+              disabled={!canRecordData || count === 0}
               aria-label="Decrement"
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border border-border bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
@@ -191,7 +191,7 @@ export function FrequencyCard({
                 e.stopPropagation();
                 inc();
               }}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               aria-label="Increment"
               className={cn(
                 "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
@@ -216,7 +216,7 @@ export function FrequencyCard({
                 e.stopPropagation();
                 open();
               }}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               className="cursor-text disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
@@ -305,7 +305,7 @@ export function FrequencyCard({
                     e.stopPropagation();
                     open();
                   }}
-                  disabled={!sessionRunning}
+                  disabled={!canRecordData}
                   className="cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current count is ${count}. Tap to edit.`}
                 >
@@ -318,14 +318,14 @@ export function FrequencyCard({
             <ListActionButton
               icon={Minus}
               variant="neutral"
-              disabled={!sessionRunning || count === 0}
+              disabled={!canRecordData || count === 0}
               ariaLabel="Decrement"
               onClick={dec}
             />
             <ListActionButton
               icon={Plus}
               variant="blue-solid"
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               ariaLabel="Increment"
               onClick={inc}
             />
@@ -416,7 +416,7 @@ export function FrequencyCard({
             <button
               type="button"
               onClick={open}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
@@ -466,7 +466,7 @@ export function FrequencyCard({
 
         <motion.button
           onClick={inc}
-          disabled={!sessionRunning}
+          disabled={!canRecordData}
           whileTap={{ scale: 0.94 }}
           aria-label="Increment"
           className={cn(

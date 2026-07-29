@@ -177,7 +177,7 @@ export function TaskAnalysisCard({
     {},
   );
   const [expanded, setExpanded] = useState(false);
-  const { markDirty, resetSignal, sessionRunning } = useCardSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
 
   // Real, measured width of the grid tile's own content area — the step
@@ -379,7 +379,7 @@ export function TaskAnalysisCard({
                     e.stopPropagation();
                     setStep(current, opt.value, true);
                   }}
-                  disabled={!sessionRunning || !canScore(current)}
+                  disabled={!canRecordData || !canScore(current)}
                   aria-label={opt.label}
                   className={cn(
                     "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -574,7 +574,7 @@ export function TaskAnalysisCard({
                     levels={promptLevels}
                     selectedLevel={promptLevel[current] ?? null}
                     selected={statuses[current] === "prompted"}
-                    disabled={!sessionRunning || !canScore(current)}
+                    disabled={!canRecordData || !canScore(current)}
                     onPick={(level) => pickPromptLevel(current, level, true)}
                     topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
                   />
@@ -588,7 +588,7 @@ export function TaskAnalysisCard({
                     opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"
                   }
                   selected={statuses[current] === opt.value}
-                  disabled={!sessionRunning || !canScore(current)}
+                  disabled={!canRecordData || !canScore(current)}
                   ariaLabel={opt.label}
                   onClick={() => setStep(current, opt.value, true)}
                 />
@@ -698,7 +698,7 @@ export function TaskAnalysisCard({
                         levels={promptLevels}
                         selectedLevel={promptLevel[i] ?? null}
                         selected={selected}
-                        disabled={!sessionRunning || !canScore(i)}
+                        disabled={!canRecordData || !canScore(i)}
                         onPick={(level) => pickPromptLevel(i, level, false)}
                         topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
                       />
@@ -708,7 +708,7 @@ export function TaskAnalysisCard({
                     <motion.button
                       key={opt.value}
                       onClick={() => setStep(i, opt.value)}
-                      disabled={!sessionRunning || !canScore(i)}
+                      disabled={!canRecordData || !canScore(i)}
                       whileTap={{ scale: 0.9 }}
                       aria-label={opt.value}
                       className={cn(
@@ -855,7 +855,7 @@ export function TaskAnalysisCard({
                   levels={promptLevels}
                   selectedLevel={promptLevel[current] ?? null}
                   selected={selected}
-                  disabled={!sessionRunning || !canScore(current)}
+                  disabled={!canRecordData || !canScore(current)}
                   onPick={(level) => pickPromptLevel(current, level, true)}
                   topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
                 />
@@ -865,7 +865,7 @@ export function TaskAnalysisCard({
               <motion.button
                 key={opt.value}
                 onClick={() => setStep(current, opt.value, true)}
-                disabled={!sessionRunning || !canScore(current)}
+                disabled={!canRecordData || !canScore(current)}
                 whileTap={{ scale: 0.96 }}
                 className={cn(
                   "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors disabled:opacity-40",

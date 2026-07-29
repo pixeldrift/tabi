@@ -27,15 +27,19 @@ import {
   ChevronDown,
   Ban,
   CircleSlash2,
+  User,
+  UserPlus,
+  LockKeyholeOpen,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
-import { PersonPill } from "./StaffDirectory";
+import { PersonPill, StaffProfileByName } from "./StaffDirectory";
 import {
   markInitialLayoutSettled,
   useInitialLayoutSettled,
 } from "@/hooks/use-initial-layout-settle";
 import {
   useSession,
+  CURRENT_STAFF_NAME,
   HEADER_MORPH_MS,
   BOX_COLLAPSE_MS,
   DIGIT_SETTLE_MS,
@@ -217,13 +221,23 @@ export function StatusBar({
     pillTraveling,
     headerReflowActive,
     requestStartNew,
-    requestContinuePrevious,
     requestResume,
     requestDiscard,
     activeTimers,
     saveStatus,
     lastSavedAt,
     forceSync,
+    lastUpdated,
+    startedByName,
+    lastEndedByName,
+    presentStaffNames,
+    isSessionMine,
+    joinSession,
+    reviewModeUnlocked,
+    setReviewModeUnlocked,
+    isAbandoned,
+    previousSessionMs,
+    previousSessionEndedAt,
   } = useSession();
   // The pill travel overlay's digit/border colors are theme-aware (see
   // actionColors.ts's own comment) — need the current theme to pick the
@@ -271,45 +285,36 @@ export function StatusBar({
     prevNotifCountRef.current = notifCount;
   }, [notifCount]);
 
-  // Random previous session length between 1-5 hours, generated once on the client.
-  const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
-  const [previousSessionEndedAt, setPreviousSessionEndedAt] = useState<Date | null>(null);
+  // previousSessionMs/previousSessionEndedAt (and which of the 4 session
+  // states this load landed on) now come from SessionContext's own
+  // useLayoutEffect-timed random-state simulator, which commits before the
+  // first paint — so unlike the plain-useEffect randomizer this replaced,
+  // there's no longer a visible "Previous Session" row (or running/paused
+  // box) growing in a beat after mount to wait out. Marking the shared
+  // settle flag (see its own comment) right on mount is enough now; every
+  // layout-tracked sibling in the "session-bar" LayoutGroup can turn its
+  // own tracking on immediately instead of waiting on a reflow that no
+  // longer happens.
   useEffect(() => {
-    setPreviousSessionMs(Math.floor((1 + Math.random() * 4) * 3600 * 1000));
-    // Random end time: somewhere between 1 minute and 3 days ago.
-    const minMs = 60 * 1000;
-    const maxMs = 3 * 24 * 3600 * 1000;
-    setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
+    markInitialLayoutSettled();
   }, []);
 
-  // Since previousSessionEndedAt can only be generated client-side (see its
-  // own comment — it's randomized, so it can never be seeded identically
-  // for server and client), this box's "Previous Session" row necessarily
-  // pops in a beat after mount, genuinely growing the box's natural
-  // height — which every layout-tracked sibling in the shared "session-bar"
-  // LayoutGroup (this nav, the content pane, the Data toolbar) faithfully
-  // tracks. Marking the shared settle flag (see its own comment) once that
-  // growth has actually landed — not on a guessed timer, but two frames
-  // after the state change that causes it, giving the resulting reflow and
-  // this box's own ResizeObserver time to actually commit — lets every
-  // subscriber turn its OWN layout tracking on together, instead of
-  // animating this one-time, page-load-only growth as a visible drop.
-  useEffect(() => {
-    if (previousSessionEndedAt === null) return;
-    let settleFrame = 0;
-    const growFrame = requestAnimationFrame(() => {
-      settleFrame = requestAnimationFrame(() => {
-        markInitialLayoutSettled();
-      });
-    });
-    return () => {
-      cancelAnimationFrame(growFrame);
-      cancelAnimationFrame(settleFrame);
-    };
-  }, [previousSessionEndedAt]);
-
   const isRunning = status === "running";
+  // Not plain `isRunning` — a running session that isn't yours yet stays
+  // on the big pill (see SessionContext's own `collapsed`/`isMineAndRunning`
+  // comment) rather than collapsing, so everything below that decides what
+  // the box is currently showing needs to agree with that same condition,
+  // not just whether the timer happens to be running.
+  const isMineAndRunning = isRunning && isSessionMine;
 
+  // Which staff name and timestamp the box attributes its content to,
+  // depending on why it's showing at all: idle shows the previous,
+  // already-submitted session (lastEndedByName/previousSessionEndedAt);
+  // paused or running-but-not-yet-joined shows whoever started THIS one
+  // (startedByName), timestamped by lastUpdated (when it was started, or
+  // most recently paused/resumed).
+  const attributionName = status === "idle" ? lastEndedByName : startedByName;
+  const rawContextTime = status === "idle" ? previousSessionEndedAt : lastUpdated;
   // Resuming un-hides this row (it's only absent while paused) the instant
   // `status` flips to "running" — which, for a staged resume, lands well
   // before the box has actually started collapsing (see boxCollapsed's own
@@ -317,12 +322,14 @@ export function StatusBar({
   // which the nav/tabs below dutifully track — reading as the whole header
   // bouncing down and then sharply back up once the collapse catches up.
   // Since the box is headed for a full collapse to zero anyway the moment
-  // it's running, there's nothing to gain by growing it first: frozen here,
-  // it keeps showing whatever it last showed while genuinely paused/idle
-  // until the box needs it again (i.e. the next time it isn't running).
-  const rawContextTime = status === "paused" ? null : previousSessionEndedAt;
+  // it's mine-and-running, there's nothing to gain by growing it first:
+  // frozen here, it keeps showing whatever it last showed while genuinely
+  // paused/idle/not-yet-joined until the box needs it again. Keyed on
+  // `isMineAndRunning` (not plain `isRunning`) so a running-but-not-joined
+  // session keeps updating live the whole time it's still visible in the
+  // big box, only freezing once joining actually starts the collapse.
   const frozenContextTimeRef = useRef(rawContextTime);
-  if (!isRunning) frozenContextTimeRef.current = rawContextTime;
+  if (!isMineAndRunning) frozenContextTimeRef.current = rawContextTime;
 
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -424,9 +431,18 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
+  // The big pill's own inline button is 3 different actions depending on
+  // why the pill is even showing (see ExpandedSessionBox's own isPaused/
+  // isSessionMine-driven icon): resume a genuinely paused session, join
+  // someone else's already-running one, or — while idle — nothing at all.
+  // There's no "continue the previous session" action anymore: that
+  // session already ended & got submitted, so picking it back up isn't
+  // resuming anything, it's just starting a new one — Start New Session
+  // (below) is idle's one clear action instead. See the README roadmap's
+  // own writeup of the 4 session states this reflects.
   const requestPlay = () => {
     if (status === "paused") requestResume();
-    else requestContinuePrevious(previousSessionMs);
+    else if (isRunning && !isSessionMine) joinSession();
   };
 
   // What time to show inside the pill during the morph: keep continuity so
@@ -447,7 +463,14 @@ export function StatusBar({
   // laid-out element once it lands. See the overlay render below.
   const bigPillRef = useRef<HTMLDivElement>(null);
   const miniPillRef = useRef<HTMLDivElement>(null);
-  const [pillView, setPillView] = useState<"big" | "mini">(isRunning ? "mini" : "big");
+  // Only surfaced once you've actually joined (isMineAndRunning) — before
+  // that, whoever's running it is already named front-and-center in the
+  // big expanded box itself (see ExpandedSessionBox), so a second "who's
+  // here" signal in the header would just be redundant.
+  const otherPresentStaffNames = isMineAndRunning
+    ? presentStaffNames.filter((n) => n !== CURRENT_STAFF_NAME)
+    : [];
+  const [pillView, setPillView] = useState<"big" | "mini">(isMineAndRunning ? "mini" : "big");
   // `pillTraveling` (from SessionContext) is the shared, purely-timed
   // window — StatusBar's own visual travel (capturing rects, mounting the
   // overlay below) is driven directly off it turning true/false rather
@@ -477,16 +500,21 @@ export function StatusBar({
       setPillTravelRect(null);
       return;
     }
-    const fromEl = isRunning ? bigPillRef.current : miniPillRef.current;
+    // Reads the OLD `pillView` (this render's, before the setPillView below
+    // updates it) rather than deriving "which pill was showing" from
+    // isRunning/isMineAndRunning — joining a not-mine running session
+    // travels FROM the big pill even though isRunning was already true
+    // throughout, so isRunning alone can't tell the two apart.
+    const fromEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
     if (!fromEl) {
-      setPillView(isRunning ? "mini" : "big");
+      setPillView(isMineAndRunning ? "mini" : "big");
       return;
     }
     pillTravelFromRef.current = fromEl.getBoundingClientRect();
     setPillTravelRect(null);
     setVisualTravelActive(true);
-    setPillView(isRunning ? "mini" : "big");
-  }, [pillTraveling, isRunning]);
+    setPillView(isMineAndRunning ? "mini" : "big");
+  }, [pillTraveling, isMineAndRunning, pillView]);
 
   // Once the destination element exists in the DOM (still invisible),
   // measure its natural resting rect and let the overlay start traveling
@@ -706,6 +734,11 @@ export function StatusBar({
                     status={status}
                     elapsedMs={pillElapsed}
                     contextTime={frozenContextTimeRef.current}
+                    attributionName={attributionName}
+                    isSessionMine={isSessionMine}
+                    isAbandoned={isAbandoned}
+                    reviewModeUnlocked={reviewModeUnlocked}
+                    onToggleReviewMode={() => setReviewModeUnlocked(!reviewModeUnlocked)}
                     renderPill={renderBigPill}
                     pillVisible={bigPillVisible}
                     pillRef={bigPillRef}
@@ -807,6 +840,7 @@ export function StatusBar({
                     activeTab={activeTab}
                     onTabChange={onTabChange}
                   />
+                  <PresenceIndicator otherStaffNames={otherPresentStaffNames} />
                 </div>
 
                 <AnimatePresence initial={false}>
@@ -1183,6 +1217,107 @@ function ActiveDurationIndicator({
   );
 }
 
+/** The header's own "someone else is also in this session" signal — same
+ *  spot/shape as ActiveDurationIndicator right beside it, shown once
+ *  you've joined (or started) a running session AND at least one other
+ *  staff member is also present. Tapping it opens that person's profile
+ *  directly when there's exactly one (StaffDirectory's own
+ *  StaffProfileByName); a real multi-person clinic would need an actual
+ *  list here, so that path reuses PersonPill (already handles its own
+ *  tap-to-open-profile) inside a plain popover instead of a bespoke one. */
+function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
+  const [singleProfileOpen, setSingleProfileOpen] = useState(false);
+  const visible = otherStaffNames.length > 0;
+  const soleOther = otherStaffNames.length === 1 ? otherStaffNames[0] : null;
+
+  const trigger = (
+    <span className="relative inline-flex">
+      <User className="size-4" fill="currentColor" strokeWidth={0} />
+      {otherStaffNames.length > 1 && (
+        <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">
+          {otherStaffNames.length}
+        </sup>
+      )}
+    </span>
+  );
+  const label = otherStaffNames.length > 1 ? "Others Here" : "Also Here";
+  const ariaLabel =
+    otherStaffNames.length > 1
+      ? `${otherStaffNames.length} other staff also in this session`
+      : `${soleOther} is also in this session`;
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="presence-indicator"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          // Same plain tween as ActiveDurationIndicator right beside it —
+          // see its own comment on why a spring reads as this indicator
+          // animating independently of the nav it's grouped with.
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {soleOther ? (
+            <button
+              type="button"
+              onClick={() => setSingleProfileOpen(true)}
+              aria-label={ariaLabel}
+              title={soleOther}
+              className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
+            >
+              {trigger}
+              <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
+                {label}
+              </span>
+            </button>
+          ) : (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={ariaLabel}
+                  title={otherStaffNames.join(", ")}
+                  className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
+                >
+                  {trigger}
+                  <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
+                    {label}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                sideOffset={10}
+                collisionPadding={16}
+                className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                  Also in this session
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {otherStaffNames.map((n) => (
+                    <PersonPill key={n} name={n} size="sm" />
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </motion.div>
+      )}
+      {soleOther && (
+        <StaffProfileByName
+          name={soleOther}
+          open={singleProfileOpen}
+          onOpenChange={setSingleProfileOpen}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
 function SaveIndicator({
   status,
   lastSavedAt,
@@ -1364,6 +1499,11 @@ function ExpandedSessionBox({
   status,
   elapsedMs,
   contextTime,
+  attributionName,
+  isSessionMine,
+  isAbandoned,
+  reviewModeUnlocked,
+  onToggleReviewMode,
   renderPill = true,
   pillVisible = true,
   pillRef,
@@ -1378,6 +1518,19 @@ function ExpandedSessionBox({
   status: SessionStatus;
   elapsedMs: number;
   contextTime: Date | null;
+  /** Who to credit in the "by X" line — last person to submit (idle) or
+   *  whoever started the session (paused / running-not-mine). Never the
+   *  current user's own join, since joining doesn't change who "owns" it. */
+  attributionName: string | null;
+  /** True whenever the current user could collapse this box back into the
+   *  running mini pill (i.e. they started it, or already joined it) — false
+   *  means someone else is running it and the only action here is to join. */
+  isSessionMine: boolean;
+  /** A running-not-mine session nobody has touched in a while — swaps the
+   *  label to flag it instead of just reading as ordinarily busy. */
+  isAbandoned: boolean;
+  reviewModeUnlocked: boolean;
+  onToggleReviewMode: () => void;
   renderPill?: boolean;
   pillVisible?: boolean;
   pillRef?: React.RefObject<HTMLDivElement | null>;
@@ -1393,8 +1546,19 @@ function ExpandedSessionBox({
    *  this signal instead of just watching scrollHeight live. */
   onActionsHeightSettled?: () => void;
 }) {
+  const isIdle = status === "idle";
   const isPaused = status === "paused";
-  const label = isPaused ? "Session Paused:" : "Previous Session:";
+  // The only other possibility once this box is even rendered (it's hidden
+  // whenever the session is running AND ours — see StatusBar's `collapsed`):
+  // running, but started/joined by someone else.
+  const isRunningNotMine = status === "running" && !isSessionMine;
+  const label = isIdle
+    ? "Previous Session:"
+    : isPaused
+      ? "Session Paused:"
+      : isAbandoned
+        ? "Session Unattended:"
+        : "Currently Running:";
   const ease = SESSION_MORPH_EASE;
   // Gray only while genuinely idle and showing a leftover previous-session
   // value — once paused (this session's own time) or once a start/resume has
@@ -1418,7 +1582,7 @@ function ExpandedSessionBox({
     if (actionsRef.current) {
       setActionsHeight(actionsRef.current.scrollHeight);
     }
-  }, [isPaused]);
+  }, [isPaused, isRunningNotMine]);
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
@@ -1464,8 +1628,13 @@ function ExpandedSessionBox({
           {contextTime && (
             <span className="text-[10px] text-muted-foreground text-center tabular-nums whitespace-nowrap">
               {formatRelativeFromNow(contextTime)}
-              {"\u00a0"}({formatMDY(contextTime)}) by{"\u00a0"}
-              <PersonPill name="Perry Plat" size="sm" />
+              {"\u00a0"}({formatMDY(contextTime)})
+              {attributionName && (
+                <>
+                  {" by\u00a0"}
+                  <PersonPill name={attributionName} size="sm" />
+                </>
+              )}
             </span>
           )}
         </motion.div>
@@ -1491,15 +1660,24 @@ function ExpandedSessionBox({
             >
               <OdometerDigits text={formatTime(elapsedMs)} slow={startingNew} />
             </span>
-            <button
-              onClick={onPlay}
-              aria-label={isPaused ? "Resume session" : "Continue session"}
-              className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
-            >
-              <span className="grid place-items-center">
-                <Play className="size-5" fill="currentColor" strokeWidth={0} />
-              </span>
-            </button>
+            {/* No button at all once truly idle — there's nothing to
+                resume/join, only "Start New Session" below, per the
+                "no restarting a finished session" mental model. */}
+            {!isIdle && (
+              <button
+                onClick={onPlay}
+                aria-label={isPaused ? "Resume session" : "Join session"}
+                className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
+              >
+                <span className="grid place-items-center">
+                  {isPaused ? (
+                    <Play className="size-5" fill="currentColor" strokeWidth={0} />
+                  ) : (
+                    <UserPlus className="size-5" strokeWidth={2.5} />
+                  )}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1533,15 +1711,42 @@ function ExpandedSessionBox({
             "measure via an unconstrained child" pattern boxWrapRef already
             uses for the outer box, for the exact same reason. */}
         <div ref={actionsRef} className="flex flex-col gap-1">
-          {isPaused ? (
-            <button
-              onClick={onEnd}
-              className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-            >
-              End & Submit Data
-              <Upload className="size-3.5" strokeWidth={2.5} />
-            </button>
-          ) : (
+          {isPaused && (
+            <>
+              <button
+                onClick={onEnd}
+                className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+              >
+                End & Submit Data
+                <Upload className="size-3.5" strokeWidth={2.5} />
+              </button>
+              {/* Parked sessions default to locked so nothing on a session
+                  someone else may resume gets edited by accident — this is
+                  the one, intentional action that unlocks editing without
+                  restarting the (stopped) session timer. */}
+              <button
+                onClick={onToggleReviewMode}
+                aria-pressed={reviewModeUnlocked}
+                className={cn(
+                  "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
+                  reviewModeUnlocked
+                    ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50",
+                )}
+              >
+                {reviewModeUnlocked ? "Review Mode Unlocked" : "Unlock Review Mode"}
+                <LockKeyholeOpen className="size-3.5" />
+              </button>
+              <button
+                onClick={onRequestDiscard}
+                className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
+              >
+                End & Discard Session!
+                <Trash2 className="size-3" />
+              </button>
+            </>
+          )}
+          {isIdle && (
             <button
               onClick={onStartNew}
               className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
@@ -1550,15 +1755,10 @@ function ExpandedSessionBox({
               <RefreshCw className="size-3.5" strokeWidth={2.5} />
             </button>
           )}
-          {isPaused && (
-            <button
-              onClick={onRequestDiscard}
-              className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
-            >
-              End & Discard Session!
-              <Trash2 className="size-3" />
-            </button>
-          )}
+          {/* isRunningNotMine: no action here at all — join via the pill
+              button above first, then pause/end become available once it's
+              yours (isSessionMine flips and this box stops rendering in
+              favor of the running mini pill/box). */}
         </div>
       </motion.div>
     </div>

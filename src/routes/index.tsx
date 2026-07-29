@@ -21,6 +21,7 @@ import {
   SessionProvider,
   useSession,
   PILL_LAND_MS,
+  CURRENT_STAFF_NAME,
   type TransitionKind,
 } from "@/components/SessionContext";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";
@@ -668,6 +669,56 @@ function GoalChangeDemoTrigger() {
   return null;
 }
 
+/** Renders nothing — pushes the two lifecycle notifications the session
+ *  states call for: confirming a join (state 2's "handoff without explicit
+ *  requests"), and flagging a running session nobody's currently in (state
+ *  4, "abandoned" — standing in for the half-hour text/email reminder to
+ *  the last staff member, since there's no other simulated user here to
+ *  actually receive it). Mounted alongside GoalChangeDemoTrigger, for the
+ *  same reason: SessionContext sits above NotificationProvider and can't
+ *  push directly (see that provider's own nesting in Index below). */
+function SessionActivityTrigger() {
+  const { push } = useNotifications();
+  const { status, isSessionMine, isAbandoned, startedByName } = useSession();
+  const joinedRef = useRef(false);
+  const abandonedRef = useRef(false);
+
+  useEffect(() => {
+    const joinedSomeoneElses =
+      status === "running" &&
+      isSessionMine &&
+      !!startedByName &&
+      startedByName !== CURRENT_STAFF_NAME;
+    if (joinedSomeoneElses && !joinedRef.current) {
+      joinedRef.current = true;
+      push({
+        kind: "announcement",
+        title: `You joined ${startedByName}'s session`,
+        body: `${startedByName} has been notified that you joined.`,
+        icon: "megaphone",
+      });
+    } else if (!joinedSomeoneElses) {
+      joinedRef.current = false;
+    }
+  }, [status, isSessionMine, startedByName, push]);
+
+  useEffect(() => {
+    if (isAbandoned && !abandonedRef.current) {
+      abandonedRef.current = true;
+      push({
+        kind: "announcement",
+        title: "Session Unattended",
+        body: `${startedByName ?? "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
+        icon: "bell",
+      });
+    } else if (!isAbandoned) {
+      abandonedRef.current = false;
+    }
+  }, [isAbandoned, startedByName, push]);
+
+  return null;
+}
+
 function Index() {
   return (
     <SettingsProvider>
@@ -1125,21 +1176,21 @@ function IndexInner() {
     }
   }
 
-  // A session starting (fresh or continued) should read as "the pane was
-  // already at the top," not as a scroll happening — a real session is
-  // meant to open on its first card, not wherever the user happened to be
-  // scrolled to on the idle/"Start New Session" screen. Instant (not
-  // smooth) and in a layout effect (before paint) so nothing is visibly
-  // scrolling; this also preempts a real, separate glitch: stage 1 hides
-  // the outgoing cards immediately (see `cardsHidden` above) but the new
-  // ones don't remount until PILL_LAND_MS later, so for that whole window
-  // the Data tab's pane is briefly far shorter than the page the user was
-  // actually scrolled against — if they were scrolled down, the browser's
-  // own native scroll-clamping snaps them to whatever the new (shorter) max
+  // A fresh session starting should read as "the pane was already at the
+  // top," not as a scroll happening — a real session is meant to open on
+  // its first card, not wherever the user happened to be scrolled to on
+  // the idle/"Start New Session" screen. Instant (not smooth) and in a
+  // layout effect (before paint) so nothing is visibly scrolling; this
+  // also preempts a real, separate glitch: stage 1 hides the outgoing
+  // cards immediately (see `cardsHidden` above) but the new ones don't
+  // remount until PILL_LAND_MS later, so for that whole window the Data
+  // tab's pane is briefly far shorter than the page the user was actually
+  // scrolled against — if they were scrolled down, the browser's own
+  // native scroll-clamping snaps them to whatever the new (shorter) max
   // happens to be the instant that content gap opens, a jump this makes
   // moot by already being at the top before it can occur.
   useLayoutEffect(() => {
-    if (transitionKind === "start-new" || transitionKind === "start-previous") {
+    if (transitionKind === "start-new") {
       window.scrollTo(0, 0);
     }
   }, [transitionKind]);
@@ -1266,6 +1317,7 @@ function IndexInner() {
   return (
     <NotificationProvider onActivate={handleNotificationActivate}>
       <GoalChangeDemoTrigger />
+      <SessionActivityTrigger />
       <main className="min-h-screen bg-background">
         {/* Shared across StatusBar's tab nav and this section's panel so their
           `layout="position"` FLIPs are batched into one coordinated motion

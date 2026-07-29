@@ -69,7 +69,7 @@ export function RateCard({
   const [running, setRunning] = useCardState(cardKey, "running", true);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const { sessionRunning, subscribeTick, getElapsedMsNow } = useSession();
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
   // Holds a pending "start on the next full master second" timeout — see
   // `toggle` below — so a quick pause (or a session reset) before it fires
   // can cancel it instead of starting the timer late anyway.
@@ -246,7 +246,7 @@ export function RateCard({
                   e.stopPropagation();
                   dec();
                 }}
-                disabled={!sessionRunning || count === 0}
+                disabled={!canRecordData || count === 0}
                 aria-label="Decrement"
                 className={cn(
                   "btn-bevel shrink-0 rounded-full grid place-items-center border border-border bg-white text-foreground/70 active:scale-95 transition disabled:opacity-30",
@@ -261,7 +261,7 @@ export function RateCard({
                   e.stopPropagation();
                   inc();
                 }}
-                disabled={!sessionRunning}
+                disabled={!canRecordData}
                 aria-label="Increment"
                 className={cn(
                   "btn-bevel-solid shrink-0 rounded-full grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
@@ -292,7 +292,7 @@ export function RateCard({
                     e.stopPropagation();
                     open();
                   }}
-                  disabled={!sessionRunning}
+                  disabled={!canRecordData}
                   className="cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current tally is ${count}. Tap to edit.`}
                 >
@@ -398,7 +398,7 @@ export function RateCard({
                     e.stopPropagation();
                     open();
                   }}
-                  disabled={!sessionRunning}
+                  disabled={!canRecordData}
                   className="cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current tally is ${count}. Tap to edit.`}
                 >
@@ -411,14 +411,14 @@ export function RateCard({
             <ListActionButton
               icon={Minus}
               variant="neutral"
-              disabled={!sessionRunning || count === 0}
+              disabled={!canRecordData || count === 0}
               ariaLabel="Decrement"
               onClick={dec}
             />
             <ListActionButton
               icon={Plus}
               variant="blue-solid"
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               ariaLabel="Increment"
               onClick={inc}
             />
@@ -485,7 +485,7 @@ export function RateCard({
         <div className="px-5 pt-2 pb-4 flex items-center justify-between gap-3">
           <button
             onClick={dec}
-            disabled={!sessionRunning || count === 0}
+            disabled={!canRecordData || count === 0}
             aria-label="Decrement"
             className="btn-bevel size-12 shrink-0 aspect-square rounded-full grid place-items-center border border-border bg-white text-foreground/70 hover:bg-stone-50 active:scale-95 transition disabled:opacity-30"
           >
@@ -503,7 +503,7 @@ export function RateCard({
                 <button
                   type="button"
                   onClick={open}
-                  disabled={!sessionRunning}
+                  disabled={!canRecordData}
                   className="relative overflow-hidden rounded-lg px-2 py-0.5 cursor-text disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label={`Current tally is ${count}. Tap to edit.`}
                 >
@@ -575,7 +575,7 @@ export function RateCard({
                                 e.stopPropagation();
                                 openTime();
                               }}
-                              disabled={!sessionRunning}
+                              disabled={!canRecordData}
                               aria-label="Edit elapsed time"
                               className={cn(
                                 "inline-flex items-center border border-blue-500 bg-white pl-1.5 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums normal-case tracking-normal rounded-l-full cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
@@ -592,7 +592,7 @@ export function RateCard({
                             e.stopPropagation();
                             toggle();
                           }}
-                          disabled={!sessionRunning}
+                          disabled={!canRecordData}
                           aria-label={running ? "Pause timer" : "Resume timer"}
                           className="btn-bevel grid size-5 place-items-center rounded-r-full bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 transition-colors disabled:opacity-40"
                         >
@@ -612,7 +612,7 @@ export function RateCard({
 
           <motion.button
             onClick={inc}
-            disabled={!sessionRunning}
+            disabled={!canRecordData}
             whileTap={{ scale: 0.94 }}
             aria-label="Increment"
             className={cn(

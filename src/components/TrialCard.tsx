@@ -186,7 +186,7 @@ export function TrialCard({
     ? `${Math.round((correctCount / scoredForPercent) * 100)}%`
     : "Min not met";
 
-  const { markDirty, resetSignal, sessionRunning } = useCardSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
   useReportCardStatus(cardKey, completedCount > 0, isComplete, {
     title,
     kind: "trial",
@@ -374,7 +374,7 @@ export function TrialCard({
                 e.stopPropagation();
                 errorPress();
               }}
-              disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+              disabled={!canRecordData || (isMaxReached && trials[current] === null)}
               aria-label="Error"
               className={cn(
                 "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -393,7 +393,7 @@ export function TrialCard({
                   e.stopPropagation();
                   setResult("no-response");
                 }}
-                disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+                disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                 aria-label="No Response"
                 className={cn(
                   "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -412,7 +412,7 @@ export function TrialCard({
                 e.stopPropagation();
                 setResult("correct");
               }}
-              disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+              disabled={!canRecordData || (isMaxReached && trials[current] === null)}
               aria-label="Correct"
               className={cn(
                 "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -470,7 +470,7 @@ export function TrialCard({
   }
 
   if (listMode) {
-    const isDisabled = !sessionRunning || (isMaxReached && trials[current] === null);
+    const isDisabled = !canRecordData || (isMaxReached && trials[current] === null);
     return (
       <DataListRow
         title={title}
@@ -869,7 +869,7 @@ export function TrialCard({
                       levels={promptLevels}
                       selectedLevel={promptLevel[current] ?? null}
                       selected={trials[current] === "incorrect"}
-                      disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                       onPick={(level) => pickPromptLevel(current, level, true)}
                       topInset={stickyTop + toolbarHeight}
                     />
@@ -878,7 +878,7 @@ export function TrialCard({
                       variant="incorrect"
                       selected={trials[current] === "incorrect"}
                       onClick={() => setResult("incorrect")}
-                      disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                       dense={noResponse}
                     />
                   )}
@@ -887,7 +887,7 @@ export function TrialCard({
                       variant="no-response"
                       selected={trials[current] === "no-response"}
                       onClick={() => setResult("no-response")}
-                      disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                       dense
                     />
                   )}
@@ -895,7 +895,7 @@ export function TrialCard({
                     variant="correct"
                     selected={trials[current] === "correct"}
                     onClick={() => setResult("correct")}
-                    disabled={!sessionRunning || (isMaxReached && trials[current] === null)}
+                    disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                     dense={noResponse}
                   />
                 </motion.div>
@@ -927,7 +927,7 @@ export function TrialCard({
                         levels={promptLevels}
                         selectedLevel={promptLevel[i] ?? null}
                         selected={t === "incorrect"}
-                        disabled={!sessionRunning}
+                        disabled={!canRecordData}
                         onPick={(level) => pickPromptLevel(i, level, false)}
                         topInset={stickyTop + toolbarHeight}
                       />
@@ -935,7 +935,7 @@ export function TrialCard({
                       <button
                         type="button"
                         onClick={() => applyResult(i, "incorrect", false)}
-                        disabled={!sessionRunning}
+                        disabled={!canRecordData}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                           "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
@@ -950,7 +950,7 @@ export function TrialCard({
                       <button
                         type="button"
                         onClick={() => applyResult(i, "no-response", false)}
-                        disabled={!sessionRunning}
+                        disabled={!canRecordData}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                           "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
@@ -965,7 +965,7 @@ export function TrialCard({
                     <button
                       type="button"
                       onClick={() => applyResult(i, "correct", false)}
-                      disabled={!sessionRunning}
+                      disabled={!canRecordData}
                       className={cn(
                         "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
                         "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",

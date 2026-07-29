@@ -75,7 +75,7 @@ export function DurationCard({
   const [expanded, setExpanded] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
   const { sessionRunning, getElapsedMsNow, subscribeTick } = useSession();
-  const { markDirty, resetSignal, hasElapsedTime } = useCardSession();
+  const { markDirty, resetSignal, hasElapsedTime, canRecordData } = useCardSession();
   useRegisterActiveTimer({
     id: `duration:${title}`,
     label: title,
@@ -412,7 +412,7 @@ export function DurationCard({
                             e.stopPropagation();
                             open();
                           }}
-                          disabled={!sessionRunning}
+                          disabled={!canRecordData}
                           aria-label={`Edit time for instance ${i + 1}`}
                           className={cn(
                             // Reserves room up front for one more digit than
@@ -437,7 +437,7 @@ export function DurationCard({
                         e.stopPropagation();
                         toggleInstance(i);
                       }}
-                      disabled={!sessionRunning}
+                      disabled={!canRecordData}
                       aria-label={running ? "Pause this instance" : "Start this instance"}
                       className={cn(
                         "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
@@ -564,7 +564,7 @@ export function DurationCard({
                       e.stopPropagation();
                       open();
                     }}
-                    disabled={!sessionRunning}
+                    disabled={!canRecordData}
                     aria-label={`Edit time for instance ${viewIdx + 1}`}
                     className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem] cursor-text disabled:cursor-not-allowed"
                   >
@@ -578,7 +578,7 @@ export function DurationCard({
                   e.stopPropagation();
                   togglePause();
                 }}
-                disabled={!sessionRunning}
+                disabled={!canRecordData}
                 aria-label={running_ ? "Pause this instance" : "Start this instance"}
                 className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
               >
@@ -697,7 +697,7 @@ export function DurationCard({
                           e.stopPropagation();
                           open();
                         }}
-                        disabled={!sessionRunning}
+                        disabled={!canRecordData}
                         aria-label={`Edit time for instance ${i + 1}`}
                         className={cn(
                           "flex-1 text-left tabular-nums text-sm rounded-md transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
@@ -711,7 +711,7 @@ export function DurationCard({
                   <button
                     type="button"
                     onClick={() => toggleInstance(i)}
-                    disabled={!sessionRunning}
+                    disabled={!canRecordData}
                     aria-label={isRunning ? "Pause this instance" : "Start this instance"}
                     className={cn(
                       "btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40",
@@ -794,7 +794,7 @@ export function DurationCard({
                           ms={instanceMs(i)}
                           running={centerRunning}
                           activated={activated}
-                          disabled={!sessionRunning}
+                          disabled={!canRecordData}
                           onToggle={togglePause}
                           onEditTime={(ms) => setInstanceMs(i, ms)}
                           pulseStyle={pulseStyle}

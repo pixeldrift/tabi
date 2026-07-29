@@ -154,6 +154,26 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
   );
 }
 
+/** Same profile card `PersonPill` opens on tap, but externally controlled —
+ *  for a caller that already has its own trigger element (e.g. StatusBar's
+ *  header presence icon, which needs a plain icon button, not another
+ *  name-labeled pill) and just needs "open this person's profile" as an
+ *  action. Renders nothing if `name` isn't a real staff record (an actual
+ *  client, say) — there's no profile to show. */
+export function StaffProfileByName({
+  name,
+  open,
+  onOpenChange,
+}: {
+  name: string;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const staff = STAFF_DIRECTORY[name];
+  if (!staff) return null;
+  return <StaffProfileDialog staff={staff} open={open} onOpenChange={onOpenChange} />;
+}
+
 function StaffProfileDialog({
   staff,
   open,

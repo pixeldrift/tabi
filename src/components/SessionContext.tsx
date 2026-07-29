@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,7 +14,23 @@ import { playSoundEffect } from "@/lib/soundEffects";
 
 export type SessionStatus = "idle" | "running" | "paused";
 export type SaveStatus = "clean" | "dirty" | "saving";
-export type TransitionKind = "start-new" | "start-previous" | "resume" | "discard" | null;
+export type TransitionKind = "start-new" | "resume" | "discard" | null;
+
+// The staff member "at this device" — there's no real auth in this
+// prototype, so this is hardcoded rather than picked at runtime. Every
+// place that reads it does so through this one constant (never a literal
+// string), so wiring up real sign-in later is a one-line change here, not
+// a hunt through every consumer.
+export const CURRENT_STAFF_NAME = "Perry Plat";
+// A plausible "someone else" for the random session-state simulator below
+// to attribute a session to — real RBTs already in STAFF_DIRECTORY
+// (StaffDirectory.tsx), so a simulated co-worker's name still opens a real
+// staff profile card when tapped.
+const OTHER_STAFF_NAMES = ["Isabella Garcia-Shapiro", "Baljeet Tjinder"];
+
+// A running session with no one present for at least this long is
+// considered abandoned — see isAbandoned's own comment.
+export const ABANDONMENT_THRESHOLD_MS = 30 * 60 * 1000;
 
 // Shared 3-stage session-transition timing (ms) — CARD_EXIT_MS is stage 1's
 // dwell (below), which also drives the header's own dimming (StatusBar).
@@ -89,11 +106,53 @@ interface SessionContextValue {
   // already tracks the real, continuous motion without it.
   headerReflowActive: boolean;
   requestStartNew: () => void;
-  requestContinuePrevious: (initialMs: number) => void;
   requestResume: () => void;
   requestDiscard: () => void;
   // shared tick (so all timers stay in unison with the session timer)
   sessionRunning: boolean;
+  // Who started (or, once paused, was last running) the current/most
+  // recent non-idle session — null only while genuinely idle with no
+  // session to attribute. Session ownership doesn't change on pause/resume,
+  // only on a fresh start or on ending — see isSessionMine.
+  startedByName: string | null;
+  // Who ended & submitted the previous session — shown in the idle box's
+  // "Previous Session" line. Whoever performs End & Submit gets credited
+  // here regardless of who originally started it (see endAndSubmit).
+  lastEndedByName: string | null;
+  // Who's currently "in" the running session — starts as just whoever
+  // started it; joinSession() adds CURRENT_STAFF_NAME. Empty once nobody
+  // (including the starter) is actively present — see isAbandoned.
+  presentStaffNames: string[];
+  // Derived: true if there's no session to speak of, or CURRENT_STAFF_NAME
+  // is the one who started it. False means someone else's session is
+  // running/paused and hasn't been joined yet — this is what keeps the
+  // session box expanded (not auto-collapsed into the toolbar's mini pill)
+  // and swaps the pill's Play icon for a Join one, see StatusBar.
+  isSessionMine: boolean;
+  // Adds CURRENT_STAFF_NAME to presentStaffNames without going through the
+  // staged start/resume machinery — joining doesn't touch the timer or
+  // hand off ownership, it just means another set of eyes (and hands) is
+  // now on the same session. Safe to call repeatedly.
+  joinSession: () => void;
+  // An explicit, intentional unlock (see its own toggle in StatusBar) that
+  // lets cards accept edits while genuinely paused, without starting the
+  // timer or affecting rate data — off by default so a parked session
+  // can't be edited by accident. Always resets to false on resume/end/
+  // discard; never carries into the next paused instance.
+  reviewModeUnlocked: boolean;
+  setReviewModeUnlocked: (v: boolean) => void;
+  // True once a running session has had no one present (see
+  // presentStaffNames) for ABANDONMENT_THRESHOLD_MS — see its own effect
+  // for the reminder notification this drives (pushed by a trigger
+  // component mounted inside NotificationProvider, not here — this
+  // provider sits ABOVE that context and can't call its own push).
+  isAbandoned: boolean;
+  // The demo-only "Previous Session" record shown while idle — randomized
+  // once per page load (see the random-state effect below) rather than
+  // living as StatusBar's own local state, so the simulator can set it
+  // together with lastEndedByName as one coherent scenario.
+  previousSessionMs: number;
+  previousSessionEndedAt: Date | null;
   subscribeTick: (cb: (deltaMs: number) => void) => () => void;
   /** Precise elapsed time right now, not the last-tick snapshot (which is up
    * to 250ms stale) — for one-time phase calculations like syncing a new
@@ -131,12 +190,20 @@ export function useSession() {
 interface CardSessionValue {
   markDirty: () => void;
   resetSignal: number;
-  // Cards gate their own recording controls on this (disabled while idle or
-  // paused) — split off from the main context same as markDirty/resetSignal
-  // above: it only flips on start/pause/resume/discard, not every tick, so
-  // reading it here doesn't cost cards the render-storm subscribing to the
-  // full context (with its every-250ms elapsedMs) would.
+  // The literal "is the timer running" state — split off from the main
+  // context same as markDirty/resetSignal above: it only flips on start/
+  // pause/resume/discard, not every tick, so reading it here doesn't cost
+  // cards the render-storm subscribing to the full context (with its
+  // every-250ms elapsedMs) would.
   sessionRunning: boolean;
+  // What cards actually gate their own recording controls on (disabled
+  // while this is false) — sessionRunning OR an intentional Review Mode
+  // unlock while paused (see reviewModeUnlocked's own comment on the main
+  // context). Deliberately a separate field from sessionRunning above:
+  // Review Mode must unlock editing without ALSO waking up any card's own
+  // tick-driven timer logic, which reads the real sessionRunning straight
+  // from the main context instead (RateCard/DurationCard/TimestampCard).
+  canRecordData: boolean;
   // Flips true the moment the session has actually accrued any real time
   // (or was continued from a previous session that already had some) and
   // stays true until the next fresh start — a stable boolean, not a ticking
@@ -164,6 +231,53 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [hasElapsedTime, setHasElapsedTime] = useState(false);
   const startRef = useRef<number | null>(null);
   const baseRef = useRef(0);
+
+  const [startedByName, setStartedByName] = useState<string | null>(null);
+  const [lastEndedByName, setLastEndedByName] = useState<string | null>(null);
+  const [presentStaffNames, setPresentStaffNames] = useState<string[]>([]);
+  const [reviewModeUnlocked, setReviewModeUnlocked] = useState(false);
+  // Whether YOU'RE actively part of the session right now — not "did I
+  // start it." Basing this on presence (not on startedByName) is what
+  // makes joinSession() below actually collapse the box into the compact
+  // toolbar pill: startedByName never changes on a join (the original
+  // starter still gets credited as having started it), so if this checked
+  // that instead, a joined session would stay in the big, expanded box
+  // forever even though you're now actively driving it.
+  const isSessionMine = startedByName === null || presentStaffNames.includes(CURRENT_STAFF_NAME);
+  const joinSession = useCallback(() => {
+    setPresentStaffNames((names) =>
+      names.includes(CURRENT_STAFF_NAME) ? names : [...names, CURRENT_STAFF_NAME],
+    );
+    setLastActivityAt(Date.now());
+  }, []);
+
+  // Any real sign someone's actively working the session — used to detect
+  // abandonment (see isAbandoned below). Bumped on start/resume and on
+  // markDirty (a card recording something), not on the 250ms tick itself,
+  // which would make every running session look permanently "active"
+  // regardless of whether anyone's actually there.
+  const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
+  const [isAbandoned, setIsAbandoned] = useState(false);
+  useEffect(() => {
+    if (status !== "running" || presentStaffNames.length > 0) {
+      setIsAbandoned(false);
+      return;
+    }
+    const remaining = lastActivityAt + ABANDONMENT_THRESHOLD_MS - Date.now();
+    if (remaining <= 0) {
+      setIsAbandoned(true);
+      return;
+    }
+    const id = window.setTimeout(() => setIsAbandoned(true), remaining);
+    return () => window.clearTimeout(id);
+  }, [status, presentStaffNames, lastActivityAt]);
+
+  // Demo-only "Previous Session" record shown while idle — see its own
+  // comment on the context interface. Randomized by the scenario effect
+  // further down, alongside a matching lastEndedByName, rather than living
+  // as StatusBar's own local state.
+  const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
+  const [previousSessionEndedAt, setPreviousSessionEndedAt] = useState<Date | null>(null);
 
   // Shared tick driver — when the session is running, a single interval
   // updates the session's elapsed AND notifies all subscribed timers with
@@ -207,6 +321,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const markDirty = useCallback(() => {
     setSaveStatus((s) => (s === "saving" ? s : "dirty"));
+    setLastActivityAt(Date.now());
   }, []);
 
   const performSave = useCallback(() => {
@@ -226,29 +341,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, [performSave]);
 
-  const start = useCallback((initialMs = 0) => {
-    baseRef.current = initialMs;
-    setElapsedMs(initialMs);
-    setStatus("running");
-    // A brand-new session hasn't accrued anything yet (the tick effect
-    // above flips this once it actually does); continuing a previous one
-    // with real initialMs already has, before its own first tick lands.
-    setHasElapsedTime(initialMs > 0);
-    const now = new Date();
-    setLastUpdated(now);
-    // Starting a session resets the saved baseline — no unsaved data yet.
-    setLastSavedAt(now);
-    setSaveStatus("clean");
-  }, []);
-
   // Bumped whenever a brand-new (empty) session is started, so every card
   // can subscribe and reset its local state.
   const [resetSignal, setResetSignal] = useState(0);
   const startFresh = useCallback(() => {
     setResetSignal((n) => n + 1);
-    start(0);
+    baseRef.current = 0;
+    setElapsedMs(0);
+    setStatus("running");
+    setHasElapsedTime(false);
+    const now = new Date();
+    setLastUpdated(now);
+    // Starting a session resets the saved baseline — no unsaved data yet.
+    setLastSavedAt(now);
+    setSaveStatus("clean");
+    setStartedByName(CURRENT_STAFF_NAME);
+    setPresentStaffNames([CURRENT_STAFF_NAME]);
+    setLastActivityAt(Date.now());
     playSoundEffect("sessionStart");
-  }, [start]);
+  }, []);
 
   const pause = useCallback(() => {
     baseRef.current = elapsedMs;
@@ -259,19 +370,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const resume = useCallback(() => {
     setStatus("running");
     setLastUpdated(new Date());
+    setLastActivityAt(Date.now());
     playSoundEffect("sessionResume");
   }, []);
+  // Whoever actually performs End & Submit gets credited as having ended
+  // the session, regardless of who started it (state 4's "submitting the
+  // data would show it as being collected by that individual") — this is
+  // also how a joined/reclaimed abandoned session's data ends up correctly
+  // attributed to whoever actually finished it, not whoever walked away.
   const endAndSubmit = useCallback(() => {
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
     setLastUpdated(new Date());
+    setLastEndedByName(CURRENT_STAFF_NAME);
+    setStartedByName(null);
+    setPresentStaffNames([]);
+    setReviewModeUnlocked(false);
     playSoundEffect("submit");
   }, []);
   const clearAndDiscard = useCallback(() => {
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
+    setStartedByName(null);
+    setPresentStaffNames([]);
+    setReviewModeUnlocked(false);
     playSoundEffect("sessionDiscard");
   }, []);
 
@@ -327,14 +451,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => runStagedTransition("start-new", startFresh),
     [runStagedTransition, startFresh],
   );
-  const requestContinuePrevious = useCallback(
-    (initialMs: number) =>
-      runStagedTransition("start-previous", () => {
-        start(initialMs);
-        playSoundEffect("sessionResume");
-      }),
-    [runStagedTransition, start],
-  );
   const requestResume = useCallback(
     () => runStagedTransition("resume", resume),
     [runStagedTransition, resume],
@@ -345,6 +461,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const isRunning = status === "running";
+  // Shared by `collapsed` and the pill-travel effect below — both need to
+  // treat "running but not yet joined" the same way (box stays expanded,
+  // pill doesn't travel into the toolbar) and both need to react the
+  // instant joinSession() flips isSessionMine true too, not just when
+  // isRunning itself changes.
+  const isMineAndRunning = isRunning && isSessionMine;
 
   // The session box's own render target: collapsed into the mini pill slot
   // once genuinely running, or once a staged transition's real commit has
@@ -354,7 +476,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // box's own real height `animate()`, the tab nav, and the content pane
   // all read the exact same value on the exact same render, with nothing
   // to mirror or fall a tick behind.
-  const collapsed = isRunning || (transitionStage === 2 && transitionKind !== "discard");
+  //
+  // `isMineAndRunning`, not plain `isRunning` — a running session that
+  // isn't yours yet (someone else's, not joined) stays in the big,
+  // expanded box instead of auto-collapsing into the toolbar's compact
+  // pill: "we should see the large timer already counting" so there's
+  // something concrete to look at (who started it, how long it's been
+  // running) before deciding to join, rather than a session you haven't
+  // touched yet quietly taking over the toolbar. The transitionStage===2
+  // branch doesn't need its own check — every staged transition is
+  // something the current device just did, so it's already "mine" by the
+  // time it commits.
+  const collapsed = isMineAndRunning || (transitionStage === 2 && transitionKind !== "discard");
 
   // Delays `collapsed`'s effect on the box's own real CSS height into a
   // separate beat ("clock moves, then box closes" — see StatusBar's own
@@ -385,13 +518,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [collapsed]);
 
   // True while the mini-session pill is actually traveling between its big
-  // and mini positions — starts the instant `isRunning` flips (after the
-  // same DIGIT_SETTLE_MS head start as the box's own collapse, for a fresh
-  // start), lasts exactly PILL_TRAVEL_MS. Purely timed rather than tied to
-  // the travel overlay's own animation-complete callback, so StatusBar's
-  // visual travel and every consumer's layout suppression read the same
-  // clock instead of two that could drift apart.
-  const prevIsRunningForPillRef = useRef(isRunning);
+  // and mini positions — starts the instant `isMineAndRunning` flips (after
+  // the same DIGIT_SETTLE_MS head start as the box's own collapse, for a
+  // fresh start), lasts exactly PILL_TRAVEL_MS. Purely timed rather than
+  // tied to the travel overlay's own animation-complete callback, so
+  // StatusBar's visual travel and every consumer's layout suppression read
+  // the same clock instead of two that could drift apart. Driven by
+  // `isMineAndRunning` (not plain `isRunning`) for the same reason
+  // `collapsed` is above — joining someone else's already-running session
+  // triggers this travel too, since that's the point it actually collapses.
+  const prevIsMineAndRunningForPillRef = useRef(isMineAndRunning);
   // Captured once via a ref (not read from `transitionKind` in the
   // dependency array below) so SessionContext's own later reset of
   // transitionKind can't cancel an in-progress travel — same reasoning as
@@ -406,10 +542,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const pillTransitionKindRef = useRef<TransitionKind>(null);
   const [pillTraveling, setPillTraveling] = useState(false);
   useEffect(() => {
-    if (isRunning === prevIsRunningForPillRef.current) return;
-    prevIsRunningForPillRef.current = isRunning;
+    if (isMineAndRunning === prevIsMineAndRunningForPillRef.current) return;
+    prevIsMineAndRunningForPillRef.current = isMineAndRunning;
     pillTransitionKindRef.current = transitionKind;
-    const startingFresh = isRunning && pillTransitionKindRef.current === "start-new";
+    const startingFresh = isMineAndRunning && pillTransitionKindRef.current === "start-new";
     let travelTimeoutId: number | undefined;
     const beginTravel = () => {
       setPillTraveling(true);
@@ -427,7 +563,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning]);
+  }, [isMineAndRunning]);
 
   // True for exactly as long as the box's own real CSS height `animate()`
   // is mid-transition (collapsing into the mini pill slot, or expanding
@@ -469,7 +605,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   //   - `boxHeightAnimating`: the box's own real transition itself.
   //   - `pillTraveling`: the mini-session slot's own real height animation
   //     growing/shrinking directly inside the tab nav, on a separate clock
-  //     from the box (driven by `isRunning`, not by `collapsed`/
+  //     from the box (driven by `isMineAndRunning`, not by `collapsed`/
   //     `boxCollapsed`'s own timing).
   // Covers a plain, unstaged `pause()` click too — that never touches
   // transitionStage/transitionKind at all, so an approximation gated on
@@ -496,6 +632,76 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [saveStatus, performSave]);
 
   const sessionRunning = isRunning;
+  // Not just `sessionRunning` — browsing a running session before joining it
+  // (state 2's "or just scroll down and browse the data without modifying
+  // anything") is read-only until it's actually yours. `sessionRunning`
+  // itself stays keyed on the real timer regardless of whose session it is
+  // (cards' own ticking logic reads that one directly), so this needs its
+  // own, stricter check rather than reusing it.
+  const canRecordData = isMineAndRunning || reviewModeUnlocked;
+
+  // Picks one of the 4 session states this app is designed around (see
+  // README's own writeup) to start in, once per page load: no real backend
+  // to persist an actual session across a reload, so this stands in for
+  // "whatever state the clinic's shared session happens to be in when you
+  // open the app" — landing on the SAME idle/zero state every single time
+  // would only ever demo state 1. A plain client-only mount effect (like
+  // the old previousSessionMs randomizer this absorbed) would still flash
+  // idle for a frame before hydration catches up; useLayoutEffect instead
+  // commits before the browser paints, so states 2-4 render already
+  // settled — no visible snap from idle into a mid-session view.
+  useLayoutEffect(() => {
+    const scenario = Math.floor(Math.random() * 4);
+    const otherStaff = OTHER_STAFF_NAMES[Math.floor(Math.random() * OTHER_STAFF_NAMES.length)];
+    const randomPastMs = () => Math.floor((1 + Math.random() * 4) * 3600 * 1000); // 1-5hr, same as before
+
+    if (scenario === 0) {
+      // State 1: idle, showing the previous (already ended & submitted)
+      // session's record — same random-previous-session behavior this
+      // absorbed from StatusBar, plus who ended it.
+      const minMs = 60 * 1000;
+      const maxMs = 3 * 24 * 3600 * 1000;
+      setPreviousSessionMs(randomPastMs());
+      setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
+      setLastEndedByName(Math.random() < 0.5 ? CURRENT_STAFF_NAME : otherStaff);
+      return;
+    }
+
+    const elapsed = randomPastMs();
+    baseRef.current = elapsed;
+    setElapsedMs(elapsed);
+    setHasElapsedTime(true);
+    setLastActivityAt(Date.now());
+    // Backdated to when this (simulated) session would have actually
+    // started — StatusBar's attribution line reads this as "X ago" next to
+    // who started it, so leaving it null would silently drop that whole
+    // line for every seeded running/paused scenario.
+    setLastUpdated(new Date(Date.now() - elapsed));
+
+    if (scenario === 1) {
+      // State 2: running, started by someone else, who's still present —
+      // joinable, browsable without joining.
+      setStatus("running");
+      setStartedByName(otherStaff);
+      setPresentStaffNames([otherStaff]);
+    } else if (scenario === 2) {
+      // State 3: paused — parked, could be your own or someone else's.
+      setStatus("paused");
+      setStartedByName(Math.random() < 0.5 ? CURRENT_STAFF_NAME : otherStaff);
+    } else {
+      // State 4: running, abandoned — started by someone else, nobody
+      // present. Backdating lastActivityAt past the threshold means
+      // isAbandoned's own effect (above) fires almost immediately instead
+      // of requiring an actual 30-minute wait to see it in a demo.
+      setStatus("running");
+      setStartedByName(otherStaff);
+      setPresentStaffNames([]);
+      setLastActivityAt(Date.now() - ABANDONMENT_THRESHOLD_MS - 5 * 60 * 1000);
+    }
+    // Intentionally once-only: seeds the initial demo scenario, not a
+    // real reactive effect — every setter above is stable, and nothing in
+    // here should ever re-run off its own writes.
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -511,10 +717,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       pillTraveling,
       headerReflowActive,
       requestStartNew,
-      requestContinuePrevious,
       requestResume,
       requestDiscard,
       sessionRunning,
+      startedByName,
+      lastEndedByName,
+      presentStaffNames,
+      isSessionMine,
+      joinSession,
+      reviewModeUnlocked,
+      setReviewModeUnlocked,
+      isAbandoned,
+      previousSessionMs,
+      previousSessionEndedAt,
       subscribeTick,
       getElapsedMsNow,
       activeTimers,
@@ -539,10 +754,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       pillTraveling,
       headerReflowActive,
       requestStartNew,
-      requestContinuePrevious,
       requestResume,
       requestDiscard,
       sessionRunning,
+      startedByName,
+      lastEndedByName,
+      presentStaffNames,
+      isSessionMine,
+      joinSession,
+      reviewModeUnlocked,
+      isAbandoned,
+      previousSessionMs,
+      previousSessionEndedAt,
       subscribeTick,
       getElapsedMsNow,
       activeTimers,
@@ -557,8 +780,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const cardValue = useMemo(
-    () => ({ markDirty, resetSignal, sessionRunning, hasElapsedTime }),
-    [markDirty, resetSignal, sessionRunning, hasElapsedTime],
+    () => ({ markDirty, resetSignal, sessionRunning, canRecordData, hasElapsedTime }),
+    [markDirty, resetSignal, sessionRunning, canRecordData, hasElapsedTime],
   );
 
   return (

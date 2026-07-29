@@ -186,7 +186,7 @@ export function TimestampCard({
   const [elapsed, setElapsed] = useCardState(cardKey, "elapsed", 0); // ms
   const [expanded, setExpanded] = useState(false);
   const { sessionRunning, subscribeTick } = useSession();
-  const { markDirty, resetSignal } = useCardSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
 
   const intervalMs = intervalMin * 60 * 1000;
   // With no fixed intervalCount, the card is open-ended: show at least
@@ -401,7 +401,7 @@ export function TimestampCard({
             e.stopPropagation();
             open();
           }}
-          disabled={!sessionRunning}
+          disabled={!canRecordData}
           aria-label="Edit elapsed time (testing)"
           className="inline-flex items-center shrink-0 rounded-full border border-blue-500 bg-white pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-foreground cursor-text hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -486,7 +486,7 @@ export function TimestampCard({
                 e.stopPropagation();
                 scoreFromCard(viewIdx, "incorrect");
               }}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               aria-label={negativeLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -504,7 +504,7 @@ export function TimestampCard({
                 e.stopPropagation();
                 scoreFromCard(viewIdx, "correct");
               }}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               aria-label={positiveLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -587,7 +587,7 @@ export function TimestampCard({
               icon={X}
               variant="red"
               selected={viewStatus === "incorrect"}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               ariaLabel={negativeLabel}
               onClick={() => scoreFromCard(viewIdx, "incorrect")}
             />
@@ -595,7 +595,7 @@ export function TimestampCard({
               icon={Check}
               variant="green"
               selected={viewStatus === "correct"}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               ariaLabel={positiveLabel}
               onClick={() => scoreFromCard(viewIdx, "correct")}
             />
@@ -641,7 +641,7 @@ export function TimestampCard({
             statuses={statuses}
             viewIdx={viewIdx}
             elapsedMs={elapsed}
-            sessionRunning={sessionRunning}
+            canRecordData={canRecordData}
             positiveLabel={positiveLabel}
             negativeLabel={negativeLabel}
             onScore={scoreFromCard}
@@ -680,14 +680,14 @@ export function TimestampCard({
               variant="negative"
               label={negativeLabel}
               selected={viewStatus === "incorrect"}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               onClick={() => scoreFromCard(viewIdx, "incorrect")}
             />
             <ScoreButton
               variant="positive"
               label={positiveLabel}
               selected={viewStatus === "correct"}
-              disabled={!sessionRunning}
+              disabled={!canRecordData}
               onClick={() => scoreFromCard(viewIdx, "correct")}
             />
           </div>
@@ -969,7 +969,7 @@ function TimestampExpandedView({
   statuses,
   viewIdx,
   elapsedMs,
-  sessionRunning,
+  canRecordData,
   positiveLabel,
   negativeLabel,
   onScore,
@@ -981,7 +981,7 @@ function TimestampExpandedView({
   statuses: IntervalStatus[];
   viewIdx: number;
   elapsedMs: number;
-  sessionRunning: boolean;
+  canRecordData: boolean;
   positiveLabel: string;
   negativeLabel: string;
   onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
@@ -1132,14 +1132,14 @@ function TimestampExpandedView({
                       variant="negative"
                       label={negativeLabel}
                       selected={status === "incorrect"}
-                      disabled={!sessionRunning}
+                      disabled={!canRecordData}
                       onClick={() => onScore(i, "incorrect")}
                     />
                     <RowScoreButton
                       variant="positive"
                       label={positiveLabel}
                       selected={status === "correct"}
-                      disabled={!sessionRunning}
+                      disabled={!canRecordData}
                       onClick={() => onScore(i, "correct")}
                     />
                   </div>

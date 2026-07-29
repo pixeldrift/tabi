@@ -125,41 +125,59 @@ and scheduling items below all need to respect that split.
       the main features and interactions, standing in for separate training
       or external documentation. Appears on first use, with a Settings
       toggle to turn the tour/hints on or off afterward
-- [ ] Data Revision mode: edit/update session data while the session timer
-      isn't running (paused, not yet submitted) — e.g. adding tallies
-      without skewing rate data by leaving the timer running
-- [ ] **Session lifecycle & handoff model** — RBT priority: this is the core
-      mobile, in-session workflow (vs. curriculum/admin tooling, which is
-      laptop-side and less time-pressured), so it should be sequenced ahead
-      of BCBA-facing features like goal creation
-  - Pause vs. Stop/Submit are different things and the UI should say so:
-    **Pause** stops the timer but leaves the session live and claimed —
-    data stays editable, nothing is finalized, anyone authorized can resume
-    it. **Stop/Submit** is the only terminal action; it locks the data and
-    requires an explicit "submitted by" attribution (a compliance record,
-    not just a UI state)
-  - **Presence model**: a session has one "driver" at a time (whoever's
-    actively timing/scoring). Any other authorized RBT can join as an
-    **observer** — read-only, sees live data as it's entered — without
-    taking over
-  - **Handoff is a courtesy, never a lock.** A session must never require
-    the current/previous driver's permission, presence, or an
-    administrator to unlock it — a session can always be picked up by any
-    other authorized RBT, no waiting. "Requesting" a handoff (if the
-    current driver is reachable) just makes the transition legible to
-    both people; if they're not reachable, anyone can simply become the
-    new driver outright. The data doesn't care who's driving — this is
-    purely to keep the mental model clear for staff, not a permission gate
-  - **Visibility**: surface who's currently driving, who's observing, and
-    who last handed the session off — a running custody record, useful
-    context for a handoff, never a requirement to unlock one
-  - **Open-sessions dashboard** (later): a view listing all currently
-    open/running sessions across clients, so anyone can see what's active
-    and jump in — the discoverability half of "never locked out"
-  - Clarify what "ending a shift" means vs. the client's own schedule, and
-    when to pause/park a session vs. end it outright
-  - No auth/multi-user model exists in the app today — this needs one
-    built underneath it, not bolted on after
+- [x] **Session lifecycle & handoff model** — modeled explicitly as four
+      states now, simulated client-side (single hardcoded current user, no
+      real auth/backend yet) but built so real auth can be wired in later
+      without changing the state model itself. On page load, the app
+      randomly seeds into one of the four for demo purposes:
+  1. **Idle** — no session running; shows the last submitted session's
+     length, timing, and who ended/submitted it. There's deliberately no
+     "resume"/"restart previous session" action, since that's just
+     starting a new one — the only action here is **Start New Session**.
+     (The one legitimate reason to stitch a session back onto its
+     predecessor — ending & submitting by accident instead of pausing —
+     is the admin-side "merge sessions" feature below, not a resume
+     action here.)
+  2. **Running** — shows who started it and how long it's been going. If
+     it's already running when the app loads, the big timer is already
+     counting. Anyone else can **join** (a join icon replaces Play) to take
+     it over, or just scroll and browse the live data without touching
+     anything — no request/approve round-trip, joining the session over
+     the handoff, full stop. Once someone besides you is in it, a presence
+     icon appears in the header (room permitting); tapping it opens their
+     staff profile directly, or a pick-list if more than one other person
+     is present.
+  3. **Paused** — parked: timer suspended, data not yet submitted, rate
+     data unaffected. From here: **Resume**, **End & Submit Data**, or
+     **End & Discard Session**. Editing data while paused (fixing a
+     miscount, adding something forgotten) requires deliberately unlocking
+     **Review Mode** first, so nothing on a parked session changes by
+     accident — it's opt-in rather than the default the moment a session
+     pauses.
+  4. **Abandoned** — running, but nobody's currently in it. Shown today as
+     a distinct "Session Unattended" label plus an in-app notification; a
+     real half-hour/hour text-or-email nudge to the last driver is
+     backlogged below. Any other staff member can join and pause/end it;
+     submitting the data credits whoever actually submits it, not
+     necessarily who originally started the session.
+  - **Handoff is a courtesy, never a lock** — joining a running session
+    never requires the current driver's permission or presence, per the
+    above
+  - No auth/multi-user model exists yet — this prototype hardcodes a
+    single current user and simulates the others; swapping in real
+    auth/backend later shouldn't require changing this state model
+- [ ] **Admin: merge sessions** — for the rare case a session gets ended &
+      submitted by accident instead of paused. Lets an admin combine two
+      separately submitted sessions into one contiguous session for
+      rate-data purposes (recalculating rates as if the gap between them
+      never happened), rather than exposing any "un-submit"/reopen action
+      on the RBT side
+- [ ] Real half-hour/hour reminder for an abandoned session — push
+      notification if the last driver has the app open, otherwise a text
+      or email — today the abandoned state only shows in-app
+- [ ] **Open-sessions dashboard** — a view listing all currently
+      open/running sessions across clients, so anyone can see what's
+      active and jump in
 - [ ] Full calendar/scheduling integration, not just clinical appointments —
       surface handoffs ("Transfer session to [person]"), make it clear who's
       recording data vs. who's submitting it, and let a tech see their
@@ -198,4 +216,4 @@ and scheduling items below all need to respect that split.
       handling yet, so every submission behaves the same regardless of who's
       submitting it.
 
-_Roadmap last updated: 2026-07-28_
+_Roadmap last updated: 2026-07-29_

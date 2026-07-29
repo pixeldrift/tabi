@@ -88,7 +88,7 @@ export function RatingCard({
   const cardKey = id ?? title;
   const [rating, setRating] = useCardState(cardKey, "rating", 0);
   const [expanded, setExpanded] = useState(false);
-  const { markDirty, resetSignal, sessionRunning } = useCardSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
   useReportCardStatus(cardKey, rating > 0, rating > 0, {
     title,
     kind: "rating",
@@ -172,7 +172,7 @@ export function RatingCard({
                   e.stopPropagation();
                   pick(value);
                 }}
-                disabled={!sessionRunning}
+                disabled={!canRecordData}
                 whileTap={{ scale: 0.88 }}
                 animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
                 transition={{ duration: 0.3 }}
@@ -252,7 +252,7 @@ export function RatingCard({
             rating={rating}
             numStars={numStars}
             min={min}
-            disabled={!sessionRunning}
+            disabled={!canRecordData}
             onPick={pick}
           />
         }
@@ -329,7 +329,7 @@ export function RatingCard({
                   maxSize={ROW_STAR_SIZE}
                   filled={filled}
                   isTop={isTop}
-                  disabled={!sessionRunning}
+                  disabled={!canRecordData}
                   onClick={() => pick(value)}
                 />
                 <span
@@ -362,7 +362,7 @@ export function RatingCard({
                 maxSize={maxSize}
                 filled={filled}
                 isTop={isTop}
-                disabled={!sessionRunning}
+                disabled={!canRecordData}
                 onClick={() => pick(value)}
               />
             );
