@@ -706,6 +706,9 @@ function SessionActivityTrigger() {
         // like a schedule reminder does, rather than sitting there until
         // dismissed the way the abandonment alert below deliberately does.
         autofadeMs: notificationDurationMs,
+        // ...and once it's gone, it's gone — not something worth digging
+        // back up in the Notifications tab's own persistent history later.
+        excludeFromHistory: true,
       });
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;

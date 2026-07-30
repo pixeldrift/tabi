@@ -72,6 +72,13 @@ export interface Notification {
     onScore: (value: "correct" | "incorrect") => void;
     onScrollToCard: () => void;
   };
+  // For a notification that's only ever meant to be a fleeting toast (e.g.
+  // "you joined X's session") — still shows live/counts toward the tab
+  // badge like any other, but NotificationsPane's own persistent history
+  // list (which otherwise keeps every notification forever, live or
+  // archived, by design) leaves it out rather than cluttering that log with
+  // a confirmation nobody needs to look back on later.
+  excludeFromHistory?: boolean;
 }
 
 interface PushInput {
@@ -89,6 +96,7 @@ interface PushInput {
   activityAt?: number;
   soundOverride?: AlarmSoundStyle;
   timestampCheck?: Notification["timestampCheck"];
+  excludeFromHistory?: boolean;
 }
 
 interface NotificationContextValue {
@@ -139,10 +147,10 @@ export type NotificationCategory = "alarms" | "program-changes" | "messages" | "
 
 export const NOTIFICATION_CATEGORIES: { category: NotificationCategory; label: string }[] = [
   { category: "alarms", label: "Alarms" },
+  { category: "schedule", label: "Schedule" },
   { category: "program-changes", label: "Program" },
   { category: "messages", label: "Messages" },
   { category: "edits", label: "Edits" },
-  { category: "schedule", label: "Schedule" },
 ];
 
 export function categoryForKind(kind: NotificationKind): NotificationCategory {
@@ -401,6 +409,7 @@ export function NotificationProvider({
         activityAt: input.activityAt,
         soundOverride: input.soundOverride,
         timestampCheck: input.timestampCheck,
+        excludeFromHistory: input.excludeFromHistory,
         state: "live",
       };
       if (dedupeKey) dedupeRef.current.set(dedupeKey, id);

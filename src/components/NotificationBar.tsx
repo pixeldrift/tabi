@@ -741,7 +741,9 @@ export function NotificationsPane() {
   const filterSentinelRef = useRef<HTMLDivElement>(null);
   const stickyCompact = useStickyCompact(filterSentinelRef, stickyTop);
 
-  const allOrdered = [...notifications].sort((a, b) => b.createdAt - a.createdAt);
+  const allOrdered = notifications
+    .filter((n) => !n.excludeFromHistory)
+    .sort((a, b) => b.createdAt - a.createdAt);
   const ordered =
     categoryFilter.size === 0
       ? allOrdered
@@ -812,8 +814,14 @@ export function NotificationsPane() {
                   type="button"
                   onClick={() => toggleCategory(category)}
                   aria-pressed={selected}
+                  // h-7: matches the Data toolbar's own size-7 circular
+                  // buttons (same py-1.5 container padding on both bars, so
+                  // matching the button height here is what makes the two
+                  // sticky bars land at the same overall height) — this bar
+                  // has no fixed-size button box of its own otherwise, since
+                  // it's icon+text rather than an icon-only circle.
                   className={cn(
-                    "flex items-center gap-1.5 shrink-0",
+                    "flex h-7 items-center gap-1.5 shrink-0",
                     selected ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
                   )}
                 >

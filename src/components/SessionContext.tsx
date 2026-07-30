@@ -679,11 +679,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setLastUpdated(new Date(Date.now() - elapsed));
 
     if (scenario === 1) {
-      // State 2: running, started by someone else, who's still present —
-      // joinable, browsable without joining.
+      // State 2: running, started by someone else — joinable, browsable
+      // without joining. Both other staff are already in it (not just the
+      // one who started it), so joining lands you with 2 other people
+      // present — the reliable, always-reachable case for exercising the
+      // presence icon's own sup-count badge, same idea as
+      // ActiveDurationIndicator's multi-timer count right beside it.
       setStatus("running");
       setStartedByName(otherStaff);
-      setPresentStaffNames([otherStaff]);
+      setPresentStaffNames([...OTHER_STAFF_NAMES]);
     } else if (scenario === 2) {
       // State 3: paused — parked, could be your own or someone else's.
       setStatus("paused");

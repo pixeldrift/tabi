@@ -786,7 +786,7 @@ export function StatusBar({
                 role="tablist"
                 aria-label="Session sections"
               >
-                <div className="flex items-end gap-1 -ml-3">
+                <div className="flex items-end gap-0.5 sm:gap-1 -ml-3">
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
@@ -1179,7 +1179,7 @@ function ActiveDurationIndicator({
           // animating independently instead of staying visually locked to
           // it during transitions.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors"
+          className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors"
         >
           <span className="relative inline-flex">
             <span className="inline-block animate-pulse-scale">
@@ -1250,7 +1250,7 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
               onClick={() => setSingleProfileOpen(true)}
               aria-label={ariaLabel}
               title={soleOther}
-              className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
+              className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
             >
               {trigger}
               <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
@@ -1264,7 +1264,7 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
                   type="button"
                   aria-label={ariaLabel}
                   title={otherStaffNames.join(", ")}
-                  className="relative flex items-center gap-1.5 justify-center px-2 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
+                  className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
                 >
                   {trigger}
                   <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
