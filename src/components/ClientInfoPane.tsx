@@ -9,12 +9,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { PersonPill } from "@/components/StaffDirectory";
+import { PersonPill, findStaffIdByName } from "@/components/StaffDirectory";
 import { PhotoZoomButton, BlurredPhotoZoomButton } from "@/components/PhotoZoom";
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { AccordionRow } from "./AccordionRow";
-import { useSession } from "@/components/SessionContext";
+import { useSession, CURRENT_STAFF_ID } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
 import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
@@ -102,7 +102,7 @@ const VEHICLES: VehicleRecord[] = [
   },
 ];
 
-const TEAM_MEMBERS = ["Perry Plat", "Isabella Garcia-Shapiro", "Baljeet Tjinder"];
+const TEAM_MEMBER_IDS = ["perry-plat", "isabella-garcia-shapiro", "baljeet-tjinder"];
 
 // Quick-orientation notes for anyone covering a session cold — same purpose
 // as CentralReach's own "About Me (coverage notes)" panel. Anything already
@@ -282,11 +282,11 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
       <Section id="section-team" title="Care Team">
         <div className="rounded-xl border border-border bg-white p-3 space-y-2 text-sm">
           <InfoRow label="Lead BCBA:">
-            <PersonPill name="Heinz Doofenshmirtz" />
+            <PersonPill staffId="heinz-doofenshmirtz" />
           </InfoRow>
           <InfoRow label="Team:">
-            {TEAM_MEMBERS.map((name) => (
-              <PersonPill key={name} name={name} />
+            {TEAM_MEMBER_IDS.map((id) => (
+              <PersonPill key={id} staffId={id} />
             ))}
           </InfoRow>
         </div>
@@ -296,7 +296,7 @@ export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void 
           stays last. */}
       <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
         <span>Last updated {formatUpdated(lastUpdated)} by</span>
-        <PersonPill name="Perry Plat" />
+        <PersonPill staffId={CURRENT_STAFF_ID} />
       </div>
     </div>
   );
@@ -475,13 +475,27 @@ function AboutMeSection({
             {phineasAppointments.length === 0 ? (
               <p className="text-foreground/60">No related services on the schedule.</p>
             ) : (
-              phineasAppointments.map((a) => (
-                <div key={a.id} className="flex flex-wrap items-baseline gap-x-1.5">
-                  <span className="font-semibold">{a.type}:</span>
-                  <PersonPill name={a.provider} />
-                  <span>&middot; {formatApptSchedule(a)}</span>
-                </div>
-              ))
+              phineasAppointments.map((a) => {
+                // `provider` is free text typed into the appointment form
+                // (ClientInfoPane has no id for it), not a guaranteed
+                // STAFF_DIRECTORY member — an outside provider (a dentist,
+                // say) has no record at all. Only resolve to an interactive
+                // pill when the text happens to match someone in the
+                // directory; otherwise fall back to a plain label rather
+                // than forcing PersonPill to guess at an id.
+                const providerId = findStaffIdByName(a.provider);
+                return (
+                  <div key={a.id} className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="font-semibold">{a.type}:</span>
+                    {providerId ? (
+                      <PersonPill staffId={providerId} />
+                    ) : (
+                      <span className="text-foreground/80">{a.provider}</span>
+                    )}
+                    <span>&middot; {formatApptSchedule(a)}</span>
+                  </div>
+                );
+              })
             )}
             <button
               type="button"

@@ -6,7 +6,7 @@ import { EmailIcon } from "./icons/EmailIcon";
 import { ChatIcon } from "./icons/ChatIcon";
 import { PhotoZoomButton } from "@/components/PhotoZoom";
 import { cn } from "@/lib/utils";
-import { CURRENT_STAFF_NAME } from "./SessionContext";
+import { CURRENT_STAFF_ID } from "./SessionContext";
 import doofenshmirtzPhoto from "@/assets/images/people/doofenshmirtz.jpeg";
 import perryPhoto from "@/assets/images/people/perry.jpeg";
 import isabellaPhoto from "@/assets/images/people/isabella.jpeg";
@@ -15,6 +15,11 @@ import vanessaPhoto from "@/assets/images/people/vanessa.jpeg";
 import jeremyPhoto from "@/assets/images/people/jeremy.jpeg";
 
 interface StaffRecord {
+  /** Stable lookup key — a real backend's primary key, e.g. an employee id.
+   *  Everything that refers to a staff member (session attribution,
+   *  presence, "current user") should pass this around instead of `name`:
+   *  names collide and change, ids don't — see `PersonPill`'s own comment. */
+  id: string;
   name: string;
   title: string;
   role: string;
@@ -31,8 +36,9 @@ interface StaffRecord {
 // Every name already used elsewhere in the header (Phineas Flynn, Perry
 // Plat) comes from the same show — kept to one consistent universe rather
 // than mixing in generic placeholder names.
-const STAFF_DIRECTORY: Record<string, StaffRecord> = {
-  "Heinz Doofenshmirtz": {
+export const STAFF_DIRECTORY: Record<string, StaffRecord> = {
+  "heinz-doofenshmirtz": {
+    id: "heinz-doofenshmirtz",
     name: "Heinz Doofenshmirtz",
     title: "Board Certified Behavior Analyst (BCBA)",
     role: "Lead BCBA",
@@ -44,7 +50,8 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     email: "h.doofenshmirtz@abadaba.clinic",
     assignedClients: ["Phineas Flynn"],
   },
-  "Perry Plat": {
+  "perry-plat": {
+    id: "perry-plat",
     name: "Perry Plat",
     title: "Registered Behavior Technician (RBT)",
     role: "RBT",
@@ -56,7 +63,8 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     email: "p.plat@abadaba.clinic",
     assignedClients: ["Phineas Flynn", "Buford Van Stomm"],
   },
-  "Isabella Garcia-Shapiro": {
+  "isabella-garcia-shapiro": {
+    id: "isabella-garcia-shapiro",
     name: "Isabella Garcia-Shapiro",
     title: "Registered Behavior Technician (RBT)",
     role: "RBT",
@@ -68,7 +76,8 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     email: "i.garciashapiro@abadaba.clinic",
     assignedClients: ["Phineas Flynn", "Stacy Hirano"],
   },
-  "Baljeet Tjinder": {
+  "baljeet-tjinder": {
+    id: "baljeet-tjinder",
     name: "Baljeet Tjinder",
     title: "Board Certified Assistant Behavior Analyst (BCaBA)",
     role: "BCaBA",
@@ -83,7 +92,8 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
   // Related-service providers (see ClientInfoPane's ABOUT_ME.relatedServices)
   // — external, not clinic staff, but reuse this same directory/PersonPill
   // machinery since a bio popup is all either one needs.
-  "Vanessa Doofenshmirtz": {
+  "vanessa-doofenshmirtz": {
+    id: "vanessa-doofenshmirtz",
     name: "Vanessa Doofenshmirtz",
     title: "Speech-Language Pathologist (SLP)",
     role: "SLP",
@@ -95,7 +105,8 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     email: "vanessa@nashvillespeechpartners.com",
     assignedClients: ["Phineas Flynn"],
   },
-  "Jeremy Johnson": {
+  "jeremy-johnson": {
+    id: "jeremy-johnson",
     name: "Jeremy Johnson",
     title: "Occupational Therapist (OTR/L)",
     role: "OT",
@@ -109,26 +120,56 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
   },
 };
 
+/** The current user's display name, derived from the directory rather than
+ *  hardcoded a second time — SessionContext only owns the id (the actual
+ *  "who's logged in" primitive; see its own comment), everything that needs
+ *  the name for display or free-text matching (NotificationBar's known-name
+ *  highlighting, `displayName` below) reads it from here. */
+export const CURRENT_STAFF_NAME = STAFF_DIRECTORY[CURRENT_STAFF_ID].name;
+
+/** Best-effort reverse lookup for the one place a staff member's name
+ *  arrives as free text instead of an id — an appointment's `provider`
+ *  field (ClientInfoPane), which is a plain user-typed string and may not
+ *  match anyone in the directory at all (a real external provider). Returns
+ *  null rather than guessing, so the caller can fall back to a plain label. */
+export function findStaffIdByName(name: string): string | null {
+  return Object.values(STAFF_DIRECTORY).find((s) => s.name === name)?.id ?? null;
+}
+
+/** A staff member's plain display name by id, with no "(You)" suffix — for
+ *  contexts that need real text (native `title`/`aria-label` attributes,
+ *  notification copy) rather than a rendered pill. Falls back to the raw id
+ *  for an unresolvable one rather than throwing, same defensive spirit as
+ *  `PersonPill`'s own missing-record fallback. */
+export function staffName(id: string): string {
+  return STAFF_DIRECTORY[id]?.name ?? id;
+}
+
 // "(You)" after the real name, everywhere a name renders — not a bare
 // "You" swapped in for it. A pill is often part of a record (who saved,
 // who paused, who started) that reads fine in the moment but is meaningless
 // out of context to anyone reviewing it later, or to a different staff
 // member looking at the same shared session — the real name has to stay
 // legible either way, with "(You)" just as a personalized cue on top of it.
+// Name-based (not id-based) since NotificationBar's own use of this scans
+// free-text notification titles for known name substrings, where an id was
+// never in the picture to begin with.
 export function displayName(name: string): string {
   return name === CURRENT_STAFF_NAME ? `${name} (You)` : name;
 }
 
-/** A person's name, styled as a pill — same look everywhere it appears
- *  (Info tab's plan/BCBA/team rows). Staff members (anyone with a
- *  `STAFF_DIRECTORY` entry) open their profile card directly — its own
+/** A staff member's name, styled as a pill and looked up by id — same look
+ *  everywhere it appears (Info tab's plan/BCBA/team rows, session
+ *  attribution). Opens their profile card directly on tap — its own
  *  Phone/Email/Chat buttons sit right at the top, so there's no separate
- *  menu step first. The client themself has no staff record, so their pill
- *  stays a plain, non-interactive label. `size="sm"` matches the compact
- *  inline pills used in denser rows (StatusBar's "Previous Session ... by"
- *  line) — same interaction, just smaller text/icon/padding. */
-export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
-  const staff = STAFF_DIRECTORY[name];
+ *  menu step first. An id with no matching record (shouldn't happen for a
+ *  real staff member, but see `findStaffIdByName` for the one place an id
+ *  isn't guaranteed) falls back to a plain, non-interactive label rather
+ *  than crashing. `size="sm"` matches the compact inline pills used in
+ *  denser rows (StatusBar's "Previous Session ... by" line) — same
+ *  interaction, just smaller text/icon/padding. */
+export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "sm" | "md" }) {
+  const staff = STAFF_DIRECTORY[staffId];
   const [profileOpen, setProfileOpen] = useState(false);
   const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-sm";
   const iconSize = size === "sm" ? "size-2.5" : "size-3";
@@ -142,7 +183,7 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{displayName(name)}</span>
+        <span>{staffId}</span>
       </span>
     );
   }
@@ -158,31 +199,11 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{displayName(name)}</span>
+        <span>{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
   );
-}
-
-/** Same profile card `PersonPill` opens on tap, but externally controlled —
- *  for a caller that already has its own trigger element (e.g. StatusBar's
- *  header presence icon, which needs a plain icon button, not another
- *  name-labeled pill) and just needs "open this person's profile" as an
- *  action. Renders nothing if `name` isn't a real staff record (an actual
- *  client, say) — there's no profile to show. */
-export function StaffProfileByName({
-  name,
-  open,
-  onOpenChange,
-}: {
-  name: string;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const staff = STAFF_DIRECTORY[name];
-  if (!staff) return null;
-  return <StaffProfileDialog staff={staff} open={open} onOpenChange={onOpenChange} />;
 }
 
 function StaffProfileDialog({

@@ -21,9 +21,10 @@ import {
   SessionProvider,
   useSession,
   PILL_LAND_MS,
-  CURRENT_STAFF_NAME,
+  CURRENT_STAFF_ID,
   type TransitionKind,
 } from "@/components/SessionContext";
+import { staffName } from "@/components/StaffDirectory";
 import { SettingsProvider, useSettings } from "@/components/SettingsContext";
 import { ScheduleProvider } from "@/components/ScheduleContext";
 import { SettingsPane } from "@/components/SettingsPane";
@@ -685,22 +686,20 @@ function GoalChangeDemoTrigger() {
 function SessionActivityTrigger() {
   const { push } = useNotifications();
   const { notificationDurationMs } = useUserPrefs();
-  const { status, isSessionMine, isAbandoned, startedByName } = useSession();
+  const { status, isSessionMine, isAbandoned, startedById } = useSession();
   const joinedRef = useRef(false);
   const abandonedRef = useRef(false);
 
   useEffect(() => {
     const joinedSomeoneElses =
-      status === "running" &&
-      isSessionMine &&
-      !!startedByName &&
-      startedByName !== CURRENT_STAFF_NAME;
+      status === "running" && isSessionMine && !!startedById && startedById !== CURRENT_STAFF_ID;
     if (joinedSomeoneElses && !joinedRef.current) {
       joinedRef.current = true;
+      const starterName = staffName(startedById);
       push({
         kind: "announcement",
-        title: `You joined ${startedByName}'s session`,
-        body: `${startedByName} has been notified that you joined.`,
+        title: `You joined ${starterName}'s session`,
+        body: `${starterName} has been notified that you joined.`,
         icon: "megaphone",
         // Just a confirmation, not something to act on — fades on its own
         // like a schedule reminder does, rather than sitting there until
@@ -713,7 +712,7 @@ function SessionActivityTrigger() {
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;
     }
-  }, [status, isSessionMine, startedByName, push, notificationDurationMs]);
+  }, [status, isSessionMine, startedById, push, notificationDurationMs]);
 
   useEffect(() => {
     if (isAbandoned && !abandonedRef.current) {
@@ -721,13 +720,13 @@ function SessionActivityTrigger() {
       push({
         kind: "announcement",
         title: "Session Unattended",
-        body: `${startedByName ?? "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
+        body: `${startedById ? staffName(startedById) : "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
         icon: "bell",
       });
     } else if (!isAbandoned) {
       abandonedRef.current = false;
     }
-  }, [isAbandoned, startedByName, push]);
+  }, [isAbandoned, startedById, push]);
 
   return null;
 }

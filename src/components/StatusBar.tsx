@@ -31,14 +31,14 @@ import {
   LockKeyholeOpen,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
-import { PersonPill } from "./StaffDirectory";
+import { PersonPill, staffName } from "./StaffDirectory";
 import {
   markInitialLayoutSettled,
   useInitialLayoutSettled,
 } from "@/hooks/use-initial-layout-settle";
 import {
   useSession,
-  CURRENT_STAFF_NAME,
+  CURRENT_STAFF_ID,
   HEADER_MORPH_MS,
   BOX_COLLAPSE_MS,
   DIGIT_SETTLE_MS,
@@ -233,9 +233,9 @@ export function StatusBar({
     lastSavedAt,
     forceSync,
     lastUpdated,
-    startedByName,
-    lastEndedByName,
-    presentStaffNames,
+    startedById,
+    lastEndedById,
+    presentStaffIds,
     isSessionMine,
     joinSession,
     reviewModeUnlocked,
@@ -312,13 +312,13 @@ export function StatusBar({
   // not just whether the timer happens to be running.
   const isMineAndRunning = isRunning && isSessionMine;
 
-  // Which staff name and timestamp the box attributes its content to,
+  // Which staff member and timestamp the box attributes its content to,
   // depending on why it's showing at all: idle shows the previous,
-  // already-submitted session (lastEndedByName/previousSessionEndedAt);
+  // already-submitted session (lastEndedById/previousSessionEndedAt);
   // paused or running-but-not-yet-joined shows whoever started THIS one
-  // (startedByName), timestamped by lastUpdated (when it was started, or
+  // (startedById), timestamped by lastUpdated (when it was started, or
   // most recently paused/resumed).
-  const attributionName = status === "idle" ? lastEndedByName : startedByName;
+  const attributionStaffId = status === "idle" ? lastEndedById : startedById;
   const rawContextTime = status === "idle" ? previousSessionEndedAt : lastUpdated;
   // Resuming un-hides this row (it's only absent while paused) the instant
   // `status` flips to "running" — which, for a staged resume, lands well
@@ -471,8 +471,8 @@ export function StatusBar({
   // that, whoever's running it is already named front-and-center in the
   // big expanded box itself (see ExpandedSessionBox), so a second "who's
   // here" signal in the header would just be redundant.
-  const otherPresentStaffNames = isMineAndRunning
-    ? presentStaffNames.filter((n) => n !== CURRENT_STAFF_NAME)
+  const otherPresentStaffIds = isMineAndRunning
+    ? presentStaffIds.filter((id) => id !== CURRENT_STAFF_ID)
     : [];
   const [pillView, setPillView] = useState<"big" | "mini">(isMineAndRunning ? "mini" : "big");
   // `pillTraveling` (from SessionContext) is the shared, purely-timed
@@ -719,7 +719,7 @@ export function StatusBar({
                     status={status}
                     elapsedMs={pillElapsed}
                     contextTime={frozenContextTimeRef.current}
-                    attributionName={attributionName}
+                    attributionStaffId={attributionStaffId}
                     isSessionMine={isSessionMine}
                     isAbandoned={isAbandoned}
                     reviewModeUnlocked={reviewModeUnlocked}
@@ -825,7 +825,7 @@ export function StatusBar({
                     activeTab={activeTab}
                     onTabChange={onTabChange}
                   />
-                  <PresenceIndicator otherStaffNames={otherPresentStaffNames} />
+                  <PresenceIndicator otherStaffIds={otherPresentStaffIds} />
                 </div>
 
                 <AnimatePresence initial={false}>
@@ -1221,12 +1221,12 @@ function ActiveDurationIndicator({
  *  (rather than a direct single-profile shortcut for exactly one other
  *  person) since the roster itself always includes you too now — never
  *  truly a "just one entry" list once you're counted in it. */
-function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
-  const visible = otherStaffNames.length > 0;
+function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
+  const visible = otherStaffIds.length > 0;
   // You're always in "this session" too, once this is showing at all —
   // listed last since the others are the actually-new information a
   // technician taps this to see; you already know you're here.
-  const rosterNames = [...otherStaffNames, CURRENT_STAFF_NAME];
+  const rosterIds = [...otherStaffIds, CURRENT_STAFF_ID];
 
   const trigger = (
     // The count badge is `absolute`, not a normal inline sibling — its own
@@ -1240,23 +1240,23 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
           strokeWidth. A filled silhouette read as heavier than its
           neighbor even at the same size. */}
       <User className="size-4" />
-      {otherStaffNames.length > 1 && (
+      {otherStaffIds.length > 1 && (
         // Tucked in closer than the timer icon's identical badge needs to
         // be — the User glyph has more empty space in its own top-right
         // corner than the Timer icon's circle does, so the same offset
         // that sits flush against the timer reads as a gap floating away
         // from this one.
         <sup className="pointer-events-none absolute -top-0.5 -right-1 text-[9px] font-semibold leading-none">
-          {otherStaffNames.length}
+          {otherStaffIds.length}
         </sup>
       )}
     </span>
   );
-  const label = otherStaffNames.length > 1 ? "Others Here" : "Also Here";
+  const label = otherStaffIds.length > 1 ? "Others Here" : "Also Here";
   const ariaLabel =
-    otherStaffNames.length > 1
-      ? `${otherStaffNames.length} other staff also in this session`
-      : `${otherStaffNames[0]} is also in this session`;
+    otherStaffIds.length > 1
+      ? `${otherStaffIds.length} other staff also in this session`
+      : `${staffName(otherStaffIds[0])} is also in this session`;
 
   return (
     <AnimatePresence>
@@ -1285,7 +1285,7 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
               <button
                 type="button"
                 aria-label={ariaLabel}
-                title={otherStaffNames.join(", ")}
+                title={otherStaffIds.map(staffName).join(", ")}
                 className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
               >
                 {trigger}
@@ -1317,8 +1317,8 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
                 In this session
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {rosterNames.map((n) => (
-                  <PersonPill key={n} name={n} size="sm" />
+                {rosterIds.map((id) => (
+                  <PersonPill key={id} staffId={id} size="sm" />
                 ))}
               </div>
             </PopoverContent>
@@ -1437,7 +1437,7 @@ function SaveIndicator({
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Saved by
               </div>
-              <PersonPill name={CURRENT_STAFF_NAME} />
+              <PersonPill staffId={CURRENT_STAFF_ID} />
             </div>
           </div>
         </PopoverContent>
@@ -1526,7 +1526,7 @@ function ExpandedSessionBox({
   status,
   elapsedMs,
   contextTime,
-  attributionName,
+  attributionStaffId,
   isSessionMine,
   isAbandoned,
   reviewModeUnlocked,
@@ -1548,7 +1548,7 @@ function ExpandedSessionBox({
   /** Who to credit in the "by X" line — last person to submit (idle) or
    *  whoever started the session (paused / running-not-mine). Never the
    *  current user's own join, since joining doesn't change who "owns" it. */
-  attributionName: string | null;
+  attributionStaffId: string | null;
   /** True whenever the current user could collapse this box back into the
    *  running mini pill (i.e. they started it, or already joined it) — false
    *  means someone else is running it and the only action here is to join. */
@@ -1662,10 +1662,10 @@ function ExpandedSessionBox({
           {contextTime && (
             <span className="inline-flex items-baseline gap-1 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
               <span>{attributionVerb}</span>
-              {attributionName && (
+              {attributionStaffId && (
                 <>
                   <span>by</span>
-                  <PersonPill name={attributionName} size="sm" />
+                  <PersonPill staffId={attributionStaffId} size="sm" />
                 </>
               )}
               <span>

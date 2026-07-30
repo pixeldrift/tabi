@@ -17,16 +17,22 @@ export type SaveStatus = "clean" | "dirty" | "saving";
 export type TransitionKind = "start-new" | "resume" | "discard" | null;
 
 // The staff member "at this device" — there's no real auth in this
-// prototype, so this is hardcoded rather than picked at runtime. Every
-// place that reads it does so through this one constant (never a literal
-// string), so wiring up real sign-in later is a one-line change here, not
-// a hunt through every consumer.
-export const CURRENT_STAFF_NAME = "Perry Plat";
+// prototype, so this is hardcoded rather than picked at runtime. An id, not
+// a display name: this is the actual identity primitive (what a real
+// sign-in would hand back), and every place that needs to show a name
+// resolves it through StaffDirectory's own STAFF_DIRECTORY/staffName
+// instead of duplicating it here. Every place that reads it does so through
+// this one constant (never a literal string), so wiring up real sign-in
+// later is a one-line change here, not a hunt through every consumer. Kept
+// in this file rather than StaffDirectory.tsx since "who's logged in" is an
+// auth-session concern, not a directory-of-all-staff one — a real backend
+// would draw the same line (an auth service vs. a staff/HR service).
+export const CURRENT_STAFF_ID = "perry-plat";
 // A plausible "someone else" for the random session-state simulator below
 // to attribute a session to — real RBTs already in STAFF_DIRECTORY
-// (StaffDirectory.tsx), so a simulated co-worker's name still opens a real
-// staff profile card when tapped.
-const OTHER_STAFF_NAMES = ["Isabella Garcia-Shapiro", "Baljeet Tjinder"];
+// (StaffDirectory.tsx), so a simulated co-worker still opens a real staff
+// profile card when tapped.
+const OTHER_STAFF_IDS = ["isabella-garcia-shapiro", "baljeet-tjinder"];
 
 // A running session with no one present for at least this long is
 // considered abandoned — see isAbandoned's own comment.
@@ -113,25 +119,25 @@ interface SessionContextValue {
   // Who to credit for the current non-idle session's state — whoever
   // started it, or, once paused, whoever pressed Pause (see pause() below;
   // same "whoever actually performed the action" rule endAndSubmit uses for
-  // lastEndedByName) — null only while genuinely idle with no session to
+  // lastEndedById) — null only while genuinely idle with no session to
   // attribute. isSessionMine only cares whether this is null, not who it
   // names, so crediting the pauser here doesn't change session ownership.
-  startedByName: string | null;
+  startedById: string | null;
   // Who ended & submitted the previous session — shown in the idle box's
   // "Previous Session" line. Whoever performs End & Submit gets credited
   // here regardless of who originally started it (see endAndSubmit).
-  lastEndedByName: string | null;
+  lastEndedById: string | null;
   // Who's currently "in" the running session — starts as just whoever
-  // started it; joinSession() adds CURRENT_STAFF_NAME. Empty once nobody
+  // started it; joinSession() adds CURRENT_STAFF_ID. Empty once nobody
   // (including the starter) is actively present — see isAbandoned.
-  presentStaffNames: string[];
-  // Derived: true if there's no session to speak of, or CURRENT_STAFF_NAME
+  presentStaffIds: string[];
+  // Derived: true if there's no session to speak of, or CURRENT_STAFF_ID
   // is the one who started it. False means someone else's session is
   // running/paused and hasn't been joined yet — this is what keeps the
   // session box expanded (not auto-collapsed into the toolbar's mini pill)
   // and swaps the pill's Play icon for a Join one, see StatusBar.
   isSessionMine: boolean;
-  // Adds CURRENT_STAFF_NAME to presentStaffNames without going through the
+  // Adds CURRENT_STAFF_ID to presentStaffIds without going through the
   // staged start/resume machinery — joining doesn't touch the timer or
   // hand off ownership, it just means another set of eyes (and hands) is
   // now on the same session. Safe to call repeatedly.
@@ -144,7 +150,7 @@ interface SessionContextValue {
   reviewModeUnlocked: boolean;
   setReviewModeUnlocked: (v: boolean) => void;
   // True once a running session has had no one present (see
-  // presentStaffNames) for ABANDONMENT_THRESHOLD_MS — see its own effect
+  // presentStaffIds) for ABANDONMENT_THRESHOLD_MS — see its own effect
   // for the reminder notification this drives (pushed by a trigger
   // component mounted inside NotificationProvider, not here — this
   // provider sits ABOVE that context and can't call its own push).
@@ -152,7 +158,7 @@ interface SessionContextValue {
   // The demo-only "Previous Session" record shown while idle — randomized
   // once per page load (see the random-state effect below) rather than
   // living as StatusBar's own local state, so the simulator can set it
-  // together with lastEndedByName as one coherent scenario.
+  // together with lastEndedById as one coherent scenario.
   previousSessionMs: number;
   previousSessionEndedAt: Date | null;
   subscribeTick: (cb: (deltaMs: number) => void) => () => void;
@@ -234,21 +240,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const startRef = useRef<number | null>(null);
   const baseRef = useRef(0);
 
-  const [startedByName, setStartedByName] = useState<string | null>(null);
-  const [lastEndedByName, setLastEndedByName] = useState<string | null>(null);
-  const [presentStaffNames, setPresentStaffNames] = useState<string[]>([]);
+  const [startedById, setStartedById] = useState<string | null>(null);
+  const [lastEndedById, setLastEndedById] = useState<string | null>(null);
+  const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
   const [reviewModeUnlocked, setReviewModeUnlocked] = useState(false);
   // Whether YOU'RE actively part of the session right now — not "did I
-  // start it." Basing this on presence (not on startedByName) is what
+  // start it." Basing this on presence (not on startedById) is what
   // makes joinSession() below actually collapse the box into the compact
-  // toolbar pill: startedByName never changes on a join (the original
+  // toolbar pill: startedById never changes on a join (the original
   // starter still gets credited as having started it), so if this checked
   // that instead, a joined session would stay in the big, expanded box
   // forever even though you're now actively driving it.
-  const isSessionMine = startedByName === null || presentStaffNames.includes(CURRENT_STAFF_NAME);
+  const isSessionMine = startedById === null || presentStaffIds.includes(CURRENT_STAFF_ID);
   const joinSession = useCallback(() => {
-    setPresentStaffNames((names) =>
-      names.includes(CURRENT_STAFF_NAME) ? names : [...names, CURRENT_STAFF_NAME],
+    setPresentStaffIds((ids) =>
+      ids.includes(CURRENT_STAFF_ID) ? ids : [...ids, CURRENT_STAFF_ID],
     );
     setLastActivityAt(Date.now());
   }, []);
@@ -261,7 +267,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
   const [isAbandoned, setIsAbandoned] = useState(false);
   useEffect(() => {
-    if (status !== "running" || presentStaffNames.length > 0) {
+    if (status !== "running" || presentStaffIds.length > 0) {
       setIsAbandoned(false);
       return;
     }
@@ -272,11 +278,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     const id = window.setTimeout(() => setIsAbandoned(true), remaining);
     return () => window.clearTimeout(id);
-  }, [status, presentStaffNames, lastActivityAt]);
+  }, [status, presentStaffIds, lastActivityAt]);
 
   // Demo-only "Previous Session" record shown while idle — see its own
   // comment on the context interface. Randomized by the scenario effect
-  // further down, alongside a matching lastEndedByName, rather than living
+  // further down, alongside a matching lastEndedById, rather than living
   // as StatusBar's own local state.
   const [previousSessionMs, setPreviousSessionMs] = useState(2 * 3600 * 1000);
   const [previousSessionEndedAt, setPreviousSessionEndedAt] = useState<Date | null>(null);
@@ -357,8 +363,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Starting a session resets the saved baseline — no unsaved data yet.
     setLastSavedAt(now);
     setSaveStatus("clean");
-    setStartedByName(CURRENT_STAFF_NAME);
-    setPresentStaffNames([CURRENT_STAFF_NAME]);
+    setStartedById(CURRENT_STAFF_ID);
+    setPresentStaffIds([CURRENT_STAFF_ID]);
     setLastActivityAt(Date.now());
     playSoundEffect("sessionStart");
   }, []);
@@ -370,7 +376,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Credits whoever actually paused it, not necessarily whoever started
     // it — e.g. joining someone else's running session and then pausing it
     // should read as "Paused by You," not still name the original starter.
-    setStartedByName(CURRENT_STAFF_NAME);
+    setStartedById(CURRENT_STAFF_ID);
     playSoundEffect("sessionPause");
   }, [elapsedMs]);
   const resume = useCallback(() => {
@@ -389,9 +395,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setElapsedMs(0);
     baseRef.current = 0;
     setLastUpdated(new Date());
-    setLastEndedByName(CURRENT_STAFF_NAME);
-    setStartedByName(null);
-    setPresentStaffNames([]);
+    setLastEndedById(CURRENT_STAFF_ID);
+    setStartedById(null);
+    setPresentStaffIds([]);
     setReviewModeUnlocked(false);
     playSoundEffect("submit");
   }, []);
@@ -399,8 +405,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
-    setStartedByName(null);
-    setPresentStaffNames([]);
+    setStartedById(null);
+    setPresentStaffIds([]);
     setReviewModeUnlocked(false);
     playSoundEffect("sessionDiscard");
   }, []);
@@ -658,7 +664,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // settled — no visible snap from idle into a mid-session view.
   useLayoutEffect(() => {
     const scenario = Math.floor(Math.random() * 4);
-    const otherStaff = OTHER_STAFF_NAMES[Math.floor(Math.random() * OTHER_STAFF_NAMES.length)];
+    const otherStaff = OTHER_STAFF_IDS[Math.floor(Math.random() * OTHER_STAFF_IDS.length)];
     const randomPastMs = () => Math.floor((1 + Math.random() * 4) * 3600 * 1000); // 1-5hr, same as before
 
     if (scenario === 0) {
@@ -669,7 +675,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const maxMs = 3 * 24 * 3600 * 1000;
       setPreviousSessionMs(randomPastMs());
       setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
-      setLastEndedByName(Math.random() < 0.5 ? CURRENT_STAFF_NAME : otherStaff);
+      setLastEndedById(Math.random() < 0.5 ? CURRENT_STAFF_ID : otherStaff);
       return;
     }
 
@@ -692,20 +698,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // presence icon's own sup-count badge, same idea as
       // ActiveDurationIndicator's multi-timer count right beside it.
       setStatus("running");
-      setStartedByName(otherStaff);
-      setPresentStaffNames([...OTHER_STAFF_NAMES]);
+      setStartedById(otherStaff);
+      setPresentStaffIds([...OTHER_STAFF_IDS]);
     } else if (scenario === 2) {
       // State 3: paused — parked, could be your own or someone else's.
       setStatus("paused");
-      setStartedByName(Math.random() < 0.5 ? CURRENT_STAFF_NAME : otherStaff);
+      setStartedById(Math.random() < 0.5 ? CURRENT_STAFF_ID : otherStaff);
     } else {
       // State 4: running, abandoned — started by someone else, nobody
       // present. Backdating lastActivityAt past the threshold means
       // isAbandoned's own effect (above) fires almost immediately instead
       // of requiring an actual 30-minute wait to see it in a demo.
       setStatus("running");
-      setStartedByName(otherStaff);
-      setPresentStaffNames([]);
+      setStartedById(otherStaff);
+      setPresentStaffIds([]);
       setLastActivityAt(Date.now() - ABANDONMENT_THRESHOLD_MS - 5 * 60 * 1000);
     }
     // Intentionally once-only: seeds the initial demo scenario, not a
@@ -730,9 +736,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       requestResume,
       requestDiscard,
       sessionRunning,
-      startedByName,
-      lastEndedByName,
-      presentStaffNames,
+      startedById,
+      lastEndedById,
+      presentStaffIds,
       isSessionMine,
       joinSession,
       reviewModeUnlocked,
@@ -767,9 +773,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       requestResume,
       requestDiscard,
       sessionRunning,
-      startedByName,
-      lastEndedByName,
-      presentStaffNames,
+      startedById,
+      lastEndedById,
+      presentStaffIds,
       isSessionMine,
       joinSession,
       reviewModeUnlocked,
