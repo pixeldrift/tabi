@@ -21,15 +21,26 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
         </p>
       </div>
 
-      <p className="max-w-xs text-sm leading-relaxed text-muted-foreground sm:max-w-sm sm:text-base">
-        Tabi is a new, user-friendly system for ABA therapy data collection and session management.
-        This is a prototype proof-of-concept front-end interface.
-      </p>
+      <div className="max-w-xs space-y-3 text-left text-sm leading-relaxed text-muted-foreground sm:max-w-sm sm:text-base">
+        <p>
+          Tabi is your friendly companion app for ABA therapy, data collection, and session
+          management. This prototype is a proof of concept for a front-end experience designed with
+          RBTs in mind.
+        </p>
+        <p>
+          Our goal is to make Tabi easy, intuitive, and fast. The tools you need are right where you
+          need them, when you need them.
+        </p>
+        <p>Have a suggestion? We&rsquo;d love your feedback!</p>
+      </div>
 
+      {/* btn-bevel, not -solid — the exact same class the main interface's
+          own primary green CTA (StatusBar's "Start New Session") uses, so
+          this reads as the same button/color, not a similar-looking one. */}
       <button
         type="button"
         onClick={onGetStarted}
-        className="btn-bevel-solid flex items-center gap-2 rounded-full bg-green-500 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-green-600 active:scale-95"
+        className="btn-bevel flex items-center gap-2 rounded-full bg-green-500 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-green-600 active:scale-95"
       >
         Get Started
         <ArrowRight className="size-5" />

@@ -6,6 +6,7 @@ import { EmailIcon } from "./icons/EmailIcon";
 import { ChatIcon } from "./icons/ChatIcon";
 import { PhotoZoomButton } from "@/components/PhotoZoom";
 import { cn } from "@/lib/utils";
+import { CURRENT_STAFF_NAME } from "./SessionContext";
 import doofenshmirtzPhoto from "@/assets/images/people/doofenshmirtz.jpeg";
 import perryPhoto from "@/assets/images/people/perry.jpeg";
 import isabellaPhoto from "@/assets/images/people/isabella.jpeg";
@@ -108,6 +109,16 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
   },
 };
 
+// "(You)" after the real name, everywhere a name renders — not a bare
+// "You" swapped in for it. A pill is often part of a record (who saved,
+// who paused, who started) that reads fine in the moment but is meaningless
+// out of context to anyone reviewing it later, or to a different staff
+// member looking at the same shared session — the real name has to stay
+// legible either way, with "(You)" just as a personalized cue on top of it.
+function displayName(name: string): string {
+  return name === CURRENT_STAFF_NAME ? `${name} (You)` : name;
+}
+
 /** A person's name, styled as a pill — same look everywhere it appears
  *  (Info tab's plan/BCBA/team rows). Staff members (anyone with a
  *  `STAFF_DIRECTORY` entry) open their profile card directly — its own
@@ -126,12 +137,12 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700",
+          "inline-flex items-baseline gap-1 rounded-md bg-blue-50 text-blue-700",
           sizeClasses,
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{name}</span>
+        <span>{displayName(name)}</span>
       </span>
     );
   }
@@ -142,12 +153,12 @@ export function PersonPill({ name, size = "md" }: { name: string; size?: "sm" | 
         type="button"
         onClick={() => setProfileOpen(true)}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
+          "inline-flex items-baseline gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
           sizeClasses,
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{name}</span>
+        <span>{displayName(name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
@@ -194,7 +205,7 @@ function StaffProfileDialog({
             size="size-16"
             ringClassName="border-2 border-blue-300 bg-blue-100"
           />
-          <DialogTitle className="mt-1">{staff.name}</DialogTitle>
+          <DialogTitle className="mt-1">{displayName(staff.name)}</DialogTitle>
           <p className="text-sm text-muted-foreground">{staff.title}</p>
         </DialogHeader>
 

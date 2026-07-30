@@ -31,7 +31,7 @@ import {
   LockKeyholeOpen,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
-import { PersonPill, StaffProfileByName } from "./StaffDirectory";
+import { PersonPill } from "./StaffDirectory";
 import {
   markInitialLayoutSettled,
   useInitialLayoutSettled,
@@ -1170,6 +1170,7 @@ function ActiveDurationIndicator({
             count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`
           }
           title={count > 1 ? `${count} timers running — tap to cycle` : displayedTimers[0]?.label}
+          layout="position"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
@@ -1177,7 +1178,10 @@ function ActiveDurationIndicator({
           // nav, and a bouncy/oscillating mount here was what made the nav
           // (and, by extension, the panel it's grouped with) read as
           // animating independently instead of staying visually locked to
-          // it during transitions.
+          // it during transitions. Also covers the `layout` prop's own
+          // position tween above — this and PresenceIndicator slide smoothly
+          // over into each other's spot as either one mounts/unmounts,
+          // instead of the survivor jumping straight to its new position.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 cursor-pointer text-blue-500 hover:text-blue-600 transition-colors"
         >
@@ -1185,8 +1189,16 @@ function ActiveDurationIndicator({
             <span className="inline-block animate-pulse-scale">
               <Timer className="size-4" />
             </span>
+            {/* `absolute`, not a normal inline sibling — appearing/
+                disappearing (1 timer vs. 2+) must never change this span's
+                own width and shove neighboring header icons/the mini
+                session pill sideways, independent of the `layout` slide
+                above (which is only for THIS indicator's own mount/unmount,
+                not for a badge count changing while already mounted). */}
             {count > 1 && (
-              <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">{count}</sup>
+              <sup className="pointer-events-none absolute -top-1 -right-1.5 text-[9px] font-semibold leading-none">
+                {count}
+              </sup>
             )}
           </span>
           {/* Only where there's room to spare — a phone-width tab bar is
@@ -1205,21 +1217,27 @@ function ActiveDurationIndicator({
 /** The header's own "someone else is also in this session" signal — same
  *  spot/shape as ActiveDurationIndicator right beside it, shown once
  *  you've joined (or started) a running session AND at least one other
- *  staff member is also present. Tapping it opens that person's profile
- *  directly when there's exactly one (StaffDirectory's own
- *  StaffProfileByName); a real multi-person clinic would need an actual
- *  list here, so that path reuses PersonPill (already handles its own
- *  tap-to-open-profile) inside a plain popover instead of a bespoke one. */
+ *  staff member is also present. Always opens the same roster popover
+ *  (rather than a direct single-profile shortcut for exactly one other
+ *  person) since the roster itself always includes you too now — never
+ *  truly a "just one entry" list once you're counted in it. */
 function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
-  const [singleProfileOpen, setSingleProfileOpen] = useState(false);
   const visible = otherStaffNames.length > 0;
-  const soleOther = otherStaffNames.length === 1 ? otherStaffNames[0] : null;
+  // You're always in "this session" too, once this is showing at all —
+  // listed last since the others are the actually-new information a
+  // technician taps this to see; you already know you're here.
+  const rosterNames = [...otherStaffNames, CURRENT_STAFF_NAME];
 
   const trigger = (
+    // The count badge is `absolute`, not a normal inline sibling — its own
+    // appearing/disappearing (1 other vs. 2+) must never change this span's
+    // width and shove neighboring header icons sideways, the same
+    // "spacing shouldn't depend on the badge" fix applied to
+    // ActiveDurationIndicator's identical badge below.
     <span className="relative inline-flex">
       <User className="size-4" fill="currentColor" strokeWidth={0} />
       {otherStaffNames.length > 1 && (
-        <sup className="text-[9px] font-semibold leading-none -ml-1 -mt-0.5">
+        <sup className="pointer-events-none absolute -top-1 -right-1.5 text-[9px] font-semibold leading-none">
           {otherStaffNames.length}
         </sup>
       )}
@@ -1229,81 +1247,65 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
   const ariaLabel =
     otherStaffNames.length > 1
       ? `${otherStaffNames.length} other staff also in this session`
-      : `${soleOther} is also in this session`;
+      : `${otherStaffNames[0]} is also in this session`;
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
           key="presence-indicator"
+          layout="position"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           // Same plain tween as ActiveDurationIndicator right beside it —
           // see its own comment on why a spring reads as this indicator
-          // animating independently of the nav it's grouped with.
+          // animating independently of the nav it's grouped with. Also
+          // covers the `layout` prop's own position tween above — sliding
+          // smoothly over whenever ActiveDurationIndicator appears/
+          // disappears beside it, instead of jumping straight to its new
+          // spot.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
         >
-          {soleOther ? (
-            <button
-              type="button"
-              onClick={() => setSingleProfileOpen(true)}
-              aria-label={ariaLabel}
-              title={soleOther}
-              className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
-            >
-              {trigger}
-              <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
-                {label}
-              </span>
-            </button>
-          ) : (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={ariaLabel}
-                  title={otherStaffNames.join(", ")}
-                  className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  {trigger}
-                  <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
-                    {label}
-                  </span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                side="bottom"
-                align="end"
-                sideOffset={10}
-                collisionPadding={16}
-                className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={ariaLabel}
+                title={otherStaffNames.join(", ")}
+                className="relative flex items-center gap-1.5 justify-center px-1 py-1.5 sm:py-2 text-blue-500 hover:text-blue-600 transition-colors"
               >
-                {/* Arrow — right-aligned to point at the presence icon, same
-                    convention as SaveIndicator's own popover arrow. */}
-                <span
-                  aria-hidden
-                  className="absolute -top-[7px] right-4 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
-                />
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-                  Also in this session
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {otherStaffNames.map((n) => (
-                    <PersonPill key={n} name={n} size="sm" />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+                {trigger}
+                <span className="hidden md:inline text-xs font-medium whitespace-nowrap">
+                  {label}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={10}
+              collisionPadding={16}
+              className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+            >
+              {/* Radix's own Arrow — see SaveIndicator's matching one for
+                  why (tracks the trigger's real position instead of a
+                  static offset that drifts whenever the header's layout
+                  changes width upstream of it). */}
+              <PopoverPrimitive.Arrow asChild>
+                <div className="size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white" />
+              </PopoverPrimitive.Arrow>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                In this session
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {rosterNames.map((n) => (
+                  <PersonPill key={n} name={n} size="sm" />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </motion.div>
-      )}
-      {soleOther && (
-        <StaffProfileByName
-          name={soleOther}
-          open={singleProfileOpen}
-          onOpenChange={setSingleProfileOpen}
-        />
       )}
     </AnimatePresence>
   );
@@ -1349,11 +1351,18 @@ function SaveIndicator({
           // underneath the toolbar and its clicks get intercepted there.
           className="relative z-[70] w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          {/* Arrow — right-aligned to point at the cloud icon */}
-          <span
-            aria-hidden
-            className="absolute -top-[7px] right-4 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
-          />
+          {/* Radix's own Arrow, not a hand-placed span — it tracks the
+              trigger's actual center (and any collision-driven shift)
+              itself, via the Popper positioning this Content already uses,
+              rather than a static offset that reads right only for
+              whatever the header's layout happened to measure the day it
+              was tuned and silently drifts out of alignment the next time
+              anything upstream of it changes width. asChild swaps in the
+              same rotated-square diamond every other popup here uses,
+              instead of Radix's own default triangle. */}
+          <PopoverPrimitive.Arrow asChild>
+            <div className="size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white" />
+          </PopoverPrimitive.Arrow>
           <PopoverPrimitive.Close
             aria-label="Close"
             className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
@@ -1623,43 +1632,45 @@ function ExpandedSessionBox({
           className="flex items-center gap-1 leading-tight"
         >
           {contextTime && (
-            <span className="text-[10px] text-muted-foreground text-center tabular-nums whitespace-nowrap">
-              {attributionVerb}
+            <span className="inline-flex items-baseline gap-1 text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+              <span>{attributionVerb}</span>
               {attributionName && (
                 <>
-                  {" by\u00a0"}
+                  <span>by</span>
                   <PersonPill name={attributionName} size="sm" />
                 </>
               )}
-              {"\u00a0"}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+              <span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                    >
+                      {formatRelativeFromNow(contextTime)}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="right"
+                    align="center"
+                    sideOffset={10}
+                    collisionPadding={12}
+                    className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums leading-snug whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                   >
-                    {formatRelativeFromNow(contextTime)}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="right"
-                  align="center"
-                  sideOffset={10}
-                  collisionPadding={12}
-                  className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-                >
-                  {/* Arrow — left edge, vertically centered, same convention
-                      as every other popup's arrow (SaveIndicator's own,
-                      PresenceIndicator's own) just rotated to match this
-                      one's side="right" placement instead of "bottom". */}
-                  <span
-                    aria-hidden
-                    className="absolute top-1/2 -left-[7px] size-3 -translate-y-1/2 rotate-45 border-b-2 border-l-2 border-blue-400 bg-white"
-                  />
-                  {formatExactTimestamp(contextTime)}
-                </PopoverContent>
-              </Popover>
-              .
+                    {/* Radix's own Arrow — see SaveIndicator's matching one
+                      for why, just rotated to match this popup's
+                      side="right" placement instead of "bottom". */}
+                    <PopoverPrimitive.Arrow asChild>
+                      <div className="size-3 rotate-45 border-b-2 border-l-2 border-blue-400 bg-white" />
+                    </PopoverPrimitive.Arrow>
+                    {/* Two lines — date, then time underneath — rather than
+                      one long mm/dd/yyyy hh:mm:ss string. */}
+                    <div>{formatExactDate(contextTime)}</div>
+                    <div>{formatExactTime(contextTime)}</div>
+                  </PopoverContent>
+                </Popover>
+                .
+              </span>
             </span>
           )}
         </motion.div>
@@ -1942,16 +1953,20 @@ function MiniSession({
 // Popover) — standard mm/dd/yyyy hh:mm:ss, always zero-padded/12-hour so it
 // reads as a fixed-width, unambiguous instant rather than the loosely
 // human-scaled text next to it.
-function formatExactTimestamp(d: Date) {
+function formatExactDate(d: Date) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   const yyyy = d.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+function formatExactTime(d: Date) {
   const h24 = d.getHours();
   const hh = String(((h24 + 11) % 12) + 1).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   const ss = String(d.getSeconds()).padStart(2, "0");
   const ampm = h24 < 12 ? "AM" : "PM";
-  return `${mm}/${dd}/${yyyy} ${hh}:${min}:${ss} ${ampm}`;
+  return `${hh}:${min}:${ss} ${ampm}`;
 }
 
 // Hour is a single, unpadded digit — a session can't run longer than a
