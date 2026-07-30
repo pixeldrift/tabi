@@ -28,7 +28,6 @@ import {
   Ban,
   CircleSlash2,
   User,
-  UserPlus,
   LockKeyholeOpen,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
@@ -1685,7 +1684,12 @@ function ExpandedSessionBox({
                   {isPaused ? (
                     <Play className="size-5" fill="currentColor" strokeWidth={0} />
                   ) : (
-                    <UserPlus className="size-5" strokeWidth={2.5} />
+                    // Tried a custom "two lanes merging into an arrow" glyph
+                    // first (see JoinSessionIcon) — at this button's actual
+                    // 20px size the merge curves and the arrowhead both just
+                    // read as a plain ">>", so a single clean arrow reads
+                    // more clearly here.
+                    <ArrowRight className="size-5" strokeWidth={2.5} />
                   )}
                 </span>
               </button>
