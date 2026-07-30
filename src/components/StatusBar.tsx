@@ -1279,6 +1279,12 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
                 collisionPadding={16}
                 className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
               >
+                {/* Arrow — right-aligned to point at the presence icon, same
+                    convention as SaveIndicator's own popover arrow. */}
+                <span
+                  aria-hidden
+                  className="absolute -top-[7px] right-4 size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white"
+                />
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
                   Also in this session
                 </p>
@@ -1642,6 +1648,14 @@ function ExpandedSessionBox({
                   collisionPadding={12}
                   className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                 >
+                  {/* Arrow — left edge, vertically centered, same convention
+                      as every other popup's arrow (SaveIndicator's own,
+                      PresenceIndicator's own) just rotated to match this
+                      one's side="right" placement instead of "bottom". */}
+                  <span
+                    aria-hidden
+                    className="absolute top-1/2 -left-[7px] size-3 -translate-y-1/2 rotate-45 border-b-2 border-l-2 border-blue-400 bg-white"
+                  />
                   {formatExactTimestamp(contextTime)}
                 </PopoverContent>
               </Popover>

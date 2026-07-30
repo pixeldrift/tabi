@@ -770,10 +770,18 @@ function Index() {
     setScreen("welcome");
   };
 
-  const welcomeStyle: React.CSSProperties = transitioning
-    ? { position: "fixed", inset: 0 }
-    : screen === "welcome"
-      ? {}
+  // Always fixed + stacked above everything else while it's the active (or
+  // mid-transition) screen — not just during the transition the way `main`
+  // is below. Unlike `<main>`, welcome has no window.scrollTo/scrollBy
+  // wiring to preserve, so there's no reason to ever let it settle back
+  // into plain document flow — and it needs to, since `main` (and anything
+  // it portals — DataDetailsDrawer's pull tab, dialogs, etc.) stays mounted
+  // underneath it the whole time. A settled `{}` here left main's own
+  // fixed-positioned portals (all higher than plain in-flow content's
+  // implicit stacking layer) showing through on top of it.
+  const welcomeStyle: React.CSSProperties =
+    transitioning || screen === "welcome"
+      ? { position: "fixed", inset: 0, zIndex: 200 }
       : { display: "none" };
   const mainStyle: React.CSSProperties = transitioning
     ? { position: "fixed", inset: 0 }
