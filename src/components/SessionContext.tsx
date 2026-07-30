@@ -110,10 +110,12 @@ interface SessionContextValue {
   requestDiscard: () => void;
   // shared tick (so all timers stay in unison with the session timer)
   sessionRunning: boolean;
-  // Who started (or, once paused, was last running) the current/most
-  // recent non-idle session — null only while genuinely idle with no
-  // session to attribute. Session ownership doesn't change on pause/resume,
-  // only on a fresh start or on ending — see isSessionMine.
+  // Who to credit for the current non-idle session's state — whoever
+  // started it, or, once paused, whoever pressed Pause (see pause() below;
+  // same "whoever actually performed the action" rule endAndSubmit uses for
+  // lastEndedByName) — null only while genuinely idle with no session to
+  // attribute. isSessionMine only cares whether this is null, not who it
+  // names, so crediting the pauser here doesn't change session ownership.
   startedByName: string | null;
   // Who ended & submitted the previous session — shown in the idle box's
   // "Previous Session" line. Whoever performs End & Submit gets credited
@@ -365,6 +367,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     baseRef.current = elapsedMs;
     setStatus("paused");
     setLastUpdated(new Date());
+    // Credits whoever actually paused it, not necessarily whoever started
+    // it — e.g. joining someone else's running session and then pausing it
+    // should read as "Paused by You," not still name the original starter.
+    setStartedByName(CURRENT_STAFF_NAME);
     playSoundEffect("sessionPause");
   }, [elapsedMs]);
   const resume = useCallback(() => {
