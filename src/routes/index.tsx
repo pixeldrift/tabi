@@ -42,6 +42,7 @@ import {
   type DisplayMode,
 } from "@/components/DataToolbarContext";
 import { CardDataStoreProvider } from "@/components/CardDataStore";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 import type { TeachingProcedure } from "@/components/TeachingProcedureAccordion";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
@@ -719,28 +720,95 @@ function SessionActivityTrigger() {
   return null;
 }
 
+type Screen = "welcome" | "main";
+
+// Same push/pop feel either direction: welcome exits left as main enters
+// from the right (Get Started), and the exact reverse — main exits right,
+// welcome re-enters from the left — going back. Both panels share this one
+// duration/ease so they move in lockstep (constant 100%-of-viewport gap
+// between them throughout), the same standard-ease constant NotificationBar
+// already uses elsewhere for area transitions.
+const SCREEN_SLIDE_MS = 450;
+const SCREEN_SLIDE_EASE = NOTIFICATION_AREA_TRANSITION.ease;
+
 function Index() {
+  const [screen, setScreen] = useState<Screen>("welcome");
+  // True only for the ~450ms the slide is actually animating. IndexInner
+  // (and all its providers — session state, timers, sound-on-mount effects)
+  // mounts exactly once and stays mounted regardless of which screen is
+  // showing, so toggling back and forth never re-randomizes the session
+  // simulator or replays the startup sound. At rest, the inactive screen is
+  // just `display: none` (zero layout/scroll footprint, no risk to
+  // StatusBar's sticky header or this file's own window.scrollTo/scrollBy
+  // wiring below); mid-slide, both screens are briefly `position: fixed`
+  // full-viewport layers (which — unlike a translated normal-flow element —
+  // don't contribute scrollable overflow to any ancestor, so this never
+  // needs an `overflow-x: hidden` wrapper that could interfere with sticky
+  // positioning). Once settled, the "main" screen's own wrapper carries no
+  // fixed/transform styling at all — identical to how `<main>` rendered
+  // before this screen existed.
+  const [transitioning, setTransitioning] = useState(false);
+
+  const goToMain = () => {
+    setTransitioning(true);
+    setScreen("main");
+  };
+  const goToWelcome = () => {
+    setTransitioning(true);
+    setScreen("welcome");
+  };
+
+  const welcomeStyle: React.CSSProperties = transitioning
+    ? { position: "fixed", inset: 0 }
+    : screen === "welcome"
+      ? {}
+      : { display: "none" };
+  const mainStyle: React.CSSProperties = transitioning
+    ? { position: "fixed", inset: 0 }
+    : screen === "main"
+      ? {}
+      : { display: "none" };
+
   return (
-    <SettingsProvider>
-      <SessionProvider>
-        <DataToolbarProvider>
-          {/* Above the whole card list, so its store survives the per-card
-              remounts that MorphContent's display-mode crossfade causes
-              below it (see CardDataStore's own comment). */}
-          <CardDataStoreProvider>
-            {/* Outside the Schedule tab's own conditional render (which
-                mounts/unmounts ScheduleView on every tab switch) so
-                Phineas' Schedule's appointments survive leaving the tab —
-                ClientInfoPane's Related Service Times row reads them too,
-                and would otherwise flash back to the seed data every time
-                Schedule wasn't the active tab. */}
-            <ScheduleProvider>
-              <IndexInner />
-            </ScheduleProvider>
-          </CardDataStoreProvider>
-        </DataToolbarProvider>
-      </SessionProvider>
-    </SettingsProvider>
+    <>
+      <motion.div
+        style={welcomeStyle}
+        initial={false}
+        animate={{ x: screen === "welcome" ? "0%" : "-100%" }}
+        transition={{ duration: SCREEN_SLIDE_MS / 1000, ease: SCREEN_SLIDE_EASE }}
+      >
+        <WelcomeScreen onGetStarted={goToMain} />
+      </motion.div>
+
+      <motion.div
+        style={mainStyle}
+        initial={false}
+        animate={{ x: screen === "main" ? "0%" : "100%" }}
+        transition={{ duration: SCREEN_SLIDE_MS / 1000, ease: SCREEN_SLIDE_EASE }}
+        onAnimationComplete={() => setTransitioning(false)}
+      >
+        <SettingsProvider>
+          <SessionProvider>
+            <DataToolbarProvider>
+              {/* Above the whole card list, so its store survives the per-card
+                  remounts that MorphContent's display-mode crossfade causes
+                  below it (see CardDataStore's own comment). */}
+              <CardDataStoreProvider>
+                {/* Outside the Schedule tab's own conditional render (which
+                    mounts/unmounts ScheduleView on every tab switch) so
+                    Phineas' Schedule's appointments survive leaving the tab —
+                    ClientInfoPane's Related Service Times row reads them too,
+                    and would otherwise flash back to the seed data every time
+                    Schedule wasn't the active tab. */}
+                <ScheduleProvider>
+                  <IndexInner onBack={goToWelcome} />
+                </ScheduleProvider>
+              </CardDataStoreProvider>
+            </DataToolbarProvider>
+          </SessionProvider>
+        </SettingsProvider>
+      </motion.div>
+    </>
   );
 }
 
@@ -857,7 +925,7 @@ const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
   "grid-small": "grid-cols-3 gap-1.5",
 };
 
-function IndexInner() {
+function IndexInner({ onBack }: { onBack: () => void }) {
   const [activeId, setActiveId] = useState<string>(cards[0].id);
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
@@ -1328,6 +1396,7 @@ function IndexInner() {
           <StatusBar
             activeTab={tab}
             onTabChange={handleTabChange}
+            onBack={onBack}
             suppressNavLayout={suppressCardLayout}
             onNavigateToCard={handleNavigateToCard}
             dataToolbar={

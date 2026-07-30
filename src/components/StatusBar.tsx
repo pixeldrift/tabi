@@ -79,6 +79,11 @@ interface StatusBarProps {
   activeTab: StatusTab;
   onTabChange: (t: StatusTab) => void;
   title?: string;
+  /** The header's own back arrow — returns to the welcome screen (see
+   *  routes/index.tsx's screen-slide wiring). There's no "sessions list" to
+   *  go back to in this single-client prototype; this is the app's only
+   *  other screen. */
+  onBack: () => void;
   suppressNavLayout?: boolean;
   /** The Data tab's sticky filter/view toolbar (DataToolbar), rendered as a
    *  plain sibling of this component's own header content inside the SAME
@@ -205,6 +210,7 @@ export function StatusBar({
   activeTab,
   onTabChange,
   title = "Phineas Flynn's Data Sheet",
+  onBack,
   suppressNavLayout = false,
   dataToolbar,
   onNavigateToCard,
@@ -356,7 +362,6 @@ export function StatusBar({
   const untouchedCards = allReviewCards.filter((c) => !c.hasData).sort(byTitle);
   const hasAnyReviewData =
     incompleteCards.length + completeCards.length + untouchedCards.length > 0;
-  const [showCommitSha, setShowCommitSha] = useState(false);
   // Stage 1 (old stuff exiting) dims the box's own text/buttons; stage 2 is
   // when the box collapses — except for discard, where the box was already
   // expanded (paused) and stays that way; only its displayed value swaps.
@@ -630,8 +635,9 @@ export function StatusBar({
               <div className="flex items-center gap-2 min-w-0 pt-1">
                 <button
                   type="button"
-                  aria-label="Back to sessions"
-                  title="Back to sessions"
+                  onClick={onBack}
+                  aria-label="Back to welcome screen"
+                  title="Back to welcome screen"
                   className="grid place-items-center size-8 -ml-1 rounded-md text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors shrink-0"
                 >
                   <ArrowLeft className="size-5" />
@@ -639,31 +645,6 @@ export function StatusBar({
                 <h1 className="min-w-0 font-display text-base sm:text-lg leading-tight truncate">
                   {title}
                 </h1>
-                {/* Independent of the title's own text, so it stays visible
-                  (shrink-0) even once the title itself has to truncate on a
-                  narrow screen. __APP_VERSION__ (vite.config.ts) is a static
-                  string bumped by hand per release, not derived from git —
-                  the full commit SHA behind the tap is still real, for the
-                  rarer case of pinning a bug to one exact build. */}
-                <button
-                  type="button"
-                  onClick={() => setShowCommitSha((v) => !v)}
-                  title={showCommitSha ? "Tap to show version" : "Tap to show commit SHA"}
-                  className="shrink-0 italic font-normal text-stone-400 text-xs sm:text-sm overflow-hidden"
-                >
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.span
-                      key={showCommitSha ? "sha" : "version"}
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.15 }}
-                      className="inline-block"
-                    >
-                      ({showCommitSha ? __APP_COMMIT_SHA__ : __APP_VERSION__})
-                    </motion.span>
-                  </AnimatePresence>
-                </button>
               </div>
 
               <div className="pt-1">
