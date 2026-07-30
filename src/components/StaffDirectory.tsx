@@ -115,7 +115,7 @@ const STAFF_DIRECTORY: Record<string, StaffRecord> = {
 // out of context to anyone reviewing it later, or to a different staff
 // member looking at the same shared session — the real name has to stay
 // legible either way, with "(You)" just as a personalized cue on top of it.
-function displayName(name: string): string {
+export function displayName(name: string): string {
   return name === CURRENT_STAFF_NAME ? `${name} (You)` : name;
 }
 

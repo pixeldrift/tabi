@@ -37,6 +37,7 @@ import {
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
+import { displayName } from "./StaffDirectory";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { cn } from "@/lib/utils";
@@ -186,7 +187,7 @@ function NotificationTitle({ title, className }: { title: string; className?: st
       {rest.split(NAME_PATTERN).map((part, i) =>
         KNOWN_NAMES.includes(part) ? (
           <span key={i} className="italic text-blue-600">
-            {part}
+            {displayName(part)}
           </span>
         ) : (
           <span key={i}>{part}</span>
