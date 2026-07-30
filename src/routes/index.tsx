@@ -28,7 +28,11 @@ import { SettingsProvider, useSettings } from "@/components/SettingsContext";
 import { ScheduleProvider } from "@/components/ScheduleContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
-import { NotificationProvider, useNotifications } from "@/components/NotificationContext";
+import {
+  NotificationProvider,
+  useNotifications,
+  useUserPrefs,
+} from "@/components/NotificationContext";
 import { NOTIFICATION_AREA_TRANSITION, NotificationsPane } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useElementHeight } from "@/hooks/use-element-height";
@@ -680,6 +684,7 @@ function GoalChangeDemoTrigger() {
  *  push directly (see that provider's own nesting in Index below). */
 function SessionActivityTrigger() {
   const { push } = useNotifications();
+  const { notificationDurationMs } = useUserPrefs();
   const { status, isSessionMine, isAbandoned, startedByName } = useSession();
   const joinedRef = useRef(false);
   const abandonedRef = useRef(false);
@@ -697,11 +702,15 @@ function SessionActivityTrigger() {
         title: `You joined ${startedByName}'s session`,
         body: `${startedByName} has been notified that you joined.`,
         icon: "megaphone",
+        // Just a confirmation, not something to act on — fades on its own
+        // like a schedule reminder does, rather than sitting there until
+        // dismissed the way the abandonment alert below deliberately does.
+        autofadeMs: notificationDurationMs,
       });
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;
     }
-  }, [status, isSessionMine, startedByName, push]);
+  }, [status, isSessionMine, startedByName, push, notificationDurationMs]);
 
   useEffect(() => {
     if (isAbandoned && !abandonedRef.current) {

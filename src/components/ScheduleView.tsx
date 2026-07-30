@@ -817,7 +817,14 @@ export function ScheduleView({
           pushNotification({
             dedupeKey: `alert-priming:${it.id}:${dayKey}`,
             kind: "alert-priming",
-            title: `In ${priming.minutesPrior} min: ${it.customName ?? it.activity}`,
+            // No baked-in "In X min" here — that would go stale the moment
+            // real time moves past whatever it said at push time (and
+            // eventually read as flatly wrong, e.g. still "In 5 min" a
+            // minute before it actually starts). NotificationRow's own
+            // relativeTime badge (driven by activityAt below) already shows
+            // an always-current "In X minutes" / "Now" / "X minutes ago" —
+            // this title just needs to name the activity.
+            title: it.customName ?? it.activity,
             body: it.location,
             icon: priming.mode === "audio" ? "bell-chime" : "bell",
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
@@ -857,7 +864,10 @@ export function ScheduleView({
           pushNotification({
             dedupeKey: `alert-priming:${appt.id}:${dayKey}`,
             kind: "alert-priming",
-            title: `In ${priming.minutesPrior} min: ${appt.type}`,
+            // See the matching item-alert push above for why this doesn't
+            // bake in "In X min" — NotificationRow's own live relativeTime
+            // badge (activityAt below) covers that, always current.
+            title: appt.type,
             body: appt.provider,
             icon: priming.mode === "audio" ? "bell-chime" : "bell",
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,

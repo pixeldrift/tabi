@@ -647,7 +647,12 @@ export function StatusBar({
                 </h1>
               </div>
 
-              <div className="pt-1">
+              {/* -mr-4/pr-1.5/pr-2: same trick the mini session pill's own
+                  slot uses (see its comment below) to cancel this row's
+                  px-4 edge padding and re-add a smaller one instead — keeps
+                  the cloud icon's own right margin matching the mini pill's,
+                  rather than sitting noticeably further from the edge. */}
+              <div className="pt-1 pr-1.5 sm:pr-2 -mr-4">
                 <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
               </div>
             </div>
@@ -1390,7 +1395,7 @@ function SaveIndicator({
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Saved by
               </div>
-              <PersonPill name="Perry Plat" />
+              <PersonPill name={CURRENT_STAFF_NAME} />
             </div>
           </div>
         </PopoverContent>
@@ -1402,19 +1407,19 @@ function SaveIndicator({
         aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
         title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
         className={cn(
-          "relative grid place-items-center size-8 transition-colors",
+          "relative grid place-items-center size-7 transition-colors",
           isDirty ? "cursor-pointer" : "cursor-default",
         )}
       >
         <CloudShape
           className={cn(
-            "absolute inset-0 size-8",
+            "absolute inset-0 size-7",
             cloudColorClass,
             isDirty && "hover:text-blue-600",
           )}
         />
         <SymbolIcon
-          className={cn("relative text-white", isSaving ? "size-2.5" : "size-3")}
+          className={cn("relative text-white", isSaving ? "size-2" : "size-2.5")}
           strokeWidth={3.5}
           style={{ transform: isSaving ? "translateY(0px)" : "translateY(1.5px)" }}
         />
@@ -1456,11 +1461,10 @@ function formatRelativeFromNow(d: Date) {
   if (minutes < 1) return "Just now";
   if (minutes === 1) return "One minute ago";
   if (minutes < 60) return `${minutes} minutes ago`;
-  const hours = diff / 3600000;
-  if (hours < 24) {
-    const rounded = Math.round(hours * 10) / 10;
-    if (rounded === 1) return "One hour ago";
-    return `${rounded} hours ago`;
+  if (diff < 86400000) {
+    const wholeHours = Math.floor(diff / 3600000);
+    const remMinutes = Math.floor((diff % 3600000) / 60000);
+    return remMinutes > 0 ? `${wholeHours}hr ${remMinutes}min ago` : `${wholeHours}hr ago`;
   }
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1540,6 +1544,13 @@ function ExpandedSessionBox({
       : isAbandoned
         ? "Session Unattended:"
         : "Currently Running:";
+  // The attribution sentence's verb — unified across every state instead of
+  // each one having its own bespoke phrasing: idle credits whoever last
+  // submitted (the session was "Saved"), paused credits whoever parked it,
+  // and both running variants credit whoever originally started it (the
+  // bold label above already carries the mine-vs-not/abandoned distinction,
+  // so this doesn't need to re-encode it).
+  const attributionVerb = isIdle ? "Saved" : isPaused ? "Paused" : "Started";
   const ease = SESSION_MORPH_EASE;
   // Gray only while genuinely idle and showing a leftover previous-session
   // value — once paused (this session's own time) or once a start/resume has
@@ -1585,7 +1596,7 @@ function ExpandedSessionBox({
             animate={{ opacity: startingNew ? 1 : 0 }}
             initial={false}
             transition={{ duration: 0.2 }}
-            className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wider text-blue-600 whitespace-nowrap"
+            className="absolute top-0 left-1/2 -translate-x-1/2 text-sm font-bold uppercase tracking-wider text-blue-600 whitespace-nowrap"
             aria-hidden={!startingNew}
           >
             Starting New Session
@@ -1594,7 +1605,7 @@ function ExpandedSessionBox({
             animate={{ opacity: dimmed ? 0 : 1 }}
             initial={false}
             transition={{ duration: 0.2 }}
-            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+            className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
           >
             {label}
           </motion.span>
@@ -1608,14 +1619,34 @@ function ExpandedSessionBox({
         >
           {contextTime && (
             <span className="text-[10px] text-muted-foreground text-center tabular-nums whitespace-nowrap">
-              {formatRelativeFromNow(contextTime)}
-              {"\u00a0"}({formatMDY(contextTime)})
+              {attributionVerb}
               {attributionName && (
                 <>
                   {" by\u00a0"}
                   <PersonPill name={attributionName} size="sm" />
                 </>
               )}
+              {"\u00a0"}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                  >
+                    {formatRelativeFromNow(contextTime)}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="right"
+                  align="center"
+                  sideOffset={10}
+                  collisionPadding={12}
+                  className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+                >
+                  {formatExactTimestamp(contextTime)}
+                </PopoverContent>
+              </Popover>
+              .
             </span>
           )}
         </motion.div>
@@ -1889,19 +1920,30 @@ function MiniSession({
   );
 }
 
-function formatMDY(d: Date) {
+// The exact stamp behind a session box's relative-time link (see its own
+// Popover) — standard mm/dd/yyyy hh:mm:ss, always zero-padded/12-hour so it
+// reads as a fixed-width, unambiguous instant rather than the loosely
+// human-scaled text next to it.
+function formatExactTimestamp(d: Date) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   const yyyy = d.getFullYear();
-  return `${mm}/${dd}/${yyyy}`;
+  const h24 = d.getHours();
+  const hh = String(((h24 + 11) % 12) + 1).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  const ampm = h24 < 12 ? "AM" : "PM";
+  return `${mm}/${dd}/${yyyy} ${hh}:${min}:${ss} ${ampm}`;
 }
 
+// Hour is a single, unpadded digit — a session can't run longer than a
+// clinic's office hours, so it never reaches double digits.
 function formatTime(ms: number) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 /** Renders a fixed-format time string as an odometer: each character sits in
