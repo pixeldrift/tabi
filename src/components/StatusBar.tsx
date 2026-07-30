@@ -1291,10 +1291,15 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
               {/* Radix's own Arrow — see SaveIndicator's matching one for
                   why (tracks the trigger's real position instead of a
                   static offset that drifts whenever the header's layout
-                  changes width upstream of it). */}
-              <PopoverPrimitive.Arrow asChild>
-                <div className="size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white" />
-              </PopoverPrimitive.Arrow>
+                  changes width upstream of it). Radix's own default
+                  triangle — see SaveIndicator's matching one for why not
+                  an asChild-swapped shape. */}
+              <PopoverPrimitive.Arrow
+                width={14}
+                height={7}
+                strokeWidth={2}
+                className="fill-white stroke-blue-400"
+              />
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
                 In this session
               </p>
@@ -1357,12 +1362,22 @@ function SaveIndicator({
               rather than a static offset that reads right only for
               whatever the header's layout happened to measure the day it
               was tuned and silently drifts out of alignment the next time
-              anything upstream of it changes width. asChild swaps in the
-              same rotated-square diamond every other popup here uses,
-              instead of Radix's own default triangle. */}
-          <PopoverPrimitive.Arrow asChild>
-            <div className="size-3 rotate-45 border-l-2 border-t-2 border-blue-400 bg-white" />
-          </PopoverPrimitive.Arrow>
+              anything upstream of it changes width. Left as Radix's own
+              default triangle (not asChild-swapped for a rotated-square
+              diamond, as the other popups here used to try) — a custom
+              asChild shape doesn't pick up Radix's own per-side rotation
+              correctly (it composes with, rather than replaces, whatever
+              rotation the shape already carries), so it only ever looked
+              right for the one side it happened to be tuned against. The
+              plain triangle rotates correctly for every side automatically,
+              including a collision-driven flip to a side other than the
+              one requested. */}
+          <PopoverPrimitive.Arrow
+            width={14}
+            height={7}
+            strokeWidth={2}
+            className="fill-white stroke-blue-400"
+          />
           <PopoverPrimitive.Close
             aria-label="Close"
             className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
@@ -1657,12 +1672,16 @@ function ExpandedSessionBox({
                     collisionPadding={12}
                     className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums leading-snug whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                   >
-                    {/* Radix's own Arrow — see SaveIndicator's matching one
-                      for why, just rotated to match this popup's
-                      side="right" placement instead of "bottom". */}
-                    <PopoverPrimitive.Arrow asChild>
-                      <div className="size-3 rotate-45 border-b-2 border-l-2 border-blue-400 bg-white" />
-                    </PopoverPrimitive.Arrow>
+                    {/* Radix's own default triangle — see SaveIndicator's
+                      matching one for why not an asChild-swapped shape; it
+                      rotates itself correctly for this popup's
+                      side="right" placement automatically. */}
+                    <PopoverPrimitive.Arrow
+                      width={14}
+                      height={7}
+                      strokeWidth={2}
+                      className="fill-white stroke-blue-400"
+                    />
                     {/* Two lines — date, then time underneath — rather than
                       one long mm/dd/yyyy hh:mm:ss string. */}
                     <div>{formatExactDate(contextTime)}</div>

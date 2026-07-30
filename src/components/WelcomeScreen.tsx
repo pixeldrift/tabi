@@ -34,13 +34,17 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
         <p>Have a suggestion? We&rsquo;d love your feedback!</p>
       </div>
 
-      {/* btn-bevel, not -solid — the exact same class the main interface's
-          own primary green CTA (StatusBar's "Start New Session") uses, so
-          this reads as the same button/color, not a similar-looking one. */}
+      {/* blue-700/800 (this app's "Slate" pine-teal reskin of Tailwind's
+          blue-*, not its literal blue) — the closest palette shade to the
+          logo's own dark teal, sampled at oklch(40% 0.065 193) vs. the
+          logo's dominant rgb(0,77,77). green-500/600 (this app's Sage) is
+          a genuinely different hue and read as mismatched next to the
+          logo, even though it's the same shade "Start New Session" uses
+          for its own, unrelated (go/start) meaning. */}
       <button
         type="button"
         onClick={onGetStarted}
-        className="btn-bevel flex items-center gap-2 rounded-full bg-green-500 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-green-600 active:scale-95"
+        className="btn-bevel flex items-center gap-2 rounded-full bg-blue-700 px-8 py-3.5 text-base font-semibold text-white transition-colors hover:bg-blue-800 active:scale-95"
       >
         Get Started
         <ArrowRight className="size-5" />
