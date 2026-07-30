@@ -1237,7 +1237,12 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
     <span className="relative inline-flex">
       <User className="size-4" fill="currentColor" strokeWidth={0} />
       {otherStaffNames.length > 1 && (
-        <sup className="pointer-events-none absolute -top-1 -right-1.5 text-[9px] font-semibold leading-none">
+        // Tucked in closer than the timer icon's identical badge needs to
+        // be — the User glyph has more empty space in its own top-right
+        // corner than the Timer icon's circle does, so the same offset
+        // that sits flush against the timer reads as a gap floating away
+        // from this one.
+        <sup className="pointer-events-none absolute -top-0.5 -right-1 text-[9px] font-semibold leading-none">
           {otherStaffNames.length}
         </sup>
       )}
