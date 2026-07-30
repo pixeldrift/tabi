@@ -1235,7 +1235,11 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
     // "spacing shouldn't depend on the badge" fix applied to
     // ActiveDurationIndicator's identical badge below.
     <span className="relative inline-flex">
-      <User className="size-4" fill="currentColor" strokeWidth={0} />
+      {/* Outline, not filled — matches the Timer icon right beside it,
+          which is lucide's default stroke rendering at the same size/
+          strokeWidth. A filled silhouette read as heavier than its
+          neighbor even at the same size. */}
+      <User className="size-4" />
       {otherStaffNames.length > 1 && (
         // Tucked in closer than the timer icon's identical badge needs to
         // be — the User glyph has more empty space in its own top-right
@@ -1271,6 +1275,10 @@ function PresenceIndicator({ otherStaffNames }: { otherStaffNames: string[] }) {
           // disappears beside it, instead of jumping straight to its new
           // spot.
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          // Pulls in just this gap, not every tab's — the parent nav's
+          // `gap` is shared by all its children (tabs included), so tightening
+          // it there would crowd the tabs too.
+          className="-ml-1"
         >
           <Popover>
             <PopoverTrigger asChild>
