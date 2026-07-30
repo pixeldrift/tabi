@@ -14,7 +14,12 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-6 py-12 text-center">
-      <img src={tabiLogo} alt="Tabi" className="w-40 sm:w-48" />
+      <div className="flex flex-col items-center gap-2">
+        <img src={tabiLogo} alt="Tabi" className="w-40 sm:w-48" />
+        <p className="text-sm font-semibold tracking-wide text-foreground/70 sm:text-base">
+          Better data. Better sessions.
+        </p>
+      </div>
 
       <p className="max-w-xs text-sm leading-relaxed text-muted-foreground sm:max-w-sm sm:text-base">
         Tabi is a new, user-friendly system for ABA therapy data collection and session management.
