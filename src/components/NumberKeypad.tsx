@@ -159,7 +159,7 @@ export function NumberKeypad({
               standard text entry fields (see ui/input.tsx), not the plain
               gray box this used to be, so an actively-edited value reads
               the same "carved in" way typing anywhere else does. */}
-          <div className="mb-2 flex h-8 items-end justify-end overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
+          <div className="mb-2 flex h-8 items-center justify-end overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
                 key={pending || "empty"}
