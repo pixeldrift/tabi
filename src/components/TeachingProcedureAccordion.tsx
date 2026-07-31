@@ -14,6 +14,8 @@ import {
   Plus,
   Minus,
   Star,
+  Video,
+  Play,
 } from "lucide-react";
 import { AccordionRow } from "./AccordionRow";
 import type { CardKind } from "./DataToolbarContext";
@@ -49,6 +51,7 @@ export interface TeachingProcedure {
 }
 
 const ROW_IDS = [
+  "video",
   "description",
   "goal",
   "rationale",
@@ -124,6 +127,27 @@ export function TeachingProcedureAccordion({
 
   return (
     <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden text-sm">
+      <AccordionRow
+        id="video"
+        icon={<Video className="size-3.5" />}
+        label="Video"
+        collapsed={collapsedIds.has("video")}
+        onToggle={toggleRow}
+      >
+        {/* Same static placeholder as DrawerInfoModal's own tutorial-clip
+            slot (16:9, black, centered play glyph) — not a real source, just
+            standing in for a future short demonstration clip until one
+            actually exists. */}
+        <div
+          className="relative aspect-video w-full overflow-hidden rounded-lg bg-black"
+          role="img"
+          aria-label="Tutorial video placeholder"
+        >
+          <span className="absolute inset-0 grid place-items-center">
+            <Play className="size-10 text-blue-500" fill="currentColor" strokeWidth={0} />
+          </span>
+        </div>
+      </AccordionRow>
       {description && (
         <AccordionRow
           id="description"
