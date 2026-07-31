@@ -49,6 +49,7 @@ import {
 } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { X } from "lucide-react";
 import {
   Dialog,
@@ -1239,6 +1240,10 @@ function PopupArrow() {
 function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
   const visible = otherStaffIds.length >= 1;
   const rosterIds = [CURRENT_STAFF_ID, ...otherStaffIds];
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
 
   const trigger = (
     // The count badge is `absolute`, not a normal inline sibling — its own
@@ -1284,9 +1289,10 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
           // it there would crowd the tabs too.
           className="-ml-1"
         >
-          <Popover>
+          <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
+                ref={anchorRef}
                 type="button"
                 aria-label={ariaLabel}
                 title={rosterIds
@@ -1301,24 +1307,45 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               </button>
             </PopoverTrigger>
             <PopoverContent
+              ref={contentRef}
               side="bottom"
               align="center"
-              sideOffset={10}
+              sideOffset={6}
               collisionPadding={16}
-              // Keeps the arrow at least a corner-radius away from the
-              // rounded-xl box's own corners (12px) even if collision
-              // detection ever has to nudge this off-center near the
-              // header's right edge (this trigger sits right at it).
-              arrowPadding={14}
-              className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+              className="group relative z-[70] w-max rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
-              <PopupArrow />
+              {/* Rotated-square idiom (NumberKeypad/DataToolbar's filter
+                  popover) instead of Radix's own Arrow primitive — a plain
+                  triangle SVG stroked separately from the box's own border
+                  never quite lines up with it, leaving a visible seam where
+                  the two meet. This is the same border color/width as the
+                  box, positioned to slide under its rounded corner, so it
+                  reads as part of one continuous shape. Its left offset
+                  tracks the trigger's real position (useSlidingArrowOffset)
+                  since Radix's collision avoidance can shift this box
+                  sideways to stay on screen, which a fixed center wouldn't
+                  follow. */}
+              <div
+                className={cn(
+                  "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400 bg-white",
+                  "-top-[7px] border-l-2 border-t-2",
+                  "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+                  "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+                  "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+                )}
+                style={{ left: arrowLeft ?? "50%" }}
+              />
               {/* Same title-row-with-close-button idiom as the "Session Data
                   Status" popover (SaveIndicator, above) — see its own
                   comment for why flex + `items-center` beats an absolutely-
-                  positioned close button over separately-padded title text. */}
-              <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-white rounded-t-xl">
-                <h3 className="font-display text-base leading-tight">In This Session</h3>
+                  positioned close button over separately-padded title text.
+                  pr-2 (not px-4 on both sides) shifts the close button
+                  slightly right, closer to the box's own edge, instead of
+                  matching the title's left inset exactly. */}
+              <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-xl">
+                <h3 className="font-display text-base leading-tight whitespace-nowrap">
+                  In This Session
+                </h3>
                 <PopoverPrimitive.Close
                   aria-label="Close"
                   className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
@@ -1356,12 +1383,17 @@ function SaveIndicator({
 
   const label = isSaving ? "Saving" : isDirty ? "Unsaved" : "Saved";
   const labelColor = isSaving || isDirty ? "text-blue-600" : "text-muted-foreground";
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
 
   return (
     <div className="flex items-center gap-1.5">
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
+            ref={anchorRef}
             type="button"
             className="flex items-center text-right hover:opacity-80 transition-opacity h-8"
           >
@@ -1369,34 +1401,46 @@ function SaveIndicator({
           </button>
         </PopoverTrigger>
         <PopoverContent
+          ref={contentRef}
           side="bottom"
           align="end"
-          sideOffset={10}
+          sideOffset={6}
           collisionPadding={16}
-          // Keeps the arrow at least a corner-radius away from the
-          // rounded-xl box's own corners (12px) — see PresenceIndicator's
-          // popover below for the same reasoning. Without this, `align="end"`
-          // here (this trigger sits at the header's own right edge) let
-          // Radix's default zero arrow-padding place the arrow's point
-          // right into the rounded corner's curve, clipping it away
-          // entirely instead of just nudging it off-center.
-          arrowPadding={14}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
           // underneath the toolbar and its clicks get intercepted there.
-          className="relative z-[70] w-64 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          className="group relative z-[70] w-max rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          <PopupArrow />
+          {/* Rotated-square idiom (NumberKeypad/DataToolbar's filter
+              popover) — see PresenceIndicator's popover below for the full
+              reasoning. `align="end"` here (this trigger sits at the
+              header's own right edge) is exactly the case a fixed-center
+              arrow can't handle: useSlidingArrowOffset keeps this pointing
+              at the real trigger regardless of where collision avoidance
+              (or `align` itself) lands the box. */}
+          <div
+            className={cn(
+              "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400 bg-white",
+              "-top-[7px] border-l-2 border-t-2",
+              "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+              "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+              "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+            )}
+            style={{ left: arrowLeft ?? "50%" }}
+          />
           {/* Title and close button as flex siblings (not an absolutely-
               positioned close button floating over independently-padded
               title text) — `items-center` centers both on the row's own
               height instead of each keeping its own separate padding that
               could drift out of alignment, and the row's height is just
               whatever the taller of the two needs, not a fixed pt-4/pb-2
-              guess. */}
-          <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-white rounded-t-xl">
-            <h3 className="font-display text-base leading-tight">Session Data Status</h3>
+              guess. pr-2 (not px-4 on both sides) shifts the close button
+              slightly right, closer to the box's own edge. */}
+          <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-xl">
+            <h3 className="font-display text-base leading-tight whitespace-nowrap">
+              Session Data Status
+            </h3>
             <PopoverPrimitive.Close
               aria-label="Close"
               className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
