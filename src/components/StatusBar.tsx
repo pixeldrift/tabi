@@ -36,6 +36,7 @@ import {
   markInitialLayoutSettled,
   useInitialLayoutSettled,
 } from "@/hooks/use-initial-layout-settle";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import {
   useSession,
   CURRENT_STAFF_ID,
@@ -1240,6 +1241,20 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
   const visible = otherStaffIds.length >= 1;
   const rosterIds = [CURRENT_STAFF_ID, ...otherStaffIds];
 
+  // Rotated-square arrow (NumberKeypad/TimeKeypad's own idiom), not Radix's
+  // own Arrow primitive — Radix's default triangle strokes all 3 sides,
+  // including its own base, which duplicates this box's `border-2` top
+  // edge right where they overlap and showed through as a stray line
+  // cutting across the arrowhead. This shape only borders its two outward-
+  // facing edges, so the box's own border serves as a seamless base.
+  // Controlled `open` (not the usual uncontrolled Popover) so
+  // useSlidingArrowOffset knows when to (re)measure — same pattern
+  // DataToolbar's filter popover and the keypads already use.
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, triggerRef, contentRef);
+
   const trigger = (
     // The count badge is `absolute`, not a normal inline sibling — its own
     // appearing/disappearing (2 people vs. 3+) must never change this span's
@@ -1284,9 +1299,10 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
           // it there would crowd the tabs too.
           className="-ml-1"
         >
-          <Popover>
+          <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
+                ref={triggerRef}
                 type="button"
                 aria-label={ariaLabel}
                 title={rosterIds
@@ -1301,19 +1317,24 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               </button>
             </PopoverTrigger>
             <PopoverContent
+              ref={contentRef}
               side="bottom"
               align="center"
-              sideOffset={10}
+              // Tighter than the old Radix-Arrow version's 10px — matches
+              // the keypads' own gap, which is what reads as the arrow
+              // actually pointing at the trigger instead of floating
+              // vaguely below it.
+              sideOffset={8}
               collisionPadding={16}
-              // Keeps the arrow at least a corner-radius away from the
-              // rounded-xl box's own corners (12px) even if collision
-              // detection ever has to nudge this off-center near the
-              // header's right edge (this trigger sits right at it).
-              arrowPadding={14}
-              className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+              className="group relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
-              <PopupArrow />
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+              <PopoverPrimitive.Close
+                aria-label="Close"
+                className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
+              >
+                <X className="size-4" />
+              </PopoverPrimitive.Close>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 pr-6">
                 In this session
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -1321,6 +1342,25 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
                   <PersonPill key={id} staffId={id} size="sm" />
                 ))}
               </div>
+              {/* Points back at the trigger's real position — measured, not
+                  hard-centered, since collision-avoidance regularly shifts
+                  this box near the header's own right edge (see
+                  useSlidingArrowOffset's own comment). */}
+              <div
+                className={cn(
+                  "absolute size-3 -translate-x-1/2 rotate-45 border-blue-400 bg-white",
+                  // Default (side="bottom"): popup is below the trigger, so
+                  // the arrow sits on the top edge and points up at it.
+                  "-top-[7px] border-l-2 border-t-2",
+                  // If collision detection ever flips this to side="top"
+                  // (not enough room below), the arrow needs to move to the
+                  // bottom edge and point down instead.
+                  "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+                  "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+                  "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+                )}
+                style={{ left: arrowLeft ?? "50%" }}
+              />
             </PopoverContent>
           </Popover>
         </motion.div>
