@@ -1241,7 +1241,12 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
   const visible = otherStaffIds.length >= 1;
   const rosterIds = [CURRENT_STAFF_ID, ...otherStaffIds];
   const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
+  // Anchored to the icon itself, not the trigger button — the button also
+  // contains the "In Session" label (shown from `md:` up), which would pull
+  // the button's own horizontal center right of the icon whenever that
+  // label is present, pointing the arrow at empty space between icon and
+  // text instead of at the icon it's actually attached to.
+  const anchorRef = useRef<HTMLSpanElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
 
@@ -1251,7 +1256,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
     // width and shove neighboring header icons sideways, the same
     // "spacing shouldn't depend on the badge" fix applied to
     // ActiveDurationIndicator's identical badge below.
-    <span className="relative inline-flex">
+    <span ref={anchorRef} className="relative inline-flex">
       {/* Outline, not filled — matches the Timer icon right beside it,
           which is lucide's default stroke rendering at the same size/
           strokeWidth. A filled silhouette read as heavier than its
@@ -1292,7 +1297,6 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button
-                ref={anchorRef}
                 type="button"
                 aria-label={ariaLabel}
                 title={rosterIds
@@ -1353,7 +1357,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
                   <X className="size-4" />
                 </PopoverPrimitive.Close>
               </div>
-              <div className="flex flex-wrap gap-1.5 px-4 py-3">
+              <div className="flex flex-col items-start gap-1.5 px-4 py-3">
                 {rosterIds.map((id) => (
                   <PersonPill key={id} staffId={id} size="sm" />
                 ))}
