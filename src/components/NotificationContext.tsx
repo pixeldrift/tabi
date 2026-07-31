@@ -41,7 +41,7 @@ export interface Notification {
   body?: string;
   icon: NotificationIcon;
   createdAt: number;
-  autofadeMs?: number; // undefined = persist until acted on
+  autofadeMs?: number; // undefined/null = persist until acted on
   allowSnooze?: boolean; // alerts only
   sourceRef?: { type: "activity" | "goal" | "thread" | "info"; id: string };
   state: NotificationState;
@@ -90,7 +90,16 @@ interface PushInput {
   title: string;
   body?: string;
   icon: NotificationIcon;
-  autofadeMs?: number;
+  // Omit to use the kind's own default — see push()'s own resolution: 4s
+  // for general (non-alert) notifications, no default at all for alerts
+  // (each alert call site already decides its own via Settings' configured
+  // notification duration). Pass a number to override that default, or
+  // `null` to explicitly opt OUT of it and persist until dismissed
+  // regardless of kind — see routes/index.tsx's "Session Unattended" push,
+  // the one call site that actually needs this: a technician shouldn't be
+  // able to miss a running-but-abandoned session just because its toast
+  // auto-dismissed like an ordinary confirmation would.
+  autofadeMs?: number | null;
   allowSnooze?: boolean;
   sourceRef?: Notification["sourceRef"];
   activityAt?: number;
@@ -290,6 +299,11 @@ export function useNotifications() {
 
 const MAX_RETAINED = 50;
 
+// See push()'s own comment: the default auto-fade for a general (non-alert)
+// notification's transient banner toast, when its own call site doesn't
+// specify one.
+const DEFAULT_GENERAL_AUTOFADE_MS = 4000;
+
 export function NotificationProvider({
   children,
   onActivate,
@@ -380,58 +394,67 @@ export function NotificationProvider({
     [clear],
   );
 
-  const push = useCallback(
-    (input: PushInput): string | null => {
-      const dedupeKey = input.dedupeKey ?? input.id;
-      if (dedupeKey) {
-        const existingId = dedupeRef.current.get(dedupeKey);
-        if (existingId) {
-          let stillLive = false;
-          setNotifications((prev) => {
-            const found = prev.find((n) => n.id === existingId);
-            if (found && found.state !== "archived") stillLive = true;
-            return prev;
-          });
-          if (stillLive) return null;
-        }
+  const push = useCallback((input: PushInput): string | null => {
+    const dedupeKey = input.dedupeKey ?? input.id;
+    if (dedupeKey) {
+      const existingId = dedupeRef.current.get(dedupeKey);
+      if (existingId) {
+        let stillLive = false;
+        setNotifications((prev) => {
+          const found = prev.find((n) => n.id === existingId);
+          if (found && found.state !== "archived") stillLive = true;
+          return prev;
+        });
+        if (stillLive) return null;
       }
-      const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const next: Notification = {
-        id,
-        kind: input.kind,
-        title: input.title,
-        body: input.body,
-        icon: input.icon,
-        createdAt: Date.now(),
-        autofadeMs: input.autofadeMs,
-        allowSnooze: input.allowSnooze,
-        sourceRef: input.sourceRef,
-        activityAt: input.activityAt,
-        soundOverride: input.soundOverride,
-        timestampCheck: input.timestampCheck,
-        excludeFromHistory: input.excludeFromHistory,
-        state: "live",
-      };
-      if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
-      setNotifications((prev) => {
-        const trimmed =
-          prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
-        return [...trimmed, next];
-      });
-      // Alert kinds get their own repeating chime for as long as they're
-      // visible in the banner (see NotificationBar's own effect, keyed to
-      // that row actually being on screen) — this is everything else's only
-      // sound, a single chime the moment it's created, using the same
-      // Settings-configured alarm style so all notifications share one
-      // consistent alarm system rather than some being silent.
-      if (!isAlert(input.kind)) {
-        playAlarmSound(prefs.alarmSound);
-        vibrate(40);
-      }
-      return id;
-    },
-    [prefs.alarmSound],
-  );
+    }
+    const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    // General (non-alert) notifications default to a brief 4s auto-fade —
+    // a technician glances at the toast, then it clears itself, rather
+    // than sitting in the transient banner until manually dismissed.
+    // Alerts get no blanket default here; each of their own call sites
+    // (ScheduleView) already decides via Settings' configured duration.
+    // `null` opts a specific push out of the default entirely.
+    const autofadeMs =
+      input.autofadeMs === null
+        ? undefined
+        : (input.autofadeMs ?? (isAlert(input.kind) ? undefined : DEFAULT_GENERAL_AUTOFADE_MS));
+    const next: Notification = {
+      id,
+      kind: input.kind,
+      title: input.title,
+      body: input.body,
+      icon: input.icon,
+      createdAt: Date.now(),
+      autofadeMs,
+      allowSnooze: input.allowSnooze,
+      sourceRef: input.sourceRef,
+      activityAt: input.activityAt,
+      soundOverride: input.soundOverride,
+      timestampCheck: input.timestampCheck,
+      excludeFromHistory: input.excludeFromHistory,
+      state: "live",
+    };
+    if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
+    setNotifications((prev) => {
+      const trimmed =
+        prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
+      return [...trimmed, next];
+    });
+    // Alert kinds get their own repeating chime for as long as they're
+    // visible in the banner (see NotificationBar's own effect, keyed to
+    // that row actually being on screen), using the Settings-configured
+    // alarm style — that preference is specifically about how urgent an
+    // actual alarm should sound, not what a routine "phase changed"/"you
+    // joined" toast plays. Everything else always gets the short chime
+    // style, fixed, regardless of what the user picked as their alarm
+    // default.
+    if (!isAlert(input.kind)) {
+      playAlarmSound("chime");
+      vibrate(40);
+    }
+    return id;
+  }, []);
 
   // Tick: handle autofade expiration + snooze re-fire.
   useEffect(() => {

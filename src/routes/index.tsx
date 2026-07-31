@@ -30,11 +30,7 @@ import { SettingsProvider, useSettings } from "@/components/SettingsContext";
 import { ScheduleProvider } from "@/components/ScheduleContext";
 import { SettingsPane } from "@/components/SettingsPane";
 import { StatusBar, type StatusTab } from "@/components/StatusBar";
-import {
-  NotificationProvider,
-  useNotifications,
-  useUserPrefs,
-} from "@/components/NotificationContext";
+import { NotificationProvider, useNotifications } from "@/components/NotificationContext";
 import { NOTIFICATION_AREA_TRANSITION, NotificationsPane } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useElementHeight } from "@/hooks/use-element-height";
@@ -683,7 +679,6 @@ function GoalChangeDemoTrigger() {
  *  push directly (see that provider's own nesting in Index below). */
 function SessionActivityTrigger() {
   const { push } = useNotifications();
-  const { notificationDurationMs } = useUserPrefs();
   const { status, isSessionMine, isAbandoned, startedById } = useSession();
   const joinedRef = useRef(false);
   const abandonedRef = useRef(false);
@@ -700,9 +695,9 @@ function SessionActivityTrigger() {
         body: `${starterName} has been notified that you joined.`,
         icon: "megaphone",
         // Just a confirmation, not something to act on — fades on its own
-        // like a schedule reminder does, rather than sitting there until
+        // (general notifications' own default auto-fade, see
+        // NotificationContext's push()) rather than sitting there until
         // dismissed the way the abandonment alert below deliberately does.
-        autofadeMs: notificationDurationMs,
         // ...and once it's gone, it's gone — not something worth digging
         // back up in the Notifications tab's own persistent history later.
         excludeFromHistory: true,
@@ -710,7 +705,7 @@ function SessionActivityTrigger() {
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;
     }
-  }, [status, isSessionMine, startedById, push, notificationDurationMs]);
+  }, [status, isSessionMine, startedById, push]);
 
   useEffect(() => {
     if (isAbandoned && !abandonedRef.current) {
@@ -720,6 +715,10 @@ function SessionActivityTrigger() {
         title: "Session Unattended",
         body: `${startedById ? staffName(startedById) : "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
         icon: "bell",
+        // Opts out of general notifications' own default auto-fade (see
+        // NotificationContext's push()) — this one's worth actually
+        // noticing, not a toast that's gone before anyone reads it.
+        autofadeMs: null,
       });
     } else if (!isAbandoned) {
       abandonedRef.current = false;
