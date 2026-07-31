@@ -182,9 +182,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        {/* translate-y-0.5: see the icon's matching comment in the staff
-            branch below. */}
-        <User className={cn(iconSize, "translate-y-0.5")} fill="currentColor" strokeWidth={0} />
+        <User className={iconSize} fill="currentColor" strokeWidth={0} />
         <span>{staffId}</span>
       </span>
     );
@@ -200,18 +198,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        {/* Baseline alignment (items-baseline above) puts the icon's own
-            bottom edge — its CSS baseline, having no text baseline of its
-            own — exactly on the text's baseline. That reads as "riding
-            high": the icon has no equivalent of a descender, so it ends up
-            sitting entirely above where the text's own x-height actually
-            falls. Nudged down by (icon height − x-height) / 2 — measured
-            precisely via canvas text metrics, not eyeballed — so the icon's
-            own center lands on the x-height's center instead, matching how
-            the text itself optically reads (ignoring ascenders/descenders,
-            same as icon-to-lowercase-text conventions generally do). Comes
-            out to the same 2px for both size variants here. */}
-        <User className={cn(iconSize, "translate-y-0.5")} fill="currentColor" strokeWidth={0} />
+        <User className={iconSize} fill="currentColor" strokeWidth={0} />
         <span>{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
