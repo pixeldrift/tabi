@@ -1589,13 +1589,32 @@ function ExpandedSessionBox({
   // overflows it, so the browser just echoes that height back), which
   // silently broke this measurement specifically for the "shrinking"
   // direction (e.g. resume's paused 2-button set collapsing to 1 button).
+  // ResizeObserver, not a `[isPaused, isRunningNotMine]`-gated effect (the
+  // previous approach) — that only re-measured when one of those two flags
+  // itself changed, which misses any OTHER reason this row's real height
+  // could differ from what got measured the first time: a hydration
+  // mismatch between the server-rendered idle state and the client's own
+  // (randomized) landing scenario, a webfont swapping in after that first
+  // layout pass, anything. When that first measurement undershoots, it
+  // never gets a chance to correct itself — deps that never change again
+  // means the effect never reruns — permanently clipping the actions row's
+  // real content (its own button rendering below its wrapper's capped
+  // height) via the wrapper's `overflow-hidden`. This is what was leaving
+  // "Start New Session" invisible AND unclickable (covered by the tabs row
+  // rendering right where the clipped button geometrically still sat) on a
+  // genuinely fresh idle mount — same bug StatusBar's own boxWrapRef
+  // ResizeObserver already avoids for the outer box, for the same reason.
   const actionsRef = useRef<HTMLDivElement>(null);
   const [actionsHeight, setActionsHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
-    if (actionsRef.current) {
-      setActionsHeight(actionsRef.current.scrollHeight);
-    }
-  }, [isPaused, isRunningNotMine]);
+    const el = actionsRef.current;
+    if (!el) return;
+    const measure = () => setActionsHeight(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
