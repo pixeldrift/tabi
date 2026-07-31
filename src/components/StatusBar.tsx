@@ -1310,13 +1310,23 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               // detection ever has to nudge this off-center near the
               // header's right edge (this trigger sits right at it).
               arrowPadding={14}
-              className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+              className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
               <PopupArrow />
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-                In this session
-              </p>
-              <div className="flex flex-wrap gap-1.5">
+              {/* Same title-row-with-close-button idiom as the "Session Data
+                  Status" popover (SaveIndicator, above) — see its own
+                  comment for why flex + `items-center` beats an absolutely-
+                  positioned close button over separately-padded title text. */}
+              <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-white rounded-t-xl">
+                <h3 className="font-display text-base leading-tight">In This Session</h3>
+                <PopoverPrimitive.Close
+                  aria-label="Close"
+                  className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+                >
+                  <X className="size-4" />
+                </PopoverPrimitive.Close>
+              </div>
+              <div className="flex flex-wrap gap-1.5 px-4 py-3">
                 {rosterIds.map((id) => (
                   <PersonPill key={id} staffId={id} size="sm" />
                 ))}
@@ -1363,24 +1373,39 @@ function SaveIndicator({
           align="end"
           sideOffset={10}
           collisionPadding={16}
+          // Keeps the arrow at least a corner-radius away from the
+          // rounded-xl box's own corners (12px) — see PresenceIndicator's
+          // popover below for the same reasoning. Without this, `align="end"`
+          // here (this trigger sits at the header's own right edge) let
+          // Radix's default zero arrow-padding place the arrow's point
+          // right into the rounded corner's curve, clipping it away
+          // entirely instead of just nudging it off-center.
+          arrowPadding={14}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
           // underneath the toolbar and its clicks get intercepted there.
-          className="relative z-[70] w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          className="relative z-[70] w-64 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
           <PopupArrow />
-          <PopoverPrimitive.Close
-            aria-label="Close"
-            className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
-          >
-            <X className="size-4" />
-          </PopoverPrimitive.Close>
-          <div className="relative px-5 pt-4 pb-2 border-b border-border bg-white rounded-t-xl">
-            <h3 className="font-display text-lg leading-tight pr-8">Session Data Status</h3>
+          {/* Title and close button as flex siblings (not an absolutely-
+              positioned close button floating over independently-padded
+              title text) — `items-center` centers both on the row's own
+              height instead of each keeping its own separate padding that
+              could drift out of alignment, and the row's height is just
+              whatever the taller of the two needs, not a fixed pt-4/pb-2
+              guess. */}
+          <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-white rounded-t-xl">
+            <h3 className="font-display text-base leading-tight">Session Data Status</h3>
+            <PopoverPrimitive.Close
+              aria-label="Close"
+              className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+            >
+              <X className="size-4" />
+            </PopoverPrimitive.Close>
           </div>
 
-          <div className="px-5 py-4 space-y-3 text-sm">
+          <div className="px-4 py-3 space-y-3 text-sm">
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Status
