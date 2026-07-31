@@ -1215,14 +1215,16 @@ function ActiveDurationIndicator({
 }
 
 /** The header's own "someone else is also in this session" signal — same
- *  spot/shape as ActiveDurationIndicator right beside it, shown once
- *  you've joined (or started) a running session AND at least one other
- *  staff member is also present. Always opens the same roster popover
- *  (rather than a direct single-profile shortcut for exactly one other
- *  person) since the roster itself always includes you too now — never
- *  truly a "just one entry" list once you're counted in it. */
+ *  spot/shape as ActiveDurationIndicator right beside it. Only worth a
+ *  header icon once there are at least two OTHER people to report — a
+ *  single other person is already named front-and-center wherever the
+ *  session itself is shown (e.g. "Started by X" in the big box before you
+ *  join), so a lone-other icon here would just be redundant; it earns its
+ *  place once there's a roster worth summarizing. This demo only ever seeds
+ *  up to two other staff, so in practice this always shows the full pair
+ *  (and its count badge) rather than some smaller subset. */
 function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
-  const visible = otherStaffIds.length > 0;
+  const visible = otherStaffIds.length >= 2;
   // You're always in "this session" too, once this is showing at all —
   // listed last since the others are the actually-new information a
   // technician taps this to see; you already know you're here.
@@ -1230,7 +1232,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
 
   const trigger = (
     // The count badge is `absolute`, not a normal inline sibling — its own
-    // appearing/disappearing (1 other vs. 2+) must never change this span's
+    // appearing/disappearing (2 others vs. 3+) must never change this span's
     // width and shove neighboring header icons sideways, the same
     // "spacing shouldn't depend on the badge" fix applied to
     // ActiveDurationIndicator's identical badge below.
@@ -1240,23 +1242,14 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
           strokeWidth. A filled silhouette read as heavier than its
           neighbor even at the same size. */}
       <User className="size-4" />
-      {otherStaffIds.length > 1 && (
-        // Tucked in closer than the timer icon's identical badge needs to
-        // be — the User glyph has more empty space in its own top-right
-        // corner than the Timer icon's circle does, so the same offset
-        // that sits flush against the timer reads as a gap floating away
-        // from this one.
-        <sup className="pointer-events-none absolute -top-0.5 -right-1 text-[9px] font-semibold leading-none">
-          {otherStaffIds.length}
-        </sup>
-      )}
+      {/* `visible` already guarantees at least 2 — always worth a count. */}
+      <sup className="pointer-events-none absolute -top-0.5 -right-1 text-[9px] font-semibold leading-none">
+        {otherStaffIds.length}
+      </sup>
     </span>
   );
-  const label = otherStaffIds.length > 1 ? "Others Here" : "Also Here";
-  const ariaLabel =
-    otherStaffIds.length > 1
-      ? `${otherStaffIds.length} other staff also in this session`
-      : `${staffName(otherStaffIds[0])} is also in this session`;
+  const label = "Others Here";
+  const ariaLabel = `${otherStaffIds.length} other staff also in this session`;
 
   return (
     <AnimatePresence>
