@@ -183,7 +183,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{staffId}</span>
+        <span className="leading-none">{staffId}</span>
       </span>
     );
   }
@@ -199,7 +199,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
         )}
       >
         <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span>{displayName(staff.name)}</span>
+        <span className="leading-none">{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
