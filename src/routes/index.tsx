@@ -22,6 +22,7 @@ import {
   useSession,
   PILL_LAND_MS,
   CURRENT_STAFF_ID,
+  DATA_BANNER_EXIT_MS,
   type TransitionKind,
 } from "@/components/SessionContext";
 import { staffName } from "@/components/StaffDirectory";
@@ -636,9 +637,6 @@ const cards: CardConfig[] = [
 const DATA_SUBMIT_STAGGER_MS = 90;
 const DATA_SUBMIT_ENTER_DURATION_MS = 550;
 const DATA_SUBMIT_EXIT_DURATION_MS = 550;
-
-// Duration for the "Start session to record data" banner's own exit below.
-const DATA_BANNER_EXIT_MS = 400;
 
 // How long into a session before the demo fires its one illustrative
 // "goal changed" notification — long enough that it reads as something

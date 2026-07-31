@@ -74,6 +74,12 @@ export const PILL_TRAVEL_MS = HEADER_MORPH_MS;
 export const PILL_CROSSFADE_MS = 150;
 export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;
 
+// Duration for the "Start session to record data" banner's own exit/enter
+// (routes/index.tsx's dataToolbar) — lives here, not there, so
+// `headerReflowActive` below can size its own suppression window against
+// it directly instead of guessing at a duplicated constant.
+export const DATA_BANNER_EXIT_MS = 400;
+
 export interface ActiveTimer {
   id: string;
   label: string;
@@ -601,6 +607,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [boxCollapsed]);
 
+  // True while the "Start session to record data." banner (dataToolbar,
+  // rendered inside the same sticky container as the header) is mid
+  // enter/exit. That banner's own real height animation
+  // (DATA_BANNER_EXIT_MS) changes the sticky container's actual height —
+  // exactly the kind of "header genuinely reflowing" event
+  // `headerReflowActive` exists to cover — but it's driven by `status`
+  // crossing the idle/non-idle line, not by `boxCollapsed`/`pillTraveling`,
+  // so it was invisible to the flags below entirely. That let the content
+  // pane's `layout="position"` FLIP run unsuppressed for the whole banner
+  // animation, racing the sticky container's continuous native reflow with
+  // its own separate easing/duration and visibly drifting from it — this
+  // was the actual cause of the pane looking like it "floats apart" from
+  // the header on a fresh start-new (the box's own collapse doesn't even
+  // begin until well after the banner has already finished). Same
+  // same-render "adjust during render" pattern as `boxHeightAnimating`
+  // above, for the same reason: an effect would fire one render too late
+  // for a sibling whose own conditional rendering (`sessionActive`) flips
+  // in this very render.
+  const sessionActive = status !== "idle";
+  const prevSessionActiveRef = useRef(sessionActive);
+  const [bannerReflowActive, setBannerReflowActive] = useState(false);
+  if (sessionActive !== prevSessionActiveRef.current) {
+    prevSessionActiveRef.current = sessionActive;
+    setBannerReflowActive(true);
+  }
+  useEffect(() => {
+    const id = window.setTimeout(() => setBannerReflowActive(false), DATA_BANNER_EXIT_MS);
+    return () => window.clearTimeout(id);
+  }, [sessionActive]);
+
   // The single, unified signal every layout-tracked sibling below the
   // header (the tab nav, the content pane) reads to give up its own
   // `layout="position"` FLIP: while any of these is true, the header area
@@ -619,10 +655,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   //     growing/shrinking directly inside the tab nav, on a separate clock
   //     from the box (driven by `isMineAndRunning`, not by `collapsed`/
   //     `boxCollapsed`'s own timing).
+  //   - `bannerReflowActive`: the "start session to record data" banner's
+  //     own enter/exit height animation, inside the same sticky container
+  //     but on neither of the above clocks — see its own comment above.
   // Covers a plain, unstaged `pause()` click too — that never touches
   // transitionStage/transitionKind at all, so an approximation gated on
   // those alone always missed it.
-  const headerReflowActive = collapsed !== boxCollapsed || boxHeightAnimating || pillTraveling;
+  const headerReflowActive =
+    collapsed !== boxCollapsed || boxHeightAnimating || pillTraveling || bannerReflowActive;
 
   // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
