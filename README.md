@@ -1,6 +1,6 @@
-# ABA DaBa
+# Tabi
 
-ABA DaBa is a prototype front-end platform for Applied Behavioral Analysis.
+Tabi is a prototype front-end platform for Applied Behavioral Analysis.
 It is designed for data collection and session management, focused on user
 experience and ease of information access while working in a busy clinical
 environment. Convenience and quality-of-life features put actions and
@@ -9,7 +9,7 @@ need to hunt for anything — what you need is always at your fingertips, in
 a human-readable form that's easy to understand at a glance without having
 to stop and think about it, and help and explanations work the same way,
 available at a glance instead of requiring a trip to documentation or a
-training portal. ABA DaBa is built for behavioral technicians who need to
+training portal. Tabi is built for behavioral technicians who need to
 juggle data entry while attending to the needs of challenging clients.
 
 ## Tech stack

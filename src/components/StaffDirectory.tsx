@@ -47,7 +47,7 @@ export const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     bio: "Designs and oversees the treatment plan, with a flair for elaborate, multi-step interventions that — much to his own surprise — usually work on the first try.",
     avatar: doofenshmirtzPhoto,
     phone: "+16155550142",
-    email: "h.doofenshmirtz@abadaba.clinic",
+    email: "h.doofenshmirtz@tabi.clinic",
     assignedClients: ["Phineas Flynn"],
   },
   "perry-plat": {
@@ -60,7 +60,7 @@ export const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     bio: "Quiet, focused, and unflappable in session — the kind of technician who somehow always turns up exactly where the treatment plan needs him.",
     avatar: perryPhoto,
     phone: "+16155550198",
-    email: "p.plat@abadaba.clinic",
+    email: "p.plat@tabi.clinic",
     assignedClients: ["Phineas Flynn", "Buford Van Stomm"],
   },
   "isabella-garcia-shapiro": {
@@ -73,7 +73,7 @@ export const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     bio: "Runs a tight, well-organized session and never misses a data point — the kind of technician other techs go to for advice.",
     avatar: isabellaPhoto,
     phone: "+16155550176",
-    email: "i.garciashapiro@abadaba.clinic",
+    email: "i.garciashapiro@tabi.clinic",
     assignedClients: ["Phineas Flynn", "Stacy Hirano"],
   },
   "baljeet-tjinder": {
@@ -86,7 +86,7 @@ export const STAFF_DIRECTORY: Record<string, StaffRecord> = {
     bio: "Meticulous with programming and progress monitoring — happiest when a graph trends exactly the way the plan predicted it would.",
     avatar: baljeetPhoto,
     phone: "+16155550163",
-    email: "b.tjinder@abadaba.clinic",
+    email: "b.tjinder@tabi.clinic",
     assignedClients: ["Phineas Flynn"],
   },
   // Related-service providers (see ClientInfoPane's ABOUT_ME.relatedServices)
