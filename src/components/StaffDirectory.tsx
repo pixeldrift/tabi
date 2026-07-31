@@ -182,7 +182,9 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        <User className={iconSize} fill="currentColor" strokeWidth={0} />
+        {/* self-center: see the icon's matching comment in the staff
+            branch below. */}
+        <User className={cn(iconSize, "self-center")} fill="currentColor" strokeWidth={0} />
         <span>{staffId}</span>
       </span>
     );
@@ -198,7 +200,16 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        <User className={iconSize} fill="currentColor" strokeWidth={0} />
+        {/* self-center: the icon opts out of the container's own
+            items-baseline (which the text still uses, both for its own
+            position and for what this whole pill reports as ITS baseline
+            to sibling text elsewhere — see PersonPill's own top comment).
+            Centering the icon against font metrics (baseline, x-height,
+            cap-height) all landed somewhere between "off" and "a sub-pixel
+            correction not worth a transform" depending which metric was
+            used — centering it in the pill's own box instead sidesteps
+            that font-metric guessing game entirely. */}
+        <User className={cn(iconSize, "self-center")} fill="currentColor" strokeWidth={0} />
         <span>{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
