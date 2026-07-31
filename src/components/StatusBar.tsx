@@ -1215,26 +1215,16 @@ function ActiveDurationIndicator({
 }
 
 /** The teal-bordered triangle every header popup here points back to its
- *  trigger with. Radix's own default `Arrow` shape is a fully-closed
- *  polygon, stroked on all 3 sides — including its own base, which sits
- *  right where the popup box's own `border-2` top edge already draws the
- *  same line, so the two overlapping strokes showed through the white fill
- *  as a stray 1px line cutting across the arrowhead. An open path (no
- *  closing "Z") fills that exact same triangle but only strokes its two
- *  visible slanted sides, leaving the box's own border to serve as a
- *  seamless base instead of duplicating it. Still swapped in via `asChild`,
- *  not a rotated custom shape — Radix's own per-side flip rotates a
- *  wrapping `<span>`, not this element, so it composes correctly here the
- *  same way it does with the default polygon (unlike the old
- *  diamond-shaped attempts, which baked their own static rotation into the
- *  shape itself and doubled up with Radix's). */
+ *  trigger with — Radix's own default `Arrow` shape (a plain polygon, not
+ *  an `asChild`-swapped one), styled to match each popup's own border. */
 function PopupArrow() {
   return (
-    <PopoverPrimitive.Arrow asChild width={14} height={7}>
-      <svg className="fill-white stroke-blue-400" strokeWidth={2} strokeLinejoin="round">
-        <path d="M0,0 L15,10 L30,0" />
-      </svg>
-    </PopoverPrimitive.Arrow>
+    <PopoverPrimitive.Arrow
+      width={14}
+      height={7}
+      strokeWidth={2}
+      className="fill-white stroke-blue-400"
+    />
   );
 }
 
