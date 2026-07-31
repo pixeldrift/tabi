@@ -1291,6 +1291,15 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               align="end"
               sideOffset={10}
               collisionPadding={16}
+              // This trigger sits right at the header's own right edge, so
+              // with `align="end"` the arrow's natural center (the
+              // trigger's own center) lands almost exactly on the box's
+              // rounded-xl corner (12px radius) — without this, the
+              // arrowhead was getting swallowed by that curve instead of
+              // sitting cleanly on the flat top edge like every other
+              // popup's arrow does. Keeps it at least a corner-radius away
+              // from either edge instead.
+              arrowPadding={14}
               className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
               {/* Radix's own Arrow — see SaveIndicator's matching one for
