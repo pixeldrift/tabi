@@ -1214,6 +1214,30 @@ function ActiveDurationIndicator({
   );
 }
 
+/** The teal-bordered triangle every header popup here points back to its
+ *  trigger with. Radix's own default `Arrow` shape is a fully-closed
+ *  polygon, stroked on all 3 sides — including its own base, which sits
+ *  right where the popup box's own `border-2` top edge already draws the
+ *  same line, so the two overlapping strokes showed through the white fill
+ *  as a stray 1px line cutting across the arrowhead. An open path (no
+ *  closing "Z") fills that exact same triangle but only strokes its two
+ *  visible slanted sides, leaving the box's own border to serve as a
+ *  seamless base instead of duplicating it. Still swapped in via `asChild`,
+ *  not a rotated custom shape — Radix's own per-side flip rotates a
+ *  wrapping `<span>`, not this element, so it composes correctly here the
+ *  same way it does with the default polygon (unlike the old
+ *  diamond-shaped attempts, which baked their own static rotation into the
+ *  shape itself and doubled up with Radix's). */
+function PopupArrow() {
+  return (
+    <PopoverPrimitive.Arrow asChild width={14} height={7}>
+      <svg className="fill-white stroke-blue-400" strokeWidth={2} strokeLinejoin="round">
+        <path d="M0,0 L15,10 L30,0" />
+      </svg>
+    </PopoverPrimitive.Arrow>
+  );
+}
+
 /** The header's own "who's in this session" signal — same spot/shape as
  *  ActiveDurationIndicator right beside it. Only worth a header icon once
  *  there's actually multiple people to report (you plus at least one other)
@@ -1288,32 +1312,17 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
             </PopoverTrigger>
             <PopoverContent
               side="bottom"
-              align="end"
+              align="center"
               sideOffset={10}
               collisionPadding={16}
-              // This trigger sits right at the header's own right edge, so
-              // with `align="end"` the arrow's natural center (the
-              // trigger's own center) lands almost exactly on the box's
-              // rounded-xl corner (12px radius) — without this, the
-              // arrowhead was getting swallowed by that curve instead of
-              // sitting cleanly on the flat top edge like every other
-              // popup's arrow does. Keeps it at least a corner-radius away
-              // from either edge instead.
+              // Keeps the arrow at least a corner-radius away from the
+              // rounded-xl box's own corners (12px) even if collision
+              // detection ever has to nudge this off-center near the
+              // header's right edge (this trigger sits right at it).
               arrowPadding={14}
               className="relative z-[70] w-56 rounded-xl border-2 border-blue-400 bg-white p-3 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
-              {/* Radix's own Arrow — see SaveIndicator's matching one for
-                  why (tracks the trigger's real position instead of a
-                  static offset that drifts whenever the header's layout
-                  changes width upstream of it). Radix's own default
-                  triangle — see SaveIndicator's matching one for why not
-                  an asChild-swapped shape. */}
-              <PopoverPrimitive.Arrow
-                width={14}
-                height={7}
-                strokeWidth={2}
-                className="fill-white stroke-blue-400"
-              />
+              <PopupArrow />
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
                 In this session
               </p>
@@ -1370,28 +1379,7 @@ function SaveIndicator({
           // underneath the toolbar and its clicks get intercepted there.
           className="relative z-[70] w-72 rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
-          {/* Radix's own Arrow, not a hand-placed span — it tracks the
-              trigger's actual center (and any collision-driven shift)
-              itself, via the Popper positioning this Content already uses,
-              rather than a static offset that reads right only for
-              whatever the header's layout happened to measure the day it
-              was tuned and silently drifts out of alignment the next time
-              anything upstream of it changes width. Left as Radix's own
-              default triangle (not asChild-swapped for a rotated-square
-              diamond, as the other popups here used to try) — a custom
-              asChild shape doesn't pick up Radix's own per-side rotation
-              correctly (it composes with, rather than replaces, whatever
-              rotation the shape already carries), so it only ever looked
-              right for the one side it happened to be tuned against. The
-              plain triangle rotates correctly for every side automatically,
-              including a collision-driven flip to a side other than the
-              one requested. */}
-          <PopoverPrimitive.Arrow
-            width={14}
-            height={7}
-            strokeWidth={2}
-            className="fill-white stroke-blue-400"
-          />
+          <PopupArrow />
           <PopoverPrimitive.Close
             aria-label="Close"
             className="absolute top-2 right-2 grid place-items-center size-7 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors z-10"
@@ -1686,16 +1674,7 @@ function ExpandedSessionBox({
                     collisionPadding={12}
                     className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums leading-snug whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                   >
-                    {/* Radix's own default triangle — see SaveIndicator's
-                      matching one for why not an asChild-swapped shape; it
-                      rotates itself correctly for this popup's
-                      side="right" placement automatically. */}
-                    <PopoverPrimitive.Arrow
-                      width={14}
-                      height={7}
-                      strokeWidth={2}
-                      className="fill-white stroke-blue-400"
-                    />
+                    <PopupArrow />
                     {/* Two lines — date, then time underneath — rather than
                       one long mm/dd/yyyy hh:mm:ss string. */}
                     <div>{formatExactDate(contextTime)}</div>
