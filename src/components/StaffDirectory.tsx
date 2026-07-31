@@ -178,7 +178,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
     return (
       <span
         className={cn(
-          "inline-flex items-baseline gap-1 rounded-md bg-blue-50 text-blue-700",
+          "inline-flex items-center gap-0.5 rounded-md bg-blue-50 text-blue-700",
           sizeClasses,
         )}
       >
@@ -194,7 +194,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
         type="button"
         onClick={() => setProfileOpen(true)}
         className={cn(
-          "inline-flex items-baseline gap-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
+          "inline-flex items-center gap-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
           sizeClasses,
         )}
       >
