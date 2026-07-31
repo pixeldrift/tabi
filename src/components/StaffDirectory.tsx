@@ -171,15 +171,24 @@ export function displayName(name: string): string {
 export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "sm" | "md" }) {
   const staff = STAFF_DIRECTORY[staffId];
   const [profileOpen, setProfileOpen] = useState(false);
-  const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-sm";
+  // Same total vertical padding as before (4px), redistributed asymmetrically
+  // — this pill's box is otherwise built around items-baseline (needed so
+  // its own baseline stays correctly aligned with surrounding text; see
+  // its own comment above), and that leaves cap-height sitting off the
+  // box's geometric center by an amount fixed by the font's own metrics
+  // (measured via canvas text metrics on a capital "X",
+  // actualBoundingBoxAscent, not eyeballed): the box's center currently
+  // sits 1.5px (size-3) / 1.25px (size-2.5) below where cap-height's own
+  // center falls. Shifting the box itself — not the content, which stays
+  // exactly where items-baseline already puts it — closes that gap.
+  const sizeClasses =
+    size === "sm"
+      ? "px-1.5 pt-[3.25px] pb-[0.75px] text-[10px]"
+      : "px-1.5 pt-[3.5px] pb-[0.5px] text-sm";
   const iconSize = size === "sm" ? "size-2.5" : "size-3";
-  // Equivalent to: center the text on its own cap-height within the pill's
-  // box, then shift the whole pill back so the text's baseline lands where
-  // it always would have — which nets out to leaving the text exactly
-  // where items-baseline already puts it, and only moving the icon, by
-  // (icon height − cap-height) / 2. Measured via canvas text metrics on a
-  // capital "X" (actualBoundingBoxAscent), not eyeballed: 0.5px at size-3
-  // (12px icon, 14px text), 1px at size-2.5 (10px icon, 10px text).
+  // Icon still centers on cap-height within the (now-shifted) box — see
+  // the box's own comment above for why the box moves instead of the
+  // content. 0.5px at size-3, 1px at size-2.5.
   const iconShift = size === "sm" ? "translate-y-px" : "translate-y-[0.5px]";
 
   if (!staff) {
