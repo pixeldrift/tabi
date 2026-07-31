@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-/** Height of the fixed `[data-status-bar]` header, kept in sync via ResizeObserver.
- *  Debounced rather than committed on every callback — the header's own CSS
- *  height transition (session start/end collapsing/expanding it) fires this
- *  on nearly every animation frame, and feeding each intermediate height
- *  straight into React state races against the panel below's own
- *  `layout="position"` FLIP tracking, producing a flurry of tiny competing
- *  repositions (tabs/panel visibly detaching and popping back) instead of
- *  one clean move driven by the header's own native reflow. Waiting for the
- *  callbacks to settle before committing means only the real, final height
- *  change reaches React.
- *
- *  During an actual session transition, DataToolbar tracks the header's real
- *  height itself instead (see its own `immediateTop` state) — see that
- *  comment for why the frame-by-frame case needs to live there, isolated
- *  from this hook's own (page-wide) state, rather than here. */
+/** Height of the fixed `[data-status-bar]` header, kept in sync via
+ *  ResizeObserver — committed on every callback, not debounced. Every
+ *  remaining consumer (NotificationsPane's and ScheduleView's own sticky
+ *  filter/toggle bars, via their plain `style={{ top: stickyTop }}`) just
+ *  wants this to track the header's real height in real time, the same way
+ *  `position: sticky` itself already tracks scroll for free — debouncing it
+ *  meant those bars sat at their PRE-transition `top` for the entire session
+ *  start/pause/resume height change, then snapped to the new value in one
+ *  jump once the debounce settled well after the header had already
+ *  finished moving, reading as the bar floating loose from the header
+ *  instead of sliding with it. (An earlier version of this hook debounced
+ *  to protect a `layout="position"` FLIP consumer — the Data tab's own
+ *  toolbar — from fighting frame-by-frame state churn; that toolbar has
+ *  since moved inside the header's own single shared sticky container,
+ *  see StatusBar, and no longer reads this hook at all.) */
 export function useStickyTop() {
   // Deliberately NOT a lazy-measured initializer (unlike useElementHeight/
   // useElementRight). This hook is called once, at the top of the whole
@@ -28,28 +28,23 @@ export function useStickyTop() {
   // server did — a hydration mismatch React logs and does NOT patch up on
   // its own, leaving the toolbar visibly stuck at the wrong `top` until
   // some unrelated re-render happens to correct it. Starting at `0` here
-  // (matching the server) and correcting via the effect below, same as
-  // before, is what's actually safe — DataToolbar's own `layoutReady` gate
-  // is what keeps that correction from being animated as a false move.
+  // (matching the server) and correcting via the effect below is safe by
+  // default: a plain `style={{ top }}` write on a `position: sticky` element
+  // just repositions it, with nothing watching this value to animate the
+  // correction as a false move.
   const [stickyTop, setStickyTop] = useState(0);
-  const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
     const bar = document.querySelector("[data-status-bar]") as HTMLElement | null;
     if (!bar) return;
     const commit = () => setStickyTop(bar.getBoundingClientRect().height);
-    const update = () => {
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
-      debounceRef.current = window.setTimeout(commit, 60);
-    };
     commit();
-    const ro = new ResizeObserver(update);
+    const ro = new ResizeObserver(commit);
     ro.observe(bar);
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", commit);
     return () => {
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       ro.disconnect();
-      window.removeEventListener("resize", update);
+      window.removeEventListener("resize", commit);
     };
   }, []);
 
