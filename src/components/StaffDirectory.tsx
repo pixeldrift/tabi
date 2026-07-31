@@ -173,6 +173,14 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
   const [profileOpen, setProfileOpen] = useState(false);
   const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-sm";
   const iconSize = size === "sm" ? "size-2.5" : "size-3";
+  // Equivalent to: center the text on its own cap-height within the pill's
+  // box, then shift the whole pill back so the text's baseline lands where
+  // it always would have — which nets out to leaving the text exactly
+  // where items-baseline already puts it, and only moving the icon, by
+  // (icon height − cap-height) / 2. Measured via canvas text metrics on a
+  // capital "X" (actualBoundingBoxAscent), not eyeballed: 0.5px at size-3
+  // (12px icon, 14px text), 1px at size-2.5 (10px icon, 10px text).
+  const iconShift = size === "sm" ? "translate-y-px" : "translate-y-[0.5px]";
 
   if (!staff) {
     return (
@@ -182,9 +190,9 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        {/* self-center: see the icon's matching comment in the staff
-            branch below. */}
-        <User className={cn(iconSize, "self-center")} fill="currentColor" strokeWidth={0} />
+        {/* iconShift: see the icon's matching comment in the staff branch
+            below. */}
+        <User className={cn(iconSize, iconShift)} fill="currentColor" strokeWidth={0} />
         <span>{staffId}</span>
       </span>
     );
@@ -200,16 +208,7 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
           sizeClasses,
         )}
       >
-        {/* self-center: the icon opts out of the container's own
-            items-baseline (which the text still uses, both for its own
-            position and for what this whole pill reports as ITS baseline
-            to sibling text elsewhere — see PersonPill's own top comment).
-            Centering the icon against font metrics (baseline, x-height,
-            cap-height) all landed somewhere between "off" and "a sub-pixel
-            correction not worth a transform" depending which metric was
-            used — centering it in the pill's own box instead sidesteps
-            that font-metric guessing game entirely. */}
-        <User className={cn(iconSize, "self-center")} fill="currentColor" strokeWidth={0} />
+        <User className={cn(iconSize, iconShift)} fill="currentColor" strokeWidth={0} />
         <span>{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
