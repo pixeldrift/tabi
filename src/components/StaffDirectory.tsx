@@ -178,12 +178,14 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-md bg-blue-50 text-blue-700",
+          "inline-flex items-baseline gap-0.5 rounded-md bg-blue-50 text-blue-700",
           sizeClasses,
         )}
       >
-        <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span className="leading-none">{staffId}</span>
+        {/* translate-y-0.5: see the icon's matching comment in the staff
+            branch below. */}
+        <User className={cn(iconSize, "translate-y-0.5")} fill="currentColor" strokeWidth={0} />
+        <span>{staffId}</span>
       </span>
     );
   }
@@ -194,12 +196,23 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
         type="button"
         onClick={() => setProfileOpen(true)}
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
+          "inline-flex items-baseline gap-0.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors",
           sizeClasses,
         )}
       >
-        <User className={iconSize} fill="currentColor" strokeWidth={0} />
-        <span className="leading-none">{displayName(staff.name)}</span>
+        {/* Baseline alignment (items-baseline above) puts the icon's own
+            bottom edge — its CSS baseline, having no text baseline of its
+            own — exactly on the text's baseline. That reads as "riding
+            high": the icon has no equivalent of a descender, so it ends up
+            sitting entirely above where the text's own x-height actually
+            falls. Nudged down by (icon height − x-height) / 2 — measured
+            precisely via canvas text metrics, not eyeballed — so the icon's
+            own center lands on the x-height's center instead, matching how
+            the text itself optically reads (ignoring ascenders/descenders,
+            same as icon-to-lowercase-text conventions generally do). Comes
+            out to the same 2px for both size variants here. */}
+        <User className={cn(iconSize, "translate-y-0.5")} fill="currentColor" strokeWidth={0} />
+        <span>{displayName(staff.name)}</span>
       </button>
       <StaffProfileDialog staff={staff} open={profileOpen} onOpenChange={setProfileOpen} />
     </>
