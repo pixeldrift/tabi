@@ -46,6 +46,7 @@ import {
   PILL_CROSSFADE_MS,
   type SaveStatus,
   type SessionStatus,
+  type TransitionKind,
 } from "./SessionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
@@ -729,7 +730,7 @@ export function StatusBar({
                     pillVisible={bigPillVisible}
                     pillRef={bigPillRef}
                     dimmed={dimmed}
-                    startingNew={dimmed && transitionKind === "start-new"}
+                    transitionKind={dimmed ? transitionKind : null}
                     onPlay={requestPlay}
                     onStartNew={requestStartNew}
                     onEnd={() => {
@@ -1574,6 +1575,16 @@ function formatRelativeFromNow(d: Date) {
   return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} at ${timeStr}`;
 }
 
+// The in-progress helper message shown in place of the box's normal label
+// (see ExpandedSessionBox's own render) while each staged transition is
+// dimming it — same idea as "Starting New Session" originally had all to
+// itself, now covering its two siblings too.
+const TRANSITION_MESSAGES: Record<Exclude<TransitionKind, null>, string> = {
+  "start-new": "Starting New Session",
+  resume: "Resuming Session",
+  discard: "Discarding Session",
+};
+
 function ExpandedSessionBox({
   status,
   elapsedMs,
@@ -1587,7 +1598,7 @@ function ExpandedSessionBox({
   pillVisible = true,
   pillRef,
   dimmed = false,
-  startingNew = false,
+  transitionKind = null,
   onPlay,
   onStartNew,
   onEnd,
@@ -1614,7 +1625,11 @@ function ExpandedSessionBox({
   pillVisible?: boolean;
   pillRef?: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
-  startingNew?: boolean;
+  /** Which staged transition is actively dimming the box right now (null
+   *  once it's settled or if `dimmed` is false) — drives the in-progress
+   *  helper message that crossfades in over the label below, see its own
+   *  comment. */
+  transitionKind?: TransitionKind;
   onPlay: () => void;
   onStartNew: () => void;
   onEnd: () => void;
@@ -1697,22 +1712,24 @@ function ExpandedSessionBox({
     return () => clearInterval(i);
   }, [contextTime]);
 
+  const transitionMessage = transitionKind ? TRANSITION_MESSAGES[transitionKind] : null;
+
   return (
     <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
       <div className="flex flex-col items-center gap-1">
         {/* Crossfades with the plain label below rather than just fading to
-            blank — gives the reset-to-zero spin (see OdometerDigits' `slow`
-            prop) something to read as "in progress" instead of a silent
-            pause. */}
+            blank — gives every staged transition (not just start-new's own
+            reset-to-zero digit spin, see OdometerDigits' `slow` prop)
+            something to read as "in progress" instead of a silent pause. */}
         <div className="relative">
           <motion.span
-            animate={{ opacity: startingNew ? 1 : 0 }}
+            animate={{ opacity: transitionMessage ? 1 : 0 }}
             initial={false}
             transition={{ duration: 0.2 }}
             className="absolute top-0 left-1/2 -translate-x-1/2 text-sm font-bold uppercase tracking-wider text-blue-600 whitespace-nowrap"
-            aria-hidden={!startingNew}
+            aria-hidden={!transitionMessage}
           >
-            Starting New Session
+            {transitionMessage}
           </motion.span>
           <motion.span
             animate={{ opacity: dimmed ? 0 : 1 }}
@@ -1788,7 +1805,7 @@ function ExpandedSessionBox({
               )}
               style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
-              <OdometerDigits text={formatTime(elapsedMs)} slow={startingNew} />
+              <OdometerDigits text={formatTime(elapsedMs)} slow={transitionKind === "start-new"} />
             </span>
             {/* No button at all once truly idle — there's nothing to
                 resume/join, only "Start New Session" below, per the
