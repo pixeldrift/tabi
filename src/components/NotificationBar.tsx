@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType, type RefObject } from "react";
 import {
   AnimatePresence,
   motion,
@@ -38,7 +38,6 @@ import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
 import { displayName } from "./StaffDirectory";
-import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { cn } from "@/lib/utils";
 
@@ -713,7 +712,14 @@ function NotificationRow({
 // Clear here. That's the "persists until explicitly cleared" half of the
 // notification system; auto-expiring old ones after some duration is
 // still just a roadmap idea (see README) — not built yet.
-export function NotificationsPane() {
+export function NotificationsPane({
+  contentRef,
+}: {
+  /** The app-shell's own internally-scrolling content pane this pane
+   *  renders inside — the sticky filter bar's compact-mode tracking
+   *  measures pinning against this container, not the window. */
+  contentRef: RefObject<HTMLElement | null>;
+}) {
   const { notifications, clear, clearAll, activate } = useNotifications();
   // Empty set = no filter applied (show all), same convention as the Data
   // toolbar's own kind filter — multi-select rather than a single cycling
@@ -738,9 +744,8 @@ export function NotificationsPane() {
   // batched callbacks lag the actual stick/unstick moment by a frame or
   // more), driving a compact mode where each label collapses and its icon
   // slides into the space that frees up.
-  const stickyTop = useStickyTop();
   const filterSentinelRef = useRef<HTMLDivElement>(null);
-  const stickyCompact = useStickyCompact(filterSentinelRef, stickyTop);
+  const stickyCompact = useStickyCompact(filterSentinelRef, contentRef);
 
   const allOrdered = notifications
     .filter((n) => !n.excludeFromHistory)
@@ -792,10 +797,9 @@ export function NotificationsPane() {
       <div ref={filterSentinelRef} className="h-0" aria-hidden />
       <div
         className={cn(
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-4",
+          "sticky top-0 z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-4",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
-        style={{ top: stickyTop }}
       >
         <div className="grid grid-cols-[minmax(0,auto)_1fr_auto] items-center gap-3 text-xs max-w-2xl mx-auto">
           {/* min-w-0 + overflow-x-auto (rather than a plain flex row) so

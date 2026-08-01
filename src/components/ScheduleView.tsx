@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
@@ -45,7 +45,6 @@ import { cn } from "@/lib/utils";
 import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
-import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import { useSettings } from "@/components/SettingsContext";
@@ -689,10 +688,16 @@ const INPUT_BLUE_CLS = "border-2 border-blue-400 focus-visible:ring-blue-400";
 export function ScheduleView({
   scrollTargetId,
   onScrolledToTarget,
+  contentRef,
 }: {
   scrollTargetId?: string | null;
   onScrolledToTarget?: () => void;
-} = {}) {
+  /** The app-shell's own internally-scrolling content pane this view
+   *  renders inside — the schedule-switch reset scrolls it directly
+   *  rather than the window, and the sticky toggles bar's compact-mode
+   *  tracking measures pinning against this container. */
+  contentRef: RefObject<HTMLElement | null>;
+}) {
   const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
   const [now, setNow] = useState<Date>(() => randomDemoTime(dayStartTime, dayEndTime));
   const bumpTime = () => {
@@ -759,9 +764,8 @@ export function ScheduleView({
     setFlashRowId(id);
     setFlashGen((n) => n + 1);
   };
-  const stickyTop = useStickyTop();
   const togglesSentinelRef = useRef<HTMLDivElement>(null);
-  const stickyCompact = useStickyCompact(togglesSentinelRef, stickyTop);
+  const stickyCompact = useStickyCompact(togglesSentinelRef, contentRef);
 
   const items = active.items;
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
@@ -1143,7 +1147,7 @@ export function ScheduleView({
     const scheduleChanged = activeName !== prevActiveNameForScrollRef.current;
     prevActiveNameForScrollRef.current = activeName;
     if (scheduleChanged) {
-      window.scrollTo({ top: 0 });
+      contentRef.current?.scrollTo({ top: 0 });
       return;
     }
     if (!currentItem) return;
@@ -1518,10 +1522,9 @@ export function ScheduleView({
           // transformed box still counts toward layout overflow even at
           // opacity-0, which was inflating the page's scroll width and
           // making the browser auto-shrink-to-fit the whole viewport.
-          "sticky z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-8",
+          "sticky top-0 z-40 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70 py-1.5 px-8",
           stickyCompact ? "shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]" : "shadow-none",
         )}
-        style={{ top: stickyTop }}
       >
         <div className="relative flex items-center text-xs gap-2 max-w-3xl mx-auto">
           <button

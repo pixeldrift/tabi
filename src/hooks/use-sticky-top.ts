@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
 
-/** Height of the fixed `[data-status-bar]` header, kept in sync via
- *  ResizeObserver — committed on every callback, not debounced. Every
- *  remaining consumer (NotificationsPane's and ScheduleView's own sticky
- *  filter/toggle bars, via their plain `style={{ top: stickyTop }}`) just
- *  wants this to track the header's real height in real time, the same way
- *  `position: sticky` itself already tracks scroll for free — debouncing it
- *  meant those bars sat at their PRE-transition `top` for the entire session
- *  start/pause/resume height change, then snapped to the new value in one
- *  jump once the debounce settled well after the header had already
- *  finished moving, reading as the bar floating loose from the header
- *  instead of sliding with it. (An earlier version of this hook debounced
- *  to protect a `layout="position"` FLIP consumer — the Data tab's own
- *  toolbar — from fighting frame-by-frame state churn; that toolbar has
- *  since moved inside the header's own single shared sticky container,
- *  see StatusBar, and no longer reads this hook at all.) */
+/** Height of the `[data-status-bar]` header, kept in sync via ResizeObserver
+ *  — committed on every callback, not debounced (debouncing meant a
+ *  consumer sat at its PRE-transition value for the entire session start/
+ *  pause/resume height change, then snapped to the new one in one jump well
+ *  after the header had already finished moving).
+ *
+ *  Since the app-shell refactor (header is a plain `shrink-0` block above a
+ *  separately-scrolling content pane, not a `position: sticky` element
+ *  itself), this no longer backs any scroll-position math — NotificationBar
+ *  and ScheduleView's own sticky filter/toggle bars pin with a trivial
+ *  `top-0` now that they live inside that same bounded scroll container, and
+ *  don't need this hook at all. The one remaining consumer (routes/index.tsx)
+ *  uses it purely for real `position: fixed` viewport offsets: where
+ *  DataDetailsDrawer's own slide-out should start (flush under the header,
+ *  not the top of the viewport) and TrialCard/TaskAnalysisCard's topInset
+ *  clamps. */
 export function useStickyTop() {
   // Deliberately NOT a lazy-measured initializer (unlike useElementHeight/
   // useElementRight). This hook is called once, at the top of the whole

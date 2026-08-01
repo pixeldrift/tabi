@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { CheckCircle2, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
@@ -18,7 +18,6 @@ import { useSession, CURRENT_STAFF_ID } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
 import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
-import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import phineasPhoto from "@/assets/images/people/phineas.jpeg";
 import lindaPhoto from "@/assets/images/people/linda.jpeg";
@@ -181,19 +180,25 @@ function formatApptSchedule(appt: { days: string[]; start: string; end: string }
   return `${appt.days.join(", ")} ${formatTimeOfDay(appt.start)}–${formatTimeOfDay(appt.end)}`;
 }
 
-export function ClientInfoPane({ onViewSchedule }: { onViewSchedule: () => void }) {
+export function ClientInfoPane({
+  onViewSchedule,
+  contentRef,
+}: {
+  onViewSchedule: () => void;
+  /** The app-shell's own internally-scrolling content pane — this pane
+   *  renders inside it, not the window, so jump targets are measured and
+   *  scrolled relative to it rather than the document/viewport. */
+  contentRef: RefObject<HTMLElement | null>;
+}) {
   const { lastUpdated } = useSession();
   const { phineasAppointments } = useScheduleData();
-  // The fixed header (previous-session banner + tabs) varies in height by
-  // session state — a fixed scroll-margin guess undershoots it whenever the
-  // banner's expanded, leaving a jumped-to section's heading tucked out of
-  // sight underneath. Same live measurement DataDetailsDrawer already uses.
-  const stickyTop = useStickyTop();
   const jumpTo = (id: string) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY - stickyTop - 8;
-    window.scrollTo({ top, behavior: "smooth" });
+    const container = contentRef.current;
+    if (!el || !container) return;
+    const containerTop = container.getBoundingClientRect().top;
+    const top = el.getBoundingClientRect().top - containerTop + container.scrollTop - 8;
+    container.scrollTo({ top, behavior: "smooth" });
   };
   return (
     <div className="max-w-2xl mx-auto mt-6 px-4 pb-8 space-y-6">
