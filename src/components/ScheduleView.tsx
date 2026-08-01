@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
@@ -651,6 +659,29 @@ function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
   return d;
 }
 
+// Randomly pins ~half of every schedule's activities (autofade off) — a
+// fresh draw each time this is called, used to seed the initial demo state
+// client-side only (see the layout effect below), not inside a lazy
+// `useState` initializer directly: this view now stays permanently mounted
+// (routes/index.tsx) rather than only ever mounting client-side well after
+// hydration, so a random value straight in the initializer mismatched
+// between the server's own draw and the client's, tripping a hydration
+// error.
+function randomizeSchedules(): Schedule[] {
+  return PRESETS.map((s) => ({
+    ...s,
+    items: s.items.map((it) => {
+      if (Math.random() >= 0.5) return it;
+      const mode: AlertMode = it.alert === "off" ? "visual" : it.alert;
+      return {
+        ...it,
+        alert: mode,
+        alertCfg: { mode, allowSnooze: true, autofade: false },
+      };
+    }),
+  }));
+}
+
 function fromMin(m: number) {
   const h = Math.floor(m / 60);
   const mm = m % 60;
@@ -699,7 +730,23 @@ export function ScheduleView({
   contentRef: RefObject<HTMLElement | null>;
 }) {
   const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
-  const [now, setNow] = useState<Date>(() => randomDemoTime(dayStartTime, dayEndTime));
+  // Deterministic on first render — server and client render this the same
+  // way — then randomized immediately after via a layout effect, before
+  // paint, so nothing ever visibly flashes the placeholder (same "0 now,
+  // corrected client-side" pattern useStickyTop uses for the same reason).
+  // See randomizeSchedules' own comment for why this can't just be a random
+  // draw straight in these lazy initializers anymore.
+  const [now, setNow] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+  const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
+  useLayoutEffect(() => {
+    setNow(randomDemoTime(dayStartTime, dayEndTime));
+    setSchedules(randomizeSchedules());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const bumpTime = () => {
     setNow((prev) => {
       const d = new Date(prev);
@@ -708,21 +755,6 @@ export function ScheduleView({
     });
   };
 
-  // Randomly pin ~half of every schedule's activities (autofade off) on first mount.
-  const [schedules, setSchedules] = useState<Schedule[]>(() =>
-    PRESETS.map((s) => ({
-      ...s,
-      items: s.items.map((it) => {
-        if (Math.random() >= 0.5) return it;
-        const mode: AlertMode = it.alert === "off" ? "visual" : it.alert;
-        return {
-          ...it,
-          alert: mode,
-          alertCfg: { mode, allowSnooze: true, autofade: false },
-        };
-      }),
-    })),
-  );
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
   const isLocked = !!active.locked;

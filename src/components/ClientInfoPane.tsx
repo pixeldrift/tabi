@@ -14,6 +14,7 @@ import { PhotoZoomButton, BlurredPhotoZoomButton } from "@/components/PhotoZoom"
 import { PhoneIcon } from "./icons/PhoneIcon";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { AccordionRow } from "./AccordionRow";
+import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { useSession, CURRENT_STAFF_ID } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
@@ -192,116 +193,100 @@ export function ClientInfoPane({
 }) {
   const { lastUpdated } = useSession();
   const { phineasAppointments } = useScheduleData();
-  const jumpTo = (id: string) => {
-    const el = document.getElementById(id);
-    const container = contentRef.current;
-    if (!el || !container) return;
-    const containerTop = container.getBoundingClientRect().top;
-    const top = el.getBoundingClientRect().top - containerTop + container.scrollTop - 8;
-    container.scrollTo({ top, behavior: "smooth" });
-  };
   return (
-    <div className="max-w-2xl mx-auto mt-6 px-4 pb-8 space-y-6">
-      <ClientHeader />
-      <div className="flex flex-wrap gap-1.5 text-xs">
-        {JUMP_SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => jumpTo(s.id)}
-            className="px-2 py-1 rounded-full border border-border bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors"
-          >
-            {s.label}
-          </button>
-        ))}
+    <div className="max-w-2xl mx-auto pb-8">
+      <div className="mt-6 px-4">
+        <ClientHeader />
       </div>
+      <SectionJumpBar sections={JUMP_SECTIONS} contentRef={contentRef} />
+      <div className="mt-6 px-4 space-y-6">
+        <AboutMeSection phineasAppointments={phineasAppointments} onViewSchedule={onViewSchedule} />
 
-      <AboutMeSection phineasAppointments={phineasAppointments} onViewSchedule={onViewSchedule} />
-
-      <Section id="section-guardians" title="Guardians">
-        <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
-          {GUARDIANS.map((g) => (
-            <div key={g.id} className="flex items-center gap-3 p-3">
-              <BlurredPhotoZoomButton
-                avatar={g.avatar}
-                label={g.name}
-                size="size-10"
-                iconClassName="size-4"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate">{g.name}</p>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>{g.relationship}</span>
-                  {g.pickupAuthorized && (
-                    <span
-                      title="Authorized for pickup"
-                      className="inline-flex items-center gap-0.5 text-green-700"
-                    >
-                      <CheckCircle2 className="size-3" />
-                      Pickup OK
-                    </span>
-                  )}
-                </div>
-              </div>
-              <a
-                href={`tel:${g.phone}`}
-                aria-label={`Call ${g.name}`}
-                className="shrink-0 grid place-items-center size-8 rounded-full text-stone-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              >
-                <PhoneIcon className="size-4" />
-              </a>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section id="section-vehicles" title="Vehicles">
-        <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
-          {VEHICLES.map((v) => {
-            const guardian = GUARDIANS.find((g) => g.id === v.guardianId);
-            return (
-              <div key={v.id} className="flex items-center gap-3 p-3">
-                <PhotoZoomButton
-                  avatar={v.photo}
-                  kind="vehicle"
-                  label={`${v.color} ${v.make} ${v.model}`}
+        <Section id="section-guardians" title="Guardians">
+          <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
+            {GUARDIANS.map((g) => (
+              <div key={g.id} className="flex items-center gap-3 p-3">
+                <BlurredPhotoZoomButton
+                  avatar={g.avatar}
+                  label={g.name}
                   size="size-10"
+                  iconClassName="size-4"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">
-                    {v.color} {v.make} {v.model}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {guardian?.name ?? "Unknown"}
-                  </p>
+                  <p className="font-semibold text-sm truncate">{g.name}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span>{g.relationship}</span>
+                    {g.pickupAuthorized && (
+                      <span
+                        title="Authorized for pickup"
+                        className="inline-flex items-center gap-0.5 text-green-700"
+                      >
+                        <CheckCircle2 className="size-3" />
+                        Pickup OK
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="shrink-0 font-mono text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-1 rounded-md tracking-wide">
-                  {v.plate}
-                </span>
+                <a
+                  href={`tel:${g.phone}`}
+                  aria-label={`Call ${g.name}`}
+                  className="shrink-0 grid place-items-center size-8 rounded-full text-stone-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  <PhoneIcon className="size-4" />
+                </a>
               </div>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section id="section-team" title="Care Team">
-        <div className="rounded-xl border border-border bg-white p-3 space-y-2 text-sm">
-          <InfoRow label="Lead BCBA:">
-            <PersonPill staffId="heinz-doofenshmirtz" />
-          </InfoRow>
-          <InfoRow label="Team:">
-            {TEAM_MEMBER_IDS.map((id) => (
-              <PersonPill key={id} staffId={id} />
             ))}
-          </InfoRow>
-        </div>
-      </Section>
+          </div>
+        </Section>
 
-      {/* Metadata about the record, not something a BCBA needs up front —
+        <Section id="section-vehicles" title="Vehicles">
+          <div className="divide-y divide-stone-100 rounded-xl border border-border bg-white overflow-hidden">
+            {VEHICLES.map((v) => {
+              const guardian = GUARDIANS.find((g) => g.id === v.guardianId);
+              return (
+                <div key={v.id} className="flex items-center gap-3 p-3">
+                  <PhotoZoomButton
+                    avatar={v.photo}
+                    kind="vehicle"
+                    label={`${v.color} ${v.make} ${v.model}`}
+                    size="size-10"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">
+                      {v.color} {v.make} {v.model}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {guardian?.name ?? "Unknown"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-stone-600 bg-stone-100 px-2 py-1 rounded-md tracking-wide">
+                    {v.plate}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
+        <Section id="section-team" title="Care Team">
+          <div className="rounded-xl border border-border bg-white p-3 space-y-2 text-sm">
+            <InfoRow label="Lead BCBA:">
+              <PersonPill staffId="heinz-doofenshmirtz" />
+            </InfoRow>
+            <InfoRow label="Team:">
+              {TEAM_MEMBER_IDS.map((id) => (
+                <PersonPill key={id} staffId={id} />
+              ))}
+            </InfoRow>
+          </div>
+        </Section>
+
+        {/* Metadata about the record, not something a BCBA needs up front —
           stays last. */}
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
-        <span>Last updated {formatUpdated(lastUpdated)} by</span>
-        <PersonPill staffId={CURRENT_STAFF_ID} />
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
+          <span>Last updated {formatUpdated(lastUpdated)} by</span>
+          <PersonPill staffId={CURRENT_STAFF_ID} />
+        </div>
       </div>
     </div>
   );

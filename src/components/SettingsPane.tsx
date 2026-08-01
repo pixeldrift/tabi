@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { RotateCcw, Volume2 } from "lucide-react";
 import {
   ALARM_SOUND_OPTIONS,
@@ -12,6 +13,7 @@ import { DISPLAY_MODES } from "./DataToolbarContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
 import { IconsShowcase } from "./IconsShowcase";
 import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
+import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,12 @@ import {
 } from "@/components/ui/select";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { cn } from "@/lib/utils";
+
+// One id per jump-bar chip, matching whatever <section id="..."> each
+// heading below actually renders — group names come from SETTINGS' own
+// data (currently just "Notifications"), so those get slugified rather
+// than hardcoded, the same as their heading text already is.
+const slugifyGroup = (group: string) => `settings-${group.toLowerCase().replace(/\s+/g, "-")}`;
 
 function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -44,7 +52,14 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
   );
 }
 
-export function SettingsPane() {
+export function SettingsPane({
+  contentRef,
+}: {
+  /** The app-shell's own internally-scrolling content pane — this pane
+   *  renders inside it, not the window, so the jump bar's targets are
+   *  measured and scrolled relative to it rather than the document. */
+  contentRef: RefObject<HTMLElement | null>;
+}) {
   const {
     values,
     setValue,
@@ -64,10 +79,16 @@ export function SettingsPane() {
     setColorTheme,
   } = useSettings();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
+  const jumpSections = [
+    { id: "settings-appearance", label: "Appearance" },
+    ...groups.map((g) => ({ id: slugifyGroup(g), label: g })),
+    { id: "settings-schedule", label: "Schedule" },
+    { id: "settings-data", label: "Data" },
+  ];
 
   return (
-    <div className="max-w-2xl mx-auto mt-6 px-4 pb-16">
-      <div className="flex items-start justify-between gap-3 mb-1">
+    <div className="max-w-2xl mx-auto pb-16">
+      <div className="mt-6 px-4 flex items-start justify-between gap-3 mb-1">
         <div>
           <h2 className="font-display text-lg leading-tight">Settings</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -88,8 +109,10 @@ export function SettingsPane() {
         )}
       </div>
 
-      <div className="mt-6 space-y-8">
-        <section>
+      <SectionJumpBar sections={jumpSections} contentRef={contentRef} />
+
+      <div className="mt-6 px-4 space-y-8">
+        <section id="settings-appearance">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Appearance
           </h3>
@@ -131,7 +154,7 @@ export function SettingsPane() {
         </section>
 
         {groups.map((group) => (
-          <section key={group}>
+          <section key={group} id={slugifyGroup(group)}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               {group}
             </h3>
@@ -232,7 +255,7 @@ export function SettingsPane() {
           </section>
         ))}
 
-        <section>
+        <section id="settings-schedule">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Schedule
           </h3>
@@ -270,7 +293,7 @@ export function SettingsPane() {
           </div>
         </section>
 
-        <section>
+        <section id="settings-data">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Data
           </h3>

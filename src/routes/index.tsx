@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from "motion/react";
 import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
@@ -1048,7 +1048,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
         // centered-vs-gentle choice as the effect below), rather than leaving
         // it wherever the reflow happened to land it.
         const el = cardRefs.current.get(activeId);
-        const container = contentRef.current;
+        const container = dataContentRef.current;
         if (el && container) {
           if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
           else scrollCardFullyIntoView(el, container);
@@ -1070,7 +1070,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // tucked behind the header or hanging off the bottom of the screen.
   useEffect(() => {
     const el = cardRefs.current.get(activeId);
-    const container = contentRef.current;
+    const container = dataContentRef.current;
     if (!el || !container) return;
     if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
     else scrollCardFullyIntoView(el, container);
@@ -1089,7 +1089,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
     const id = window.setTimeout(
       () => {
         const el = cardRefs.current.get(activeId);
-        const container = contentRef.current;
+        const container = dataContentRef.current;
         if (!el || !container) return;
         if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
         else scrollCardFullyIntoView(el, container);
@@ -1147,7 +1147,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   const anchorRafRef = useRef(0);
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
-    const container = contentRef.current;
+    const container = dataContentRef.current;
     if (!el || !container) return;
     const isModeSwitch = prevDisplayModeRef.current !== displayMode;
     prevDisplayModeRef.current = displayMode;
@@ -1236,7 +1236,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // moot by already being at the top before it can occur.
   useLayoutEffect(() => {
     if (transitionKind === "start-new") {
-      contentRef.current?.scrollTo(0, 0);
+      dataContentRef.current?.scrollTo(0, 0);
     }
   }, [transitionKind]);
 
@@ -1305,51 +1305,85 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // long scroll down any tab's content can otherwise strand you without.
   const handleTabChange = (t: StatusTab) => {
     if (t === tab) {
-      contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      contentRefForTab[t].current?.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // Captured synchronously here (not left to the outgoing pane's own
+    // onScroll handler alone) so the save never races a switch that
+    // follows a scroll within the same tick — onScroll still keeps this
+    // fresh the rest of the time, this just guarantees it's never stale
+    // at the one moment it actually matters.
+    const outgoing = contentRefForTab[tab].current;
+    if (outgoing) scrollPositionsRef.current[tab] = outgoing.scrollTop;
     setTab(t);
   };
 
   // Used by the end-session review's "Did Not Meet Minimums" rows and by
-  // goal-change notifications' "View Card" — lands on the right card once
-  // the Data tab is showing. The card list unmounts entirely on any other
-  // tab, so switching to it from elsewhere (Notifications, say) is a real
-  // mount, not just a activeId change on an already-settled list — Motion's
-  // own layout-projection system measures the whole fresh tree as it
-  // enters (same mechanism CARD_MORPH_TRANSITION's own callers below wait
-  // out), and that measurement pass briefly forces window.scrollTo(0, 0)
-  // itself. Calling scrollBy for the target card any earlier just gets
-  // silently overwritten a few ms later by that. Deferring past the same
-  // settle window already used elsewhere in this file for post-morph
-  // scroll corrections avoids the race. Already being on the Data tab (the
-  // review dialog's own case, no fresh mount involved) skips the wait.
-  const pendingCardNavRef = useRef<string | null>(null);
+  // goal-change notifications' "View Card" — lands on the right card and
+  // switches to the Data tab so it's actually visible. The card list stays
+  // permanently mounted now (see the return below), so this is just a plain
+  // state update on an already-settled list, not a fresh mount racing its
+  // own Motion layout-measurement pass — no deferred wait needed.
   const handleNavigateToCard = (id: string) => {
-    if (tab === "data") {
-      setActiveId(id);
-      return;
-    }
-    pendingCardNavRef.current = id;
+    setActiveId(id);
     setTab("data");
   };
-  useEffect(() => {
-    if (tab !== "data" || pendingCardNavRef.current === null) return;
-    const id = window.setTimeout(
-      () => {
-        if (pendingCardNavRef.current === null) return;
-        setActiveId(pendingCardNavRef.current);
-        pendingCardNavRef.current = null;
-      },
-      CARD_MORPH_TRANSITION.duration * 1000 + 50,
-    );
-    return () => window.clearTimeout(id);
-  }, [tab]);
 
-  // Backs the app-shell content pane below — a fixed-height, internally-
-  // scrolling region (see the shell wrapper in the return below), rather
-  // than the page/window itself scrolling.
-  const contentRef = useRef<HTMLElement>(null);
+  // One scroll container per tab, not one shared pane — every tab's content
+  // stays mounted permanently now (see the return below), each in its own
+  // fixed-height, internally-scrolling <section>, toggled visible/hidden via
+  // CSS rather than a conditional `{tab === "x" && ...}` mount/unmount. That
+  // means each tab needs its own independent scrollTop (a shared single
+  // scroll container couldn't remember "Data was scrolled to 400px, Schedule
+  // was scrolled to 0" at the same time).
+  const dataContentRef = useRef<HTMLElement>(null);
+  const infoContentRef = useRef<HTMLElement>(null);
+  const scheduleContentRef = useRef<HTMLElement>(null);
+  const notificationsContentRef = useRef<HTMLElement>(null);
+  const settingsContentRef = useRef<HTMLElement>(null);
+  const contentRefForTab: Record<StatusTab, RefObject<HTMLElement | null>> = {
+    data: dataContentRef,
+    info: infoContentRef,
+    schedule: scheduleContentRef,
+    notifications: notificationsContentRef,
+    settings: settingsContentRef,
+  };
+  // `display: none` on a hidden pane is SUPPOSED to preserve its scrollTop
+  // for free (and does, in a plain DOM sandbox) — but the Data tab's own
+  // Framer Motion `layout` projections (DataCardList's card wrappers)
+  // re-measure their tree the instant that pane goes from display:none
+  // back to visible, and that remeasurement pass was resetting scrollTop
+  // to whatever it happened to read while the container was zero-sized.
+  // Tracking + restoring it explicitly sidesteps trusting the browser (or
+  // Motion) with it at all: every pane's own scroll position lands in this
+  // ref via a plain onScroll handler below, and gets reapplied in a layout
+  // effect keyed on `tab` — layout effects run in commit order, so this
+  // one (declared, and therefore committed, after DataCardList's own)
+  // reliably has the last word over whatever Motion's post-layout pass did
+  // a moment earlier in the same commit.
+  const scrollPositionsRef = useRef<Partial<Record<StatusTab, number>>>({});
+  useLayoutEffect(() => {
+    const el = contentRefForTab[tab].current;
+    if (!el) return;
+    const target = scrollPositionsRef.current[tab] ?? 0;
+    el.scrollTop = target;
+    // One synchronous set isn't enough to reliably win: the Data tab's own
+    // Framer Motion layout projections (DataCardList's card wrappers)
+    // re-measure their tree once the pane goes from display:none back to
+    // visible, and that correction can land in a *later* effect or a
+    // scheduled rAF of its own — after this one already ran. Re-asserting
+    // for a couple more frames outlasts whatever pass that turns out to
+    // be, the same "keep correcting for a short window" idea the display-
+    // mode scroll anchor above already uses for an analogous race.
+    let frame = 0;
+    let raf = requestAnimationFrame(function reapply() {
+      if (el.scrollTop !== target) el.scrollTop = target;
+      frame++;
+      if (frame < 8) raf = requestAnimationFrame(reapply);
+    });
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
@@ -1418,28 +1452,29 @@ function IndexInner({ onBack }: { onBack: () => void }) {
           }
         />
 
+        {/* Every tab's own pane stays permanently mounted — visibility is
+            just a `hidden` class toggle, not a `{tab === "x" && ...}`
+            conditional render. Switching tabs used to fully unmount
+            whichever one you left (losing its scroll position, its filter/
+            collapsed-row state, and replaying every AnimatePresence child's
+            entrance animation as if it were brand new) and force a fresh
+            mount of whichever one you switched to. `display: none` on a
+            hidden pane already preserves its own scrollTop for free — no
+            extra bookkeeping needed to "remember where you left off." Each
+            pane gets its own scroll container (rather than one shared one)
+            for exactly that reason: a single shared scrollTop can't
+            remember five independent positions at once. */}
         <section
-          ref={contentRef}
+          ref={dataContentRef}
+          onScroll={(e) => {
+            scrollPositionsRef.current.data = e.currentTarget.scrollTop;
+          }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
-            // Only the Data tab has a toolbar directly above this pane, with
-            // its own border-b — -mt-px there merges the two lines into one
-            // instead of a visible double line. Every other tab sits directly
-            // below the (sticky, higher-stacked) tabs row itself, so pulling
-            // the border under it here instead erased it completely across
-            // the whole width — not just blended under the active tab the way
-            // its own -bottom-px overlay (see StatusBar) is meant to.
-            tab === "data" && "-mt-px",
-            // Info/Notifications/Settings each already carry their own
-            // top margin (mt-6) on their own inner wrapper — adding pt-5
-            // here too just doubled the gap above them (44px total)
-            // instead of the single ~24px every other tab settles for.
-            tab === "schedule" ? "pt-2" : "pt-0",
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+            tab !== "data" && "hidden",
           )}
         >
-          {tab === "data" && (
-            <>
-              {/* -mx-5 fully cancels the section's own px-5, so THIS div's
+          {/* -mx-5 fully cancels the section's own px-5, so THIS div's
               own edge — the overflow-x-clip boundary below — sits flush
               with the viewport instead of 20px in from it. The inner
               width-transition wrapper then reapplies px-3 on its own, so
@@ -1454,7 +1489,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
               — their own tiles already sit close under the toolbar with
               little breathing room built into the tile itself, so the
               fuller list/card margin read as an oversized gap there. */}
-              {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
+          {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
               slides the whole card grid a full extra width off to the
               side — without this, that briefly inflates the document's
               scrollable width, which some mobile browsers respond to by
@@ -1474,87 +1509,126 @@ function IndexInner({ onBack }: { onBack: () => void }) {
               forcing rule, so overflow-y actually stays `visible` here —
               while still suppressing the exit slide's scrollWidth
               inflation just as well as `hidden` did. */}
-              <div
-                className={cn(
-                  "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
-                  isGridDisplayMode ? "pt-4" : "pt-5",
-                )}
-              >
-                <div
-                  className={cn(
-                    "px-3 transition-[opacity,width] duration-300",
-                    !sessionActive && "opacity-50",
-                    // Card mode's own cards are dense enough (button labels,
-                    // wrapped text) that squeezing them into a narrower column
-                    // reads badly at phone widths, so that mode compresses the
-                    // container itself down to 55% — left-anchored, sm+ only —
-                    // so the still-full-size cards and the open drawer stay
-                    // visible side by side instead of the drawer covering them
-                    // entirely. List rows and both quick-action grids don't need
-                    // that: a list row is already compact and reads fine
-                    // truncated under a half-width overlay, and a grid tile's
-                    // size IS its grid track's width (unlike a card, which has a
-                    // fixed intrinsic size regardless of its track), so shrinking
-                    // the container here would shrink every tile with it — those
-                    // two instead keep this container at full width and let the
-                    // drawer just overlay on top (see DataDetailsDrawer's own
-                    // ~half-viewport default width), with the grids' own tiles
-                    // separately stacking into the left column the drawer
-                    // doesn't cover (see gridClasses/the per-card `gridColumn`
-                    // override below).
-                    drawerOpen && displayMode === "card"
-                      ? "w-full sm:w-[55%] sm:self-start"
-                      : "w-full",
-                  )}
-                >
-                  {/* Each card's own wrapper carries `layout` (see DataCardList)
+          <div
+            className={cn(
+              "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
+              isGridDisplayMode ? "pt-4" : "pt-5",
+            )}
+          >
+            <div
+              className={cn(
+                "px-3 transition-[opacity,width] duration-300",
+                !sessionActive && "opacity-50",
+                // Card mode's own cards are dense enough (button labels,
+                // wrapped text) that squeezing them into a narrower column
+                // reads badly at phone widths, so that mode compresses the
+                // container itself down to 55% — left-anchored, sm+ only —
+                // so the still-full-size cards and the open drawer stay
+                // visible side by side instead of the drawer covering them
+                // entirely. List rows and both quick-action grids don't need
+                // that: a list row is already compact and reads fine
+                // truncated under a half-width overlay, and a grid tile's
+                // size IS its grid track's width (unlike a card, which has a
+                // fixed intrinsic size regardless of its track), so shrinking
+                // the container here would shrink every tile with it — those
+                // two instead keep this container at full width and let the
+                // drawer just overlay on top (see DataDetailsDrawer's own
+                // ~half-viewport default width), with the grids' own tiles
+                // separately stacking into the left column the drawer
+                // doesn't cover (see gridClasses/the per-card `gridColumn`
+                // override below).
+                drawerOpen && displayMode === "card" ? "w-full sm:w-[55%] sm:self-start" : "w-full",
+              )}
+            >
+              {/* Each card's own wrapper carries `layout` (see DataCardList)
                   so switching card/list/grid morphs every box from one
                   size/shape to the other in place, rather than either
                   snapping instantly or crossfading the whole list as one
                   flat unit — that requires the wrapper to persist across
                   the switch, which an outer keyed remount here would break. */}
-                  <DataCardList
-                    cardsGen={cardsGen}
-                    cardsAnimKind={cardsAnimKind}
-                    transitionHidden={cardsHidden}
-                    visibleCards={visibleCards}
-                    activeId={activeId}
-                    setActiveId={setActiveId}
-                    cardRefs={cardRefs}
-                    editMode={editMode}
-                    favorites={favorites}
-                    toggleFavorite={toggleFavorite}
-                    hidden={hidden}
-                    toggleHidden={toggleHidden}
-                    order={order}
-                    setOrder={setOrder}
-                    displayMode={displayMode}
-                    suppressCardLayout={suppressCardLayout}
-                    drawerOpen={drawerOpen}
-                    drawerSlideOpen={drawerSlideOpen}
-                    onDrawerOpenChange={setDrawerOpen}
-                    drawerWidthMode={drawerWidthMode}
-                    onDrawerWidthModeChange={setDrawerWidthMode}
-                    stickyTop={stickyTop}
-                    toolbarHeight={toolbarHeight}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+              <DataCardList
+                cardsGen={cardsGen}
+                cardsAnimKind={cardsAnimKind}
+                transitionHidden={cardsHidden}
+                visibleCards={visibleCards}
+                activeId={activeId}
+                setActiveId={setActiveId}
+                cardRefs={cardRefs}
+                editMode={editMode}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                hidden={hidden}
+                toggleHidden={toggleHidden}
+                order={order}
+                setOrder={setOrder}
+                displayMode={displayMode}
+                suppressCardLayout={suppressCardLayout}
+                drawerOpen={drawerOpen}
+                drawerSlideOpen={drawerSlideOpen}
+                onDrawerOpenChange={setDrawerOpen}
+                drawerWidthMode={drawerWidthMode}
+                onDrawerWidthModeChange={setDrawerWidthMode}
+                stickyTop={stickyTop}
+                toolbarHeight={toolbarHeight}
+              />
+            </div>
+          </div>
+        </section>
 
-          {tab === "info" && (
-            <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={contentRef} />
+        <section
+          ref={infoContentRef}
+          onScroll={(e) => {
+            scrollPositionsRef.current.info = e.currentTarget.scrollTop;
+          }}
+          className={cn(
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            tab !== "info" && "hidden",
           )}
-          {tab === "schedule" && (
-            <ScheduleView
-              scrollTargetId={scheduleScrollId}
-              onScrolledToTarget={() => setScheduleScrollId(null)}
-              contentRef={contentRef}
-            />
+        >
+          <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={infoContentRef} />
+        </section>
+
+        <section
+          ref={scheduleContentRef}
+          onScroll={(e) => {
+            scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
+          }}
+          className={cn(
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-2",
+            tab !== "schedule" && "hidden",
           )}
-          {tab === "notifications" && <NotificationsPane contentRef={contentRef} />}
-          {tab === "settings" && <SettingsPane />}
+        >
+          <ScheduleView
+            scrollTargetId={scheduleScrollId}
+            onScrolledToTarget={() => setScheduleScrollId(null)}
+            contentRef={scheduleContentRef}
+          />
+        </section>
+
+        <section
+          ref={notificationsContentRef}
+          onScroll={(e) => {
+            scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
+          }}
+          className={cn(
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            tab !== "notifications" && "hidden",
+          )}
+        >
+          <NotificationsPane contentRef={notificationsContentRef} />
+        </section>
+
+        <section
+          ref={settingsContentRef}
+          onScroll={(e) => {
+            scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
+          }}
+          className={cn(
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            tab !== "settings" && "hidden",
+          )}
+        >
+          <SettingsPane contentRef={settingsContentRef} />
         </section>
       </main>
     </NotificationProvider>
