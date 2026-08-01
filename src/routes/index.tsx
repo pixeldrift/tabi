@@ -903,43 +903,37 @@ function getVisibleCards(
 }
 
 // Native `scrollIntoView({block: "center"})` centers an element against the
-// FULL viewport, with no notion of the sticky status bar + data toolbar
-// (and, when idle, the "Start session" banner inside it) covering the top
-// of it — headerHeight px are visually spoken for whether or not the
-// browser knows it. That's the gap: idle and running headers are different
-// heights, so a naive center leaves the card's own top/title tucked behind
-// the sticky header in whichever state has the taller one. Centering
-// within the space actually left below the header fixes both, and the
-// clamp keeps a card taller than that space from having its own top
-// (title) pushed up out of view in the process.
-function scrollActiveCardIntoView(el: HTMLElement, headerHeight: number) {
+// full scroll container, with no way to bias that centering — it always
+// splits the leftover space evenly above and below. Centering by hand here
+// instead lets the clamp below keep a card taller than the container from
+// having its own top (title) pushed up out of view.
+function scrollActiveCardIntoView(el: HTMLElement, container: HTMLElement) {
+  const containerRect = container.getBoundingClientRect();
   const rect = el.getBoundingClientRect();
-  const availableHeight = window.innerHeight - headerHeight;
-  const desiredCenterY = headerHeight + availableHeight / 2;
+  const desiredCenterY = containerRect.top + container.clientHeight / 2;
   const currentCenterY = rect.top + rect.height / 2;
-  const maxDelta = rect.top - headerHeight;
+  const maxDelta = rect.top - containerRect.top;
   const delta = Math.min(currentCenterY - desiredCenterY, maxDelta);
-  window.scrollBy({ top: delta, behavior: "smooth" });
+  container.scrollBy({ top: delta, behavior: "smooth" });
 }
 
 // The default (setting off) counterpart to scrollActiveCardIntoView above —
-// same headerHeight-aware math (native `scrollIntoView({block:"nearest"})`
-// has the identical blind spot to `"center"`: it doesn't know the sticky
-// header is eating into the true visible area), but only the minimum nudge
-// needed to bring a partially-hidden card fully on screen, not a forced
-// recenter. A no-op if the card's already fully visible.
-function scrollCardFullyIntoView(el: HTMLElement, headerHeight: number) {
+// only the minimum nudge needed to bring a partially-hidden card fully on
+// screen, not a forced recenter. A no-op if the card's already fully
+// visible within the container.
+function scrollCardFullyIntoView(el: HTMLElement, container: HTMLElement) {
+  const containerRect = container.getBoundingClientRect();
   const rect = el.getBoundingClientRect();
-  const visibleTop = headerHeight;
-  const visibleBottom = window.innerHeight;
+  const visibleTop = containerRect.top;
+  const visibleBottom = containerRect.bottom;
   if (rect.top >= visibleTop && rect.bottom <= visibleBottom) return;
-  // Taller than the room available below the header — no scroll amount can
+  // Taller than the room available in the container — no scroll amount can
   // satisfy both edges, so just lead with the top (matches how a browser's
   // own "nearest" falls back when the target doesn't fit either).
   if (rect.height > visibleBottom - visibleTop || rect.top < visibleTop) {
-    window.scrollBy({ top: rect.top - visibleTop, behavior: "smooth" });
+    container.scrollBy({ top: rect.top - visibleTop, behavior: "smooth" });
   } else if (rect.bottom > visibleBottom) {
-    window.scrollBy({ top: rect.bottom - visibleBottom, behavior: "smooth" });
+    container.scrollBy({ top: rect.bottom - visibleBottom, behavior: "smooth" });
   }
 }
 
@@ -1120,9 +1114,10 @@ function IndexInner({ onBack }: { onBack: () => void }) {
         // centered-vs-gentle choice as the effect below), rather than leaving
         // it wherever the reflow happened to land it.
         const el = cardRefs.current.get(activeId);
-        if (el) {
-          if (keepActiveCardCentered) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
-          else scrollCardFullyIntoView(el, stickyTop + toolbarHeight);
+        const container = contentRef.current;
+        if (el && container) {
+          if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
+          else scrollCardFullyIntoView(el, container);
         }
       },
       CARD_MORPH_TRANSITION.duration * 1000 + 50,
@@ -1141,10 +1136,10 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // tucked behind the header or hanging off the bottom of the screen.
   useEffect(() => {
     const el = cardRefs.current.get(activeId);
-    if (!el) return;
-    if (keepActiveCardCentered) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
-    else scrollCardFullyIntoView(el, stickyTop + toolbarHeight);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const container = contentRef.current;
+    if (!el || !container) return;
+    if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
+    else scrollCardFullyIntoView(el, container);
   }, [activeId, keepActiveCardCentered]);
 
   // The effect above doesn't actually cover a display-mode switch — its own
@@ -1160,9 +1155,10 @@ function IndexInner({ onBack }: { onBack: () => void }) {
     const id = window.setTimeout(
       () => {
         const el = cardRefs.current.get(activeId);
-        if (!el) return;
-        if (keepActiveCardCentered) scrollActiveCardIntoView(el, stickyTop + toolbarHeight);
-        else scrollCardFullyIntoView(el, stickyTop + toolbarHeight);
+        const container = contentRef.current;
+        if (!el || !container) return;
+        if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
+        else scrollCardFullyIntoView(el, container);
       },
       CARD_MORPH_TRANSITION.duration * 1000 + 50,
     );
@@ -1217,18 +1213,23 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   const anchorRafRef = useRef(0);
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
-    if (!el) return;
+    const container = contentRef.current;
+    if (!el || !container) return;
     const isModeSwitch = prevDisplayModeRef.current !== displayMode;
     prevDisplayModeRef.current = displayMode;
 
     if (isModeSwitch && activeTopRef.current !== null) {
       cancelAnimationFrame(anchorRafRef.current);
-      const body = document.body;
-      const prevPaddingBottom = body.style.paddingBottom;
-      body.style.paddingBottom = `${window.innerHeight}px`;
+      // Guarantees the container has enough scroll slack to actually apply
+      // scrollBy deltas mid-morph, before the reflowing content below has
+      // grown to fill it on its own — padding on the scrolling element
+      // itself counts toward its own scrollHeight, same as body padding
+      // used to for the page when this scrolled at the window level.
+      const prevPaddingBottom = container.style.paddingBottom;
+      container.style.paddingBottom = `${container.clientHeight}px`;
 
       const initialDelta = el.getBoundingClientRect().top - activeTopRef.current;
-      if (initialDelta !== 0) window.scrollBy(0, initialDelta);
+      if (initialDelta !== 0) container.scrollBy(0, initialDelta);
 
       let anchorTop = el.getBoundingClientRect().top;
       const start = performance.now();
@@ -1236,12 +1237,12 @@ function IndexInner({ onBack }: { onBack: () => void }) {
       const tick = (now: number) => {
         const newTop = el.getBoundingClientRect().top;
         const delta = newTop - anchorTop;
-        if (delta !== 0) window.scrollBy(0, delta);
+        if (delta !== 0) container.scrollBy(0, delta);
         anchorTop = el.getBoundingClientRect().top;
         if (now - start < durationMs) {
           anchorRafRef.current = requestAnimationFrame(tick);
         } else {
-          body.style.paddingBottom = prevPaddingBottom;
+          container.style.paddingBottom = prevPaddingBottom;
         }
       };
       anchorRafRef.current = requestAnimationFrame(tick);
@@ -1301,7 +1302,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // moot by already being at the top before it can occur.
   useLayoutEffect(() => {
     if (transitionKind === "start-new") {
-      window.scrollTo(0, 0);
+      contentRef.current?.scrollTo(0, 0);
     }
   }, [transitionKind]);
 
@@ -1370,7 +1371,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // long scroll down any tab's content can otherwise strand you without.
   const handleTabChange = (t: StatusTab) => {
     if (t === tab) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setTab(t);
@@ -1631,11 +1632,14 @@ function IndexInner({ onBack }: { onBack: () => void }) {
               </>
             )}
 
-            {tab === "info" && <ClientInfoPane onViewSchedule={() => setTab("schedule")} />}
+            {tab === "info" && (
+              <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={contentRef} />
+            )}
             {tab === "schedule" && (
               <ScheduleView
                 scrollTargetId={scheduleScrollId}
                 onScrolledToTarget={() => setScheduleScrollId(null)}
+                contentRef={contentRef}
               />
             )}
             {tab === "notifications" && <NotificationsPane />}

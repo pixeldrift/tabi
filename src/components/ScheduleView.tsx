@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
@@ -689,9 +689,14 @@ const INPUT_BLUE_CLS = "border-2 border-blue-400 focus-visible:ring-blue-400";
 export function ScheduleView({
   scrollTargetId,
   onScrolledToTarget,
+  contentRef,
 }: {
   scrollTargetId?: string | null;
   onScrolledToTarget?: () => void;
+  /** The app-shell's own internally-scrolling content pane this view
+   *  renders inside — the schedule-switch reset scrolls it directly
+   *  rather than the window. */
+  contentRef?: RefObject<HTMLElement | null>;
 } = {}) {
   const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
   const [now, setNow] = useState<Date>(() => randomDemoTime(dayStartTime, dayEndTime));
@@ -1143,7 +1148,7 @@ export function ScheduleView({
     const scheduleChanged = activeName !== prevActiveNameForScrollRef.current;
     prevActiveNameForScrollRef.current = activeName;
     if (scheduleChanged) {
-      window.scrollTo({ top: 0 });
+      contentRef?.current?.scrollTo({ top: 0 });
       return;
     }
     if (!currentItem) return;
