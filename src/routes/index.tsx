@@ -1642,7 +1642,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
                 contentRef={contentRef}
               />
             )}
-            {tab === "notifications" && <NotificationsPane />}
+            {tab === "notifications" && <NotificationsPane contentRef={contentRef} />}
             {tab === "settings" && <SettingsPane />}
           </motion.section>
         </LayoutGroup>
