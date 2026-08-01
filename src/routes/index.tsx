@@ -598,9 +598,6 @@ const cards: CardConfig[] = [
     intervalMin: 30,
     positiveLabel: "Dry",
     negativeLabel: "Wet/Soiled",
-    // TEMPORARY — unlocked so elapsed time can be typed in directly to test
-    // the timeline at arbitrary points; revert to locked (or omit) once done.
-    locked: false,
     teachingProcedure: {
       goal: "Phineas will remain dry through every 30-minute check across 3 consecutive sessions.",
       rationale:
