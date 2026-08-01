@@ -86,9 +86,9 @@ export const PILL_CROSSFADE_MS = 150;
 export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;
 
 // Duration for the "Start session to record data" banner's own exit/enter
-// (routes/index.tsx's dataToolbar) — lives here, not there, so
-// `headerReflowActive` below can size its own suppression window against
-// it directly instead of guessing at a duplicated constant.
+// (routes/index.tsx's dataToolbar) — lives here, not there, so any other
+// session-timing logic that needs to reason about the banner's own motion
+// has one shared constant instead of a duplicated guess.
 export const DATA_BANNER_EXIT_MS = 400;
 
 export interface ActiveTimer {
@@ -122,12 +122,6 @@ interface SessionContextValue {
   // and mini positions (see its own comment below) — StatusBar's visual
   // travel overlay is driven directly off this shared clock.
   pillTraveling: boolean;
-  // The single, unified "a real reflow is happening in the header right
-  // now" signal — see its own comment on the SessionProvider below. Every
-  // layout-tracked sibling (tab nav, content pane) reads this to give up
-  // its own `layout="position"` FLIP for that window, since native reflow
-  // already tracks the real, continuous motion without it.
-  headerReflowActive: boolean;
   requestStartNew: () => void;
   requestResume: () => void;
   requestDiscard: () => void;
@@ -607,87 +601,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMineAndRunning]);
 
-  // True for exactly as long as the box's own real CSS height `animate()`
-  // is mid-transition (collapsing into the mini pill slot, or expanding
-  // back out). The "turn on" edge is set during render (the same
-  // same-component pattern as `prevCollapsedRef` above), not in an effect —
-  // an effect would only fire after this render has already committed,
-  // which is one render too late for a sibling like the tab nav whose own
-  // margin swaps in the very same render `boxCollapsed` changes in (a
-  // `layout="position"` FLIP would snapshot the stale, unsuppressed value
-  // and visibly animate to catch up — this was the actual cause of a
-  // small, separately-timed "hop"/"bounce" on resume and pause, distinct
-  // from the box's own real motion). Setting it here means React bails out
-  // and re-renders with the new flag before anything paints.
-  const prevBoxCollapsedForAnimatingRef = useRef(boxCollapsed);
-  const [boxHeightAnimating, setBoxHeightAnimating] = useState(false);
-  if (boxCollapsed !== prevBoxCollapsedForAnimatingRef.current) {
-    prevBoxCollapsedForAnimatingRef.current = boxCollapsed;
-    setBoxHeightAnimating(true);
-  }
-  useEffect(() => {
-    const duration = boxCollapsed ? BOX_COLLAPSE_MS : HEADER_MORPH_MS;
-    const id = window.setTimeout(() => setBoxHeightAnimating(false), duration);
-    return () => window.clearTimeout(id);
-  }, [boxCollapsed]);
-
-  // True while the "Start session to record data." banner (dataToolbar,
-  // rendered inside the same sticky container as the header) is mid
-  // enter/exit. That banner's own real height animation
-  // (DATA_BANNER_EXIT_MS) changes the sticky container's actual height —
-  // exactly the kind of "header genuinely reflowing" event
-  // `headerReflowActive` exists to cover — but it's driven by `status`
-  // crossing the idle/non-idle line, not by `boxCollapsed`/`pillTraveling`,
-  // so it was invisible to the flags below entirely. That let the content
-  // pane's `layout="position"` FLIP run unsuppressed for the whole banner
-  // animation, racing the sticky container's continuous native reflow with
-  // its own separate easing/duration and visibly drifting from it — this
-  // was the actual cause of the pane looking like it "floats apart" from
-  // the header on a fresh start-new (the box's own collapse doesn't even
-  // begin until well after the banner has already finished). Same
-  // same-render "adjust during render" pattern as `boxHeightAnimating`
-  // above, for the same reason: an effect would fire one render too late
-  // for a sibling whose own conditional rendering (`sessionActive`) flips
-  // in this very render.
-  const sessionActive = status !== "idle";
-  const prevSessionActiveRef = useRef(sessionActive);
-  const [bannerReflowActive, setBannerReflowActive] = useState(false);
-  if (sessionActive !== prevSessionActiveRef.current) {
-    prevSessionActiveRef.current = sessionActive;
-    setBannerReflowActive(true);
-  }
-  useEffect(() => {
-    const id = window.setTimeout(() => setBannerReflowActive(false), DATA_BANNER_EXIT_MS);
-    return () => window.clearTimeout(id);
-  }, [sessionActive]);
-
-  // The single, unified signal every layout-tracked sibling below the
-  // header (the tab nav, the content pane) reads to give up its own
-  // `layout="position"` FLIP: while any of these is true, the header area
-  // is genuinely reflowing on its own real clock, and a FLIP layered on
-  // top of that can only fall behind, never match it.
-  //   - `collapsed !== boxCollapsed`: the dwell between `collapsed` first
-  //     changing (which is also the exact render `isRunning`-derived
-  //     classes like the tab nav's own margin swap) and the box's real
-  //     height actually starting to move — a pure per-render comparison,
-  //     so it's already true on that very first render, with no effect
-  //     lag at all. This is what closes the resume "hop"/pause "bounce":
-  //     the previous approximation only started suppressing once the box's
-  //     real transition began, missing this earlier dwell entirely.
-  //   - `boxHeightAnimating`: the box's own real transition itself.
-  //   - `pillTraveling`: the mini-session slot's own real height animation
-  //     growing/shrinking directly inside the tab nav, on a separate clock
-  //     from the box (driven by `isMineAndRunning`, not by `collapsed`/
-  //     `boxCollapsed`'s own timing).
-  //   - `bannerReflowActive`: the "start session to record data" banner's
-  //     own enter/exit height animation, inside the same sticky container
-  //     but on neither of the above clocks — see its own comment above.
-  // Covers a plain, unstaged `pause()` click too — that never touches
-  // transitionStage/transitionKind at all, so an approximation gated on
-  // those alone always missed it.
-  const headerReflowActive =
-    collapsed !== boxCollapsed || boxHeightAnimating || pillTraveling || bannerReflowActive;
-
   // Active timer registry (registration is internal bookkeeping; do NOT mark dirty here).
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
   const registerActiveTimer = useCallback((t: ActiveTimer) => {
@@ -795,7 +708,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       collapsed,
       boxCollapsed,
       pillTraveling,
-      headerReflowActive,
       requestStartNew,
       requestResume,
       requestDiscard,
@@ -832,7 +744,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       collapsed,
       boxCollapsed,
       pillTraveling,
-      headerReflowActive,
       requestStartNew,
       requestResume,
       requestDiscard,

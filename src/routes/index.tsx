@@ -1,13 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  motion,
-  AnimatePresence,
-  LayoutGroup,
-  Reorder,
-  useDragControls,
-  type DragControls,
-} from "motion/react";
+import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from "motion/react";
 import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
@@ -34,7 +27,6 @@ import { NotificationProvider, useNotifications } from "@/components/Notificatio
 import { NOTIFICATION_AREA_TRANSITION, NotificationsPane } from "@/components/NotificationBar";
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useElementHeight } from "@/hooks/use-element-height";
-import { useInitialLayoutSettled } from "@/hooks/use-initial-layout-settle";
 import { DataToolbar } from "@/components/DataToolbar";
 import {
   DataToolbarProvider,
@@ -728,20 +720,6 @@ function SessionActivityTrigger() {
   return null;
 }
 
-/** Renders nothing — just reports NotificationContext's own
- *  notificationsReflowActive back up to IndexInner's `suppressPaneLayout`
- *  via a plain callback, since NotificationProvider is declared inside
- *  IndexInner's own returned JSX and isn't yet an ancestor at the point
- *  `suppressPaneLayout` needs to read it (see that variable's own
- *  comment). */
-function NotificationsReflowBridge({ onChange }: { onChange: (v: boolean) => void }) {
-  const { notificationsReflowActive } = useNotifications();
-  useEffect(() => {
-    onChange(notificationsReflowActive);
-  }, [notificationsReflowActive, onChange]);
-  return null;
-}
-
 type Screen = "welcome" | "main";
 
 // Same push/pop feel either direction: welcome exits left as main enters
@@ -974,14 +952,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // then paging to the next card would snap the drawer back down to normal
   // width on every step.
   const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
-  const { status, transitionStage, transitionKind, headerReflowActive } = useSession();
-  // Can't call useNotifications() directly here — NotificationProvider is
-  // declared further down, inside this component's OWN returned JSX (it
-  // needs handleNotificationActivate, a closure over this component's own
-  // state), so it isn't yet an ancestor at this point in the render. This
-  // bridges the one value out via a plain child instead of restructuring
-  // that provider nesting.
-  const [notificationsReflowActive, setNotificationsReflowActive] = useState(false);
+  const { status, transitionStage, transitionKind } = useSession();
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
   // record data" banner and dimmed every card each time a session was
@@ -990,43 +961,6 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // sliding in and the cards dropping to half-opacity added an extra,
   // unrelated layout shift on top of the box's own expand animation.
   const sessionActive = status !== "idle";
-
-  // Motion's `layout="position"` snapshots this pane's rect once per React
-  // render and commits to it as the FLIP's final target — it has no idea
-  // the snapshot it just took is itself mid-flight, still being pushed by
-  // the header box's own real (non-`layout`) height `animate()` a beat
-  // later. A render that lands after the box's target has logically
-  // updated but before its real height has actually finished tweening
-  // hands Motion a target that's already (visually) the fully-collapsed
-  // position, so it commits and finishes the pane's FLIP well before the
-  // box (and the tab bar and toolbar riding directly on its real height,
-  // needing no FLIP at all) actually gets there — the pane visibly arrives
-  // early. Turning `layout` off for exactly the window the header's real
-  // height is changing sidesteps this: with no FLIP running, the pane just
-  // follows native reflow like any other block, which can't ever be out of
-  // step with what's really above it. `headerReflowActive` (SessionContext)
-  // is that window, computed centrally rather than mirrored piecemeal into
-  // this component — the box's own collapse/expand, the dwell before it
-  // starts (during which the tab nav's own `isRunning`-derived margin
-  // already changes), and the mini-session slot's own real height animation
-  // growing/shrinking inside the tab nav, all folded into one signal so
-  // this pane, the tab nav, and the toolbar riding on it can never drift
-  // apart reading it. Also covers a plain, unstaged `pause()` click, which
-  // never touches transitionStage/transitionKind at all.
-  // `layout="position"` comes back the instant the header's real reflow is
-  // done, for the discrete-jump cases (tab switches) it's actually meant
-  // for. Notification changes turned out NOT to be one of those — a row
-  // entering/leaving the visible stack animates the banner's own real
-  // height (NotificationContext's notificationsReflowActive), which moves
-  // the sticky container's real height exactly like the session box's own
-  // collapse does, so it needs the same suppression instead of being left
-  // to FLIP through it.
-  const suppressPaneLayout = headerReflowActive || notificationsReflowActive;
-  // See use-initial-layout-settle's own comment — StatusBar's demo-only
-  // "Previous Session" row grows its box a beat after mount, which this
-  // pane (tracked in the same "session-bar" LayoutGroup) would otherwise
-  // animate away from on every fresh page load.
-  const initialLayoutSettled = useInitialLayoutSettled();
 
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
@@ -1434,7 +1368,6 @@ function IndexInner({ onBack }: { onBack: () => void }) {
     <NotificationProvider onActivate={handleNotificationActivate}>
       <GoalChangeDemoTrigger />
       <SessionActivityTrigger />
-      <NotificationsReflowBridge onChange={setNotificationsReflowActive} />
       {/* App-shell layout: a content-sized header (shrink-0, ordinary CSS
           flow) above a fixed-height, internally-scrolling content pane —
           replacing the old whole-page-scrolls-with-a-sticky-header model.
@@ -1442,93 +1375,71 @@ function IndexInner({ onBack }: { onBack: () => void }) {
           convention for reasoning about mobile browser chrome (see
           StatusBar's own dvh usage). */}
       <main className="h-dvh flex flex-col overflow-hidden bg-background">
-        {/* Shared across StatusBar's tab nav and this section's panel so their
-          `layout="position"` FLIPs are batched into one coordinated motion
-          instead of two independent trees that can drift a frame apart —
-          see LayoutGroup's docs on coordinating layout detection across
-          separate components. */}
-        <LayoutGroup id="session-bar">
-          <StatusBar
-            activeTab={tab}
-            onTabChange={handleTabChange}
-            onBack={onBack}
-            suppressNavLayout={suppressCardLayout}
-            onNavigateToCard={handleNavigateToCard}
-            dataToolbar={
-              tab === "data" && (
-                <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
-                  <AnimatePresence initial={false}>
-                    {!sessionActive && (
+        <StatusBar
+          activeTab={tab}
+          onTabChange={handleTabChange}
+          onBack={onBack}
+          onNavigateToCard={handleNavigateToCard}
+          dataToolbar={
+            tab === "data" && (
+              <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
+                <AnimatePresence initial={false}>
+                  {!sessionActive && (
+                    <motion.div
+                      key="start-session-banner"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{
+                        height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
+                        opacity: { duration: 0.25 },
+                      }}
+                      className="overflow-hidden border-t border-stone-200/70"
+                    >
                       <motion.div
-                        key="start-session-banner"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
+                        initial={{ y: -16 }}
+                        animate={{ y: 0 }}
+                        exit={{ y: -16 }}
                         transition={{
-                          height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
-                          opacity: { duration: 0.25 },
+                          duration: DATA_BANNER_EXIT_MS / 1000,
+                          ease: [0.4, 0, 0.2, 1],
                         }}
-                        className="overflow-hidden border-t border-stone-200/70"
+                        className="py-1.5 px-8 text-center"
                       >
-                        <motion.div
-                          initial={{ y: -16 }}
-                          animate={{ y: 0 }}
-                          exit={{ y: -16 }}
-                          transition={{
-                            duration: DATA_BANNER_EXIT_MS / 1000,
-                            ease: [0.4, 0, 0.2, 1],
-                          }}
-                          className="py-1.5 px-8 text-center"
-                        >
-                          <span className="text-sm text-muted-foreground">
-                            Start session to record data.
-                          </span>
-                        </motion.div>
+                        <span className="text-sm text-muted-foreground">
+                          Start session to record data.
+                        </span>
                       </motion.div>
-                    )}
-                  </AnimatePresence>
-                </DataToolbar>
-              )
-            }
-          />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </DataToolbar>
+            )
+          }
+        />
 
-          <motion.section
-            // `layout="position"` stays on unconditionally (never toggled to
-            // `false`) — see StatusBar's own nav for why: toggling the prop
-            // itself makes Motion re-initialize its projection right as it
-            // re-enables, catching the tail of whatever moved while it was
-            // off and animating THAT with the full transition, which reads
-            // as its own separate, out-of-sync bounce. Zeroing just the
-            // duration (`suppressPaneLayout`/`initialLayoutSettled`) keeps
-            // measurement continuous instead.
-            layout="position"
-            transition={{
-              layout:
-                suppressPaneLayout || !initialLayoutSettled
-                  ? { duration: 0 }
-                  : NOTIFICATION_AREA_TRANSITION,
-            }}
-            ref={contentRef}
-            className={cn(
-              "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
-              // Only the Data tab has a toolbar directly above this pane, with
-              // its own border-b — -mt-px there merges the two lines into one
-              // instead of a visible double line. Every other tab sits directly
-              // below the (sticky, higher-stacked) tabs row itself, so pulling
-              // the border under it here instead erased it completely across
-              // the whole width — not just blended under the active tab the way
-              // its own -bottom-px overlay (see StatusBar) is meant to.
-              tab === "data" && "-mt-px",
-              // Info/Notifications/Settings each already carry their own
-              // top margin (mt-6) on their own inner wrapper — adding pt-5
-              // here too just doubled the gap above them (44px total)
-              // instead of the single ~24px every other tab settles for.
-              tab === "schedule" ? "pt-2" : "pt-0",
-            )}
-          >
-            {tab === "data" && (
-              <>
-                {/* -mx-5 fully cancels the section's own px-5, so THIS div's
+        <section
+          ref={contentRef}
+          className={cn(
+            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
+            // Only the Data tab has a toolbar directly above this pane, with
+            // its own border-b — -mt-px there merges the two lines into one
+            // instead of a visible double line. Every other tab sits directly
+            // below the (sticky, higher-stacked) tabs row itself, so pulling
+            // the border under it here instead erased it completely across
+            // the whole width — not just blended under the active tab the way
+            // its own -bottom-px overlay (see StatusBar) is meant to.
+            tab === "data" && "-mt-px",
+            // Info/Notifications/Settings each already carry their own
+            // top margin (mt-6) on their own inner wrapper — adding pt-5
+            // here too just doubled the gap above them (44px total)
+            // instead of the single ~24px every other tab settles for.
+            tab === "schedule" ? "pt-2" : "pt-0",
+          )}
+        >
+          {tab === "data" && (
+            <>
+              {/* -mx-5 fully cancels the section's own px-5, so THIS div's
               own edge — the overflow-x-clip boundary below — sits flush
               with the viewport instead of 20px in from it. The inner
               width-transition wrapper then reapplies px-3 on its own, so
@@ -1543,7 +1454,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
               — their own tiles already sit close under the toolbar with
               little breathing room built into the tile itself, so the
               fuller list/card margin read as an oversized gap there. */}
-                {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
+              {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
               slides the whole card grid a full extra width off to the
               side — without this, that briefly inflates the document's
               scrollable width, which some mobile browsers respond to by
@@ -1563,89 +1474,88 @@ function IndexInner({ onBack }: { onBack: () => void }) {
               forcing rule, so overflow-y actually stays `visible` here —
               while still suppressing the exit slide's scrollWidth
               inflation just as well as `hidden` did. */}
+              <div
+                className={cn(
+                  "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
+                  isGridDisplayMode ? "pt-4" : "pt-5",
+                )}
+              >
                 <div
                   className={cn(
-                    "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
-                    isGridDisplayMode ? "pt-4" : "pt-5",
+                    "px-3 transition-[opacity,width] duration-300",
+                    !sessionActive && "opacity-50",
+                    // Card mode's own cards are dense enough (button labels,
+                    // wrapped text) that squeezing them into a narrower column
+                    // reads badly at phone widths, so that mode compresses the
+                    // container itself down to 55% — left-anchored, sm+ only —
+                    // so the still-full-size cards and the open drawer stay
+                    // visible side by side instead of the drawer covering them
+                    // entirely. List rows and both quick-action grids don't need
+                    // that: a list row is already compact and reads fine
+                    // truncated under a half-width overlay, and a grid tile's
+                    // size IS its grid track's width (unlike a card, which has a
+                    // fixed intrinsic size regardless of its track), so shrinking
+                    // the container here would shrink every tile with it — those
+                    // two instead keep this container at full width and let the
+                    // drawer just overlay on top (see DataDetailsDrawer's own
+                    // ~half-viewport default width), with the grids' own tiles
+                    // separately stacking into the left column the drawer
+                    // doesn't cover (see gridClasses/the per-card `gridColumn`
+                    // override below).
+                    drawerOpen && displayMode === "card"
+                      ? "w-full sm:w-[55%] sm:self-start"
+                      : "w-full",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "px-3 transition-[opacity,width] duration-300",
-                      !sessionActive && "opacity-50",
-                      // Card mode's own cards are dense enough (button labels,
-                      // wrapped text) that squeezing them into a narrower column
-                      // reads badly at phone widths, so that mode compresses the
-                      // container itself down to 55% — left-anchored, sm+ only —
-                      // so the still-full-size cards and the open drawer stay
-                      // visible side by side instead of the drawer covering them
-                      // entirely. List rows and both quick-action grids don't need
-                      // that: a list row is already compact and reads fine
-                      // truncated under a half-width overlay, and a grid tile's
-                      // size IS its grid track's width (unlike a card, which has a
-                      // fixed intrinsic size regardless of its track), so shrinking
-                      // the container here would shrink every tile with it — those
-                      // two instead keep this container at full width and let the
-                      // drawer just overlay on top (see DataDetailsDrawer's own
-                      // ~half-viewport default width), with the grids' own tiles
-                      // separately stacking into the left column the drawer
-                      // doesn't cover (see gridClasses/the per-card `gridColumn`
-                      // override below).
-                      drawerOpen && displayMode === "card"
-                        ? "w-full sm:w-[55%] sm:self-start"
-                        : "w-full",
-                    )}
-                  >
-                    {/* Each card's own wrapper carries `layout` (see DataCardList)
+                  {/* Each card's own wrapper carries `layout` (see DataCardList)
                   so switching card/list/grid morphs every box from one
                   size/shape to the other in place, rather than either
                   snapping instantly or crossfading the whole list as one
                   flat unit — that requires the wrapper to persist across
                   the switch, which an outer keyed remount here would break. */}
-                    <DataCardList
-                      cardsGen={cardsGen}
-                      cardsAnimKind={cardsAnimKind}
-                      transitionHidden={cardsHidden}
-                      visibleCards={visibleCards}
-                      activeId={activeId}
-                      setActiveId={setActiveId}
-                      cardRefs={cardRefs}
-                      editMode={editMode}
-                      favorites={favorites}
-                      toggleFavorite={toggleFavorite}
-                      hidden={hidden}
-                      toggleHidden={toggleHidden}
-                      order={order}
-                      setOrder={setOrder}
-                      displayMode={displayMode}
-                      suppressCardLayout={suppressCardLayout}
-                      drawerOpen={drawerOpen}
-                      drawerSlideOpen={drawerSlideOpen}
-                      onDrawerOpenChange={setDrawerOpen}
-                      drawerWidthMode={drawerWidthMode}
-                      onDrawerWidthModeChange={setDrawerWidthMode}
-                      stickyTop={stickyTop}
-                      toolbarHeight={toolbarHeight}
-                    />
-                  </div>
+                  <DataCardList
+                    cardsGen={cardsGen}
+                    cardsAnimKind={cardsAnimKind}
+                    transitionHidden={cardsHidden}
+                    visibleCards={visibleCards}
+                    activeId={activeId}
+                    setActiveId={setActiveId}
+                    cardRefs={cardRefs}
+                    editMode={editMode}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    hidden={hidden}
+                    toggleHidden={toggleHidden}
+                    order={order}
+                    setOrder={setOrder}
+                    displayMode={displayMode}
+                    suppressCardLayout={suppressCardLayout}
+                    drawerOpen={drawerOpen}
+                    drawerSlideOpen={drawerSlideOpen}
+                    onDrawerOpenChange={setDrawerOpen}
+                    drawerWidthMode={drawerWidthMode}
+                    onDrawerWidthModeChange={setDrawerWidthMode}
+                    stickyTop={stickyTop}
+                    toolbarHeight={toolbarHeight}
+                  />
                 </div>
-              </>
-            )}
+              </div>
+            </>
+          )}
 
-            {tab === "info" && (
-              <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={contentRef} />
-            )}
-            {tab === "schedule" && (
-              <ScheduleView
-                scrollTargetId={scheduleScrollId}
-                onScrolledToTarget={() => setScheduleScrollId(null)}
-                contentRef={contentRef}
-              />
-            )}
-            {tab === "notifications" && <NotificationsPane contentRef={contentRef} />}
-            {tab === "settings" && <SettingsPane />}
-          </motion.section>
-        </LayoutGroup>
+          {tab === "info" && (
+            <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={contentRef} />
+          )}
+          {tab === "schedule" && (
+            <ScheduleView
+              scrollTargetId={scheduleScrollId}
+              onScrolledToTarget={() => setScheduleScrollId(null)}
+              contentRef={contentRef}
+            />
+          )}
+          {tab === "notifications" && <NotificationsPane contentRef={contentRef} />}
+          {tab === "settings" && <SettingsPane />}
+        </section>
       </main>
     </NotificationProvider>
   );

@@ -85,7 +85,6 @@ interface StatusBarProps {
    *  go back to in this single-client prototype; this is the app's only
    *  other screen. */
   onBack: () => void;
-  suppressNavLayout?: boolean;
   /** The Data tab's sticky filter/view toolbar (DataToolbar), rendered as a
    *  plain sibling of this component's own header content inside the SAME
    *  sticky container — see that outer wrapper's own comment below for why.
@@ -212,7 +211,6 @@ export function StatusBar({
   onTabChange,
   title = "Phineas Flynn's Data Sheet",
   onBack,
-  suppressNavLayout = false,
   dataToolbar,
   onNavigateToCard,
 }: StatusBarProps) {
@@ -226,7 +224,6 @@ export function StatusBar({
     collapsed,
     boxCollapsed,
     pillTraveling,
-    headerReflowActive,
     requestStartNew,
     requestResume,
     requestDiscard,
@@ -281,7 +278,7 @@ export function StatusBar({
   // (a new one arriving), not on every render or on a decrease from
   // dismissing one — prevCountRef starts at the initial count rather than
   // 0, so mounting with some already live doesn't itself read as "new."
-  const { live: liveNotifications, notificationsReflowActive } = useNotifications();
+  const { live: liveNotifications } = useNotifications();
   const notifCount = liveNotifications.length;
   const prevNotifCountRef = useRef(notifCount);
   const [notifHopGen, setNotifHopGen] = useState(0);
@@ -367,28 +364,6 @@ export function StatusBar({
   // when the box collapses — except for discard, where the box was already
   // expanded (paused) and stays that way; only its displayed value swaps.
   const dimmed = transitionStage > 0;
-  // `collapsed`, `boxCollapsed`, and `headerReflowActive` all live in
-  // SessionContext now (see that file's own comments) — StatusBar reads
-  // them rather than deriving its own copies, so the box's real height
-  // `animate()` below, this nav's own suppression, and routes/index.tsx's
-  // pane suppression all read the exact same values on the exact same
-  // render, with nothing mirrored or a tick behind. `headerReflowActive`
-  // is what used to be approximated here as `transitionStage === 2 &&
-  // transitionKind !== "discard"` — that approximation missed a plain,
-  // unstaged `pause()` click (never touches transitionStage/transitionKind
-  // at all) and, separately, the dwell between `collapsed` changing and the
-  // box's real height actually starting to move (during which this nav's
-  // own `isRunning`-derived margin already changes) — both of which let
-  // the tab nav, the toolbar riding on it, and the pane below visibly
-  // hop/bounce out of step with the header's real motion.
-  // OR'd with notificationsReflowActive (NotificationContext) — the
-  // notification banner rendered right below this nav (inside the same
-  // shared sticky container) has its own real height animation whenever a
-  // row enters/leaves the visible stack, which changes the sticky
-  // container's real height exactly like the session box's own collapse
-  // does, but headerReflowActive alone has no idea that's happening.
-  const suppressSessionLayout = headerReflowActive || notificationsReflowActive;
-
   // Same "never animate to the literal string auto" fix as actionsHeight
   // below: without it, whenever the pill itself enters/leaves this box (its
   // biggest content change), Motion's cached "auto" resolution snaps the
@@ -759,38 +734,7 @@ export function StatusBar({
               <NotificationBar />
 
               {/* Tabs row + mini session (when running) */}
-              {/* suppressNavLayout (a prop from routes/index.tsx) zeroes the
-                layout transition's duration during a data-tab display-mode
-                morph. This nav sits sticky at top:0, so its own true
-                position never changes for that reason — but Framer Motion's
-                LayoutGroup batches it together with the data panel below
-                (see index.tsx's "session-bar" LayoutGroup), and the panel's
-                active-card scroll anchor calls window.scrollBy every frame
-                while the morph runs. Motion's projection math isn't
-                sticky-aware: it reads a stuck element's rect as having moved
-                whenever scrollY changes mid-measurement, so it was playing a
-                brief, spurious correction (a few px, decaying back to 0 over
-                the whole morph) each time that scroll anchor nudged the
-                page. Toggling the `layout` prop itself off/on around the
-                window was tried and made this worse — Motion re-initializes
-                its projection right as it re-enables, so it can catch the
-                tail of the scroll correction and animate it with the full
-                (non-zero) transition instead. Zeroing just the duration
-                keeps measurement continuous and collapses whatever phantom
-                delta it finds down to a single frame, which reads as no
-                jump at all. `suppressSessionLayout` (computed above,
-                already folding in the mini-session slot's own real height
-                animation growing/shrinking directly inside this nav) zeroes
-                it for the unrelated session-transition reason explained
-                there. */}
-              <motion.nav
-                layout="position"
-                transition={{
-                  layout:
-                    suppressNavLayout || suppressSessionLayout || !initialLayoutSettled
-                      ? { duration: 0 }
-                      : NOTIFICATION_AREA_TRANSITION,
-                }}
+              <nav
                 className={cn(
                   "flex items-end justify-between gap-2 -mb-px",
                   isRunning ? "mt-1" : "mt-1.5",
@@ -885,7 +829,7 @@ export function StatusBar({
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.nav>
+              </nav>
             </>
           </div>
         </div>
