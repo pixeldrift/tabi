@@ -31,7 +31,18 @@ export function useSlidingArrowOffset(
     };
     // Radix positions the content across its own layout effects, so wait a
     // frame before measuring, same as DataToolbar's own filter popover.
-    const raf = requestAnimationFrame(update);
+    // A single frame isn't always enough, though — floating-ui sometimes
+    // needs an extra pass to settle (e.g. an initial estimate followed by
+    // a collision-driven correction near a screen edge), and measuring
+    // between those two passes catches a transient position instead of the
+    // final one. Re-measuring for a few more frames converges on whatever
+    // Radix actually settles at, cheaply and boundedly.
+    let frame = 0;
+    let raf = requestAnimationFrame(function tick() {
+      update();
+      frame += 1;
+      if (frame < 5) raf = requestAnimationFrame(tick);
+    });
     window.addEventListener("resize", update);
     return () => {
       cancelAnimationFrame(raf);
