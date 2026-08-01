@@ -1,16 +1,22 @@
 # Tabi
 
-Tabi is a prototype front-end platform for Applied Behavioral Analysis.
+Tabi is a prototype front-end platform for Applied Behavioral Analysis,
+with a preliminary emphasis on the needs of RBTs who frequently juggle data 
+entry while attending to the needs of challenging clients.
+
+
+
 It is designed for data collection and session management, focused on user
 experience and ease of information access while working in a busy clinical
 environment. Convenience and quality-of-life features put actions and
 information directly in the context where they're needed, minimizing the
-need to hunt for anything — what you need is always at your fingertips, in
-a human-readable form that's easy to understand at a glance without having
-to stop and think about it, and help and explanations work the same way,
-available at a glance instead of requiring a trip to documentation or a
-training portal. Tabi is built for behavioral technicians who need to
-juggle data entry while attending to the needs of challenging clients.
+need to hunt for anything. The tools you need are always at your fingertips,
+in a human-readable form that's easy to understand at a glance.
+
+Help and explanations work the same way, with a self-documenting approach
+that's available at a glance instead of requiring a trip to documentation
+or a training portal.
+
 
 ## Tech stack
 
