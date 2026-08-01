@@ -34,6 +34,17 @@ export const CURRENT_STAFF_ID = "perry-plat";
 // profile card when tapped.
 const OTHER_STAFF_IDS = ["isabella-garcia-shapiro", "baljeet-tjinder"];
 
+// A plausible (invented, not real) length for a just-finished session —
+// used everywhere the idle box's "Previous Session" duration gets set: the
+// initial random demo scenario below, and endAndSubmit/clearAndDiscard once
+// a real session actually ends. A real elapsed time would usually read as
+// implausibly short here (most manual testing/demo sessions last seconds,
+// not hours), so this stands in for what an actual clinical session would
+// have run.
+function randomPreviousSessionMs() {
+  return Math.floor((2 + Math.random() * 4) * 3600 * 1000); // 2-6hr
+}
+
 // A running session with no one present for at least this long is
 // considered abandoned — see isAbandoned's own comment.
 export const ABANDONMENT_THRESHOLD_MS = 30 * 60 * 1000;
@@ -405,6 +416,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStartedById(null);
     setPresentStaffIds([]);
     setReviewModeUnlocked(false);
+    // Backfills the idle box's own "Previous Session" line — see
+    // randomPreviousSessionMs's own comment for why this is invented
+    // rather than the just-ended session's real (likely too-short) elapsed
+    // time.
+    setPreviousSessionMs(randomPreviousSessionMs());
+    setPreviousSessionEndedAt(new Date());
     playSoundEffect("submit");
   }, []);
   const clearAndDiscard = useCallback(() => {
@@ -414,6 +431,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStartedById(null);
     setPresentStaffIds([]);
     setReviewModeUnlocked(false);
+    // Same reasoning as endAndSubmit above — discarding still ends the
+    // session (just without keeping its data), so the idle box's "who and
+    // when" should reflect that instead of sitting on whatever stale/
+    // never-set values happened to precede it.
+    setLastEndedById(CURRENT_STAFF_ID);
+    setPreviousSessionMs(randomPreviousSessionMs());
+    setPreviousSessionEndedAt(new Date());
     playSoundEffect("sessionDiscard");
   }, []);
 
@@ -713,7 +737,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // absorbed from StatusBar, plus who ended it.
       const minMs = 60 * 1000;
       const maxMs = 3 * 24 * 3600 * 1000;
-      setPreviousSessionMs(randomPastMs());
+      setPreviousSessionMs(randomPreviousSessionMs());
       setPreviousSessionEndedAt(new Date(Date.now() - (minMs + Math.random() * (maxMs - minMs))));
       setLastEndedById(Math.random() < 0.5 ? CURRENT_STAFF_ID : otherStaff);
       return;
