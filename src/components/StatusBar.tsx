@@ -121,6 +121,22 @@ const PILL_TRAVEL_EASE = [0.22, 1, 0.36, 1] as const;
 // flips — see that component's own comment on why it's a measured pixel
 // number, not "auto".
 const ACTIONS_HEIGHT_MS = 250;
+// The box's content fading OUT (starting/joining/resuming — on its way to
+// collapsing into the mini pill) reads as a graceful retreat, not an
+// abrupt cut, at a slower pace than ACTIONS_HEIGHT_MS above (which still
+// needs to stay snappy — it also drives the isPaused button-SET's own
+// real content swap, unrelated to dimming) — paired with a subtle
+// scale-down so the buttons visibly recede rather than just vanish in
+// place. `ENTER_SCALE` is the reverse direction's counterpart: pausing
+// (the box expanding back out) gets its own entrance instead of just
+// being static content the growing box happens to reveal, scaling up
+// from slightly smaller over PILL_TRAVEL_MS — the same window the pill
+// itself is traveling back into the big slot — so the two read as one
+// coordinated motion instead of the buttons/info snapping to their final
+// state well before the timer has caught up.
+const ACTIONS_DIM_MS = 450;
+const ACTIONS_DIM_SCALE = 0.94;
+const ENTER_SCALE = 0.94;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
  *  Good Data / No Data) — a colored icon + label + count and its subtitle
@@ -417,6 +433,24 @@ export function StatusBar({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Bumped once every time the box transitions from collapsed back to
+  // expanded (pausing — the only route back into the big box that skips
+  // `dimmed` entirely, since it's a plain, unstaged action) — keys the
+  // label/context and actions-row's own entrance animation below (see
+  // ENTER_SCALE's own comment), forcing a fresh initial->animate replay
+  // each time rather than the static "instantly revealed by the growing
+  // box" look those pieces had before. Same same-render "adjust during
+  // render" pattern as `wasPausedForActionsRef` above (and
+  // `prevCollapsedRef` in SessionContext) — set the instant `boxCollapsed`
+  // flips, not a tick later in an effect, so the very same commit that
+  // unhides this content also mounts it in its pre-entrance state.
+  const prevBoxCollapsedForEntranceRef = useRef(boxCollapsed);
+  const [expandGen, setExpandGen] = useState(0);
+  if (boxCollapsed !== prevBoxCollapsedForEntranceRef.current) {
+    prevBoxCollapsedForEntranceRef.current = boxCollapsed;
+    if (!boxCollapsed) setExpandGen((g) => g + 1);
+  }
 
   // The big pill's own inline button is 3 different actions depending on
   // why the pill is even showing (see ExpandedSessionBox's own isPaused/
@@ -715,6 +749,7 @@ export function StatusBar({
                     pillVisible={bigPillVisible}
                     pillRef={bigPillRef}
                     dimmed={dimmed}
+                    expandGen={expandGen}
                     transitionKind={dimmed ? transitionKind : null}
                     onPlay={requestPlay}
                     onStartNew={requestStartNew}
@@ -1552,6 +1587,7 @@ function ExpandedSessionBox({
   pillVisible = true,
   pillRef,
   dimmed = false,
+  expandGen = 0,
   transitionKind = null,
   onPlay,
   onStartNew,
@@ -1579,6 +1615,12 @@ function ExpandedSessionBox({
   pillVisible?: boolean;
   pillRef?: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
+  /** Bumped once every time the box expands back out from collapsed (see
+   *  StatusBar's own comment) — keys the label/context/actions-row's
+   *  entrance animation so it replays a fresh scale/fade-in each time,
+   *  rather than that content just sitting statically in place as the
+   *  growing box happens to reveal it. */
+  expandGen?: number;
   /** Which staged transition is actively dimming the box right now (null
    *  once it's settled or if `dimmed` is false) — drives the in-progress
    *  helper message that crossfades in over the label below, see its own
@@ -1686,9 +1728,10 @@ function ExpandedSessionBox({
             {transitionMessage}
           </motion.span>
           <motion.span
+            key={expandGen}
             animate={{ opacity: dimmed ? 0 : 1 }}
-            initial={false}
-            transition={{ duration: 0.2 }}
+            initial={expandGen === 0 ? false : { opacity: 0 }}
+            transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
             className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
           >
             {label}
@@ -1696,9 +1739,10 @@ function ExpandedSessionBox({
         </div>
 
         <motion.div
+          key={expandGen}
           animate={{ opacity: dimmed ? 0 : 1 }}
-          initial={false}
-          transition={{ duration: 0.2 }}
+          initial={expandGen === 0 ? false : { opacity: 0 }}
+          transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
           className="flex items-center gap-1 leading-tight"
         >
           {contextTime && (
@@ -1796,7 +1840,7 @@ function ExpandedSessionBox({
           swaps (isPaused's button set), via the measured actionsHeight
           number — never "auto", see the comment above. */}
       <motion.div
-        animate={{ opacity: dimmed ? 0 : 1, height: actionsHeight ?? "auto" }}
+        animate={{ height: actionsHeight ?? "auto" }}
         transition={{ duration: ACTIONS_HEIGHT_MS / 1000, ease }}
         onAnimationComplete={onActionsHeightSettled}
         className="overflow-hidden"
@@ -1815,56 +1859,86 @@ function ExpandedSessionBox({
             CURRENT content's true natural size regardless of what height
             the motion.div above happens to be mid-transition to — the same
             "measure via an unconstrained child" pattern boxWrapRef already
-            uses for the outer box, for the exact same reason. */}
-        <div ref={actionsRef} className="flex flex-col gap-1">
-          {isPaused && (
-            <>
-              <button
-                onClick={onEnd}
-                className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-              >
-                End & Submit Data
-                <Upload className="size-3.5" strokeWidth={2.5} />
-              </button>
-              {/* Parked sessions default to locked so nothing on a session
+            uses for the outer box, for the exact same reason. Deliberately
+            NOT the same element as the keyed opacity/scale div just below —
+            its own ResizeObserver-setup effect only runs once (an empty dep
+            array, matching boxWrapRef's own), so if this ref sat on an
+            element `key`-remounted on every entrance, the observer would be
+            left watching a detached node after the first remount and never
+            fire again, silently freezing actionsHeight (and this row,
+            clipped to that stale height by the overflow-hidden div above)
+            at whatever it happened to be — see git history for that exact
+            bug before this comment existed. */}
+        <div ref={actionsRef}>
+          {/* Opacity/scale live here instead of on the height-driving
+              motion.div above — Motion's onAnimationComplete fires once ALL
+              of an element's own animated properties finish, and this pair
+              deliberately runs on a slower, direction-dependent clock
+              (ACTIONS_DIM_MS fading out, PILL_TRAVEL_MS entering) than the
+              snappier ACTIONS_HEIGHT_MS the outer div's height — and by
+              extension onActionsHeightSettled, and by extension
+              boxNaturalHeight's own correction — needs to keep running on.
+              `key={expandGen}` forces a fresh initial->animate replay on
+              every entrance (mount doesn't otherwise change, since this row
+              never unmounts) — `initial={false}` on the very first render
+              only, matching every other dimmed-driven fade in this file
+              that intentionally skips an entrance flash on first paint. */}
+          <motion.div
+            key={expandGen}
+            animate={{ opacity: dimmed ? 0 : 1, scale: dimmed ? ACTIONS_DIM_SCALE : 1 }}
+            initial={expandGen === 0 ? false : { opacity: 0, scale: ENTER_SCALE }}
+            transition={{ duration: dimmed ? ACTIONS_DIM_MS / 1000 : PILL_TRAVEL_MS / 1000, ease }}
+            className="flex flex-col gap-1"
+          >
+            {isPaused && (
+              <>
+                <button
+                  onClick={onEnd}
+                  className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+                >
+                  End & Submit Data
+                  <Upload className="size-3.5" strokeWidth={2.5} />
+                </button>
+                {/* Parked sessions default to locked so nothing on a session
                   someone else may resume gets edited by accident — this is
                   the one, intentional action that unlocks editing without
                   restarting the (stopped) session timer. */}
+                <button
+                  onClick={onToggleReviewMode}
+                  aria-pressed={reviewModeUnlocked}
+                  className={cn(
+                    "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
+                    reviewModeUnlocked
+                      ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                      : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50",
+                  )}
+                >
+                  {reviewModeUnlocked ? "Review Mode Unlocked" : "Unlock Review Mode"}
+                  <LockKeyholeOpen className="size-3.5" />
+                </button>
+                <button
+                  onClick={onRequestDiscard}
+                  className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
+                >
+                  End & Discard Session!
+                  <Trash2 className="size-3" />
+                </button>
+              </>
+            )}
+            {isIdle && (
               <button
-                onClick={onToggleReviewMode}
-                aria-pressed={reviewModeUnlocked}
-                className={cn(
-                  "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
-                  reviewModeUnlocked
-                    ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
-                    : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50",
-                )}
+                onClick={onStartNew}
+                className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
               >
-                {reviewModeUnlocked ? "Review Mode Unlocked" : "Unlock Review Mode"}
-                <LockKeyholeOpen className="size-3.5" />
+                Start New Session
+                <RefreshCw className="size-3.5" strokeWidth={2.5} />
               </button>
-              <button
-                onClick={onRequestDiscard}
-                className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
-              >
-                End & Discard Session!
-                <Trash2 className="size-3" />
-              </button>
-            </>
-          )}
-          {isIdle && (
-            <button
-              onClick={onStartNew}
-              className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-            >
-              Start New Session
-              <RefreshCw className="size-3.5" strokeWidth={2.5} />
-            </button>
-          )}
-          {/* isRunningNotMine: no action here at all — join via the pill
-              button above first, then pause/end become available once it's
-              yours (isSessionMine flips and this box stops rendering in
-              favor of the running mini pill/box). */}
+            )}
+            {/* isRunningNotMine: no action here at all — join via the pill
+                button above first, then pause/end become available once
+                it's yours (isSessionMine flips and this box stops
+                rendering in favor of the running mini pill/box). */}
+          </motion.div>
         </div>
       </motion.div>
     </div>
