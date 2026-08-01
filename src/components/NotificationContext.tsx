@@ -111,6 +111,16 @@ interface PushInput {
 interface NotificationContextValue {
   notifications: Notification[];
   live: Notification[];
+  // True while the header's own notification banner (NotificationBar) is
+  // genuinely reflowing — a row entering/leaving the visible stack animates
+  // that stack's real height (see NOTIFICATION_AREA_TRANSITION), which
+  // changes the shared sticky container's real height exactly like the
+  // session box's own collapse/expand does. Every layout-tracked sibling
+  // below the header (the tab nav, the content pane) needs to fold this in
+  // alongside SessionContext's own `headerReflowActive` to give up its
+  // `layout="position"` FLIP for that window too, or it fights the banner's
+  // real reflow the same way it used to fight the session box's.
+  notificationsReflowActive: boolean;
   push: (n: PushInput) => string | null;
   dismiss: (id: string) => void;
   snooze: (id: string, ms?: number) => void;
@@ -491,10 +501,36 @@ export function NotificationProvider({
     [notifications],
   );
 
+  // True while the header's notification banner is genuinely reflowing —
+  // see notificationsReflowActive's own comment on the context value
+  // interface above. Tracks the VISIBLE stack's own count (capped at
+  // maxStackVisible), not `live.length` directly: going from, say, 4 live
+  // notifications to 5 only bumps the "+N more" badge's number, not its
+  // size, so that transition doesn't actually reflow anything. Same
+  // same-render "adjust during render" pattern SessionContext's own
+  // boxHeightAnimating/bannerReflowActive use, for the same reason: an
+  // effect would fire one render too late for a sibling whose own
+  // conditional rendering reacts in this very render.
+  const visibleNotificationCount = Math.min(live.length, prefs.maxStackVisible);
+  const prevVisibleNotificationCountRef = useRef(visibleNotificationCount);
+  const [notificationsReflowActive, setNotificationsReflowActive] = useState(false);
+  if (visibleNotificationCount !== prevVisibleNotificationCountRef.current) {
+    prevVisibleNotificationCountRef.current = visibleNotificationCount;
+    setNotificationsReflowActive(true);
+  }
+  useEffect(() => {
+    // Matches NotificationBar's own NOTIFICATION_AREA_TRANSITION.duration —
+    // kept as a plain number here (not imported) since NotificationBar.tsx
+    // already imports FROM this file; importing back would be circular.
+    const id = window.setTimeout(() => setNotificationsReflowActive(false), 350);
+    return () => window.clearTimeout(id);
+  }, [visibleNotificationCount]);
+
   const value = useMemo<NotificationContextValue>(
     () => ({
       notifications,
       live,
+      notificationsReflowActive,
       push,
       dismiss,
       snooze,
@@ -511,6 +547,7 @@ export function NotificationProvider({
     [
       notifications,
       live,
+      notificationsReflowActive,
       push,
       dismiss,
       snooze,

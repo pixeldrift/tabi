@@ -281,7 +281,7 @@ export function StatusBar({
   // (a new one arriving), not on every render or on a decrease from
   // dismissing one — prevCountRef starts at the initial count rather than
   // 0, so mounting with some already live doesn't itself read as "new."
-  const { live: liveNotifications } = useNotifications();
+  const { live: liveNotifications, notificationsReflowActive } = useNotifications();
   const notifCount = liveNotifications.length;
   const prevNotifCountRef = useRef(notifCount);
   const [notifHopGen, setNotifHopGen] = useState(0);
@@ -381,7 +381,13 @@ export function StatusBar({
   // own `isRunning`-derived margin already changes) — both of which let
   // the tab nav, the toolbar riding on it, and the pane below visibly
   // hop/bounce out of step with the header's real motion.
-  const suppressSessionLayout = headerReflowActive;
+  // OR'd with notificationsReflowActive (NotificationContext) — the
+  // notification banner rendered right below this nav (inside the same
+  // shared sticky container) has its own real height animation whenever a
+  // row enters/leaves the visible stack, which changes the sticky
+  // container's real height exactly like the session box's own collapse
+  // does, but headerReflowActive alone has no idea that's happening.
+  const suppressSessionLayout = headerReflowActive || notificationsReflowActive;
 
   // Same "never animate to the literal string auto" fix as actionsHeight
   // below: without it, whenever the pill itself enters/leaves this box (its

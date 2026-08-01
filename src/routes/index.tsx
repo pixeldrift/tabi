@@ -728,6 +728,20 @@ function SessionActivityTrigger() {
   return null;
 }
 
+/** Renders nothing — just reports NotificationContext's own
+ *  notificationsReflowActive back up to IndexInner's `suppressPaneLayout`
+ *  via a plain callback, since NotificationProvider is declared inside
+ *  IndexInner's own returned JSX and isn't yet an ancestor at the point
+ *  `suppressPaneLayout` needs to read it (see that variable's own
+ *  comment). */
+function NotificationsReflowBridge({ onChange }: { onChange: (v: boolean) => void }) {
+  const { notificationsReflowActive } = useNotifications();
+  useEffect(() => {
+    onChange(notificationsReflowActive);
+  }, [notificationsReflowActive, onChange]);
+  return null;
+}
+
 type Screen = "welcome" | "main";
 
 // Same push/pop feel either direction: welcome exits left as main enters
@@ -967,6 +981,13 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // width on every step.
   const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
   const { status, transitionStage, transitionKind, headerReflowActive } = useSession();
+  // Can't call useNotifications() directly here — NotificationProvider is
+  // declared further down, inside this component's OWN returned JSX (it
+  // needs handleNotificationActivate, a closure over this component's own
+  // state), so it isn't yet an ancestor at this point in the render. This
+  // bridges the one value out via a plain child instead of restructuring
+  // that provider nesting.
+  const [notificationsReflowActive, setNotificationsReflowActive] = useState(false);
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
   // record data" banner and dimmed every card each time a session was
@@ -999,9 +1020,14 @@ function IndexInner({ onBack }: { onBack: () => void }) {
   // apart reading it. Also covers a plain, unstaged `pause()` click, which
   // never touches transitionStage/transitionKind at all.
   // `layout="position"` comes back the instant the header's real reflow is
-  // done, for the discrete-jump cases (tab switches, notification changes)
-  // it's actually meant for.
-  const suppressPaneLayout = headerReflowActive;
+  // done, for the discrete-jump cases (tab switches) it's actually meant
+  // for. Notification changes turned out NOT to be one of those — a row
+  // entering/leaving the visible stack animates the banner's own real
+  // height (NotificationContext's notificationsReflowActive), which moves
+  // the sticky container's real height exactly like the session box's own
+  // collapse does, so it needs the same suppression instead of being left
+  // to FLIP through it.
+  const suppressPaneLayout = headerReflowActive || notificationsReflowActive;
   // See use-initial-layout-settle's own comment — StatusBar's demo-only
   // "Previous Session" row grows its box a beat after mount, which this
   // pane (tracked in the same "session-bar" LayoutGroup) would otherwise
@@ -1402,6 +1428,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
     <NotificationProvider onActivate={handleNotificationActivate}>
       <GoalChangeDemoTrigger />
       <SessionActivityTrigger />
+      <NotificationsReflowBridge onChange={setNotificationsReflowActive} />
       <main className="min-h-screen bg-background">
         {/* Shared across StatusBar's tab nav and this section's panel so their
           `layout="position"` FLIPs are batched into one coordinated motion
