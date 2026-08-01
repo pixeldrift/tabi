@@ -1411,6 +1411,11 @@ function IndexInner({ onBack }: { onBack: () => void }) {
     return () => window.clearTimeout(id);
   }, [tab]);
 
+  // Backs the app-shell content pane below — a fixed-height, internally-
+  // scrolling region (see the shell wrapper in the return below), rather
+  // than the page/window itself scrolling.
+  const contentRef = useRef<HTMLElement>(null);
+
   const handleNotificationActivate = (n: { sourceRef?: { type: string; id: string } }) => {
     if (n.sourceRef?.type === "activity") {
       setTab("schedule");
@@ -1429,7 +1434,13 @@ function IndexInner({ onBack }: { onBack: () => void }) {
       <GoalChangeDemoTrigger />
       <SessionActivityTrigger />
       <NotificationsReflowBridge onChange={setNotificationsReflowActive} />
-      <main className="min-h-screen bg-background">
+      {/* App-shell layout: a content-sized header (shrink-0, ordinary CSS
+          flow) above a fixed-height, internally-scrolling content pane —
+          replacing the old whole-page-scrolls-with-a-sticky-header model.
+          `h-dvh` (not `h-screen`) matches this codebase's existing
+          convention for reasoning about mobile browser chrome (see
+          StatusBar's own dvh usage). */}
+      <main className="h-dvh flex flex-col overflow-hidden bg-background">
         {/* Shared across StatusBar's tab nav and this section's panel so their
           `layout="position"` FLIPs are batched into one coordinated motion
           instead of two independent trees that can drift a frame apart —
@@ -1496,8 +1507,9 @@ function IndexInner({ onBack }: { onBack: () => void }) {
                   ? { duration: 0 }
                   : NOTIFICATION_AREA_TRANSITION,
             }}
+            ref={contentRef}
             className={cn(
-              "px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
+              "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200",
               // Only the Data tab has a toolbar directly above this pane, with
               // its own border-b — -mt-px there merges the two lines into one
               // instead of a visible double line. Every other tab sits directly

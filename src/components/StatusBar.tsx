@@ -620,7 +620,7 @@ export function StatusBar({
 
   return (
     <>
-      {/* Single shared sticky container for the header proper (title, box,
+      {/* Single shared container for the header proper (title, box,
           notifications, tabs) AND the Data tab's own toolbar below it —
           `dataToolbar` renders here as a plain, normal-flow sibling rather
           than an independently `position: sticky` element computing its own
@@ -629,8 +629,12 @@ export function StatusBar({
           elements in sync with each other; putting them in the one
           container means there's nothing left to keep in sync — the
           browser lays both out together on every reflow for free, the same
-          way it already does for the title row and the tabs below it. */}
-      <div className="sticky top-0 z-40">
+          way it already does for the title row and the tabs below it.
+          `shrink-0`, not `sticky` — this now sits above a fixed-height,
+          internally-scrolling content pane (the app-shell layout in
+          IndexInner), so it never needs to pin itself against page scroll;
+          it just needs to not get squashed by the flex column it lives in. */}
+      <div className="shrink-0">
         <div
           ref={statusBarRef}
           data-status-bar
