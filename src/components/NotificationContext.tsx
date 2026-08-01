@@ -106,6 +106,14 @@ interface PushInput {
   soundOverride?: AlarmSoundStyle;
   timestampCheck?: Notification["timestampCheck"];
   excludeFromHistory?: boolean;
+  // Push directly into "archived" instead of "live" — skips the transient
+  // top banner (and its chime/vibrate) entirely, landing straight in the
+  // Notifications tab as history. Used for alerts that fire while nobody's
+  // actually in a running session to receive them (see ScheduleView's own
+  // alert-firing effect and TimestampCard's "time to check" push) — an
+  // interruption nobody's there to act on isn't useful; the tab is where it
+  // belongs instead. Defaults to true (the normal, interactive, live case).
+  live?: boolean;
 }
 
 interface NotificationContextValue {
@@ -433,7 +441,7 @@ export function NotificationProvider({
       soundOverride: input.soundOverride,
       timestampCheck: input.timestampCheck,
       excludeFromHistory: input.excludeFromHistory,
-      state: "live",
+      state: input.live === false ? "archived" : "live",
     };
     if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
     setNotifications((prev) => {
@@ -448,8 +456,9 @@ export function NotificationProvider({
     // actual alarm should sound, not what a routine "phase changed"/"you
     // joined" toast plays. Everything else always gets the short chime
     // style, fixed, regardless of what the user picked as their alarm
-    // default.
-    if (!isAlert(input.kind)) {
+    // default. Neither applies to one pushed straight into "archived" —
+    // there's no banner row for it to chime/vibrate alongside.
+    if (input.live !== false && !isAlert(input.kind)) {
       playAlarmSound("chime");
       vibrate(40);
     }

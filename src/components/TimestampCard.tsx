@@ -185,7 +185,7 @@ export function TimestampCard({
   // a user can navigate ahead of or pause independently.
   const [elapsed, setElapsed] = useCardState(cardKey, "elapsed", 0); // ms
   const [expanded, setExpanded] = useState(false);
-  const { sessionRunning, subscribeTick } = useSession();
+  const { sessionRunning, isSessionMine, subscribeTick } = useSession();
   const { markDirty, resetSignal, canRecordData } = useCardSession();
 
   const intervalMs = intervalMin * 60 * 1000;
@@ -354,6 +354,13 @@ export function TimestampCard({
       icon: "bell-chime",
       allowSnooze: true,
       soundOverride: "chime",
+      // Ticks (and so can cross an interval boundary) for ANY running
+      // session, not just your own — `sessionRunning` alone doesn't
+      // distinguish browsing someone else's live session from actually
+      // running yours. Only pop the live banner for the latter; otherwise
+      // it still lands in the Notifications tab, same as ScheduleView's own
+      // alerts (see that file's matching `live:` gate).
+      live: sessionRunning && isSessionMine,
       timestampCheck: {
         positiveLabel,
         negativeLabel,

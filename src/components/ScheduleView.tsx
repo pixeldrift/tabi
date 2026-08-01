@@ -52,6 +52,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
+import { useSession } from "@/components/SessionContext";
 import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
@@ -158,6 +159,16 @@ const DEFAULT_ALERT: AlertSettings = {
   allowSnooze: true,
   autofade: true,
 };
+// A crossed alert/priming threshold detected more than this many simulated
+// minutes after the fact doesn't pop the live banner — the schedule's own
+// demo clock only advances when the "+10 min" button is tapped, so a normal
+// single tap can detect a threshold up to ~10 simulated minutes "late" and
+// that's still an on-time fire; several taps (or, in a real build, the tab
+// sitting backgrounded a while) can jump `nowMin` past a whole run of
+// thresholds at once, and none of those are still worth interrupting for by
+// the time they're noticed. Pushed as history instead (see `live: false` on
+// the alert-firing effect below) rather than dropped outright.
+const STALE_ALERT_GRACE_MIN = 20;
 // Defaults — TODO: surface in user settings.
 const DEFAULT_PRIMING_MINUTES = 5;
 const DEFAULT_PRIMING: PrimingSettings = {
@@ -688,14 +699,23 @@ function fromMin(m: number) {
   return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-// Absolute epoch ms for a minutes-of-day value on the same calendar day as
-// `base` — lets a pushed alert carry the activity's real start time so the
-// banner's own relative-time label (see NotificationBar) keeps counting
-// accurately instead of freezing at whatever it said when the alert fired.
-function minToTimestamp(min: number, base: Date): number {
-  const d = new Date(base);
-  d.setHours(Math.floor(min / 60), min % 60, 0, 0);
-  return d.getTime();
+// Real (wall-clock) epoch ms equivalent of a minutes-of-day value on the
+// schedule's own simulated clock — anchored to the ACTUAL current time
+// (Date.now()) and offset by how far `targetMin` sits from `simNowMin` on
+// that simulated clock, rather than stamping `targetMin` onto today's real
+// calendar date directly. This view's own `now` is a demo clock (seeded
+// once, then randomized shortly after mount, and otherwise only advanced by
+// tapping the "+10 min" button) that can sit anywhere relative to the
+// device's actual clock — stamping a target minute onto a real calendar day
+// and comparing THAT against a different, genuinely-real Date.now()
+// elsewhere (NotificationBar's own live relativeTime badge ticks off the
+// real clock) produced wildly wrong "ago" labels — e.g. "327 minutes ago"
+// on an alert that had just fired — even though nothing was actually late.
+// Offsetting from the real "now" instead keeps both sides of that
+// comparison on the same clock: a fire at the instant a threshold is
+// crossed always lands within a few ms of "Now".
+function activityAtFromSimTime(targetMin: number, simNowMin: number): number {
+  return Date.now() + (targetMin - simNowMin) * 60_000;
 }
 
 // Abbreviated to save room next to the time-entry boxes — "30mins",
@@ -821,7 +841,16 @@ export function ScheduleView({
 
   // ---- Alert firing: when `now` crosses an item's priming or start time,
   // push a notification. Idempotent per (itemId, kind, day) via dedupeKey.
+  // Only actually pops the live banner while the technician is in their own
+  // running session (`inSession` below) — otherwise nobody's there to act
+  // on an interruption, so it's pushed straight to the Notifications tab
+  // instead (see `live: false`, and NotificationContext's own handling of
+  // it). Same gate covers a threshold detected well after the fact (see
+  // STALE_ALERT_GRACE_MIN) — either way, it still lands in the tab; it just
+  // never pops or chimes.
   const { push: pushNotification, prefs: notificationPrefs } = useNotifications();
+  const { sessionRunning, isSessionMine } = useSession();
+  const inSession = sessionRunning && isSessionMine;
   const lastNowMinRef = useRef<number>(nowMin);
   useEffect(() => {
     const prevMin = lastNowMinRef.current;
@@ -843,7 +872,8 @@ export function ScheduleView({
           autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
           allowSnooze: alertCfg.allowSnooze,
           sourceRef: { type: "activity", id: it.id },
-          activityAt: minToTimestamp(startMin, now),
+          activityAt: activityAtFromSimTime(startMin, nowMin),
+          live: inSession && nowMin - startMin <= STALE_ALERT_GRACE_MIN,
         });
       }
       // alert-priming
@@ -866,7 +896,8 @@ export function ScheduleView({
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
             allowSnooze: priming.allowSnooze,
             sourceRef: { type: "activity", id: it.id },
-            activityAt: minToTimestamp(startMin, now),
+            activityAt: activityAtFromSimTime(startMin, nowMin),
+            live: inSession && nowMin - primeMin <= STALE_ALERT_GRACE_MIN,
           });
         }
       }
@@ -890,7 +921,8 @@ export function ScheduleView({
           autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
           allowSnooze: alertCfg.allowSnooze,
           sourceRef: { type: "activity", id: appt.id },
-          activityAt: minToTimestamp(startMin, now),
+          activityAt: activityAtFromSimTime(startMin, nowMin),
+          live: inSession && nowMin - startMin <= STALE_ALERT_GRACE_MIN,
         });
       }
       // alert-priming
@@ -909,12 +941,13 @@ export function ScheduleView({
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
             allowSnooze: priming.allowSnooze,
             sourceRef: { type: "activity", id: appt.id },
-            activityAt: minToTimestamp(startMin, now),
+            activityAt: activityAtFromSimTime(startMin, nowMin),
+            live: inSession && nowMin - primeMin <= STALE_ALERT_GRACE_MIN,
           });
         }
       }
     }
-  }, [nowMin, items, active.appointments, now, pushNotification, notificationPrefs]);
+  }, [nowMin, items, active.appointments, now, pushNotification, notificationPrefs, inSession]);
 
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
