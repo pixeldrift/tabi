@@ -1215,16 +1215,27 @@ function ActiveDurationIndicator({
 }
 
 /** The teal-bordered triangle every header popup here points back to its
- *  trigger with — Radix's own default `Arrow` shape (a plain polygon, not
- *  an `asChild`-swapped one), styled to match each popup's own border. */
+ *  trigger with. `asChild`-swapped rather than Radix's own default `Arrow`
+ *  shape: that default renders a single closed `<polygon>`, and a stroke on
+ *  a closed shape paints all 3 edges — including the flat base sitting
+ *  against the popup's own border, which showed up as a stray line cutting
+ *  across the inside of the triangle. Splitting fill (the plain closed
+ *  polygon, unstroked) from stroke (an open path over just the two visible
+ *  slanted edges) keeps the same look with no seam. */
 function PopupArrow() {
   return (
-    <PopoverPrimitive.Arrow
-      width={14}
-      height={7}
-      strokeWidth={2}
-      className="fill-white stroke-blue-400"
-    />
+    <PopoverPrimitive.Arrow asChild>
+      <svg width={14} height={7} viewBox="0 0 30 10" preserveAspectRatio="none">
+        <polygon points="0,0 30,0 15,10" className="fill-white" />
+        <path
+          d="M0,0 L15,10 L30,0"
+          fill="none"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          className="stroke-blue-400"
+        />
+      </svg>
+    </PopoverPrimitive.Arrow>
   );
 }
 
@@ -1363,6 +1374,11 @@ function SaveIndicator({
           align="end"
           sideOffset={10}
           collisionPadding={16}
+          // Same reasoning as PresenceIndicator's own arrowPadding: without
+          // it, `align="end"` sits the arrow right at the box's rounded-xl
+          // corner (12px radius), letting the corner's own curve show
+          // through the arrow's white fill.
+          arrowPadding={14}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
