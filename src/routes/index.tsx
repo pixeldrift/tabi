@@ -747,6 +747,12 @@ function Index() {
   // fixed/transform styling at all — identical to how `<main>` rendered
   // before this screen existed.
   const [transitioning, setTransitioning] = useState(false);
+  // Set by WelcomeScreen's "Preview guided tour" escape hatch, consumed
+  // (reset false) by TourProvider the instant it force-starts off it — see
+  // that component's own comment. Plain state here, not a ref, since
+  // setting it needs to be visible to IndexInner/TourProvider on the very
+  // next render (the same one that starts the screen-slide).
+  const [forceTourLaunch, setForceTourLaunch] = useState(false);
 
   const goToMain = () => {
     setTransitioning(true);
@@ -755,6 +761,10 @@ function Index() {
   const goToWelcome = () => {
     setTransitioning(true);
     setScreen("welcome");
+  };
+  const launchTourFromWelcome = () => {
+    setForceTourLaunch(true);
+    goToMain();
   };
 
   // Always fixed + stacked above everything else while it's the active (or
@@ -793,7 +803,7 @@ function Index() {
         animate={{ x: screen === "welcome" ? "0%" : "-100%" }}
         transition={{ duration: SCREEN_SLIDE_MS / 1000, ease: SCREEN_SLIDE_EASE }}
       >
-        <WelcomeScreen onGetStarted={goToMain} />
+        <WelcomeScreen onGetStarted={goToMain} onLaunchTour={launchTourFromWelcome} />
       </motion.div>
 
       <motion.div
@@ -817,7 +827,12 @@ function Index() {
                     and would otherwise flash back to the seed data every time
                     Schedule wasn't the active tab. */}
                 <ScheduleProvider>
-                  <IndexInner onBack={goToWelcome} mainSettled={mainSettled} />
+                  <IndexInner
+                    onBack={goToWelcome}
+                    mainSettled={mainSettled}
+                    forceTourLaunch={forceTourLaunch}
+                    onForceTourLaunchHandled={() => setForceTourLaunch(false)}
+                  />
                 </ScheduleProvider>
               </CardDataStoreProvider>
             </DataToolbarProvider>
@@ -935,7 +950,17 @@ const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
   "grid-small": "grid-cols-3 gap-1.5",
 };
 
-function IndexInner({ onBack, mainSettled }: { onBack: () => void; mainSettled: boolean }) {
+function IndexInner({
+  onBack,
+  mainSettled,
+  forceTourLaunch,
+  onForceTourLaunchHandled,
+}: {
+  onBack: () => void;
+  mainSettled: boolean;
+  forceTourLaunch: boolean;
+  onForceTourLaunchHandled: () => void;
+}) {
   const [activeId, setActiveId] = useState<string>(cards[0].id);
   const [tab, setTab] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
@@ -1412,6 +1437,8 @@ function IndexInner({ onBack, mainSettled }: { onBack: () => void; mainSettled: 
       setTab={setTab}
       hasAnyCards={visibleCards.length > 0}
       mainSettled={mainSettled}
+      forceLaunch={forceTourLaunch}
+      onForceLaunchHandled={onForceTourLaunchHandled}
     >
       <NotificationProvider onActivate={handleNotificationActivate}>
         <GoalChangeDemoTrigger />

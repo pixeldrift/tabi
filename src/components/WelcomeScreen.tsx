@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Compass } from "lucide-react";
 import tabiLogo from "@/assets/images/tabi-logo.png";
 
 /** The app's opening splash — logo, one-line pitch, and the single "Get
@@ -9,7 +9,18 @@ import tabiLogo from "@/assets/images/tabi-logo.png";
  *  now instead of in StatusBar's title row, since they're app-identity
  *  info a technician only cares about once, not something worth permanent
  *  header real estate on every tab. */
-export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
+export function WelcomeScreen({
+  onGetStarted,
+  onLaunchTour,
+}: {
+  onGetStarted: () => void;
+  /** Same hand-off as onGetStarted, but also force-starts the guided tour
+   *  once main settles — regardless of tourHintsEnabled/tourCompleted, see
+   *  TourContext's own comment. A manual escape hatch for testing/demos
+   *  rather than something a real first-time user needs — Get Started
+   *  already auto-launches the tour on its own. */
+  onLaunchTour: () => void;
+}) {
   const [showCommitSha, setShowCommitSha] = useState(false);
 
   return (
@@ -48,6 +59,18 @@ export function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
       >
         Get Started
         <ArrowRight className="size-5" />
+      </button>
+
+      {/* Small and secondary on purpose — this bypasses the real "does the
+          tour show up on its own" behavior Get Started exercises, so it's a
+          manual escape hatch for testing/demos, not the first-time flow. */}
+      <button
+        type="button"
+        onClick={onLaunchTour}
+        className="-mt-4 flex items-center gap-1.5 text-xs text-stone-400 transition-colors hover:text-stone-600"
+      >
+        <Compass className="size-3.5" />
+        Preview guided tour
       </button>
 
       <div className="mt-4 flex flex-col items-center gap-1.5">

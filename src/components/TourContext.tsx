@@ -44,6 +44,8 @@ export function TourProvider({
   setTab,
   hasAnyCards,
   mainSettled,
+  forceLaunch,
+  onForceLaunchHandled,
 }: {
   children: ReactNode;
   /** The Data tab's live `tab`/`setTab` (IndexInner's own state) — the tour
@@ -57,6 +59,17 @@ export function TourProvider({
   /** Rising edge (false -> true) is "the welcome->main slide just finished
    *  landing on main" — see routes/index.tsx's own Index() component. */
   mainSettled: boolean;
+  /** Set by WelcomeScreen's "Preview guided tour" button — force-starts on
+   *  the next mainSettled rising edge regardless of tourHintsEnabled/
+   *  tourCompleted, a manual escape hatch for testing/demos distinct from
+   *  the real auto-launch-on-first-use behavior. Owned by Index() (not
+   *  here), since it has to be set BEFORE the screen-slide even starts. */
+  forceLaunch: boolean;
+  /** Called the instant a forced launch actually fires, so Index() can
+   *  reset its own flag — otherwise it'd force-relaunch on every LATER
+   *  mainSettled edge too (e.g. back to welcome, then a normal Get
+   *  Started). */
+  onForceLaunchHandled: () => void;
 }) {
   const { tourHintsEnabled, tourCompleted, setTourCompleted } = useSettings();
 
@@ -108,7 +121,11 @@ export function TourProvider({
   useEffect(() => {
     const risingEdge = mainSettled && !prevMainSettledRef.current;
     prevMainSettledRef.current = mainSettled;
-    if (risingEdge && tourHintsEnabled && !tourCompleted) {
+    if (!risingEdge) return;
+    if (forceLaunch) {
+      start();
+      onForceLaunchHandled();
+    } else if (tourHintsEnabled && !tourCompleted) {
       start();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
