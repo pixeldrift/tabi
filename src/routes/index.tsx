@@ -1598,13 +1598,21 @@ function IndexInner({ onBack }: { onBack: () => void }) {
           <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={infoContentRef} />
         </section>
 
+        {/* No top padding on the scroll container itself (see the other
+            four sections' own pt-0) — ScheduleView's own sticky toggles bar
+            sticks to this section's padding box, and top padding on a
+            sticky element's scrolling ancestor doesn't get covered by it
+            once stuck: scrolled-past content stays visible through that
+            padding gap above the bar. The equivalent visual gap now lives
+            on ScheduleView's own inner wrapper instead (plain margin-top
+            territory, well below where the sticky bar attaches). */}
         <section
           ref={scheduleContentRef}
           onScroll={(e) => {
             scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-2",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
             tab !== "schedule" && "hidden",
           )}
         >

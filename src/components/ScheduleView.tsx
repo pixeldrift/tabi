@@ -1275,7 +1275,14 @@ export function ScheduleView({
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
 
   return (
-    <div className="max-w-3xl mx-auto pt-0 pb-12">
+    // pt-2: the small top gap this view wants used to live on the scroll
+    // container itself (routes/index.tsx's own <section>), but padding on a
+    // sticky element's scrolling ancestor doesn't get covered by it once
+    // stuck — scrolled-past content peeks through that gap above the
+    // toggles row below. This wrapper isn't itself a scroll container, so
+    // the same padding here is safe: it just adds space before the date
+    // header, the toggles row included, with nothing for it to leak past.
+    <div className="max-w-3xl mx-auto pt-2 pb-12">
       {/* Header */}
       <div className="flex items-start justify-between px-1">
         <div>
