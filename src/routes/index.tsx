@@ -1567,6 +1567,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
                 onDrawerWidthModeChange={setDrawerWidthMode}
                 stickyTop={stickyTop}
                 toolbarHeight={toolbarHeight}
+                tab={tab}
               />
             </div>
           </div>
@@ -1957,6 +1958,7 @@ const DataCardList = memo(function DataCardList({
   onDrawerWidthModeChange,
   stickyTop,
   toolbarHeight,
+  tab,
 }: {
   cardsGen: number;
   cardsAnimKind: "start-new" | "discard" | "submit";
@@ -1992,6 +1994,10 @@ const DataCardList = memo(function DataCardList({
   onDrawerWidthModeChange: (mode: "normal" | "full") => void;
   stickyTop: number;
   toolbarHeight: number;
+  /** Gates `isActive`/`detailsOpen` below on the Data tab actually being the
+   *  visible one, not just which card is remembered as active — see
+   *  `renderOne`'s own comment on why. */
+  tab: StatusTab;
 }) {
   const setCardRef = (id: string) => (el: HTMLElement | null) => {
     if (el) cardRefs.current.set(id, el);
@@ -2053,12 +2059,22 @@ const DataCardList = memo(function DataCardList({
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, displayMode, {
       id: card.id,
-      isActive: card.id === activeId,
+      // Gated on `tab === "data"`, not just `card.id === activeId` — every
+      // tab's own pane stays permanently mounted (see the comment on the
+      // `<section>`s below), but CardShell/MiniTileShell/DataListRow's own
+      // `{isActive && <DataDetailsDrawer .../>}` portals its `fixed`-
+      // positioned panel and pull tab straight to `document.body` (see that
+      // component's own comment on why), completely bypassing the `hidden`
+      // class that hides everything else about an inactive tab. Without this,
+      // `activeId` staying set while browsing Schedule/Notifications/Settings
+      // left the last-active card's drawer handle (and, if it was open, the
+      // whole panel) floating on top of whatever tab was actually showing.
+      isActive: card.id === activeId && tab === "data",
       onActivate: () => {
         setSlideFrom(null);
         setActiveId(card.id);
       },
-      detailsOpen: card.id === activeId && drawerSlideOpen,
+      detailsOpen: card.id === activeId && tab === "data" && drawerSlideOpen,
       onDetailsOpenChange: onDrawerOpenChange,
       onOpenDetails: () => {
         // Activating a card that wasn't already active mounts a FRESH
