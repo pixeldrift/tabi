@@ -1461,13 +1461,25 @@ function IndexInner({ onBack }: { onBack: () => void }) {
             pane gets its own scroll container (rather than one shared one)
             for exactly that reason: a single shared scrollTop can't
             remember five independent positions at once. */}
+        {/* w-full alongside max-w-5xl/mx-auto on every one of these five
+            sections — without it, `mx-auto`'s auto margins make a FLEX ITEM
+            (this is a `flex-1` child of `<main>`'s own `flex flex-col`) act
+            as `align-self: center` on the cross axis instead of stretching
+            to fill it, so the section sizes to its own shrink-to-fit content
+            width instead of the viewport. List/Card content (and most of
+            the other tabs') happens to be wide enough on its own to mask
+            that, but the grid display modes' own `grid-cols-N` tracks are
+            `minmax(0, 1fr)` — genuinely free to shrink to 0 — which
+            collapsed the whole section (and every card in it) down to a few
+            px with nothing forcing it wide. `w-full` restores the intended
+            stretch-then-cap-at-max-w behavior regardless of what's inside. */}
         <section
           ref={dataContentRef}
           onScroll={(e) => {
             scrollPositionsRef.current.data = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
             tab !== "data" && "hidden",
           )}
         >
@@ -1579,7 +1591,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
             scrollPositionsRef.current.info = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
             tab !== "info" && "hidden",
           )}
         >
@@ -1592,7 +1604,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
             scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-2",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-2",
             tab !== "schedule" && "hidden",
           )}
         >
@@ -1609,7 +1621,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
             scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
             tab !== "notifications" && "hidden",
           )}
         >
@@ -1622,7 +1634,7 @@ function IndexInner({ onBack }: { onBack: () => void }) {
             scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
           }}
           className={cn(
-            "flex-1 overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+            "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
             tab !== "settings" && "hidden",
           )}
         >
