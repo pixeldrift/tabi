@@ -859,6 +859,22 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
 // additions) sorts after, alphabetically, rather than silently vanishing.
 const PHASE_ORDER = ["Probing", "Baseline", "Intervention", "Maintenance"];
 
+// Search-only label per kind — mirrors DataToolbar's own KIND_META labels
+// (kept as a separate, plain-string copy here rather than importing that
+// file's version, since that one's tied to its icon renderers) so
+// searching "task analysis" or "percent correct" matches what the kind
+// filter chips actually call it, not the internal "task-analysis"/"trial"
+// slug.
+const SEARCH_KIND_LABELS: Record<CardKind, string> = {
+  trial: "Percent Correct",
+  frequency: "Frequency",
+  rate: "Rate",
+  duration: "Duration",
+  "task-analysis": "Task Analysis",
+  rating: "Score",
+  timestamp: "Timestamp",
+};
+
 function getVisibleCards(
   order: string[],
   filters: DataToolbarFilters,
@@ -898,7 +914,17 @@ function getVisibleCards(
       const role = card.behaviorRole ?? "target";
       if (role !== filters.behaviorFilter) return false;
     }
-    if (q && !card.title.toLowerCase().includes(q)) return false;
+    // Beyond the title: phase, kind (by its display label, not the raw
+    // "task-analysis" slug), description, and — for task-analysis cards —
+    // each individual step. Searching "soap" finds the "Washing hands"
+    // card via its "Apply soap" step even though the title itself never
+    // says soap — another way to reach the same card besides the kind/
+    // phase filter toggles above, not a replacement for them.
+    if (q) {
+      const haystack = [card.title, card.phase, SEARCH_KIND_LABELS[card.kind], card.description];
+      if (card.kind === "task-analysis") haystack.push(...card.steps);
+      if (!haystack.some((s) => s.toLowerCase().includes(q))) return false;
+    }
     return true;
   });
 }
