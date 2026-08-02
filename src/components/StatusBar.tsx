@@ -1391,7 +1391,13 @@ function SaveIndicator({
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  // margin=30, not the default 16: this popover's `align="end"` trigger
+  // sits right at the box's own top-right corner, which routinely clamps
+  // the slider to its minimum — and 16 isn't enough clearance for this
+  // rounded-xl box's real 20px radius plus the rotated h-3 w-3 arrow
+  // square's own ~8.5px half-width (20 + 8.5 ≈ 28.5), so the corner's
+  // curve was showing through the arrow's white fill.
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 30);
 
   return (
     <div className="flex items-center gap-1.5">
@@ -1411,11 +1417,6 @@ function SaveIndicator({
           align="end"
           sideOffset={6}
           collisionPadding={16}
-          // Same reasoning as PresenceIndicator's own arrowPadding: without
-          // it, `align="end"` sits the arrow right at the box's rounded-xl
-          // corner (12px radius), letting the corner's own curve show
-          // through the arrow's white fill.
-          arrowPadding={14}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
@@ -1783,7 +1784,7 @@ function ExpandedSessionBox({
                   <PopoverContent
                     side="right"
                     align="center"
-                    sideOffset={10}
+                    sideOffset={-2}
                     collisionPadding={12}
                     className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums leading-snug whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                   >
