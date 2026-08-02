@@ -653,11 +653,20 @@ export function DataDetailsDrawer({
     update();
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
+    // See useStickyTop's own comment: this reads window.innerWidth/Height
+    // directly, and iOS Safari's address bar collapsing/expanding resizes
+    // the visual viewport without reliably firing `window`'s own `resize` —
+    // visualViewport's events are the reliable signal there.
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
     const ro = new ResizeObserver(update);
     if (cardRef.current) ro.observe(cardRef.current);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
       ro.disconnect();
     };
   }, [open, top, headerHeight, cardRef, hugCardRight, hugGapPx]);
