@@ -14,12 +14,12 @@ const VIEWPORT_MARGIN = 16;
 // margin.
 const ARROW_MARGIN = 24;
 
-/** Portaled overlay for the guided tour: dim backdrop, a highlight ring
- *  around the current step's target, and a callout box + arrow pointing at
- *  it. Not built on Radix Popover/Dialog — see TourContext's own file
- *  header reasoning (every Popover in this codebase is click-trigger-
- *  driven; Dialog's modal focus-trap/Escape semantics fight a multi-step
- *  non-modal flow advanced by its own Next button). */
+/** Portaled overlay for the guided tour: a real spotlight cutout around the
+ *  current step's target (see its own comment below), plus a callout box +
+ *  arrow pointing at it. Not built on Radix Popover/Dialog — see
+ *  TourContext's own file header reasoning (every Popover in this codebase
+ *  is click-trigger-driven; Dialog's modal focus-trap/Escape semantics
+ *  fight a multi-step non-modal flow advanced by its own Next button). */
 export function TourOverlay() {
   const { active, currentStep, stepIndex, stepCount, targetRect, targetStatus, next, back, skip } =
     useTour();
@@ -88,16 +88,25 @@ export function TourOverlay() {
       aria-modal="true"
       aria-label={`Guided tour, step ${stepIndex + 1} of ${stepCount}`}
     >
-      <div className="absolute inset-0 bg-black/60" />
-
+      {/* True spotlight, not a flat dim layer over everything — this div's
+          own box-shadow does double duty: a tight blue halo right at its
+          edge, and (via a 9999px spread with no blur) a dark fill for the
+          entire REST of the viewport, shaped by this div's own
+          rounded-2xl corners. The target sits fully undimmed in the
+          "hole" that leaves — a flat bg-black overlay on top of it made
+          the very thing being pointed at hard to actually see. Nothing
+          renders here until `ready` (see below): the wrapper's own
+          `fixed inset-0` still blocks clicks everywhere in the meantime
+          even with no visible fill. */}
       {showHighlight && targetRect && (
         <div
-          className="fixed rounded-2xl border-2 border-blue-400 shadow-[0_0_0_4px_rgba(96,165,250,0.25)] pointer-events-none"
+          className="fixed rounded-2xl border-2 border-blue-400 pointer-events-none"
           style={{
             top: targetRect.top - 4,
             left: targetRect.left - 4,
             width: targetRect.width + 8,
             height: targetRect.height + 8,
+            boxShadow: "0 0 0 4px rgba(96,165,250,0.25), 0 0 0 9999px rgba(0,0,0,0.45)",
           }}
         />
       )}
