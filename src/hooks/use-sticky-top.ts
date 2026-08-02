@@ -43,9 +43,22 @@ export function useStickyTop() {
     const ro = new ResizeObserver(commit);
     ro.observe(bar);
     window.addEventListener("resize", commit);
+    // iOS Safari's address bar collapsing/expanding as the page scrolls
+    // resizes the *visual* viewport without reliably firing `window`'s own
+    // `resize` event — the same gap useKeyboardInset's own comment already
+    // documents for the on-screen keyboard case. This hook's own header
+    // ResizeObserver above catches most real changes, but not the case
+    // where the header's height is unchanged and only the surrounding
+    // viewport moved out from under it; visualViewport's own resize/scroll
+    // events are the reliable signal for that on iOS.
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", commit);
+    vv?.addEventListener("scroll", commit);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", commit);
+      vv?.removeEventListener("resize", commit);
+      vv?.removeEventListener("scroll", commit);
     };
   }, []);
 

@@ -80,10 +80,20 @@ export function useElementRight(selector: string) {
     const ro = new ResizeObserver(update);
     ro.observe(el);
     window.addEventListener("resize", update);
+    // See useStickyTop's own comment: iOS Safari's address bar collapsing/
+    // expanding resizes the visual viewport without reliably firing
+    // `window`'s own `resize` — visualViewport's events are the reliable
+    // signal there, same fix as useKeyboardInset already applies for the
+    // on-screen-keyboard case.
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
     return () => {
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       ro.disconnect();
       window.removeEventListener("resize", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
     };
   }, [selector]);
 
