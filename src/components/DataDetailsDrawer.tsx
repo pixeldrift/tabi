@@ -13,7 +13,8 @@ import { motion, useMotionValue, useTransform, animate, type PanInfo } from "mot
 import { X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { renderBreakableTitle } from "./BreakableTitle";
-import { useElementHeight, useElementRight } from "@/hooks/use-element-height";
+import { useElementHeight } from "@/hooks/use-element-height";
+import { useDataToolbar } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
 /** Breathing room left between a hugCardRight drawer's panel edge and the
@@ -328,7 +329,17 @@ export function DataDetailsDrawer({
   // render. Only bounds the plain normalWidthPxFn fallback, not hugCardRight
   // — the two grid display modes already size themselves off a real tile's
   // own measured edge, which never comes anywhere near this cluster.
-  const viewModeIconsRight = useElementRight("[data-view-mode-toggle]");
+  //
+  // Read from DataToolbarContext (measured once, for the app's whole
+  // lifetime) rather than each instance calling useElementRight itself —
+  // this remounts fresh per active card (see the module comment above), and
+  // the toggle cluster it measures is the SAME shared toolbar element every
+  // time, not something that moves per card. A fresh per-instance
+  // measurement bought nothing but repeatedly re-running the same poll-
+  // until-settled work (see that hook's own comment on why it has to poll
+  // at all) on every card activation, not just the first one that ever
+  // needed it.
+  const { viewModeIconsRight } = useDataToolbar();
   // Set once the card has scrolled fully out of the visible pane (not just
   // clamped near an edge — clampedArrowTop below already handles "close to
   // the edge" by sliding the diamond to it). While this is set, the arrow —
