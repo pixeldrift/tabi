@@ -790,6 +790,7 @@ export function StatusBar({
                         }}
                         role="tab"
                         aria-selected={isActive}
+                        data-tour={`tab-${t.id}`}
                         onClick={() => onTabChange(t.id)}
                         className={cn(
                           "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
@@ -1731,7 +1732,10 @@ function ExpandedSessionBox({
   const transitionMessage = transitionKind ? TRANSITION_MESSAGES[transitionKind] : null;
 
   return (
-    <div className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2">
+    <div
+      data-tour="session-box"
+      className="shrink-0 px-3 py-1.5 w-[280px] flex flex-col items-stretch gap-2"
+    >
       <div className="flex flex-col items-center gap-1">
         {/* Crossfades with the plain label below rather than just fading to
             blank — gives every staged transition (not just start-new's own

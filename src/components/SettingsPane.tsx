@@ -14,6 +14,7 @@ import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
 import { IconsShowcase } from "./IconsShowcase";
 import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { SectionJumpBar } from "@/components/SectionJumpBar";
+import { useTour } from "./TourContext";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -77,13 +78,17 @@ export function SettingsPane({
     setDefaultDataView,
     colorTheme,
     setColorTheme,
+    tourHintsEnabled,
+    setTourHintsEnabled,
   } = useSettings();
+  const { start: startTour } = useTour();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
   const jumpSections = [
     { id: "settings-appearance", label: "Appearance" },
     ...groups.map((g) => ({ id: slugifyGroup(g), label: g })),
     { id: "settings-schedule", label: "Schedule" },
     { id: "settings-data", label: "Data" },
+    { id: "settings-help", label: "Help" },
   ];
 
   return (
@@ -354,6 +359,38 @@ export function SettingsPane({
               ))}
             </div>
           </div>
+        </section>
+
+        <section id="settings-help">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Help
+          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="tourHintsEnabled" className="text-sm font-medium">
+                Show welcome tour
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Automatically walk through the app's main features the next time it opens fresh.
+              </p>
+            </div>
+            <Switch
+              id="tourHintsEnabled"
+              checked={tourHintsEnabled}
+              onCheckedChange={setTourHintsEnabled}
+              className="shrink-0"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={startTour}
+            className="mt-3 -ml-2 text-muted-foreground"
+          >
+            <RotateCcw className="size-3.5" />
+            Replay welcome tour
+          </Button>
         </section>
 
         <IconsShowcase />

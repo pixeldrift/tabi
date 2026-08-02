@@ -757,7 +757,10 @@ export function NotificationsPane({
 
   if (allOrdered.length === 0) {
     return (
-      <div className="max-w-md mx-auto mt-12 rounded-xl border border-dashed border-border bg-white p-8 text-center">
+      <div
+        data-tour="notifications-list"
+        className="max-w-md mx-auto mt-12 rounded-xl border border-dashed border-border bg-white p-8 text-center"
+      >
         <h2 className="font-display text-xl">Alerts &amp; announcements</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Messages, reminders, and supervisor notes will appear here.
@@ -776,7 +779,7 @@ export function NotificationsPane({
   );
 
   return (
-    <div className="pb-8">
+    <div data-tour="notifications-list" className="pb-8">
       {/* Sticky filter bar — same idiom as Schedule's own toggles row: full-
           bleed background (breaking out of the max-w-2xl content column via
           the negative margins below) so the sticky strip spans the whole
