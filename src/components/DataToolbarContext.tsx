@@ -14,6 +14,7 @@ import { GridViewIcon } from "@/components/icons/GridViewIcon";
 import { SmallGridViewIcon } from "@/components/icons/SmallGridViewIcon";
 import { useSettings } from "./SettingsContext";
 import { playSoundEffect } from "@/lib/soundEffects";
+import { useElementRight } from "@/hooks/use-element-height";
 
 export type CardKind =
   "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating" | "timestamp";
@@ -142,6 +143,12 @@ interface DataToolbarContextValue {
       unit: string;
     },
   ) => void;
+  /** Viewport-relative right edge (px) of the Data toolbar's view-mode
+   *  segmented control — measured once here, for the app's whole lifetime,
+   *  rather than by each DataDetailsDrawer instance separately (see that
+   *  component's own comment on why: it's one shared toolbar element, not
+   *  something that needs re-measuring per card). 0 until measured. */
+  viewModeIconsRight: number;
 }
 
 const DataToolbarContext = createContext<DataToolbarContextValue | null>(null);
@@ -179,6 +186,11 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
   const [cardMeta, setCardMeta] = useState<
     Record<string, { title: string; kind: CardKind; value: string; unit: string }>
   >({});
+  // Measured once here (this provider mounts for the app's whole lifetime,
+  // unlike the toolbar/toggle DOM node itself, which unmounts and remounts
+  // every time the Data tab isn't the active one) rather than inside every
+  // DataDetailsDrawer instance — see that component's own comment.
+  const viewModeIconsRight = useElementRight("[data-view-mode-toggle]");
 
   useEffect(() => {
     const stored = loadPersisted();
@@ -335,6 +347,7 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
       completion,
       cardMeta,
       reportCardStatus,
+      viewModeIconsRight,
     }),
     [
       displayMode,
@@ -360,6 +373,7 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
       completion,
       cardMeta,
       reportCardStatus,
+      viewModeIconsRight,
     ],
   );
 
