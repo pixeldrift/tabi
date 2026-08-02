@@ -151,8 +151,13 @@ rather than kept checked off — see git history for what's already shipped.
 
 ### ⚙️ Functionality / Features
 
-- [ ] 🔴 Left-side target/goal list/tree view mirroring Info Drawer — titles
-      (+ data type?), click scrolls to card + shows pointer arrow
+- [ ] 🔴 Target/goal tree view — a new **view mode** alongside List/Card/
+      Grid in DataToolbar's existing view-mode toggle, not a separate
+      left-side drawer: same segmented control, the tree replaces the card
+      list itself when selected. Shows titles (+ data type?), click
+      scrolls to/activates the card. Depends on the hierarchical goal
+      structure (below) actually existing in the data — today's flat
+      target list has no real categories to draw a tree from yet.
 
 ### 🗄️ Later (backlog — not sized)
 
@@ -164,10 +169,6 @@ long a client stays regulated without interfering behavior, frequency of
 aggressive behavior) so BCBAs can track trends. The handoff, revision-mode,
 and scheduling items below all need to respect that split.
 
-- [ ] Step-by-step interactive welcome tour — guided popups walking through
-      the main features and interactions, standing in for separate training
-      or external documentation. Appears on first use, with a Settings
-      toggle to turn the tour/hints on or off afterward
 - [x] **Session lifecycle & handoff model** — modeled explicitly as four
       states now, simulated client-side (single hardcoded current user, no
       real auth/backend yet) but built so real auth can be wired in later
@@ -209,12 +210,33 @@ and scheduling items below all need to respect that split.
   - No auth/multi-user model exists yet — this prototype hardcodes a
     single current user and simulates the others; swapping in real
     auth/backend later shouldn't require changing this state model
-- [ ] **Admin: merge sessions** — for the rare case a session gets ended &
-      submitted by accident instead of paused. Lets an admin combine two
-      separately submitted sessions into one contiguous session for
-      rate-data purposes (recalculating rates as if the gap between them
-      never happened), rather than exposing any "un-submit"/reopen action
-      on the RBT side
+- [ ] **Multi-instance Task Analysis entry** (step-by-step + trial
+      navigation, dual nav pattern) — a true necessary feature, not just
+      polish, hence near the top of this list
+- [ ] Step-by-step interactive welcome tour — guided popups walking through
+      the main features and interactions. The goal is usability and
+      discoverability: the app itself should read as self-evident enough
+      that a new RBT doesn't need separate training or external
+      documentation to get going. Appears on first use, with a Settings
+      toggle to turn the tour/hints on or off afterward
+- [ ] Settings: an "add a new goal" section at the top of the page — guided
+      workflow to pick a data-collection type and fill in its details (TA
+      steps; correct/incorrect/no-response/prompt-level options; min/max for
+      others), plus free-text sections for the standard drawer content
+      (rationale, procedure, etc.). Leaving a standard section blank should
+      simply omit it from the resulting card's drawer, matching today's
+      SD/Correction/Materials behavior — or a checkbox per section could let
+      the BCBA explicitly opt sections in/out instead — plus an area to add
+      one or more custom sections beyond the standard set. Ideally shows a
+      live preview of the resulting card as the form is filled in, and
+      supports editing in place afterward (access permitting). Lives on the
+      Settings tab for now — likely to move somewhere more prominent later
+- [ ] Hierarchical goal structure: organize targets into categories and
+      sub-categories (a learning tree) instead of today's flat card list —
+      a data-model change, not just a UI one. What the tree view mode above
+      would actually render; will likely pair with breadcrumb-style
+      navigation in the Info Drawer later, showing where the active card
+      sits in that hierarchy
 - [ ] Real half-hour/hour reminder for an abandoned session — push
       notification if the last driver has the app open, otherwise a text
       or email — today the abandoned state only shows in-app
@@ -229,27 +251,9 @@ and scheduling items below all need to respect that split.
 - [ ] Targets that persist progress across sessions without needing to be
       graphed out first — pick up where you left off, with an icon/symbol
       denoting a persisted target
-- [ ] Settings: an "add a new goal" section at the top of the page — guided
-      workflow to pick a data-collection type and fill in its details (TA
-      steps; correct/incorrect/no-response/prompt-level options; min/max for
-      others), plus free-text sections for the standard drawer content
-      (rationale, procedure, etc.). Leaving a standard section blank should
-      simply omit it from the resulting card's drawer, matching today's
-      SD/Correction/Materials behavior — or a checkbox per section could let
-      the BCBA explicitly opt sections in/out instead — plus an area to add
-      one or more custom sections beyond the standard set. Ideally shows a
-      live preview of the resulting card as the form is filled in, and
-      supports editing in place afterward (access permitting)
-- [ ] Hierarchical goal structure: organize targets into categories and
-      sub-categories (a learning tree) instead of today's flat card list —
-      a data-model change, not just a UI one. Will likely pair with
-      breadcrumb-style navigation in the Info Drawer later, showing where
-      the active card sits in that hierarchy
 - [ ] Robust "primer timer" feature — a few visual styles (sand, hatching
       egg, wheel, wedge, Pac-Man dots, etc.), color themes, sounds, and
       finale effects, with the ability to save a combination as the default
-- [ ] Multi-instance Task Analysis entry (step-by-step + trial navigation,
-      dual nav pattern)
 - [ ] Custom mixed dashboard layout (standard/mini/expanded per card)
 - [ ] Per-field access levels on Info tab data (Editing Allowed / Editing Not
       Allowed / Approval Required) plus a supervisor-side approve/deny action
@@ -258,5 +262,12 @@ and scheduling items below all need to respect that split.
       notification — there's no access-level distinction or approve/deny
       handling yet, so every submission behaves the same regardless of who's
       submitting it.
+- [ ] **Admin: merge sessions** — for the rare case a session gets ended &
+      submitted by accident instead of paused. Lets an admin combine two
+      separately submitted sessions into one contiguous session for
+      rate-data purposes (recalculating rates as if the gap between them
+      never happened), rather than exposing any "un-submit"/reopen action
+      on the RBT side. Deprioritized to the bottom of this list — this demo
+      isn't focused on supervisor/BCBA-side functions
 
-_Roadmap last updated: 2026-08-01_
+_Roadmap last updated: 2026-08-02_
