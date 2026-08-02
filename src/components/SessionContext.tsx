@@ -394,6 +394,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus("running");
     setLastUpdated(new Date());
     setLastActivityAt(Date.now());
+    // isSessionMine reads presence, not startedById (see its own comment) —
+    // a paused session has nobody "present" (presence is a running-session
+    // concept), so without this, resuming your own paused session left
+    // isSessionMine false. That's invisible while the staged transition's
+    // own transitionStage===2 window papers over `collapsed`, but the box
+    // snaps back open to the big expanded view the instant that window
+    // ends, instead of staying collapsed into the mini pill — same fix as
+    // joinSession's own dedup add.
+    setPresentStaffIds((ids) =>
+      ids.includes(CURRENT_STAFF_ID) ? ids : [...ids, CURRENT_STAFF_ID],
+    );
     playSoundEffect("sessionResume");
   }, []);
   // Whoever actually performs End & Submit gets credited as having ended
