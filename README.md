@@ -142,6 +142,63 @@ re-solved from scratch.
   directly, which could cross an alert's interval boundary and fire a real
   chime with no legitimate alert due.
 
+## Tips — discoverability call-outs
+
+Running list of real quality-of-life touches in the app that are easy to
+miss on a first look — the ones actually worth showing off, not the
+self-explanatory stuff (nobody needs a tour of what the Info tab is). This
+is raw material for an eventual in-app "Did you know?" tip mechanism
+(reusing the guided tour's own spotlight/callout system, but single-step
+and resurfaced periodically rather than a one-time walkthrough) — see the
+Roadmap below. Add to this list whenever a new little touch like this ships.
+
+**Schedule**
+
+- **Alert Cycle** — the bell icon on any schedule item is a single tap that
+  cycles Notify → Chime → No Alert, right inline. No dialog, no digging
+  through settings.
+- **"Now" jump button** — snaps the schedule grid straight to the current
+  time instead of scrolling to find yourself.
+- Collapsed / Appointments / Icons toggle controls how much detail the
+  day's view shows.
+
+**Session & header**
+
+- **Joining is instant, never gated** — no request/approve round-trip to
+  take over someone else's running session, and a live session can be
+  browsed read-only without joining it at all.
+- Tapping the presence icon opens a roster (or straight to a profile if
+  it's just one other person).
+- Tapping the relative time ("2hr ago") under the session box reveals the
+  exact date/timestamp.
+- Any attribution credit ("Started by X," "Paused by X") is a tappable
+  pill that opens that staff member's profile.
+- **Review Mode** — a deliberate, explicit unlock to edit a paused
+  session's data, so nothing changes by accident. Easy to not realize it's
+  even possible without finding the toggle.
+
+**Data tab**
+
+- Edit mode (pencil icon) unlocks drag-to-reorder plus per-card
+  favorite/hide — three features behind one icon.
+- Each card's small info-drawer icon holds rationale/procedure/materials/
+  SD/correction — separate from the actual data-entry flow, so it's easy
+  to skip past entirely.
+- "Keep active card centered" (Settings) — opt-in auto-scroll so whichever
+  card is active stays in view.
+- Toolbar filters combine data-type + interfering/target-behavior — not
+  obvious they stack.
+
+**Notifications**
+
+- Snooze with a configurable duration.
+- Per-notification alarm sound can override the global default.
+
+**Client Info**
+
+- Per-field "request an edit" — doesn't edit directly, raises an approval
+  request as a notification instead.
+
 ## Roadmap
 
 Running tracker for UI/UX polish requests, grouped by type and tagged by
@@ -213,12 +270,14 @@ and scheduling items below all need to respect that split.
 - [ ] **Multi-instance Task Analysis entry** (step-by-step + trial
       navigation, dual nav pattern) — a true necessary feature, not just
       polish, hence near the top of this list
-- [ ] Step-by-step interactive welcome tour — guided popups walking through
-      the main features and interactions. The goal is usability and
-      discoverability: the app itself should read as self-evident enough
-      that a new RBT doesn't need separate training or external
-      documentation to get going. Appears on first use, with a Settings
-      toggle to turn the tour/hints on or off afterward
+- [ ] "Did you know?" periodic tips — reuses the guided tour's own
+      spotlight/callout mechanism (see TourContext.tsx/TourOverlay.tsx),
+      but single-step and resurfaced periodically (e.g. once per sign-in)
+      rather than a one-time walkthrough. Content pulled from the Tips
+      section above — the point is surfacing genuinely non-obvious
+      quality-of-life touches, not re-explaining self-evident UI, and it
+      doubles as a natural way to announce newly-added features. Settings
+      toggle to turn it off, same as the tour's own hints toggle
 - [ ] Settings: an "add a new goal" section at the top of the page — guided
       workflow to pick a data-collection type and fill in its details (TA
       steps; correct/incorrect/no-response/prompt-level options; min/max for
