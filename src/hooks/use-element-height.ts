@@ -76,7 +76,47 @@ export function useElementRight(selector: string) {
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(commit, 60);
     };
-    commit();
+    // ResizeObserver only fires when THIS element's own box size changes —
+    // not when an ancestor's still-animating transform shifts its absolute
+    // position without touching its own size. The welcome→main screen slide
+    // (see routes/index.tsx's own SCREEN_SLIDE_MS) is exactly that: a
+    // position:fixed motion.div translating the whole app in from the side,
+    // for real, over several hundred ms. A tap on the very first interactive
+    // thing (a details drawer's pull tab) can land while that's still mid-
+    // flight, and this cluster's own measured right edge — a real number,
+    // just skewed by the ancestor's current, not-yet-settled translateX —
+    // gets baked in with nothing to ever re-trigger a correction afterward,
+    // which zeroed out the drawer's own resting-width cap (see
+    // maxRestingWidthPx) and made its very first open land at the same x as
+    // closed, silently.
+    //
+    // Rather than guess a fixed poll duration to outlast that one specific
+    // transition (fragile if its timing ever changes, or if some other
+    // animation causes the same kind of skew), poll every frame until the
+    // measurement itself actually stops moving — a few consecutive identical
+    // readings means whatever was animating has settled — capped so a
+    // genuinely unstable layout can't poll forever.
+    let raf = 0;
+    let settledStreak = 0;
+    let lastRight: number | null = null;
+    let framesElapsed = 0;
+    const MAX_POLL_FRAMES = 120; // ~2s at 60fps — generous safety cap
+    const SETTLED_STREAK_TARGET = 4;
+    raf = requestAnimationFrame(function tick() {
+      const rect = el.getBoundingClientRect();
+      // A still-zero-area box means the element hasn't actually been laid
+      // out yet (not "settled at 0") — repeated identical zero readings
+      // would otherwise satisfy the streak check below and stop polling
+      // right before its real first real layout lands.
+      const hasRealBox = rect.width > 0 || rect.height > 0;
+      setRight(rect.right);
+      settledStreak = hasRealBox && rect.right === lastRight ? settledStreak + 1 : 0;
+      lastRight = rect.right;
+      framesElapsed += 1;
+      if (settledStreak < SETTLED_STREAK_TARGET && framesElapsed < MAX_POLL_FRAMES) {
+        raf = requestAnimationFrame(tick);
+      }
+    });
     const ro = new ResizeObserver(update);
     ro.observe(el);
     window.addEventListener("resize", update);
@@ -89,6 +129,7 @@ export function useElementRight(selector: string) {
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
     return () => {
+      cancelAnimationFrame(raf);
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       ro.disconnect();
       window.removeEventListener("resize", update);
