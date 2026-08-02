@@ -61,6 +61,14 @@ const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "alert";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
+// The guided welcome tour (TourContext.tsx) — on by default so a fresh
+// install shows it once; `tourCompleted` flips true the first time it's
+// finished or skipped, and stays that way until "Replay welcome tour" in
+// Settings calls TourContext's own start() directly (which doesn't touch
+// this flag) or a full "Reset all" re-arms it.
+const DEFAULT_TOUR_HINTS_ENABLED = true;
+const DEFAULT_TOUR_COMPLETED = false;
+
 const DEFAULT_DATA_VIEW: DisplayMode = "card";
 
 export type ColorTheme = "default" | "alt";
@@ -121,6 +129,16 @@ interface SettingsContextValue {
    *  below. */
   colorTheme: ColorTheme;
   setColorTheme: (v: ColorTheme) => void;
+  /** Whether the guided welcome tour should auto-launch on the next
+   *  welcome→main transition. Off just suppresses the automatic launch —
+   *  "Replay welcome tour" in Settings can still start it manually either
+   *  way. */
+  tourHintsEnabled: boolean;
+  setTourHintsEnabled: (v: boolean) => void;
+  /** Set once the tour has been finished or skipped at least once, so it
+   *  doesn't auto-launch again on every reload. */
+  tourCompleted: boolean;
+  setTourCompleted: (v: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -139,6 +157,8 @@ interface StoredShape {
   dayEnd: string;
   defaultDataView: DisplayMode;
   colorTheme: ColorTheme;
+  tourHintsEnabled: boolean;
+  tourCompleted: boolean;
 }
 
 function loadStored(): StoredShape {
@@ -150,6 +170,8 @@ function loadStored(): StoredShape {
     dayEnd: DEFAULT_DAY_END,
     defaultDataView: DEFAULT_DATA_VIEW,
     colorTheme: DEFAULT_COLOR_THEME,
+    tourHintsEnabled: DEFAULT_TOUR_HINTS_ENABLED,
+    tourCompleted: DEFAULT_TOUR_COMPLETED,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -164,6 +186,8 @@ function loadStored(): StoredShape {
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
       defaultDataView: parsed.defaultDataView ?? DEFAULT_DATA_VIEW,
       colorTheme: parsed.colorTheme ?? DEFAULT_COLOR_THEME,
+      tourHintsEnabled: parsed.tourHintsEnabled ?? DEFAULT_TOUR_HINTS_ENABLED,
+      tourCompleted: parsed.tourCompleted ?? DEFAULT_TOUR_COMPLETED,
     };
   } catch {
     return fallback;
@@ -193,6 +217,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultDataView, setDefaultDataView] = useState<DisplayMode>(DEFAULT_DATA_VIEW);
   const [colorTheme, setColorThemeState] = useState<ColorTheme>(DEFAULT_COLOR_THEME);
+  const [tourHintsEnabled, setTourHintsEnabled] = useState(DEFAULT_TOUR_HINTS_ENABLED);
+  const [tourCompleted, setTourCompleted] = useState(DEFAULT_TOUR_COMPLETED);
 
   useEffect(() => {
     const stored = loadStored();
@@ -203,6 +229,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setDayEnd(stored.dayEnd);
     setDefaultDataView(stored.defaultDataView);
     setColorThemeState(stored.colorTheme);
+    setTourHintsEnabled(stored.tourHintsEnabled);
+    setTourCompleted(stored.tourCompleted);
     // Already applied pre-paint by __root.tsx's blocking script — this is
     // just keeping the two in sync, a no-op in the common case.
     applyColorThemeToDom(stored.colorTheme);
@@ -218,9 +246,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       dayEnd,
       defaultDataView,
       colorTheme,
+      tourHintsEnabled,
+      tourCompleted,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  }, [values, alarmSound, keepActiveCardCentered, dayStart, dayEnd, defaultDataView, colorTheme]);
+  }, [
+    values,
+    alarmSound,
+    keepActiveCardCentered,
+    dayStart,
+    dayEnd,
+    defaultDataView,
+    colorTheme,
+    tourHintsEnabled,
+    tourCompleted,
+  ]);
 
   const setValue = useCallback((key: string, value: number) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -239,6 +279,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setDayEnd(DEFAULT_DAY_END);
     setDefaultDataView(DEFAULT_DATA_VIEW);
     setColorTheme(DEFAULT_COLOR_THEME);
+    setTourHintsEnabled(DEFAULT_TOUR_HINTS_ENABLED);
+    setTourCompleted(DEFAULT_TOUR_COMPLETED);
   }, [setColorTheme]);
   const resetOne = useCallback((key: string) => {
     setValues((v) => ({ ...v, [key]: DEFAULTS[key] }));
@@ -262,6 +304,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setDefaultDataView,
       colorTheme,
       setColorTheme,
+      tourHintsEnabled,
+      setTourHintsEnabled,
+      tourCompleted,
+      setTourCompleted,
     }),
     [
       values,
@@ -275,6 +321,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       defaultDataView,
       colorTheme,
       setColorTheme,
+      tourHintsEnabled,
+      tourCompleted,
     ],
   );
 

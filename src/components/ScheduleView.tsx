@@ -1588,6 +1588,7 @@ export function ScheduleView({
       <div className="mt-3" />
       <div ref={togglesSentinelRef} className="h-0" aria-hidden />
       <div
+        data-tour="schedule-toggles"
         className={cn(
           // overflow-x-hidden clips the "now" button below while it's
           // translated off-screen (waiting to slide in once pinned) — its
