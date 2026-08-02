@@ -1249,7 +1249,10 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
   // text instead of at the icon it's actually attached to.
   const anchorRef = useRef<HTMLSpanElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  // margin=34: see SaveIndicator's own identical comment — same
+  // rounded-2xl box (24px radius) and the same rotated h-3 w-3 arrow
+  // square, so it needs the same clearance from the corner curve.
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
 
   const trigger = (
     // The count badge is `absolute`, not a normal inline sibling — its own
@@ -1317,7 +1320,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               align="center"
               sideOffset={6}
               collisionPadding={16}
-              className="group relative z-[70] w-max rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+              className="group relative z-[70] w-max rounded-2xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
             >
               {/* Rotated-square idiom (NumberKeypad/DataToolbar's filter
                   popover) instead of Radix's own Arrow primitive — a plain
@@ -1347,7 +1350,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
                   pr-2 (not px-4 on both sides) shifts the close button
                   slightly right, closer to the box's own edge, instead of
                   matching the title's left inset exactly. */}
-              <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-xl">
+              <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-2xl">
                 <h3 className="font-display text-base leading-tight whitespace-nowrap">
                   In This Session
                 </h3>
@@ -1391,7 +1394,13 @@ function SaveIndicator({
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  // margin=34, not the default 16: this popover's `align="end"` trigger
+  // sits right at the box's own top-right corner, which routinely clamps
+  // the slider to its minimum — and 16 isn't enough clearance for this
+  // rounded-2xl box's real 24px radius plus the rotated h-3 w-3 arrow
+  // square's own ~8.5px half-width (24 + 8.5 ≈ 32.5), so the corner's
+  // curve was showing through the arrow's white fill.
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
 
   return (
     <div className="flex items-center gap-1.5">
@@ -1411,16 +1420,11 @@ function SaveIndicator({
           align="end"
           sideOffset={6}
           collisionPadding={16}
-          // Same reasoning as PresenceIndicator's own arrowPadding: without
-          // it, `align="end"` sits the arrow right at the box's rounded-xl
-          // corner (12px radius), letting the corner's own curve show
-          // through the arrow's white fill.
-          arrowPadding={14}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
           // underneath the toolbar and its clicks get intercepted there.
-          className="group relative z-[70] w-max rounded-xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          className="group relative z-[70] w-max rounded-2xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
           {/* Rotated-square idiom (NumberKeypad/DataToolbar's filter
               popover) — see PresenceIndicator's popover below for the full
@@ -1447,7 +1451,7 @@ function SaveIndicator({
               whatever the taller of the two needs, not a fixed pt-4/pb-2
               guess. pr-2 (not px-4 on both sides) shifts the close button
               slightly right, closer to the box's own edge. */}
-          <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-xl">
+          <div className="flex items-center justify-between gap-2 py-1 pl-4 pr-2 border-b border-border bg-white rounded-t-2xl">
             <h3 className="font-display text-base leading-tight whitespace-nowrap">
               Session Data Status
             </h3>
@@ -1783,8 +1787,16 @@ function ExpandedSessionBox({
                   <PopoverContent
                     side="right"
                     align="center"
-                    sideOffset={10}
+                    sideOffset={-2}
                     collisionPadding={12}
+                    // Stays rounded-lg, not rounded-2xl like the other two
+                    // header popups (PresenceIndicator/SaveIndicator) — this
+                    // one's a compact 2-line tooltip (~49px tall), too short
+                    // for a 24px corner radius to leave the arrow anywhere
+                    // to sit: boxHeight - 2*radius needs to clear the
+                    // arrow's own ~14px span, and 49 - 2*24 is negative.
+                    // 16px is the largest radius this box's real height
+                    // actually supports without swallowing the arrow.
                     className="relative z-[70] w-auto rounded-lg border-2 border-blue-400 bg-white px-3 py-1.5 text-xs tabular-nums leading-snug whitespace-nowrap shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
                   >
                     <PopupArrow />
