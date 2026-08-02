@@ -61,13 +61,20 @@ const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "alert";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
-// The guided welcome tour (TourContext.tsx) — on by default so a fresh
-// install shows it once; `tourCompleted` flips true the first time it's
-// finished or skipped, and stays that way until "Replay welcome tour" in
-// Settings calls TourContext's own start() directly (which doesn't touch
-// this flag) or a full "Reset all" re-arms it.
+// The guided welcome tour (TourContext.tsx). `tourHintsEnabled` stays on by
+// default — it's what a genuinely first-time user's own toggle would read,
+// were this a real install rather than a repeatedly-demoed prototype.
+// `tourCompleted` defaults true instead of false, though: this demo's own
+// "first load" isn't actually anyone's first look at the app the way a
+// fresh real install would be, so it starts pretending the tour has
+// already been seen once rather than auto-firing on every demo/reload.
+// WelcomeScreen's "Preview guided tour" button (TourContext's own
+// forceLaunch) bypasses this flag entirely, so the tour's still one tap
+// away regardless. `tourCompleted` flips true again the first time it's
+// finished or skipped through the normal flow, and a full "Reset all"
+// re-arms both to these same defaults.
 const DEFAULT_TOUR_HINTS_ENABLED = true;
-const DEFAULT_TOUR_COMPLETED = false;
+const DEFAULT_TOUR_COMPLETED = true;
 
 const DEFAULT_DATA_VIEW: DisplayMode = "card";
 
