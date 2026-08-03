@@ -10,6 +10,7 @@ import {
   type AlarmSoundStyle,
 } from "./SettingsContext";
 import { DISPLAY_MODES } from "./DataToolbarContext";
+import { TABS } from "./StatusBar";
 import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
 import { IconsShowcase } from "./IconsShowcase";
 import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
@@ -75,6 +76,8 @@ export function SettingsPane({
     setDayStart,
     dayEnd,
     setDayEnd,
+    defaultTab,
+    setDefaultTab,
     defaultDataView,
     setDefaultDataView,
     colorTheme,
@@ -322,6 +325,46 @@ export function SettingsPane({
               onCheckedChange={setKeepActiveCardCentered}
               className="shrink-0"
             />
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="min-w-0">
+                <label className="text-sm font-medium">Default tab</label>
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
+                  The tab the app opens on — same options as the header's tab bar.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDefaultTab("data")}
+                disabled={defaultTab === "data"}
+                aria-label="Reset Default tab to default"
+                className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-0 disabled:pointer-events-none"
+              >
+                <RotateCcw className="size-3" />
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-1 rounded-full border border-border bg-stone-100/60 p-1 w-fit">
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setDefaultTab(id)}
+                  aria-pressed={defaultTab === id}
+                  aria-label={label}
+                  title={label}
+                  className={cn(
+                    "grid place-items-center size-8 rounded-full transition-colors",
+                    defaultTab === id
+                      ? "btn-bevel bg-blue-500 text-white"
+                      : "text-stone-500 hover:text-stone-800",
+                  )}
+                >
+                  <Icon className="size-4" />
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-5">
