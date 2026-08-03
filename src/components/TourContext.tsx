@@ -12,18 +12,18 @@ import type { StatusTab } from "./StatusBar";
 import { useSettings } from "./SettingsContext";
 import { TOUR_STEPS, type TourStep, type TourStepContext } from "./tourSteps";
 import {
-  useTourTargetRect,
-  type TourRect,
-  type TourTargetStatus,
-} from "@/hooks/use-tour-target-rect";
+  useSpotlightTargetRect,
+  type SpotlightRect,
+  type SpotlightTargetStatus,
+} from "@/hooks/use-spotlight-target-rect";
 
 interface TourContextValue {
   active: boolean;
   currentStep: TourStep | null;
   stepIndex: number;
   stepCount: number;
-  targetRect: TourRect | null;
-  targetStatus: TourTargetStatus;
+  targetRect: SpotlightRect | null;
+  targetStatus: SpotlightTargetStatus;
   start: () => void;
   next: () => void;
   back: () => void;
@@ -77,7 +77,7 @@ export function TourProvider({
   const [stepIndex, setStepIndex] = useState(0);
   const [resolvedSteps, setResolvedSteps] = useState<TourStep[]>([]);
   // Bumped on every step change (start/next/back), even when two steps
-  // happen to share a selector — see use-tour-target-rect's own comment on
+  // happen to share a selector — see use-spotlight-target-rect's own comment on
   // why the measuring hook needs a fresh restart signal independent of the
   // selector string itself.
   const [generation, setGeneration] = useState(0);
@@ -147,7 +147,7 @@ export function TourProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);
 
-  const { rect: targetRect, status: targetStatus } = useTourTargetRect(
+  const { rect: targetRect, status: targetStatus } = useSpotlightTargetRect(
     currentStep?.selector ?? null,
     generation,
   );

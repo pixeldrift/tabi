@@ -1,29 +1,30 @@
 import { useEffect, useState } from "react";
 
-export interface TourRect {
+export interface SpotlightRect {
   top: number;
   left: number;
   width: number;
   height: number;
 }
 
-export type TourTargetStatus = "measuring" | "settled" | "not-found";
+export type SpotlightTargetStatus = "measuring" | "settled" | "not-found";
 
-/** Poll-until-stable measurement for the guided tour's current step target
- *  — same idiom as useElementRight (use-element-height.ts): a step's target
- *  frequently gets queried right after a tab switch, which can still be
- *  mid-flight through that tab's own scroll-position-restoring effect, so a
- *  single getBoundingClientRect() risks capturing a skewed, not-yet-settled
- *  rect with nothing to ever re-trigger a correction. Polling every frame
+/** Poll-until-stable measurement for a spotlight target (the guided tour's
+ *  current step, or the tip engine's current tip) — same idiom as
+ *  useElementRight (use-element-height.ts): a target frequently gets
+ *  queried right after a tab switch, which can still be mid-flight
+ *  through that tab's own scroll-position-restoring effect, so a single
+ *  getBoundingClientRect() risks capturing a skewed, not-yet-settled rect
+ *  with nothing to ever re-trigger a correction. Polling every frame
  *  until N consecutive identical readings land is what actually catches
  *  "settled," regardless of how long the real settling takes.
  *
- *  `generation` should bump on every step change (even if `selector`
+ *  `generation` should bump on every target change (even if `selector`
  *  happens to repeat) so the poll restarts fresh each time rather than
- *  reusing a stale settled/not-found result from a previous step. */
-export function useTourTargetRect(selector: string | null, generation: number) {
-  const [rect, setRect] = useState<TourRect | null>(null);
-  const [status, setStatus] = useState<TourTargetStatus>("measuring");
+ *  reusing a stale settled/not-found result from a previous target. */
+export function useSpotlightTargetRect(selector: string | null, generation: number) {
+  const [rect, setRect] = useState<SpotlightRect | null>(null);
+  const [status, setStatus] = useState<SpotlightTargetStatus>("measuring");
 
   useEffect(() => {
     if (!selector) {
@@ -34,7 +35,7 @@ export function useTourTargetRect(selector: string | null, generation: number) {
     setStatus("measuring");
     let raf = 0;
     let settledStreak = 0;
-    let lastRect: TourRect | null = null;
+    let lastRect: SpotlightRect | null = null;
     let framesElapsed = 0;
     // Same constants as useElementRight — 4 consecutive identical readings
     // reads as settled, capped at ~2s so a genuinely missing target doesn't
@@ -72,7 +73,7 @@ export function useTourTargetRect(selector: string | null, generation: number) {
       }
       const r = el.getBoundingClientRect();
       const hasRealBox = r.width > 0 || r.height > 0;
-      const next: TourRect = { top: r.top, left: r.left, width: r.width, height: r.height };
+      const next: SpotlightRect = { top: r.top, left: r.left, width: r.width, height: r.height };
       setRect(next);
       const unchanged =
         hasRealBox &&
@@ -91,7 +92,7 @@ export function useTourTargetRect(selector: string | null, generation: number) {
         raf = requestAnimationFrame(tick);
       } else {
         // Gave it a generous chance and it never stopped moving — show it
-        // anyway rather than leaving the tour stuck on "measuring" forever.
+        // anyway rather than leaving the caller stuck on "measuring" forever.
         setStatus("settled");
       }
     });
