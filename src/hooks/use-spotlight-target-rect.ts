@@ -9,15 +9,26 @@ export interface SpotlightRect {
 
 export type SpotlightTargetStatus = "measuring" | "settled" | "not-found";
 
-/** Poll-until-stable measurement for a spotlight target (the guided tour's
- *  current step, or the tip engine's current tip) — same idiom as
- *  useElementRight (use-element-height.ts): a target frequently gets
- *  queried right after a tab switch, which can still be mid-flight
- *  through that tab's own scroll-position-restoring effect, so a single
- *  getBoundingClientRect() risks capturing a skewed, not-yet-settled rect
- *  with nothing to ever re-trigger a correction. Polling every frame
- *  until N consecutive identical readings land is what actually catches
- *  "settled," regardless of how long the real settling takes.
+/** Poll-until-stable, then keep tracking, measurement for a spotlight
+ *  target (the guided tour's current step, or the tip engine's current
+ *  tip) — same idiom as useElementRight (use-element-height.ts): a target
+ *  frequently gets queried right after a tab switch, which can still be
+ *  mid-flight through that tab's own scroll-position-restoring effect, so
+ *  a single getBoundingClientRect() risks capturing a skewed, not-yet-
+ *  settled rect with nothing to ever re-trigger a correction. Polling
+ *  every frame until N consecutive identical readings land is what
+ *  actually catches "settled," regardless of how long the real settling
+ *  takes — but the poll never actually STOPS once found: `rect` is a live
+ *  read of the target's current position for as long as this hook stays
+ *  mounted with this selector/generation, not a one-time snapshot frozen
+ *  at whatever it measured first. Something the tour/tip overlay itself
+ *  has no control over — a notification banner popping in above the
+ *  content, an orientation change, anything else that reflows the page —
+ *  can move the real target well after it first "settled"; without
+ *  continuous tracking the spotlight would keep pointing at stale
+ *  coordinates instead of following the element it's actually meant to be
+ *  attached to. `setRect` only fires on an actual change (not every
+ *  frame), so a genuinely static target costs one state update, not 60/s.
  *
  *  `generation` should bump on every target change (even if `selector`
  *  happens to repeat) so the poll restarts fresh each time rather than
@@ -37,9 +48,10 @@ export function useSpotlightTargetRect(selector: string | null, generation: numb
     let settledStreak = 0;
     let lastRect: SpotlightRect | null = null;
     let framesElapsed = 0;
+    let hasSettled = false;
     // Same constants as useElementRight — 4 consecutive identical readings
     // reads as settled, capped at ~2s so a genuinely missing target doesn't
-    // poll forever.
+    // block the reveal forever.
     const MAX_POLL_FRAMES = 120;
     const SETTLED_STREAK_TARGET = 4;
     // Longer than the settle streak alone — a target that's truly absent
@@ -62,7 +74,7 @@ export function useSpotlightTargetRect(selector: string | null, generation: numb
       if (!el) {
         if (framesElapsed >= NOT_FOUND_GRACE_FRAMES) {
           setStatus("not-found");
-          return;
+          return; // not-found is terminal for this generation — a redraw elsewhere picks a new target
         }
         raf = requestAnimationFrame(tick);
         return;
@@ -74,7 +86,6 @@ export function useSpotlightTargetRect(selector: string | null, generation: numb
       const r = el.getBoundingClientRect();
       const hasRealBox = r.width > 0 || r.height > 0;
       const next: SpotlightRect = { top: r.top, left: r.left, width: r.width, height: r.height };
-      setRect(next);
       const unchanged =
         hasRealBox &&
         lastRect !== null &&
@@ -82,19 +93,22 @@ export function useSpotlightTargetRect(selector: string | null, generation: numb
         next.left === lastRect.left &&
         next.width === lastRect.width &&
         next.height === lastRect.height;
+      // Only touch state on a real change — every frame still re-measures
+      // the live element (see the comment above), but a static target
+      // shouldn't cost a re-render 60 times a second.
+      if (!unchanged) setRect(next);
       settledStreak = unchanged ? settledStreak + 1 : 0;
       lastRect = next;
-      if (settledStreak >= SETTLED_STREAK_TARGET) {
-        setStatus("settled");
-        return;
-      }
-      if (framesElapsed < MAX_POLL_FRAMES) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        // Gave it a generous chance and it never stopped moving — show it
-        // anyway rather than leaving the caller stuck on "measuring" forever.
+      if (
+        !hasSettled &&
+        (settledStreak >= SETTLED_STREAK_TARGET || framesElapsed >= MAX_POLL_FRAMES)
+      ) {
+        hasSettled = true;
         setStatus("settled");
       }
+      // Keep polling indefinitely rather than stopping once settled — see
+      // this hook's own doc comment.
+      raf = requestAnimationFrame(tick);
     });
 
     return () => cancelAnimationFrame(raf);
