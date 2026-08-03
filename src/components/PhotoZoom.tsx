@@ -70,10 +70,12 @@ export function BlurredPhotoZoomButton({
   bgClassName = "bg-blue-50",
   ringClassName = "border border-border",
   iconClassName = "size-1/3",
+  dataTour,
 }: {
   avatar?: string;
   label: string;
   size: string;
+  dataTour?: string;
   /** Background behind the clipped photo — separate from `ringClassName`
    *  (below) since the ring has to live outside the blur's own clip, not
    *  share a box with it. */
@@ -123,6 +125,7 @@ export function BlurredPhotoZoomButton({
         aria-label={
           revealed ? `${label}'s photo — tap to enlarge` : `Tap to reveal ${label}'s photo`
         }
+        data-tour={dataTour}
         className={cn("relative shrink-0", size)}
       >
         <div

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Compass } from "lucide-react";
+import { ArrowRight, Compass, Lightbulb } from "lucide-react";
 import tabiLogo from "@/assets/images/tabi-logo.png";
 
 /** The app's opening splash — logo, one-line pitch, and the single "Get
@@ -12,6 +12,7 @@ import tabiLogo from "@/assets/images/tabi-logo.png";
 export function WelcomeScreen({
   onGetStarted,
   onLaunchTour,
+  onLaunchTip,
 }: {
   onGetStarted: () => void;
   /** Same hand-off as onGetStarted, but also force-starts the guided tour
@@ -20,6 +21,10 @@ export function WelcomeScreen({
    *  rather than something a real first-time user needs — Get Started
    *  already auto-launches the tour on its own. */
   onLaunchTour: () => void;
+  /** Same idea as onLaunchTour, but for the "Did you know?" tip rotation —
+   *  force-shows a tip once main settles regardless of tipsEnabled, see
+   *  TipContext's own comment. */
+  onLaunchTip: () => void;
 }) {
   const [showCommitSha, setShowCommitSha] = useState(false);
 
@@ -71,6 +76,14 @@ export function WelcomeScreen({
       >
         <Compass className="size-3.5" />
         Preview guided tour
+      </button>
+      <button
+        type="button"
+        onClick={onLaunchTip}
+        className="-mt-2 flex items-center gap-1.5 text-xs text-stone-400 transition-colors hover:text-stone-600"
+      >
+        <Lightbulb className="size-3.5" />
+        Preview a tip
       </button>
 
       <div className="mt-4 flex flex-col items-center gap-1.5">

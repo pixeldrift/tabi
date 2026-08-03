@@ -34,6 +34,7 @@ export function PhaseInfoLabel({
           setOpen(true);
         }}
         disabled={!info}
+        data-tour="card-phase-label"
         className={cn(className, "disabled:pointer-events-none")}
       >
         {PhaseIcon && (
@@ -90,6 +91,7 @@ export function DataTypeInfoLabel({
         }}
         title={!showLabel ? label : undefined}
         aria-label={!showLabel ? label : undefined}
+        data-tour="card-datatype-label"
         className={className}
       >
         <span className={iconClassName}>{icon}</span>

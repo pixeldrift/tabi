@@ -699,6 +699,7 @@ function ClientHeader() {
         bgClassName="bg-blue-100"
         ringClassName="border-2 border-blue-300"
         iconClassName="size-6"
+        dataTour="client-photo"
       />
       <div className="min-w-0">
         <h1 className="font-display text-3xl font-bold leading-none truncate">

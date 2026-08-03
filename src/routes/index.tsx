@@ -38,6 +38,8 @@ import {
 import { CardDataStoreProvider } from "@/components/CardDataStore";
 import { TourProvider } from "@/components/TourContext";
 import { TourOverlay } from "@/components/TourOverlay";
+import { TipProvider } from "@/components/TipContext";
+import { TipOverlay } from "@/components/TipOverlay";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import type { TeachingProcedure } from "@/components/TeachingProcedureAccordion";
 import { playSoundEffect } from "@/lib/soundEffects";
@@ -753,6 +755,9 @@ function Index() {
   // setting it needs to be visible to IndexInner/TourProvider on the very
   // next render (the same one that starts the screen-slide).
   const [forceTourLaunch, setForceTourLaunch] = useState(false);
+  // Same idea as forceTourLaunch, but for the "Did you know?" tip
+  // rotation's own WelcomeScreen escape hatch — see TipContext's comment.
+  const [forceTipLaunch, setForceTipLaunch] = useState(false);
 
   const goToMain = () => {
     setTransitioning(true);
@@ -764,6 +769,10 @@ function Index() {
   };
   const launchTourFromWelcome = () => {
     setForceTourLaunch(true);
+    goToMain();
+  };
+  const launchTipFromWelcome = () => {
+    setForceTipLaunch(true);
     goToMain();
   };
 
@@ -803,7 +812,11 @@ function Index() {
         animate={{ x: screen === "welcome" ? "0%" : "-100%" }}
         transition={{ duration: SCREEN_SLIDE_MS / 1000, ease: SCREEN_SLIDE_EASE }}
       >
-        <WelcomeScreen onGetStarted={goToMain} onLaunchTour={launchTourFromWelcome} />
+        <WelcomeScreen
+          onGetStarted={goToMain}
+          onLaunchTour={launchTourFromWelcome}
+          onLaunchTip={launchTipFromWelcome}
+        />
       </motion.div>
 
       <motion.div
@@ -832,6 +845,8 @@ function Index() {
                     mainSettled={mainSettled}
                     forceTourLaunch={forceTourLaunch}
                     onForceTourLaunchHandled={() => setForceTourLaunch(false)}
+                    forceTipLaunch={forceTipLaunch}
+                    onForceTipLaunchHandled={() => setForceTipLaunch(false)}
                   />
                 </ScheduleProvider>
               </CardDataStoreProvider>
@@ -981,11 +996,15 @@ function IndexInner({
   mainSettled,
   forceTourLaunch,
   onForceTourLaunchHandled,
+  forceTipLaunch,
+  onForceTipLaunchHandled,
 }: {
   onBack: () => void;
   mainSettled: boolean;
   forceTourLaunch: boolean;
   onForceTourLaunchHandled: () => void;
+  forceTipLaunch: boolean;
+  onForceTipLaunchHandled: () => void;
 }) {
   const [activeId, setActiveId] = useState<string>(cards[0].id);
   const [tab, setTab] = useState<StatusTab>("data");
@@ -1029,9 +1048,10 @@ function IndexInner({
   // toolbar's own `top` can shift for reasons (status bar height changing)
   // that a resize observer on the toolbar itself wouldn't catch.
   const toolbarHeight = useElementHeight("[data-toolbar]");
-  const { keepActiveCardCentered } = useSettings();
+  const { keepActiveCardCentered, tourHintsEnabled, tourCompleted } = useSettings();
   const {
     displayMode,
+    setDisplayMode,
     editMode,
     searchQuery,
     filters,
@@ -1044,6 +1064,11 @@ function IndexInner({
     hasData,
     completion,
   } = useDataToolbar();
+  // Rising edge is exactly "the tour is about to (or already did, via its
+  // own forceLaunch) auto-launch" — see TipContext's own comment on why
+  // this is threaded in as a single derived boolean rather than TipContext
+  // reading TourContext directly.
+  const tourWillAutoLaunch = forceTourLaunch || (tourHintsEnabled && !tourCompleted);
 
   const availableKinds = useMemo(
     () => CARD_KINDS_IN_ORDER.filter((k) => cards.some((c) => c.kind === k)),
@@ -1458,68 +1483,80 @@ function IndexInner({
   };
 
   return (
-    <TourProvider
+    <TipProvider
       tab={tab}
       setTab={setTab}
-      hasAnyCards={visibleCards.length > 0}
+      setDisplayMode={setDisplayMode}
       mainSettled={mainSettled}
-      forceLaunch={forceTourLaunch}
-      onForceLaunchHandled={onForceTourLaunchHandled}
+      tourWillAutoLaunch={tourWillAutoLaunch}
+      forceLaunch={forceTipLaunch}
+      onForceLaunchHandled={onForceTipLaunchHandled}
     >
-      <NotificationProvider onActivate={handleNotificationActivate}>
-        <GoalChangeDemoTrigger />
-        <SessionActivityTrigger />
-        {/* App-shell layout: a content-sized header (shrink-0, ordinary CSS
+      <TourProvider
+        tab={tab}
+        setTab={setTab}
+        hasAnyCards={visibleCards.length > 0}
+        mainSettled={mainSettled}
+        forceLaunch={forceTourLaunch}
+        onForceLaunchHandled={onForceTourLaunchHandled}
+      >
+        <NotificationProvider onActivate={handleNotificationActivate}>
+          <GoalChangeDemoTrigger />
+          <SessionActivityTrigger />
+          {/* App-shell layout: a content-sized header (shrink-0, ordinary CSS
           flow) above a fixed-height, internally-scrolling content pane —
           replacing the old whole-page-scrolls-with-a-sticky-header model.
           `h-dvh` (not `h-screen`) matches this codebase's existing
           convention for reasoning about mobile browser chrome (see
           StatusBar's own dvh usage). */}
-        <main className="h-dvh flex flex-col overflow-hidden bg-background">
-          <StatusBar
-            activeTab={tab}
-            onTabChange={handleTabChange}
-            onBack={onBack}
-            onNavigateToCard={handleNavigateToCard}
-            dataToolbar={
-              tab === "data" && (
-                <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
-                  <AnimatePresence initial={false}>
-                    {!sessionActive && (
-                      <motion.div
-                        key="start-session-banner"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{
-                          height: { duration: DATA_BANNER_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] },
-                          opacity: { duration: 0.25 },
-                        }}
-                        className="overflow-hidden border-t border-stone-200/70"
-                      >
+          <main className="h-dvh flex flex-col overflow-hidden bg-background">
+            <StatusBar
+              activeTab={tab}
+              onTabChange={handleTabChange}
+              onBack={onBack}
+              onNavigateToCard={handleNavigateToCard}
+              dataToolbar={
+                tab === "data" && (
+                  <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
+                    <AnimatePresence initial={false}>
+                      {!sessionActive && (
                         <motion.div
-                          initial={{ y: -16 }}
-                          animate={{ y: 0 }}
-                          exit={{ y: -16 }}
+                          key="start-session-banner"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
                           transition={{
-                            duration: DATA_BANNER_EXIT_MS / 1000,
-                            ease: [0.4, 0, 0.2, 1],
+                            height: {
+                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              ease: [0.4, 0, 0.2, 1],
+                            },
+                            opacity: { duration: 0.25 },
                           }}
-                          className="py-1.5 px-8 text-center"
+                          className="overflow-hidden border-t border-stone-200/70"
                         >
-                          <span className="text-sm text-muted-foreground">
-                            Start session to record data.
-                          </span>
+                          <motion.div
+                            initial={{ y: -16 }}
+                            animate={{ y: 0 }}
+                            exit={{ y: -16 }}
+                            transition={{
+                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              ease: [0.4, 0, 0.2, 1],
+                            }}
+                            className="py-1.5 px-8 text-center"
+                          >
+                            <span className="text-sm text-muted-foreground">
+                              Start session to record data.
+                            </span>
+                          </motion.div>
                         </motion.div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </DataToolbar>
-              )
-            }
-          />
+                      )}
+                    </AnimatePresence>
+                  </DataToolbar>
+                )
+              }
+            />
 
-          {/* Every tab's own pane stays permanently mounted — visibility is
+            {/* Every tab's own pane stays permanently mounted — visibility is
             just a `hidden` class toggle, not a `{tab === "x" && ...}`
             conditional render. Switching tabs used to fully unmount
             whichever one you left (losing its scroll position, its filter/
@@ -1531,7 +1568,7 @@ function IndexInner({
             pane gets its own scroll container (rather than one shared one)
             for exactly that reason: a single shared scrollTop can't
             remember five independent positions at once. */}
-          {/* w-full alongside max-w-5xl/mx-auto on every one of these five
+            {/* w-full alongside max-w-5xl/mx-auto on every one of these five
             sections — without it, `mx-auto`'s auto margins make a FLEX ITEM
             (this is a `flex-1` child of `<main>`'s own `flex flex-col`) act
             as `align-self: center` on the cross axis instead of stretching
@@ -1543,17 +1580,17 @@ function IndexInner({
             collapsed the whole section (and every card in it) down to a few
             px with nothing forcing it wide. `w-full` restores the intended
             stretch-then-cap-at-max-w behavior regardless of what's inside. */}
-          <section
-            ref={dataContentRef}
-            onScroll={(e) => {
-              scrollPositionsRef.current.data = e.currentTarget.scrollTop;
-            }}
-            className={cn(
-              "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
-              tab !== "data" && "hidden",
-            )}
-          >
-            {/* -mx-5 fully cancels the section's own px-5, so THIS div's
+            <section
+              ref={dataContentRef}
+              onScroll={(e) => {
+                scrollPositionsRef.current.data = e.currentTarget.scrollTop;
+              }}
+              className={cn(
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                tab !== "data" && "hidden",
+              )}
+            >
+              {/* -mx-5 fully cancels the section's own px-5, so THIS div's
               own edge — the overflow-x-clip boundary below — sits flush
               with the viewport instead of 20px in from it. The inner
               width-transition wrapper then reapplies px-3 on its own, so
@@ -1568,7 +1605,7 @@ function IndexInner({
               — their own tiles already sit close under the toolbar with
               little breathing room built into the tile itself, so the
               fuller list/card margin read as an oversized gap there. */}
-            {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
+              {/* overflow-x-hidden: SINGLE_UNIT_VARIANTS' start-new/discard exit
               slides the whole card grid a full extra width off to the
               side — without this, that briefly inflates the document's
               scrollable width, which some mobile browsers respond to by
@@ -1588,89 +1625,92 @@ function IndexInner({
               forcing rule, so overflow-y actually stays `visible` here —
               while still suppressing the exit slide's scrollWidth
               inflation just as well as `hidden` did. */}
-            <div
-              className={cn(
-                "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
-                isGridDisplayMode ? "pt-4" : "pt-5",
-              )}
-            >
               <div
                 className={cn(
-                  "px-3 transition-[opacity,width] duration-300",
-                  !sessionActive && "opacity-50",
-                  // Card mode's own cards are dense enough (button labels,
-                  // wrapped text) that squeezing them into a narrower column
-                  // reads badly at phone widths, so that mode compresses the
-                  // container itself down to 55% — left-anchored, sm+ only —
-                  // so the still-full-size cards and the open drawer stay
-                  // visible side by side instead of the drawer covering them
-                  // entirely. List rows and both quick-action grids don't need
-                  // that: a list row is already compact and reads fine
-                  // truncated under a half-width overlay, and a grid tile's
-                  // size IS its grid track's width (unlike a card, which has a
-                  // fixed intrinsic size regardless of its track), so shrinking
-                  // the container here would shrink every tile with it — those
-                  // two instead keep this container at full width and let the
-                  // drawer just overlay on top (see DataDetailsDrawer's own
-                  // ~half-viewport default width), with the grids' own tiles
-                  // separately stacking into the left column the drawer
-                  // doesn't cover (see gridClasses/the per-card `gridColumn`
-                  // override below).
-                  drawerOpen && displayMode === "card"
-                    ? "w-full sm:w-[55%] sm:self-start"
-                    : "w-full",
+                  "relative flex flex-col items-center -mx-5 overflow-x-clip overflow-y-visible",
+                  isGridDisplayMode ? "pt-4" : "pt-5",
                 )}
               >
-                {/* Each card's own wrapper carries `layout` (see DataCardList)
+                <div
+                  className={cn(
+                    "px-3 transition-[opacity,width] duration-300",
+                    !sessionActive && "opacity-50",
+                    // Card mode's own cards are dense enough (button labels,
+                    // wrapped text) that squeezing them into a narrower column
+                    // reads badly at phone widths, so that mode compresses the
+                    // container itself down to 55% — left-anchored, sm+ only —
+                    // so the still-full-size cards and the open drawer stay
+                    // visible side by side instead of the drawer covering them
+                    // entirely. List rows and both quick-action grids don't need
+                    // that: a list row is already compact and reads fine
+                    // truncated under a half-width overlay, and a grid tile's
+                    // size IS its grid track's width (unlike a card, which has a
+                    // fixed intrinsic size regardless of its track), so shrinking
+                    // the container here would shrink every tile with it — those
+                    // two instead keep this container at full width and let the
+                    // drawer just overlay on top (see DataDetailsDrawer's own
+                    // ~half-viewport default width), with the grids' own tiles
+                    // separately stacking into the left column the drawer
+                    // doesn't cover (see gridClasses/the per-card `gridColumn`
+                    // override below).
+                    drawerOpen && displayMode === "card"
+                      ? "w-full sm:w-[55%] sm:self-start"
+                      : "w-full",
+                  )}
+                >
+                  {/* Each card's own wrapper carries `layout` (see DataCardList)
                   so switching card/list/grid morphs every box from one
                   size/shape to the other in place, rather than either
                   snapping instantly or crossfading the whole list as one
                   flat unit — that requires the wrapper to persist across
                   the switch, which an outer keyed remount here would break. */}
-                <DataCardList
-                  cardsGen={cardsGen}
-                  cardsAnimKind={cardsAnimKind}
-                  transitionHidden={cardsHidden}
-                  visibleCards={visibleCards}
-                  activeId={activeId}
-                  setActiveId={setActiveId}
-                  cardRefs={cardRefs}
-                  editMode={editMode}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                  hidden={hidden}
-                  toggleHidden={toggleHidden}
-                  order={order}
-                  setOrder={setOrder}
-                  displayMode={displayMode}
-                  suppressCardLayout={suppressCardLayout}
-                  drawerOpen={drawerOpen}
-                  drawerSlideOpen={drawerSlideOpen}
-                  onDrawerOpenChange={setDrawerOpen}
-                  drawerWidthMode={drawerWidthMode}
-                  onDrawerWidthModeChange={setDrawerWidthMode}
-                  stickyTop={stickyTop}
-                  toolbarHeight={toolbarHeight}
-                  tab={tab}
-                />
+                  <DataCardList
+                    cardsGen={cardsGen}
+                    cardsAnimKind={cardsAnimKind}
+                    transitionHidden={cardsHidden}
+                    visibleCards={visibleCards}
+                    activeId={activeId}
+                    setActiveId={setActiveId}
+                    cardRefs={cardRefs}
+                    editMode={editMode}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    hidden={hidden}
+                    toggleHidden={toggleHidden}
+                    order={order}
+                    setOrder={setOrder}
+                    displayMode={displayMode}
+                    suppressCardLayout={suppressCardLayout}
+                    drawerOpen={drawerOpen}
+                    drawerSlideOpen={drawerSlideOpen}
+                    onDrawerOpenChange={setDrawerOpen}
+                    drawerWidthMode={drawerWidthMode}
+                    onDrawerWidthModeChange={setDrawerWidthMode}
+                    stickyTop={stickyTop}
+                    toolbarHeight={toolbarHeight}
+                    tab={tab}
+                  />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section
-            ref={infoContentRef}
-            onScroll={(e) => {
-              scrollPositionsRef.current.info = e.currentTarget.scrollTop;
-            }}
-            className={cn(
-              "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
-              tab !== "info" && "hidden",
-            )}
-          >
-            <ClientInfoPane onViewSchedule={() => setTab("schedule")} contentRef={infoContentRef} />
-          </section>
+            <section
+              ref={infoContentRef}
+              onScroll={(e) => {
+                scrollPositionsRef.current.info = e.currentTarget.scrollTop;
+              }}
+              className={cn(
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                tab !== "info" && "hidden",
+              )}
+            >
+              <ClientInfoPane
+                onViewSchedule={() => setTab("schedule")}
+                contentRef={infoContentRef}
+              />
+            </section>
 
-          {/* No top padding on the scroll container itself (see the other
+            {/* No top padding on the scroll container itself (see the other
             four sections' own pt-0) — ScheduleView's own sticky toggles bar
             sticks to this section's padding box, and top padding on a
             sticky element's scrolling ancestor doesn't get covered by it
@@ -1678,52 +1718,54 @@ function IndexInner({
             padding gap above the bar. The equivalent visual gap now lives
             on ScheduleView's own inner wrapper instead (plain margin-top
             territory, well below where the sticky bar attaches). */}
-          <section
-            ref={scheduleContentRef}
-            onScroll={(e) => {
-              scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
-            }}
-            className={cn(
-              "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
-              tab !== "schedule" && "hidden",
-            )}
-          >
-            <ScheduleView
-              scrollTargetId={scheduleScrollId}
-              onScrolledToTarget={() => setScheduleScrollId(null)}
-              contentRef={scheduleContentRef}
-            />
-          </section>
+            <section
+              ref={scheduleContentRef}
+              onScroll={(e) => {
+                scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
+              }}
+              className={cn(
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                tab !== "schedule" && "hidden",
+              )}
+            >
+              <ScheduleView
+                scrollTargetId={scheduleScrollId}
+                onScrolledToTarget={() => setScheduleScrollId(null)}
+                contentRef={scheduleContentRef}
+              />
+            </section>
 
-          <section
-            ref={notificationsContentRef}
-            onScroll={(e) => {
-              scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
-            }}
-            className={cn(
-              "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
-              tab !== "notifications" && "hidden",
-            )}
-          >
-            <NotificationsPane contentRef={notificationsContentRef} />
-          </section>
+            <section
+              ref={notificationsContentRef}
+              onScroll={(e) => {
+                scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
+              }}
+              className={cn(
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                tab !== "notifications" && "hidden",
+              )}
+            >
+              <NotificationsPane contentRef={notificationsContentRef} />
+            </section>
 
-          <section
-            ref={settingsContentRef}
-            onScroll={(e) => {
-              scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
-            }}
-            className={cn(
-              "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
-              tab !== "settings" && "hidden",
-            )}
-          >
-            <SettingsPane contentRef={settingsContentRef} />
-          </section>
-        </main>
-      </NotificationProvider>
-      <TourOverlay />
-    </TourProvider>
+            <section
+              ref={settingsContentRef}
+              onScroll={(e) => {
+                scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
+              }}
+              className={cn(
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                tab !== "settings" && "hidden",
+              )}
+            >
+              <SettingsPane contentRef={settingsContentRef} />
+            </section>
+          </main>
+        </NotificationProvider>
+        <TourOverlay />
+      </TourProvider>
+      <TipOverlay />
+    </TipProvider>
   );
 }
 

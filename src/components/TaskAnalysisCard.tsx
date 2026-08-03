@@ -114,7 +114,11 @@ function StepPlanBadge({ level }: { level: StepPlanLevel | null | undefined }) {
   const isIndependent = level === "Independent";
   const Icon = isIndependent ? Check : HandHelping;
   return (
-    <span title={`Expected: ${level}`} className="shrink-0 grid place-items-center text-stone-500">
+    <span
+      title={`Expected: ${level}`}
+      data-tour="step-plan-badge"
+      className="shrink-0 grid place-items-center text-stone-500"
+    >
       <Icon className="size-4.5" strokeWidth={isIndependent ? 2.5 : 1.75} />
     </span>
   );

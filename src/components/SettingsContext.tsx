@@ -76,6 +76,17 @@ const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 const DEFAULT_TOUR_HINTS_ENABLED = true;
 const DEFAULT_TOUR_COMPLETED = true;
 
+// The "Did you know?" tip rotation (TipContext.tsx). Unlike the tour,
+// there's no "completed" concept to gate on — tips are meant to keep
+// resurfacing every visit, so `tipsEnabled` just suppresses the auto-show
+// entirely when off. `tipBag`/`lastShownTipId` are the shuffle bag's own
+// persisted state (see tipShuffleBag.ts) — persisted rather than kept in
+// memory specifically so the anti-repeat guarantee survives a reload
+// landing right as the bag empties, not just a same-session reshuffle.
+const DEFAULT_TIPS_ENABLED = true;
+const DEFAULT_TIP_BAG: string[] = [];
+const DEFAULT_LAST_SHOWN_TIP_ID: string | null = null;
+
 const DEFAULT_DATA_VIEW: DisplayMode = "card";
 
 export type ColorTheme = "default" | "alt";
@@ -146,6 +157,22 @@ interface SettingsContextValue {
    *  doesn't auto-launch again on every reload. */
   tourCompleted: boolean;
   setTourCompleted: (v: boolean) => void;
+  /** Whether the "Did you know?" tip rotation should auto-show on the next
+   *  welcome→main transition. Off just suppresses the automatic show —
+   *  "Show a tip now" in Settings can still trigger one manually either
+   *  way. */
+  tipsEnabled: boolean;
+  setTipsEnabled: (v: boolean) => void;
+  /** Remaining shuffled tip ids for the current cycle (see
+   *  drawNextTipId in tipShuffleBag.ts). */
+  tipBag: string[];
+  /** The most recently shown tip id, so a fresh reshuffle can't
+   *  immediately repeat it. */
+  lastShownTipId: string | null;
+  /** Every real draw updates `tipBag`/`lastShownTipId` together — one
+   *  setter means one state update (and one save-effect firing) per draw
+   *  instead of two independent ones landing separately. */
+  recordTipDraw: (id: string, remainingBag: string[]) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -166,6 +193,9 @@ interface StoredShape {
   colorTheme: ColorTheme;
   tourHintsEnabled: boolean;
   tourCompleted: boolean;
+  tipsEnabled: boolean;
+  tipBag: string[];
+  lastShownTipId: string | null;
 }
 
 function loadStored(): StoredShape {
@@ -179,6 +209,9 @@ function loadStored(): StoredShape {
     colorTheme: DEFAULT_COLOR_THEME,
     tourHintsEnabled: DEFAULT_TOUR_HINTS_ENABLED,
     tourCompleted: DEFAULT_TOUR_COMPLETED,
+    tipsEnabled: DEFAULT_TIPS_ENABLED,
+    tipBag: DEFAULT_TIP_BAG,
+    lastShownTipId: DEFAULT_LAST_SHOWN_TIP_ID,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -195,6 +228,9 @@ function loadStored(): StoredShape {
       colorTheme: parsed.colorTheme ?? DEFAULT_COLOR_THEME,
       tourHintsEnabled: parsed.tourHintsEnabled ?? DEFAULT_TOUR_HINTS_ENABLED,
       tourCompleted: parsed.tourCompleted ?? DEFAULT_TOUR_COMPLETED,
+      tipsEnabled: parsed.tipsEnabled ?? DEFAULT_TIPS_ENABLED,
+      tipBag: parsed.tipBag ?? DEFAULT_TIP_BAG,
+      lastShownTipId: parsed.lastShownTipId ?? DEFAULT_LAST_SHOWN_TIP_ID,
     };
   } catch {
     return fallback;
@@ -226,6 +262,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [colorTheme, setColorThemeState] = useState<ColorTheme>(DEFAULT_COLOR_THEME);
   const [tourHintsEnabled, setTourHintsEnabled] = useState(DEFAULT_TOUR_HINTS_ENABLED);
   const [tourCompleted, setTourCompleted] = useState(DEFAULT_TOUR_COMPLETED);
+  const [tipsEnabled, setTipsEnabled] = useState(DEFAULT_TIPS_ENABLED);
+  const [tipBag, setTipBag] = useState<string[]>(DEFAULT_TIP_BAG);
+  const [lastShownTipId, setLastShownTipId] = useState<string | null>(DEFAULT_LAST_SHOWN_TIP_ID);
 
   useEffect(() => {
     const stored = loadStored();
@@ -238,6 +277,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setColorThemeState(stored.colorTheme);
     setTourHintsEnabled(stored.tourHintsEnabled);
     setTourCompleted(stored.tourCompleted);
+    setTipsEnabled(stored.tipsEnabled);
+    setTipBag(stored.tipBag);
+    setLastShownTipId(stored.lastShownTipId);
     // Already applied pre-paint by __root.tsx's blocking script — this is
     // just keeping the two in sync, a no-op in the common case.
     applyColorThemeToDom(stored.colorTheme);
@@ -255,6 +297,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       colorTheme,
       tourHintsEnabled,
       tourCompleted,
+      tipsEnabled,
+      tipBag,
+      lastShownTipId,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   }, [
@@ -267,6 +312,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     colorTheme,
     tourHintsEnabled,
     tourCompleted,
+    tipsEnabled,
+    tipBag,
+    lastShownTipId,
   ]);
 
   const setValue = useCallback((key: string, value: number) => {
@@ -288,9 +336,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setColorTheme(DEFAULT_COLOR_THEME);
     setTourHintsEnabled(DEFAULT_TOUR_HINTS_ENABLED);
     setTourCompleted(DEFAULT_TOUR_COMPLETED);
+    setTipsEnabled(DEFAULT_TIPS_ENABLED);
+    setTipBag(DEFAULT_TIP_BAG);
+    setLastShownTipId(DEFAULT_LAST_SHOWN_TIP_ID);
   }, [setColorTheme]);
   const resetOne = useCallback((key: string) => {
     setValues((v) => ({ ...v, [key]: DEFAULTS[key] }));
+  }, []);
+  const recordTipDraw = useCallback((id: string, remainingBag: string[]) => {
+    setLastShownTipId(id);
+    setTipBag(remainingBag);
   }, []);
 
   const value = useMemo(
@@ -315,6 +370,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setTourHintsEnabled,
       tourCompleted,
       setTourCompleted,
+      tipsEnabled,
+      setTipsEnabled,
+      tipBag,
+      lastShownTipId,
+      recordTipDraw,
     }),
     [
       values,
@@ -330,6 +390,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setColorTheme,
       tourHintsEnabled,
       tourCompleted,
+      tipsEnabled,
+      tipBag,
+      lastShownTipId,
+      recordTipDraw,
     ],
   );
 

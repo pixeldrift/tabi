@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { RotateCcw, Volume2 } from "lucide-react";
+import { Lightbulb, RotateCcw, Volume2 } from "lucide-react";
 import {
   ALARM_SOUND_OPTIONS,
   COLOR_THEME_OPTIONS,
@@ -15,6 +15,7 @@ import { IconsShowcase } from "./IconsShowcase";
 import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { useTour } from "./TourContext";
+import { useTip } from "./TipContext";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -80,8 +81,11 @@ export function SettingsPane({
     setColorTheme,
     tourHintsEnabled,
     setTourHintsEnabled,
+    tipsEnabled,
+    setTipsEnabled,
   } = useSettings();
   const { start: startTour } = useTour();
+  const { nextTip } = useTip();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
   const jumpSections = [
     { id: "settings-appearance", label: "Appearance" },
@@ -390,6 +394,33 @@ export function SettingsPane({
           >
             <RotateCcw className="size-3.5" />
             Replay welcome tour
+          </Button>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="tipsEnabled" className="text-sm font-medium">
+                Show "Did you know?" tips
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Surface a rotating tip about a less-obvious feature each time the app opens.
+              </p>
+            </div>
+            <Switch
+              id="tipsEnabled"
+              checked={tipsEnabled}
+              onCheckedChange={setTipsEnabled}
+              className="shrink-0"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={nextTip}
+            className="mt-3 -ml-2 text-muted-foreground"
+          >
+            <Lightbulb className="size-3.5" />
+            Show a tip now
           </Button>
         </section>
 

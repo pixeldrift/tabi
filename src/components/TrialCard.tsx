@@ -599,6 +599,7 @@ export function TrialCard({
             }}
             aria-expanded={expanded}
             aria-label={expanded ? "Show standard view" : "Show all trials"}
+            data-tour="twirldown"
             className="-ml-1.5 mt-[0.5px] shrink-0 grid place-items-center rounded-md p-0.5 text-blue-500 transition-colors hover:bg-blue-50 hover:text-blue-600"
           >
             <TimeChevronIcon
@@ -826,6 +827,7 @@ export function TrialCard({
                           </div>
                           {minTrials !== undefined && i < minTrials && !t && (
                             <span
+                              data-tour="trial-min-dot"
                               className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
                               aria-hidden
                             />
