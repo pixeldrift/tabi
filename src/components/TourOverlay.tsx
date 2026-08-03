@@ -1,7 +1,5 @@
-import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { SpotlightCallout } from "./SpotlightCallout";
+import { SpotlightCallout, SpotlightCheckbox } from "./SpotlightCallout";
 import { useTour } from "./TourContext";
 
 /** Thin wrapper around the shared SpotlightCallout for the guided tour's
@@ -59,23 +57,12 @@ export function TourOverlay() {
               it re-arms the tour to auto-launch again on the next visit
               instead of the normal one-and-done behavior, read once at
               finish/skip. */}
-          <label className="mt-3 flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground">
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={showNextTime}
-              onClick={() => setShowNextTime(!showNextTime)}
-              className={cn(
-                "grid size-4 shrink-0 place-items-center rounded border-2 transition-colors",
-                showNextTime
-                  ? "border-blue-500 bg-blue-500 text-white"
-                  : "border-stone-300 bg-white",
-              )}
-            >
-              {showNextTime && <Check className="size-3" strokeWidth={3} />}
-            </button>
-            Show tour next time
-          </label>
+          <SpotlightCheckbox
+            checked={showNextTime}
+            onChange={setShowNextTime}
+            label="Show tour next time"
+            className="mt-3"
+          />
         </div>
       }
     />
