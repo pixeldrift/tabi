@@ -521,6 +521,7 @@ function NotificationRow({
           <div
             role="button"
             tabIndex={0}
+            data-tour="timestamp-alert-jump"
             // Timestamp's own "time to check" alert has no sourceRef to
             // activate — tapping it instead does what its old standalone
             // "Now" button used to (jump straight to the card), rather than
@@ -992,6 +993,7 @@ function NotificationListRow({
   return (
     <motion.div
       layout
+      data-tour="notification-swipe-row"
       initial={{ opacity: 0, y: 12, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeOut" } }}
@@ -1029,6 +1031,7 @@ function NotificationListRow({
               onClick={() => {
                 if (!wasDragging.current) onActivate();
               }}
+              data-tour="notification-view-schedule"
               className="text-xs font-medium text-blue-500 hover:text-blue-600"
             >
               {viewLabel}

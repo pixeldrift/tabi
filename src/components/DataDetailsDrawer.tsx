@@ -861,6 +861,7 @@ export function DataDetailsDrawer({
           // corner's sharp square edge behind the panel rather than
           // leaving it exposed. 2px blue borders to match the panel/tab's
           // own outline.
+          data-tour="drawer-card-indicator"
           className="absolute -left-[13px] size-6 -translate-y-1/2 rotate-45 border-l-2 border-b-2 border-blue-400/80 bg-background shadow-[-2px_2px_3px_-1px_rgba(0,0,0,0.15)]"
           style={{ top: clampedArrowTop }}
           aria-hidden
@@ -886,6 +887,7 @@ export function DataDetailsDrawer({
               : "Active card is below — scroll to it"
           }
           title="Scroll to active card"
+          data-tour="drawer-card-indicator"
           className={cn(
             // Negative left offset (not left-3) — same treatment as the
             // diamond arrow it replaces (-left-[13px]) and the pull tab
@@ -985,6 +987,7 @@ export function DataDetailsDrawer({
                     : "Expand drawer to full width"
                 }
                 aria-expanded={widthMode === "full"}
+                data-tour="drawer-width-toggle"
                 className="-ml-4 grid shrink-0 place-items-center size-7 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <TimeChevronIcon
@@ -1004,6 +1007,7 @@ export function DataDetailsDrawer({
               }}
               disabled={!onPrevCard || exitDir !== null}
               aria-label="Previous card"
+              data-tour="drawer-prev-next"
               className="grid shrink-0 place-items-center size-7 rounded-full border border-border text-blue-500 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronLeft className="size-4" />

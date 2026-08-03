@@ -1303,6 +1303,7 @@ export function ScheduleView({
             size="sm"
             onClick={scrollToNow}
             disabled={editMode}
+            data-tour="schedule-now-button"
             className={cn(
               "mt-0.5 h-6 text-[10px] uppercase tracking-wide text-white rounded-full px-2 py-0 gap-1",
               !currentItem || editMode
@@ -2310,6 +2311,7 @@ function AlertCycle({ mode, onChange }: { mode: AlertMode; onChange: (m: AlertMo
     <button
       type="button"
       onClick={() => onChange(next[mode])}
+      data-tour="schedule-alert-cycle"
       className={cn(
         "size-7 grid place-content-center rounded-full transition-colors",
         mode === "off" ? "text-stone-300" : "text-blue-600",

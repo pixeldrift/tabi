@@ -1158,6 +1158,7 @@ function ActiveDurationIndicator({
         <motion.div
           key="duration-indicator"
           onClick={handleClick}
+          data-tour="active-duration-indicator"
           aria-label={
             count > 1 ? `Jump to next running timer (${count} active)` : `Jump to running timer`
           }
@@ -1282,6 +1283,7 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
       {visible && (
         <motion.div
           key="presence-indicator"
+          data-tour="presence-indicator"
           layout="position"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1938,6 +1940,7 @@ function ExpandedSessionBox({
                 <button
                   onClick={onToggleReviewMode}
                   aria-pressed={reviewModeUnlocked}
+                  data-tour="review-mode-toggle"
                   className={cn(
                     "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
                     reviewModeUnlocked

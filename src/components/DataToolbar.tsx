@@ -271,6 +271,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
           <button
             type="button"
             onClick={cycleBehaviorFilter}
+            data-tour="behavior-filter-toggle"
             aria-pressed={filters.behaviorFilter !== "both"}
             aria-label={
               filters.behaviorFilter === "interfering"
@@ -307,6 +308,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
             aria-pressed={editMode}
             aria-label={editMode ? "Done editing" : "Edit cards"}
             title={editMode ? "Done editing" : "Edit cards"}
+            data-tour="edit-mode-toggle"
             className={cn(
               "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
               editMode
@@ -441,6 +443,7 @@ function FilterPopoverContent({
           }
           selected={filters.dataFilter !== "all"}
           onClick={cycleDataFilter}
+          dataTour="filter-cycle-chip"
         />
         <ToggleChip
           icon={
@@ -526,17 +529,20 @@ export function ToggleChip({
   label,
   selected,
   onClick,
+  dataTour,
 }: {
   icon?: React.ReactNode;
   label: string;
   selected: boolean;
   onClick: () => void;
+  dataTour?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
+      data-tour={dataTour}
       className={cn(
         "flex flex-1 items-center justify-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
         selected
