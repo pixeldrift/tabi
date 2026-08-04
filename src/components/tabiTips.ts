@@ -271,4 +271,12 @@ export const TABI_TIPS: TabiTip[] = [
     title: "Your data is safe",
     body: "Even with a spotty connection, Tabi auto-syncs frequently in the background. Tap the cloud to force an instant save for peace of mind, or tap the status for precise details.",
   },
+  {
+    id: "timestamp-interval-progress",
+    tab: "data",
+    viewMode: "card",
+    selector: '[data-tour="timestamp-interval-progress"]',
+    title: "See where you are in the interval",
+    body: "Timestamp cards show a live progress bar comparing the current elapsed session time to each logging interval, so you always know when the next period is due and it's easy to mark.",
+  },
 ];

@@ -853,6 +853,7 @@ function IntervalTimeline({
           the viewport — otherwise, once the viewed interval is centered,
           gray backdrop would show through before the session's own start. */}
       <div
+        data-tour="timestamp-interval-progress"
         className="relative overflow-hidden mt-0.5"
         style={{ height: BAR_H, ...HORIZONTAL_FADE_MASK }}
       >
