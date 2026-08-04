@@ -32,9 +32,9 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "tabs",
     tab: "data",
-    selector: '[data-tour="tab-data"]',
+    selector: '[data-tour="tab-bar"]',
     title: "Five main areas",
-    body: "Data, Client Info, Schedule, Notifications, and Settings — everything you need for a session lives in one of these five tabs.",
+    body: "Client Info, Data, Schedule, Notifications, and Settings — everything you need for a session lives in one of these five tabs.",
   },
   {
     id: "view-mode",

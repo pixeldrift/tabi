@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SpotlightRect, SpotlightTargetStatus } from "@/hooks/use-spotlight-target-rect";
 
@@ -28,6 +28,7 @@ export function SpotlightCallout({
   contentKey,
   targetRect,
   targetStatus,
+  header,
   title,
   body,
   onDismiss,
@@ -42,6 +43,14 @@ export function SpotlightCallout({
   contentKey: string;
   targetRect: SpotlightRect | null;
   targetStatus: SpotlightTargetStatus;
+  /** Optional fixed title bar (icon + label) above a divider, same
+   *  treatment as StatusBar's own "Session Data Status" popover — the
+   *  dismiss button moves up into this row instead of sitting next to
+   *  `title`. Only the tip engine uses this today (a constant "Did you
+   *  know…?" header, since the per-tip `title` becomes a subtitle below
+   *  the divider instead); the tour's own per-step title keeps the
+   *  simpler undivided layout by leaving this unset. */
+  header?: { icon: ReactNode; label: string };
   title: string;
   body: string;
   onDismiss: () => void;
@@ -130,7 +139,7 @@ export function SpotlightCallout({
 
       <div
         ref={calloutRef}
-        className="fixed rounded-2xl border-2 border-blue-400 bg-white p-4 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)] transition-opacity duration-150"
+        className="fixed rounded-2xl border-2 border-blue-400 bg-white shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)] transition-opacity duration-150"
         style={{
           top: calloutTop,
           left: calloutLeft,
@@ -150,21 +159,100 @@ export function SpotlightCallout({
           />
         )}
 
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-base leading-tight">{title}</h3>
-          <button
-            type="button"
-            aria-label={dismissLabel}
-            onClick={onDismiss}
-            className="-mr-1 -mt-1 grid size-6 shrink-0 place-items-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <p className="mt-1 text-xs leading-snug text-muted-foreground/80">{body}</p>
-        <div className="mt-4 flex items-center justify-between gap-2">{footer}</div>
+        {header ? (
+          <>
+            {/* Same title-bar-over-a-divider treatment as StatusBar's own
+                "Session Data Status" popover — icon + label as flex
+                siblings of the close button, not independently padded, so
+                everything centers on the row's own height. */}
+            <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-border py-1 pl-4 pr-2">
+              <div className="flex items-center gap-2">
+                {header.icon}
+                <h3 className="font-display text-base leading-tight whitespace-nowrap">
+                  {header.label}
+                </h3>
+              </div>
+              <button
+                type="button"
+                aria-label={dismissLabel}
+                onClick={onDismiss}
+                className="grid size-7 shrink-0 place-items-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="font-display text-sm font-semibold leading-tight">{title}</p>
+              <p className="mt-1 text-xs leading-snug text-muted-foreground/80">{body}</p>
+              <div className="mt-4 flex items-center justify-between gap-2">{footer}</div>
+            </div>
+          </>
+        ) : (
+          <div className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-display text-base leading-tight">{title}</h3>
+              <button
+                type="button"
+                aria-label={dismissLabel}
+                onClick={onDismiss}
+                className="-mr-1 -mt-1 grid size-6 shrink-0 place-items-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <p className="mt-1 text-xs leading-snug text-muted-foreground/80">{body}</p>
+            <div className="mt-4 flex items-center justify-between gap-2">{footer}</div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Small hand-rolled checkbox (this codebase has no shadcn Checkbox
+ *  primitive yet, and pulling in @radix-ui/react-checkbox for one control
+ *  wasn't worth it) shared by the tour's "Show tour next time" and the tip
+ *  engine's "Show Tabi Tips on startup" — same rounded-border-square +
+ *  Check idiom as the app's other custom-built toggles (ToggleChip, the
+ *  Data/tip default pickers). */
+export function SpotlightCheckbox({
+  checked,
+  onChange,
+  label,
+  className,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  className?: string;
+}) {
+  // A single <button role="checkbox">, not a <label> wrapping a nested
+  // <button> — a click landing on a labelable descendant (this button IS
+  // one) still bubbles into the label's own native click-forwarding
+  // behavior in practice, double-toggling on one click. One interactive
+  // element for the whole row sidesteps that entirely, and is the more
+  // standard shape for a custom ARIA checkbox anyway.
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground",
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-4 shrink-0 place-items-center rounded border-2 transition-colors",
+          checked ? "border-blue-500 bg-blue-500 text-white" : "border-stone-300 bg-white",
+        )}
+      >
+        {checked && <Check className="size-3" strokeWidth={3} />}
+      </span>
+      {label}
+    </button>
   );
 }

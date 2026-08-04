@@ -780,7 +780,7 @@ export function StatusBar({
                 role="tablist"
                 aria-label="Session sections"
               >
-                <div className="flex items-end gap-0.5 sm:gap-1 -ml-3">
+                <div className="flex items-end gap-0.5 sm:gap-1 -ml-3" data-tour="tab-bar">
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;

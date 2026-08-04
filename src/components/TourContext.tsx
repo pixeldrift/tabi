@@ -28,6 +28,12 @@ interface TourContextValue {
   next: () => void;
   back: () => void;
   skip: () => void;
+  /** The tour's own "Show tour next time" checkbox — deselected each time
+   *  the tour (re)starts, read once at finish/skip to decide whether this
+   *  run should re-arm tourCompleted for the next visit instead of the
+   *  normal one-and-done behavior. See finish()'s own comment. */
+  showNextTime: boolean;
+  setShowNextTime: (v: boolean) => void;
 }
 
 const TourContext = createContext<TourContextValue | null>(null);
@@ -81,11 +87,21 @@ export function TourProvider({
   // why the measuring hook needs a fresh restart signal independent of the
   // selector string itself.
   const [generation, setGeneration] = useState(0);
+  // Deselected by default on every fresh start — see the checkbox's own
+  // rendering in TourOverlay. Plain state (not a ref) since it drives a
+  // visible checked state.
+  const [showNextTime, setShowNextTime] = useState(false);
 
+  // Checking "Show tour next time" re-arms tourCompleted so the tour
+  // auto-launches again on the very next mainSettled edge, instead of the
+  // normal one-and-done behavior (tourCompleted -> true, no auto-relaunch
+  // until manually replayed from Settings). Leaves tourHintsEnabled alone
+  // either way — this only ever un-does "already seen it," it doesn't
+  // override a deliberate Settings toggle to turn hints off entirely.
   const finish = useCallback(() => {
     setActive(false);
-    setTourCompleted(true);
-  }, [setTourCompleted]);
+    setTourCompleted(!showNextTime);
+  }, [setTourCompleted, showNextTime]);
 
   const start = useCallback(() => {
     const ctx: TourStepContext = { hasAnyCards };
@@ -93,6 +109,7 @@ export function TourProvider({
     setResolvedSteps(applicable);
     setStepIndex(0);
     setActive(true);
+    setShowNextTime(false);
     setGeneration((g) => g + 1);
   }, [hasAnyCards]);
 
@@ -164,6 +181,8 @@ export function TourProvider({
       next,
       back,
       skip,
+      showNextTime,
+      setShowNextTime,
     }),
     [
       active,
@@ -176,6 +195,7 @@ export function TourProvider({
       next,
       back,
       skip,
+      showNextTime,
     ],
   );
 

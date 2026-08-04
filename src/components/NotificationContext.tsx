@@ -10,6 +10,8 @@ import {
 } from "react";
 import { useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound, primeAlarmAudio } from "@/lib/alarmSounds";
+import { useTour } from "./TourContext";
+import { useTip } from "./TipContext";
 
 export type NotificationKind =
   | "alert-now"
@@ -322,6 +324,17 @@ export function NotificationProvider({
   const prefs = useUserPrefs();
   const [notifications, setNotifications] = useState<Notification[]>(seedNotifications);
   const dedupeRef = useRef<Map<string, string>>(new Map()); // dedupeKey -> id
+  // NotificationProvider sits inside both TourProvider and TipProvider (see
+  // routes/index.tsx), so it can read this directly rather than routing a
+  // prop down. A push that lands while either overlay owns the screen is
+  // nobody's-there-to-act-on-it in exactly the same sense as an alert
+  // firing with no one in the running session (see push()'s own `live`
+  // resolution below) — same treatment: straight into "archived," no
+  // banner popping the layout out from under the tour/tip spotlight, no
+  // chime competing with it, still fully present in the Notifications tab.
+  const { active: tourActive } = useTour();
+  const { active: tipActive } = useTip();
+  const notificationsSuppressed = tourActive || tipActive;
   const onActivateRef = useRef(onActivate);
   useEffect(() => {
     onActivateRef.current = onActivate;
@@ -402,68 +415,75 @@ export function NotificationProvider({
     [clear],
   );
 
-  const push = useCallback((input: PushInput): string | null => {
-    const dedupeKey = input.dedupeKey ?? input.id;
-    if (dedupeKey) {
-      const existingId = dedupeRef.current.get(dedupeKey);
-      if (existingId) {
-        let stillLive = false;
-        setNotifications((prev) => {
-          const found = prev.find((n) => n.id === existingId);
-          if (found && found.state !== "archived") stillLive = true;
-          return prev;
-        });
-        if (stillLive) return null;
+  const push = useCallback(
+    (input: PushInput): string | null => {
+      const dedupeKey = input.dedupeKey ?? input.id;
+      if (dedupeKey) {
+        const existingId = dedupeRef.current.get(dedupeKey);
+        if (existingId) {
+          let stillLive = false;
+          setNotifications((prev) => {
+            const found = prev.find((n) => n.id === existingId);
+            if (found && found.state !== "archived") stillLive = true;
+            return prev;
+          });
+          if (stillLive) return null;
+        }
       }
-    }
-    const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    // General (non-alert) notifications default to a brief 4s auto-fade —
-    // a technician glances at the toast, then it clears itself, rather
-    // than sitting in the transient banner until manually dismissed.
-    // Alerts get no blanket default here; each of their own call sites
-    // (ScheduleView) already decides via Settings' configured duration.
-    // `null` opts a specific push out of the default entirely.
-    const autofadeMs =
-      input.autofadeMs === null
-        ? undefined
-        : (input.autofadeMs ?? (isAlert(input.kind) ? undefined : DEFAULT_GENERAL_AUTOFADE_MS));
-    const next: Notification = {
-      id,
-      kind: input.kind,
-      title: input.title,
-      body: input.body,
-      icon: input.icon,
-      createdAt: Date.now(),
-      autofadeMs,
-      allowSnooze: input.allowSnooze,
-      sourceRef: input.sourceRef,
-      activityAt: input.activityAt,
-      soundOverride: input.soundOverride,
-      timestampCheck: input.timestampCheck,
-      excludeFromHistory: input.excludeFromHistory,
-      state: input.live === false ? "archived" : "live",
-    };
-    if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
-    setNotifications((prev) => {
-      const trimmed =
-        prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
-      return [...trimmed, next];
-    });
-    // Alert kinds get their own repeating chime for as long as they're
-    // visible in the banner (see NotificationBar's own effect, keyed to
-    // that row actually being on screen), using the Settings-configured
-    // alarm style — that preference is specifically about how urgent an
-    // actual alarm should sound, not what a routine "phase changed"/"you
-    // joined" toast plays. Everything else always gets the short chime
-    // style, fixed, regardless of what the user picked as their alarm
-    // default. Neither applies to one pushed straight into "archived" —
-    // there's no banner row for it to chime/vibrate alongside.
-    if (input.live !== false && !isAlert(input.kind)) {
-      playAlarmSound("chime");
-      vibrate(40);
-    }
-    return id;
-  }, []);
+      const id = input.id ?? `n_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      // General (non-alert) notifications default to a brief 4s auto-fade —
+      // a technician glances at the toast, then it clears itself, rather
+      // than sitting in the transient banner until manually dismissed.
+      // Alerts get no blanket default here; each of their own call sites
+      // (ScheduleView) already decides via Settings' configured duration.
+      // `null` opts a specific push out of the default entirely.
+      const autofadeMs =
+        input.autofadeMs === null
+          ? undefined
+          : (input.autofadeMs ?? (isAlert(input.kind) ? undefined : DEFAULT_GENERAL_AUTOFADE_MS));
+      // A tour/tip in progress collapses to the exact same "nobody's there to
+      // act on it" case a running-but-unattended session already handles —
+      // see the `live` prop's own doc comment above.
+      const live = input.live !== false && !notificationsSuppressed;
+      const next: Notification = {
+        id,
+        kind: input.kind,
+        title: input.title,
+        body: input.body,
+        icon: input.icon,
+        createdAt: Date.now(),
+        autofadeMs,
+        allowSnooze: input.allowSnooze,
+        sourceRef: input.sourceRef,
+        activityAt: input.activityAt,
+        soundOverride: input.soundOverride,
+        timestampCheck: input.timestampCheck,
+        excludeFromHistory: input.excludeFromHistory,
+        state: live ? "live" : "archived",
+      };
+      if (dedupeKey) dedupeRef.current.set(dedupeKey, id);
+      setNotifications((prev) => {
+        const trimmed =
+          prev.length >= MAX_RETAINED ? prev.slice(prev.length - MAX_RETAINED + 1) : prev;
+        return [...trimmed, next];
+      });
+      // Alert kinds get their own repeating chime for as long as they're
+      // visible in the banner (see NotificationBar's own effect, keyed to
+      // that row actually being on screen), using the Settings-configured
+      // alarm style — that preference is specifically about how urgent an
+      // actual alarm should sound, not what a routine "phase changed"/"you
+      // joined" toast plays. Everything else always gets the short chime
+      // style, fixed, regardless of what the user picked as their alarm
+      // default. Neither applies to one pushed straight into "archived" —
+      // there's no banner row for it to chime/vibrate alongside.
+      if (live && !isAlert(input.kind)) {
+        playAlarmSound("chime");
+        vibrate(40);
+      }
+      return id;
+    },
+    [notificationsSuppressed],
+  );
 
   // Tick: handle autofade expiration + snooze re-fire.
   useEffect(() => {
