@@ -97,13 +97,16 @@ interface StatusBarProps {
   onNavigateToCard?: (id: string) => void;
 }
 
-const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { id: "info", label: "Client Info", icon: InfoIcon },
-  { id: "data", label: "Data", icon: ClipboardList },
-  { id: "schedule", label: "Schedule", icon: CalendarDays },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "settings", label: "Settings", icon: SettingsIcon },
-];
+// Exported so SettingsPane's own "Default tab" picker can render the exact
+// same icon+label pairing rather than a second, driftable copy of it.
+export const TABS: { id: StatusTab; label: string; icon: ComponentType<{ className?: string }> }[] =
+  [
+    { id: "info", label: "Client Info", icon: InfoIcon },
+    { id: "data", label: "Data", icon: ClipboardList },
+    { id: "schedule", label: "Schedule", icon: CalendarDays },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "settings", label: "Settings", icon: SettingsIcon },
+  ];
 
 // Stage 2 (see SessionContext's CARD_EXIT_MS/HEADER_MORPH_MS comment) is
 // where the odometer rolls to zero, settles from gray to black, the pill

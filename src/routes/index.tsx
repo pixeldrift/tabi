@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from "motion/react";
 import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
@@ -1007,7 +1016,7 @@ function IndexInner({
   onForceTipLaunchHandled: () => void;
 }) {
   const [activeId, setActiveId] = useState<string>(cards[0].id);
-  const [tab, setTab] = useState<StatusTab>("data");
+  const [tab, setTabState] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Every drawer-open call site funnels through this one state var
@@ -1048,7 +1057,23 @@ function IndexInner({
   // toolbar's own `top` can shift for reasons (status bar height changing)
   // that a resize observer on the toolbar itself wouldn't catch.
   const toolbarHeight = useElementHeight("[data-toolbar]");
-  const { keepActiveCardCentered, tourHintsEnabled, tourCompleted } = useSettings();
+  const { keepActiveCardCentered, tourHintsEnabled, tourCompleted, defaultTab } = useSettings();
+  // Settings loads its persisted value asynchronously (see SettingsProvider),
+  // so the very first render here still sees the pre-hydration default. Once
+  // it lands, adopt it — but only until the user actually navigates away
+  // from it themselves (a real click, a tour/tip step, "View Schedule",
+  // etc. — every path already funnels through this one setTab), so picking
+  // a new "default" mid-session doesn't yank an already-open session to a
+  // different tab. Same idiom as DataToolbarProvider's own defaultDataView
+  // adoption.
+  const userChangedTabRef = useRef(false);
+  useEffect(() => {
+    if (!userChangedTabRef.current) setTabState(defaultTab);
+  }, [defaultTab]);
+  const setTab = useCallback((t: StatusTab) => {
+    userChangedTabRef.current = true;
+    setTabState(t);
+  }, []);
   const {
     displayMode,
     setDisplayMode,

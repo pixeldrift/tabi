@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { DisplayMode } from "./DataToolbarContext";
+import type { StatusTab } from "./StatusBar";
 
 export interface SettingDef {
   key: string;
@@ -87,6 +88,11 @@ const DEFAULT_TIPS_ENABLED = true;
 const DEFAULT_TIP_BAG: string[] = [];
 const DEFAULT_LAST_SHOWN_TIP_ID: string | null = null;
 
+// Which of the header's five tabs the app opens on — matches this same
+// file's own defaultDataView just below (adopted once on mount, then left
+// alone for the rest of that session — see IndexInner's own comment).
+const DEFAULT_TAB: StatusTab = "data";
+
 const DEFAULT_DATA_VIEW: DisplayMode = "card";
 
 export type ColorTheme = "default" | "alt";
@@ -135,6 +141,12 @@ interface SettingsContextValue {
   setDayStart: (v: string) => void;
   dayEnd: string;
   setDayEnd: (v: string) => void;
+  /** Which tab the app opens on each time it loads. Changing it doesn't
+   *  jump an open session to a different tab — see IndexInner's own
+   *  comment on why it's adopted only once, same idiom as defaultDataView
+   *  just below. */
+  defaultTab: StatusTab;
+  setDefaultTab: (v: StatusTab) => void;
   /** View mode the Data tab starts in each time the app loads. Changing it
    *  doesn't affect the view already showing in an open session — see
    *  DataToolbarProvider's own comment on why it's adopted only once. */
@@ -189,6 +201,7 @@ interface StoredShape {
   keepActiveCardCentered: boolean;
   dayStart: string;
   dayEnd: string;
+  defaultTab: StatusTab;
   defaultDataView: DisplayMode;
   colorTheme: ColorTheme;
   tourHintsEnabled: boolean;
@@ -205,6 +218,7 @@ function loadStored(): StoredShape {
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
+    defaultTab: DEFAULT_TAB,
     defaultDataView: DEFAULT_DATA_VIEW,
     colorTheme: DEFAULT_COLOR_THEME,
     tourHintsEnabled: DEFAULT_TOUR_HINTS_ENABLED,
@@ -224,6 +238,7 @@ function loadStored(): StoredShape {
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
+      defaultTab: parsed.defaultTab ?? DEFAULT_TAB,
       defaultDataView: parsed.defaultDataView ?? DEFAULT_DATA_VIEW,
       colorTheme: parsed.colorTheme ?? DEFAULT_COLOR_THEME,
       tourHintsEnabled: parsed.tourHintsEnabled ?? DEFAULT_TOUR_HINTS_ENABLED,
@@ -258,6 +273,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
+  const [defaultTab, setDefaultTab] = useState<StatusTab>(DEFAULT_TAB);
   const [defaultDataView, setDefaultDataView] = useState<DisplayMode>(DEFAULT_DATA_VIEW);
   const [colorTheme, setColorThemeState] = useState<ColorTheme>(DEFAULT_COLOR_THEME);
   const [tourHintsEnabled, setTourHintsEnabled] = useState(DEFAULT_TOUR_HINTS_ENABLED);
@@ -273,6 +289,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
+    setDefaultTab(stored.defaultTab);
     setDefaultDataView(stored.defaultDataView);
     setColorThemeState(stored.colorTheme);
     setTourHintsEnabled(stored.tourHintsEnabled);
@@ -293,6 +310,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       dayStart,
       dayEnd,
+      defaultTab,
       defaultDataView,
       colorTheme,
       tourHintsEnabled,
@@ -308,6 +326,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     keepActiveCardCentered,
     dayStart,
     dayEnd,
+    defaultTab,
     defaultDataView,
     colorTheme,
     tourHintsEnabled,
@@ -332,6 +351,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
+    setDefaultTab(DEFAULT_TAB);
     setDefaultDataView(DEFAULT_DATA_VIEW);
     setColorTheme(DEFAULT_COLOR_THEME);
     setTourHintsEnabled(DEFAULT_TOUR_HINTS_ENABLED);
@@ -362,6 +382,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setDayStart,
       dayEnd,
       setDayEnd,
+      defaultTab,
+      setDefaultTab,
       defaultDataView,
       setDefaultDataView,
       colorTheme,
@@ -385,6 +407,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       dayStart,
       dayEnd,
+      defaultTab,
       defaultDataView,
       colorTheme,
       setColorTheme,
