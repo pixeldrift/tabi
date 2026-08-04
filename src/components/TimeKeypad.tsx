@@ -187,7 +187,10 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
 
           {/* Same blue-bordered, inner-shadowed well as standard text entry
               fields (see ui/input.tsx) — matches NumberKeypad's own display. */}
-          <div className="mb-2 flex items-center justify-center overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
+          <div
+            data-tour="time-keypad-display"
+            className="mb-2 flex items-center justify-center overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white px-3 py-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]"
+          >
             <span className="flex items-start font-display text-2xl leading-none tabular-nums">
               {unitNodes}
             </span>
@@ -225,6 +228,7 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
                 tone="outline"
                 icon={<Plus className="size-4" strokeWidth={3} />}
                 aria-label="Add to elapsed"
+                dataTour="duration-keypad-add-button"
               />
               <ActionButton
                 onClick={commitReplace}
@@ -292,12 +296,14 @@ function ActionButton({
   tone,
   icon,
   "aria-label": ariaLabel,
+  dataTour,
 }: {
   onClick: () => void;
   disabled?: boolean;
   tone: "solid" | "outline";
   icon: React.ReactNode;
   "aria-label": string;
+  dataTour?: string;
 }) {
   return (
     <motion.button
@@ -306,6 +312,7 @@ function ActionButton({
       disabled={disabled}
       whileTap={disabled ? undefined : { scale: 0.92 }}
       aria-label={ariaLabel}
+      data-tour={dataTour}
       className={cn(
         "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
         tone === "solid"

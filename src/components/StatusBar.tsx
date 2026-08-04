@@ -1412,6 +1412,7 @@ function SaveIndicator({
           <button
             ref={anchorRef}
             type="button"
+            data-tour="save-status"
             className="flex items-center text-right hover:opacity-80 transition-opacity h-8"
           >
             <span className={cn("text-[11px] font-medium leading-none", labelColor)}>{label}</span>
@@ -1777,7 +1778,9 @@ function ExpandedSessionBox({
               {attributionStaffId && (
                 <>
                   <span>by</span>
-                  <PersonPill staffId={attributionStaffId} size="sm" />
+                  <span data-tour="session-attribution-pill">
+                    <PersonPill staffId={attributionStaffId} size="sm" />
+                  </span>
                 </>
               )}
               <span>
@@ -1928,6 +1931,7 @@ function ExpandedSessionBox({
               <>
                 <button
                   onClick={onEnd}
+                  data-tour="end-submit-button"
                   className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
                 >
                   End & Submit Data
@@ -1953,6 +1957,7 @@ function ExpandedSessionBox({
                 </button>
                 <button
                   onClick={onRequestDiscard}
+                  data-tour="end-discard-button"
                   className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
                 >
                   End & Discard Session!
