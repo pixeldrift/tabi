@@ -211,6 +211,7 @@ export function NumberKeypad({
                 tone="outline"
                 icon={<Plus className="size-4" strokeWidth={3} />}
                 aria-label="Add to total"
+                dataTour="tally-keypad-add-button"
               />
               <ActionButton
                 onClick={commitReplace}
@@ -281,12 +282,14 @@ function ActionButton({
   tone,
   icon,
   "aria-label": ariaLabel,
+  dataTour,
 }: {
   onClick: () => void;
   disabled?: boolean;
   tone: "solid" | "outline";
   icon: React.ReactNode;
   "aria-label": string;
+  dataTour?: string;
 }) {
   return (
     <motion.button
@@ -295,6 +298,7 @@ function ActionButton({
       disabled={disabled}
       whileTap={disabled ? undefined : { scale: 0.92 }}
       aria-label={ariaLabel}
+      data-tour={dataTour}
       className={cn(
         "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
         tone === "solid"

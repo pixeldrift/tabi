@@ -231,7 +231,10 @@ export function TimeOfDayKeypad({
                 {unitNodes}
               </span>
             </div>
-            <div className="ml-1.5 flex flex-col justify-center gap-0.5 py-0.5">
+            <div
+              className="ml-1.5 flex flex-col justify-center gap-0.5 py-0.5"
+              data-tour="time-period-override"
+            >
               <button
                 type="button"
                 onClick={() => pickPeriod(false)}

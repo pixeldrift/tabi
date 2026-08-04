@@ -1603,6 +1603,7 @@ export function ScheduleView({
         <div className="relative flex items-center text-xs gap-2 max-w-3xl mx-auto">
           <button
             type="button"
+            data-tour="schedule-layout-toggle"
             onClick={() =>
               setLayoutMode((m) => (m === "proportional" ? "collapsed" : "proportional"))
             }
@@ -1632,6 +1633,7 @@ export function ScheduleView({
           </button>
           <button
             type="button"
+            data-tour="schedule-appt-toggle"
             onClick={() => {
               setShowAppts((v) => !v);
               setAllApptsCollapsed(false);
@@ -3079,6 +3081,7 @@ function TimeField({
   const resetButton = (
     <button
       type="button"
+      data-tour={resetSide === "left" ? "fit-start-button" : "fit-end-button"}
       onClick={onReset}
       disabled={!resetActive}
       aria-label={
