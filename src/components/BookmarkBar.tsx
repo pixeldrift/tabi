@@ -17,7 +17,6 @@ export interface BookmarkBarProps {
    *  scrolled off-screen, since the Data tab's list isn't virtualized. Only
    *  Duration's chip cares (see BookmarkChip's DurationChip). */
   mountedIds: Set<string>;
-  onJumpToCard: (id: string) => void;
 }
 
 /** The pinned shelf itself — docked inside DataToolbar's own children slot
@@ -27,12 +26,7 @@ export interface BookmarkBarProps {
  *  inline X here, DataToolbar's own persistent reopen icon, and the
  *  Settings switch (see SettingsPane.tsx) — this component only ever reads
  *  and writes that one value, same as the other two. */
-export function BookmarkBar({
-  favoriteCards,
-  interferingCards,
-  mountedIds,
-  onJumpToCard,
-}: BookmarkBarProps) {
+export function BookmarkBar({ favoriteCards, interferingCards, mountedIds }: BookmarkBarProps) {
   const { bookmarkBarMode, setBookmarkBarMode, editMode } = useDataToolbar();
   const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
   // Reorder-editing and "quick-score from the shelf" are competing modes
@@ -73,12 +67,7 @@ export function BookmarkBar({
             style={HORIZONTAL_FADE_MASK}
           >
             {cards.map((card) => (
-              <BookmarkChip
-                key={card.id}
-                card={card}
-                mounted={mountedIds.has(card.id)}
-                onJumpToCard={onJumpToCard}
-              />
+              <BookmarkChip key={card.id} card={card} mounted={mountedIds.has(card.id)} />
             ))}
           </div>
         )}

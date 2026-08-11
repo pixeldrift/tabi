@@ -82,16 +82,15 @@ const GAP = 6; // tighter spacing
  *  the real TrialCard is currently mounted anywhere — reads/writes the same
  *  useCardState-backed `trials`/`promptLevel`/`current` slots TrialCard
  *  itself uses (kept live across both readers by the store's
- *  useSyncExternalStore subscription), with a lighter version of
- *  TrialCard's own `applyResult` (no `direction`/`lastAction` animation
- *  state, no advance delay — the chip has no stepper to animate). Pads
- *  `trials` out to `current + 1` before writing, since when the real
- *  TrialCard isn't mounted nothing else keeps that array in sync with
- *  `current` growing past its length. When `promptLevels` is set, the
- *  card's Error button needs a level picker rather than a plain toggle
- *  (see TrialCard's own `pickPromptLevel`) — the chip defers that case to
- *  "jump to card" instead of reimplementing the picker in miniature,
- *  matching Task Analysis's own prompted-step treatment. */
+ *  useSyncExternalStore subscription), with lighter versions of TrialCard's
+ *  own `applyResult`/`pickPromptLevel` (no `direction`/`lastAction`
+ *  animation state, no advance delay — the chip has no stepper to
+ *  animate). Pads `trials` out to `current + 1` before writing, since when
+ *  the real TrialCard isn't mounted nothing else keeps that array in sync
+ *  with `current` growing past its length. When `promptLevels` is set, the
+ *  chip's Error button reuses TrialCard's own exported
+ *  `ListPromptLevelButton` (see BookmarkChip.tsx) rather than a plain
+ *  toggle — `pickPromptLevel` below is that button's write path. */
 export function useTrialChip(
   cardKey: string,
   maxTrials?: number,
@@ -102,13 +101,23 @@ export function useTrialChip(
   const [trials, setTrials] = useCardState<TrialResult[]>(cardKey, "trials", () =>
     Array.from({ length: maxTrials ?? minTrials ?? 1 }, () => null),
   );
-  const [, setPromptLevel] = useCardState<Record<number, string>>(cardKey, "promptLevel", {});
+  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>>(
+    cardKey,
+    "promptLevel",
+    {},
+  );
   const [current, setCurrent] = useCardState(cardKey, "current", 0);
 
   const completedCount = trials.filter((t) => t !== null).length;
   const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
   const currentResult: TrialResult = trials[current] ?? null;
   const needsPromptLevelPicker = (promptLevels?.length ?? 0) > 0;
+  const advanceCurrent = () => {
+    const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
+    setCurrent((c) => Math.min(c + 1, max));
+  };
+  const padTrials = (prev: TrialResult[]) =>
+    prev.length > current ? [...prev] : [...prev, ...Array(current + 1 - prev.length).fill(null)];
 
   const setResult = (value: Exclude<TrialResult, null>) => {
     markDirty();
@@ -120,10 +129,7 @@ export function useTrialChip(
       );
     }
     setTrials((prev) => {
-      const next =
-        prev.length > current
-          ? [...prev]
-          : [...prev, ...Array(current + 1 - prev.length).fill(null)];
+      const next = padTrials(prev);
       next[current] = isToggleOff ? null : value;
       return next;
     });
@@ -135,13 +141,39 @@ export function useTrialChip(
         return next;
       });
     }
-    if (!isToggleOff) {
-      const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
-      setCurrent((c) => Math.min(c + 1, max));
-    }
+    if (!isToggleOff) advanceCurrent();
   };
 
-  return { current, currentResult, needsPromptLevelPicker, isMaxReached, setResult, canRecordData };
+  const pickPromptLevel = (level: string) => {
+    markDirty();
+    const isUnspecified = level === UNSPECIFIED_LEVEL;
+    const isToggleOff =
+      currentResult === "incorrect" &&
+      (isUnspecified ? !(current in promptLevel) : promptLevel[current] === level);
+    setTrials((prev) => {
+      const next = padTrials(prev);
+      next[current] = isToggleOff ? null : "incorrect";
+      return next;
+    });
+    setPromptLevel((prev) => {
+      const next = { ...prev };
+      if (isToggleOff || isUnspecified) delete next[current];
+      else next[current] = level;
+      return next;
+    });
+    if (!isToggleOff) advanceCurrent();
+  };
+
+  return {
+    current,
+    currentResult,
+    currentPromptLevel: promptLevel[current] ?? null,
+    needsPromptLevelPicker,
+    isMaxReached,
+    setResult,
+    pickPromptLevel,
+    canRecordData,
+  };
 }
 
 export function TrialCard({
@@ -1356,8 +1388,11 @@ function PromptLevelButton({
 /** Icon-only circular version of PromptLevelButton for the List display
  *  mode's floating action row — same popover-picker behavior as the other
  *  two, styled to match ListActionButton (including its "more choices"
- *  triangle) rather than either of the pill-shaped variants. */
-function ListPromptLevelButton({
+ *  triangle) rather than either of the pill-shaped variants. Also reused
+ *  as-is by the bookmark bar's own Trial chip (see BookmarkChip.tsx),
+ *  which is why the collision boundary below is pinned to the document
+ *  rather than left at Radix's default. */
+export function ListPromptLevelButton({
   levels,
   selectedLevel,
   selected,
@@ -1408,6 +1443,12 @@ function ListPromptLevelButton({
         side="top"
         align="center"
         collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        // Explicit boundary (not Radix's default clippingAncestors walk) so
+        // this still collides against the real viewport rather than a
+        // short scrollable ancestor — a no-op in DataListRow's own usage,
+        // but load-bearing for the bookmark bar's chip, which anchors this
+        // inside its own overflow-x-auto scroll strip (see BookmarkChip.tsx).
+        collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
         className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex flex-col gap-0.5">

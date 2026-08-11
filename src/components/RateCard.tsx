@@ -49,7 +49,12 @@ export function useRateChip(cardKey: string) {
     markDirty();
     playSoundEffect("tallyUp");
   };
-  return { count, ratePerMin, increment, canRecordData };
+  const decrement = () => {
+    setCount((c) => Math.max(0, c - 1));
+    markDirty();
+    playSoundEffect("tallyDown");
+  };
+  return { count, ratePerMin, increment, decrement, canRecordData };
 }
 
 export function RateCard({

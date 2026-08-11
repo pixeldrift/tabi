@@ -1623,7 +1623,6 @@ function IndexInner({
                       favoriteCards={favoriteCards}
                       interferingCards={interferingCards}
                       mountedIds={mountedIds}
-                      onJumpToCard={handleNavigateToCard}
                     />
                   </DataToolbar>
                 )

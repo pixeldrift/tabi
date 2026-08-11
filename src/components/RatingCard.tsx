@@ -447,7 +447,10 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
  *  the same style as the grid tile's own star row (no level descriptions —
  *  those only appear in Card mode's roomier expanded view). The triangle is
  *  the same "more choices below" cue every other button-with-a-menu uses. */
-function ListRatingButton({
+// Also reused as-is by the bookmark bar's own Rating chip (see
+// BookmarkChip.tsx), which is why the collision boundary below is pinned
+// to the document rather than left at Radix's default.
+export function ListRatingButton({
   rating,
   numStars,
   min,
@@ -511,7 +514,11 @@ function ListRatingButton({
         side="top"
         align="center"
         collisionPadding={8}
-        className="group w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        // See ListPromptLevelButton's own comment in TrialCard.tsx — same
+        // fix, needed for the same reason once this is reused inside the
+        // bookmark bar's overflow-x-auto strip.
+        collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
+        className="group z-[70] w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex items-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {
