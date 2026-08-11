@@ -1043,6 +1043,10 @@ function IndexInner({
   onForceTipLaunchHandled: () => void;
 }) {
   const [activeId, setActiveId] = useState<string>(cards[0].id);
+  // See the scroll-into-view effect's own comment below — flipped true just
+  // before a bookmark-bar selection's own setActiveId, consumed by that
+  // effect on its very next run.
+  const suppressActiveScrollRef = useRef(false);
   const [tab, setTabState] = useState<StatusTab>("data");
   const [scheduleScrollId, setScheduleScrollId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -1220,12 +1224,31 @@ function IndexInner({
   // gently nudge a partially-hidden active card fully into view (but never
   // force a full recenter) — becoming active shouldn't leave half of it
   // tucked behind the header or hanging off the bottom of the screen.
-  useEffect(() => {
-    const el = cardRefs.current.get(activeId);
+  // Shared by the effect below and by handleJumpFromBar, which can't rely
+  // on the effect alone — see that function's own comment on why.
+  const scrollActiveIntoView = (id: string) => {
+    const el = cardRefs.current.get(id);
     const container = dataContentRef.current;
     if (!el || !container) return;
     if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
     else scrollCardFullyIntoView(el, container);
+  };
+
+  useEffect(() => {
+    // Set by handleSelectFromBar right before its own setActiveId — a
+    // bookmark-bar tap deliberately selects (highlights the chip and its
+    // real card, syncs whichever drawer is open) without yanking the main
+    // list's scroll position out from under whatever you were doing there;
+    // that's the whole point of being able to work from the bar without
+    // leaving your place in the list. Consumed once, so every OTHER
+    // activeId change (an ordinary card tap, prev/next, "View Card") still
+    // scrolls as before. The bar's own double-tap-to-jump does NOT rely on
+    // this effect at all — see handleJumpFromBar.
+    if (suppressActiveScrollRef.current) {
+      suppressActiveScrollRef.current = false;
+      return;
+    }
+    scrollActiveIntoView(activeId);
   }, [activeId, keepActiveCardCentered]);
 
   // The effect above doesn't actually cover a display-mode switch — its own
@@ -1481,6 +1504,33 @@ function IndexInner({
     setTab("data");
   };
 
+  // The bookmark bar's own single-tap selection (see BookmarkBar.tsx) —
+  // shares activeId with the main list (so the real card highlights and
+  // whichever drawer is open updates to match) but deliberately skips the
+  // scroll-into-view effect that plain setActiveId would otherwise trigger,
+  // since the whole point of scoring from the bar is not having to leave
+  // your place in the list.
+  const handleSelectFromBar = (id: string) => {
+    suppressActiveScrollRef.current = true;
+    setActiveId(id);
+  };
+
+  // The bar's own double-tap — the explicit "take me there" escape hatch,
+  // as opposed to handleSelectFromBar's deliberately-not-scrolling tap.
+  // Can't just call handleNavigateToCard and lean on the scroll-into-view
+  // effect above: a real double-click/double-tap fires two ordinary click
+  // events (and therefore two handleSelectFromBar calls, already setting
+  // activeId to this same id) BEFORE the browser's own dblclick fires, so
+  // by the time this runs, setActiveId(id) is a same-value no-op React
+  // won't re-render for — the effect's activeId dependency never actually
+  // changes, so it would never re-run and the jump would silently fail to
+  // scroll. Calling scrollActiveIntoView directly sidesteps relying on a
+  // state change to trigger it at all.
+  const handleJumpFromBar = (id: string) => {
+    handleNavigateToCard(id);
+    scrollActiveIntoView(id);
+  };
+
   // One scroll container per tab, not one shared pane — every tab's content
   // stays mounted permanently now (see the return below), each in its own
   // fixed-height, internally-scrolling <section>, toggled visible/hidden via
@@ -1623,6 +1673,9 @@ function IndexInner({
                       favoriteCards={favoriteCards}
                       interferingCards={interferingCards}
                       mountedIds={mountedIds}
+                      activeId={activeId}
+                      onSelectCard={handleSelectFromBar}
+                      onJumpToCard={handleJumpFromBar}
                     />
                   </DataToolbar>
                 )

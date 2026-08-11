@@ -19,6 +19,22 @@ export interface BookmarkChipProps {
    *  Only Duration's chip needs this: starting a timer with nothing else
    *  mounted anywhere to tick it would silently do nothing. */
   mounted: boolean;
+  /** True when this card is the shared activeId — same highlight the main
+   *  list's own CardShell/MiniTileShell already give the active card. */
+  active: boolean;
+  /** A single tap anywhere on the chip that isn't one of its own scoring
+   *  controls (those all stopPropagation) — links the bar's own selection
+   *  to the main list's, so activating a card from either place highlights
+   *  the other and updates whichever drawer is open. Deliberately doesn't
+   *  scroll the main list on its own (see routes/index.tsx's own
+   *  suppression around this) — the whole point of the bar is not having
+   *  to leave your place in it. */
+  onSelect: () => void;
+  /** A double tap — same discoverable idiom as DataToolbar's own
+   *  "double-tap to clear filters" — scrolls the main list to and
+   *  activates the real card, the deliberate escape hatch for when you do
+   *  want to leave the bar and see the full card. */
+  onJumpToCard: () => void;
 }
 
 /** Dispatches to the one kind-specific chip component for this card —
@@ -27,23 +43,66 @@ export interface BookmarkChipProps {
  *  within each (a card's `kind` never changes at runtime, but keeping each
  *  kind's useXChip call in its own component avoids ever having to reason
  *  about that). */
-export function BookmarkChip({ card, mounted }: BookmarkChipProps) {
+export function BookmarkChip({ card, mounted, active, onSelect, onJumpToCard }: BookmarkChipProps) {
   switch (card.kind) {
     case "trial":
-      return <TrialChip card={card} />;
+      return (
+        <TrialChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
+      );
     case "frequency":
-      return <FrequencyChip card={card} />;
+      return (
+        <FrequencyChip
+          card={card}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
     case "rate":
-      return <RateChip card={card} />;
+      return (
+        <RateChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
+      );
     case "duration":
-      return <DurationChip card={card} mounted={mounted} />;
+      return (
+        <DurationChip
+          card={card}
+          mounted={mounted}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
     case "task-analysis":
-      return <TaskAnalysisChip card={card} />;
+      return (
+        <TaskAnalysisChip
+          card={card}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
     case "rating":
-      return <RatingChip card={card} />;
+      return (
+        <RatingChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
+      );
     case "timestamp":
-      return <TimestampChip card={card} />;
+      return (
+        <TimestampChip
+          card={card}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
   }
+}
+
+/** Props every kind-specific chip component forwards straight through to
+ *  ChipShell, unread itself. */
+interface ChipSelectionProps {
+  active: boolean;
+  onSelect: () => void;
+  onJumpToCard: () => void;
 }
 
 /** Shared shell: the card's title above its own kind's real data-logging
@@ -58,10 +117,37 @@ export function BookmarkChip({ card, mounted }: BookmarkChipProps) {
  *  is fixed (not content-sized) so the bar's chips read as a uniform
  *  scrollable row rather than jumping around per kind — sized to
  *  comfortably fit the widest control row (Trial's badge + up to 3
- *  buttons). */
-function ChipShell({ title, children }: { title: string; children: ReactNode }) {
+ *  buttons). `justify-between` (rather than just stacking title-then-
+ *  controls) bottom-aligns the controls row — the horizontal scroll
+ *  strip's own flex row stretches every chip to match its tallest sibling
+ *  (default cross-axis `align-items: stretch`), so a 1-line-title chip and
+ *  a 2-line-title chip end up the same height, and `justify-between` then
+ *  pins both chips' own controls to that same shared bottom edge instead
+ *  of each sitting immediately under its own (differently tall) title. */
+function ChipShell({
+  title,
+  active,
+  onSelect,
+  onJumpToCard,
+  children,
+}: { title: string; children: ReactNode } & ChipSelectionProps) {
   return (
-    <div className="flex w-36 shrink-0 flex-col items-start gap-1.5 rounded-xl border border-border bg-card px-2 py-1.5">
+    <div
+      onClick={onSelect}
+      onDoubleClick={onJumpToCard}
+      title="Double-tap to open the full card"
+      className={cn(
+        // select-none: without it, the double-tap that jumps to the full
+        // card also selects the title text underneath it (an ordinary
+        // double-click's own default browser behavior), flashing a text
+        // selection highlight for a gesture that has nothing to do with
+        // text at all.
+        "flex w-36 shrink-0 cursor-pointer select-none flex-col justify-between gap-1.5 rounded-xl border px-2 py-1.5 transition-colors",
+        active
+          ? "border-blue-400/80 bg-card ring-2 ring-inset ring-blue-400/80"
+          : "border-border bg-card opacity-80 hover:opacity-95",
+      )}
+    >
       <h3 className="line-clamp-2 w-full break-words text-[11px] font-medium leading-tight text-foreground">
         {renderBreakableTitle(title)}
       </h3>
@@ -70,7 +156,12 @@ function ChipShell({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-function TrialChip({ card }: { card: Extract<CardConfig, { kind: "trial" }> }) {
+function TrialChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "trial" }> } & ChipSelectionProps) {
   const {
     current,
     currentResult,
@@ -83,7 +174,7 @@ function TrialChip({ card }: { card: Extract<CardConfig, { kind: "trial" }> }) {
   } = useTrialChip(card.id, card.maxTrials, card.minTrials, card.promptLevels);
   const disabled = !canRecordData || (isMaxReached && currentResult === null);
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListActionBadge value={current + 1} />
       {needsPromptLevelPicker ? (
         <ListPromptLevelButton
@@ -125,10 +216,15 @@ function TrialChip({ card }: { card: Extract<CardConfig, { kind: "trial" }> }) {
   );
 }
 
-function FrequencyChip({ card }: { card: Extract<CardConfig, { kind: "frequency" }> }) {
+function FrequencyChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "frequency" }> } & ChipSelectionProps) {
   const { count, increment, decrement, canRecordData } = useFrequencyChip(card.id);
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListActionBadge value={count} weight="bold" />
       <ListActionButton
         icon={Minus}
@@ -148,10 +244,15 @@ function FrequencyChip({ card }: { card: Extract<CardConfig, { kind: "frequency"
   );
 }
 
-function RateChip({ card }: { card: Extract<CardConfig, { kind: "rate" }> }) {
+function RateChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "rate" }> } & ChipSelectionProps) {
   const { count, increment, decrement, canRecordData } = useRateChip(card.id);
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListActionBadge value={count} weight="bold" />
       <ListActionButton
         icon={Minus}
@@ -174,10 +275,13 @@ function RateChip({ card }: { card: Extract<CardConfig, { kind: "rate" }> }) {
 function DurationChip({
   card,
   mounted,
+  active,
+  onSelect,
+  onJumpToCard,
 }: {
   card: Extract<CardConfig, { kind: "duration" }>;
   mounted: boolean;
-}) {
+} & ChipSelectionProps) {
   const { running, displayMs, toggle, canRecordData } = useDurationChip(card.id);
   // Starting a timer with nothing mounted anywhere to tick it would
   // silently do nothing (see useDurationChip's own comment) — but stopping
@@ -187,7 +291,7 @@ function DurationChip({
   const disabled = !canRecordData || needsMount;
   const disabledReason = canRecordData && needsMount ? "Open this card to start timing" : undefined;
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       {/* Same time-pill-plus-play/pause idea as the List row's own Duration
           pill (see DurationCard's listMode actions), just without that
           row's own TimeKeypad direct-edit affordance or instance
@@ -204,7 +308,13 @@ function DurationChip({
         </span>
         <button
           type="button"
-          onClick={toggle}
+          // stopPropagation — same as every reused ListActionButton already
+          // does — so toggling the timer doesn't also bubble up as a tap-
+          // to-select on the chip's own root.
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
           disabled={disabled}
           title={disabled ? (disabledReason ?? undefined) : undefined}
           aria-label={running ? "Pause" : "Start"}
@@ -221,7 +331,12 @@ function DurationChip({
   );
 }
 
-function TaskAnalysisChip({ card }: { card: Extract<CardConfig, { kind: "task-analysis" }> }) {
+function TaskAnalysisChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "task-analysis" }> } & ChipSelectionProps) {
   const {
     current,
     currentStatus,
@@ -234,7 +349,7 @@ function TaskAnalysisChip({ card }: { card: Extract<CardConfig, { kind: "task-an
   } = useTaskAnalysisChip(card.id, card.steps.length, card.promptLevels);
   const disabled = !canRecordData || !canScoreCurrent;
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListActionBadge value={current + 1} />
       <ListActionButton
         icon={X}
@@ -274,10 +389,15 @@ function TaskAnalysisChip({ card }: { card: Extract<CardConfig, { kind: "task-an
   );
 }
 
-function RatingChip({ card }: { card: Extract<CardConfig, { kind: "rating" }> }) {
+function RatingChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "rating" }> } & ChipSelectionProps) {
   const { rating, min, max, pick, canRecordData } = useRatingChip(card.id, card.max, card.min);
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListRatingButton
         rating={rating}
         numStars={max - min}
@@ -289,7 +409,12 @@ function RatingChip({ card }: { card: Extract<CardConfig, { kind: "rating" }> })
   );
 }
 
-function TimestampChip({ card }: { card: Extract<CardConfig, { kind: "timestamp" }> }) {
+function TimestampChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "timestamp" }> } & ChipSelectionProps) {
   const { currentIndex, currentStatus, score, canRecordData } = useTimestampChip(
     card.id,
     card.intervalMin,
@@ -298,7 +423,7 @@ function TimestampChip({ card }: { card: Extract<CardConfig, { kind: "timestamp"
   const positiveLabel = card.positiveLabel ?? "Correct";
   const negativeLabel = card.negativeLabel ?? "Incorrect";
   return (
-    <ChipShell title={card.title}>
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
       <ListActionBadge value={currentIndex + 1} />
       <ListActionButton
         icon={X}

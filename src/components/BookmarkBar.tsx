@@ -17,6 +17,17 @@ export interface BookmarkBarProps {
    *  scrolled off-screen, since the Data tab's list isn't virtualized. Only
    *  Duration's chip cares (see BookmarkChip's DurationChip). */
   mountedIds: Set<string>;
+  /** The main list's own activeId — shared, not a separate "which chip is
+   *  selected" state, so a chip and its real card always agree on which
+   *  one is highlighted and which one's drawer content is showing. */
+  activeId: string;
+  /** Sets activeId without scrolling the main list — see routes/index.tsx's
+   *  own comment on why plain setActiveId needs a scroll-suppressing
+   *  wrapper for taps that originate from the bar. */
+  onSelectCard: (id: string) => void;
+  /** Scrolls the main list to and activates the given card — the same
+   *  handleNavigateToCard used by notifications' own "View Card". */
+  onJumpToCard: (id: string) => void;
 }
 
 /** The pinned shelf itself — docked inside DataToolbar's own children slot
@@ -26,7 +37,14 @@ export interface BookmarkBarProps {
  *  inline X here, DataToolbar's own persistent reopen icon, and the
  *  Settings switch (see SettingsPane.tsx) — this component only ever reads
  *  and writes that one value, same as the other two. */
-export function BookmarkBar({ favoriteCards, interferingCards, mountedIds }: BookmarkBarProps) {
+export function BookmarkBar({
+  favoriteCards,
+  interferingCards,
+  mountedIds,
+  activeId,
+  onSelectCard,
+  onJumpToCard,
+}: BookmarkBarProps) {
   const { bookmarkBarMode, setBookmarkBarMode, editMode } = useDataToolbar();
   const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
   // Reorder-editing and "quick-score from the shelf" are competing modes
@@ -67,7 +85,14 @@ export function BookmarkBar({ favoriteCards, interferingCards, mountedIds }: Boo
             style={HORIZONTAL_FADE_MASK}
           >
             {cards.map((card) => (
-              <BookmarkChip key={card.id} card={card} mounted={mountedIds.has(card.id)} />
+              <BookmarkChip
+                key={card.id}
+                card={card}
+                mounted={mountedIds.has(card.id)}
+                active={card.id === activeId}
+                onSelect={() => onSelectCard(card.id)}
+                onJumpToCard={() => onJumpToCard(card.id)}
+              />
             ))}
           </div>
         )}
