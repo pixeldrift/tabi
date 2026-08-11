@@ -78,6 +78,72 @@ const BUBBLE = 18; // small bubble diameter
 const BUBBLE_CENTER = 56; // center bubble diameter
 const GAP = 6; // tighter spacing
 
+/** Everything the bookmark bar's Trial chip needs, independent of whether
+ *  the real TrialCard is currently mounted anywhere — reads/writes the same
+ *  useCardState-backed `trials`/`promptLevel`/`current` slots TrialCard
+ *  itself uses (kept live across both readers by the store's
+ *  useSyncExternalStore subscription), with a lighter version of
+ *  TrialCard's own `applyResult` (no `direction`/`lastAction` animation
+ *  state, no advance delay — the chip has no stepper to animate). Pads
+ *  `trials` out to `current + 1` before writing, since when the real
+ *  TrialCard isn't mounted nothing else keeps that array in sync with
+ *  `current` growing past its length. When `promptLevels` is set, the
+ *  card's Error button needs a level picker rather than a plain toggle
+ *  (see TrialCard's own `pickPromptLevel`) — the chip defers that case to
+ *  "jump to card" instead of reimplementing the picker in miniature,
+ *  matching Task Analysis's own prompted-step treatment. */
+export function useTrialChip(
+  cardKey: string,
+  maxTrials?: number,
+  minTrials?: number,
+  promptLevels?: string[],
+) {
+  const { markDirty, canRecordData } = useCardSession();
+  const [trials, setTrials] = useCardState<TrialResult[]>(cardKey, "trials", () =>
+    Array.from({ length: maxTrials ?? minTrials ?? 1 }, () => null),
+  );
+  const [, setPromptLevel] = useCardState<Record<number, string>>(cardKey, "promptLevel", {});
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
+
+  const completedCount = trials.filter((t) => t !== null).length;
+  const isMaxReached = maxTrials !== undefined && completedCount >= maxTrials;
+  const currentResult: TrialResult = trials[current] ?? null;
+  const needsPromptLevelPicker = (promptLevels?.length ?? 0) > 0;
+
+  const setResult = (value: Exclude<TrialResult, null>) => {
+    markDirty();
+    if (isMaxReached && currentResult === null) return;
+    const isToggleOff = currentResult === value;
+    if (!isToggleOff) {
+      playSoundEffect(
+        value === "correct" ? "correct" : value === "incorrect" ? "error" : "noResponse",
+      );
+    }
+    setTrials((prev) => {
+      const next =
+        prev.length > current
+          ? [...prev]
+          : [...prev, ...Array(current + 1 - prev.length).fill(null)];
+      next[current] = isToggleOff ? null : value;
+      return next;
+    });
+    if (value !== "incorrect" || isToggleOff) {
+      setPromptLevel((prev) => {
+        if (!(current in prev)) return prev;
+        const next = { ...prev };
+        delete next[current];
+        return next;
+      });
+    }
+    if (!isToggleOff) {
+      const max = maxTrials ? maxTrials - 1 : Number.POSITIVE_INFINITY;
+      setCurrent((c) => Math.min(c + 1, max));
+    }
+  };
+
+  return { current, currentResult, needsPromptLevelPicker, isMaxReached, setResult, canRecordData };
+}
+
 export function TrialCard({
   id,
   title,

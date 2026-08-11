@@ -96,6 +96,11 @@ interface DataToolbarContextValue {
   setDisplayMode: (mode: DisplayMode) => void;
   editMode: boolean;
   setEditMode: (v: boolean) => void;
+  /** Which list fills the bookmark bar's scroll strip — ephemeral like
+   *  displayMode/editMode above (not persisted), always starting back at
+   *  "favorites" on load. */
+  bookmarkBarMode: "favorites" | "interfering";
+  setBookmarkBarMode: (mode: "favorites" | "interfering") => void;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   filters: DataToolbarFilters;
@@ -176,6 +181,7 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
     setDisplayModeState(mode);
   }, []);
   const [editMode, setEditModeState] = useState(false);
+  const [bookmarkBarMode, setBookmarkBarMode] = useState<"favorites" | "interfering">("favorites");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<DataToolbarFilters>(DEFAULT_FILTERS);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -326,6 +332,8 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
       setDisplayMode,
       editMode,
       setEditMode,
+      bookmarkBarMode,
+      setBookmarkBarMode,
       searchQuery,
       setSearchQuery,
       filters,
@@ -352,7 +360,7 @@ export function DataToolbarProvider({ children }: { children: ReactNode }) {
     [
       displayMode,
       editMode,
-      setEditMode,
+      bookmarkBarMode,
       searchQuery,
       filters,
       toggleKindFilter,

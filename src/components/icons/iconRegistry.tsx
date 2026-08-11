@@ -1,6 +1,6 @@
 import {
   GripVertical,
-  Heart,
+  Bookmark,
   EyeOff,
   Minus,
   Plus,
@@ -179,7 +179,7 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("Search", "Data toolbar search box", Search),
       lucide("Frown", '"Interfering behavior" filter', Frown),
       lucide("Target", '"Target goal" filter / notification', Target),
-      lucide("Heart", "Favorite toggle", Heart),
+      lucide("Bookmark", "Favorite toggle", Bookmark),
       lucide("EyeOff", 'Hidden toggle / "Hidden" filter chip', EyeOff),
     ],
   },

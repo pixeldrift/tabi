@@ -136,6 +136,69 @@ function statusDotColor(status: StepStatus) {
         : "bg-stone-300";
 }
 
+/** Everything the bookmark bar's Task Analysis chip needs, independent of
+ *  whether the real TaskAnalysisCard is currently mounted anywhere — reads/
+ *  writes the same useCardState-backed `statuses`/`current`/`promptLevel`
+ *  slots TaskAnalysisCard itself uses, with a lighter version of its own
+ *  `setStep` (no expanded-list bubble-track animation state). `totalSteps`
+ *  comes from the card's own `steps.length`, same as TaskAnalysisCard's own
+ *  initial `statuses` — unlike Trial's `trials` array, this length is fixed
+ *  by the card's config rather than growing dynamically, so no defensive
+ *  padding is needed. When `promptLevels` is set, the current step's
+ *  Prompted button needs a level picker rather than a plain toggle (see
+ *  TaskAnalysisCard's own `pickPromptLevel`) — the chip defers that case to
+ *  "jump to card" instead of reimplementing the picker in miniature, same
+ *  treatment as TrialCard's Error button gets in useTrialChip. */
+export function useTaskAnalysisChip(cardKey: string, totalSteps: number, promptLevels?: string[]) {
+  const { markDirty, canRecordData } = useCardSession();
+  const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () =>
+    Array.from({ length: totalSteps }, () => null),
+  );
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
+  const [, setPromptLevel] = useCardState<Record<number, string>>(cardKey, "promptLevel", {});
+
+  const firstUnscored = statuses.indexOf(null);
+  const canScoreCurrent = firstUnscored === -1 || current <= firstUnscored;
+  const currentStatus: StepStatus = statuses[current] ?? null;
+  const needsPromptLevelPicker = (promptLevels?.length ?? 0) > 0;
+
+  const setStep = (value: Exclude<StepStatus, null>) => {
+    if (!canScoreCurrent) return;
+    markDirty();
+    const isToggleOff = currentStatus === value;
+    if (!isToggleOff) {
+      playSoundEffect(
+        value === "independent" ? "correct" : value === "error" ? "error" : "prompted",
+      );
+    }
+    setStatuses((prev) => {
+      const next = [...prev];
+      next[current] = isToggleOff ? null : value;
+      return next;
+    });
+    if (value !== "prompted" || isToggleOff) {
+      setPromptLevel((prev) => {
+        if (!(current in prev)) return prev;
+        const next = { ...prev };
+        delete next[current];
+        return next;
+      });
+    }
+    if (!isToggleOff) {
+      setCurrent((c) => Math.min(c + 1, totalSteps - 1));
+    }
+  };
+
+  return {
+    current,
+    currentStatus,
+    canScoreCurrent,
+    needsPromptLevelPicker,
+    setStep,
+    canRecordData,
+  };
+}
+
 export function TaskAnalysisCard({
   id,
   title,

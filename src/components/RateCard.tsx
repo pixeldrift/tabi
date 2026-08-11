@@ -31,6 +31,27 @@ export interface RateCardProps extends CardEditAndDrawerProps {
   locked?: boolean;
 }
 
+/** Everything the bookmark bar's Rate chip needs. `count` is a plain
+ *  tap-driven increment — safe to write straight through the store even
+ *  while the real RateCard is also mounted elsewhere. `elapsed` (the rate's
+ *  own denominator) is read-only here: it ticks automatically whenever the
+ *  session is running, via the real card's own `subscribeTick` effect, so
+ *  this hook only ever reads it (kept live by the store's
+ *  useSyncExternalStore subscription) and never re-subscribes to the tick
+ *  itself — a second subscription would double-count elapsed time. */
+export function useRateChip(cardKey: string) {
+  const [count, setCount] = useCardState(cardKey, "count", 0);
+  const [elapsed] = useCardState(cardKey, "elapsed", 0);
+  const { markDirty, canRecordData } = useCardSession();
+  const ratePerMin = elapsed > 0 ? count / (elapsed / 60_000) : 0;
+  const increment = () => {
+    setCount((c) => c + 1);
+    markDirty();
+    playSoundEffect("tallyUp");
+  };
+  return { count, ratePerMin, increment, canRecordData };
+}
+
 export function RateCard({
   id,
   title,

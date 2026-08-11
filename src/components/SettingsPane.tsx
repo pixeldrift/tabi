@@ -72,6 +72,8 @@ export function SettingsPane({
     setAlarmSound,
     keepActiveCardCentered,
     setKeepActiveCardCentered,
+    bookmarkBarVisible,
+    setBookmarkBarVisible,
     dayStart,
     setDayStart,
     dayEnd,
@@ -323,6 +325,24 @@ export function SettingsPane({
               id="keepActiveCardCentered"
               checked={keepActiveCardCentered}
               onCheckedChange={setKeepActiveCardCentered}
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="bookmarkBarVisible" className="text-sm font-medium">
+                Bookmark bar
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                A pinned strip of your favorited cards below the toolbar, for quick-scoring without
+                losing your place while scrolling.
+              </p>
+            </div>
+            <Switch
+              id="bookmarkBarVisible"
+              checked={bookmarkBarVisible}
+              onCheckedChange={setBookmarkBarVisible}
               className="shrink-0"
             />
           </div>

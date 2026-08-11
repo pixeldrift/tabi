@@ -41,6 +41,22 @@ const STAR_SIZE_STEP = 9;
 // to its own size so its margin-top offset comes out to zero.
 const ROW_STAR_SIZE = 36;
 
+/** Everything the bookmark bar's Rating chip needs — `rating` is a single
+ *  overwritable value (no running count/trial list to keep in sync), safe
+ *  to write straight through the store even while the real RatingCard is
+ *  also mounted elsewhere. `min`/`max` are passed through unchanged (not
+ *  read from the store) so the chip's own star picker can be built with the
+ *  same range as the card it mirrors. */
+export function useRatingChip(cardKey: string, max: number, min = 0) {
+  const [rating, setRating] = useCardState(cardKey, "rating", 0);
+  const { markDirty, canRecordData } = useCardSession();
+  const pick = (value: number) => {
+    markDirty();
+    setRating((r) => (r === value ? 0 : value));
+  };
+  return { rating, min, max, pick, canRecordData };
+}
+
 export function RatingCard({
   id,
   title,

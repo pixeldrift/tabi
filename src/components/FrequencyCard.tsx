@@ -31,6 +31,21 @@ export interface FrequencyCardProps extends CardEditAndDrawerProps {
   onActivate?: () => void;
 }
 
+/** Everything the bookmark bar's Frequency chip needs — `count` is a plain
+ *  tap-driven tally, safe to write straight through the store even while
+ *  the real FrequencyCard is also mounted elsewhere (no ticking effect to
+ *  duplicate, unlike Duration/Rate/Timestamp). */
+export function useFrequencyChip(cardKey: string) {
+  const [count, setCount] = useCardState(cardKey, "count", 0);
+  const { markDirty, canRecordData } = useCardSession();
+  const increment = () => {
+    setCount((c) => c + 1);
+    markDirty();
+    playSoundEffect("tallyUp");
+  };
+  return { count, increment, canRecordData };
+}
+
 export function FrequencyCard({
   id,
   title,

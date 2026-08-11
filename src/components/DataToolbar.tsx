@@ -6,8 +6,10 @@ import {
   ClipboardCheck,
   ClipboardX,
   Frown,
-  Heart,
+  Bookmark,
   EyeOff,
+  PanelBottomClose,
+  PanelBottomOpen,
   Pencil,
   Search,
   Star,
@@ -23,10 +25,13 @@ import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
+import { useSettings } from "./SettingsContext";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
 
-const KIND_META: Record<
+/** Also reused by BookmarkChip.tsx for its own per-kind icon, so the bar's
+ *  chips match the same icon the toolbar's own kind filter chips use. */
+export const KIND_META: Record<
   CardKind,
   { label: string; icon: (props: { className?: string }) => React.ReactNode }
 > = {
@@ -65,6 +70,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
     cycleBehaviorFilter,
     clearFilters,
   } = useDataToolbar();
+  const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterContentRef = useRef<HTMLDivElement>(null);
@@ -319,6 +325,30 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
             {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
           </button>
 
+          {/* Bookmark bar reopen toggle — the inline X on the bar itself and
+            the Settings switch (see SettingsPane.tsx) are the other two ways
+            to flip the same bookmarkBarVisible setting; this is the only one
+            of the three still reachable once the bar itself is closed. */}
+          <button
+            type="button"
+            onClick={() => setBookmarkBarVisible(!bookmarkBarVisible)}
+            aria-pressed={bookmarkBarVisible}
+            aria-label={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
+            title={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
+            className={cn(
+              "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
+              bookmarkBarVisible
+                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+                : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
+            )}
+          >
+            {bookmarkBarVisible ? (
+              <PanelBottomClose className="size-3.5" />
+            ) : (
+              <PanelBottomOpen className="size-3.5" />
+            )}
+          </button>
+
           {/* Search — trimmed a bit short of the row's full width (mr-6) so
             the details drawer's tab, now pinned to the top of the drawer
             and overlapping this row, has clear space to sit in. min-w-8
@@ -409,7 +439,7 @@ function FilterPopoverContent({
 
       <div className="flex gap-1.5">
         <ToggleChip
-          icon={<Heart className="size-3" />}
+          icon={<Bookmark className="size-3" />}
           label="Favorites"
           selected={filters.favoritesOnly}
           onClick={() => setFavoritesOnly(!filters.favoritesOnly)}
