@@ -62,6 +62,8 @@ const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "alert";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
+const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
+
 // The guided welcome tour (TourContext.tsx). `tourHintsEnabled` stays on by
 // default — it's what a genuinely first-time user's own toggle would read,
 // were this a real install rather than a repeatedly-demoed prototype.
@@ -136,6 +138,13 @@ interface SettingsContextValue {
    *  opt-in here since it's a bigger, more opinionated motion. */
   keepActiveCardCentered: boolean;
   setKeepActiveCardCentered: (v: boolean) => void;
+  /** Whether the Data tab's bookmark bar (the pinned favorites/interfering-
+   *  behaviors quick-score shelf below the toolbar) is showing. Three ways
+   *  to flip it: the bar's own inline close X, the toolbar's persistent
+   *  reopen icon, and this setting's own switch — all three read/write this
+   *  one value. */
+  bookmarkBarVisible: boolean;
+  setBookmarkBarVisible: (v: boolean) => void;
   /** Clinic hours (24h "HH:MM") the Schedule tab's grid is bounded to. */
   dayStart: string;
   setDayStart: (v: string) => void;
@@ -199,6 +208,7 @@ interface StoredShape {
   values: SettingsValues;
   alarmSound: AlarmSoundStyle;
   keepActiveCardCentered: boolean;
+  bookmarkBarVisible: boolean;
   dayStart: string;
   dayEnd: string;
   defaultTab: StatusTab;
@@ -216,6 +226,7 @@ function loadStored(): StoredShape {
     values: DEFAULTS,
     alarmSound: DEFAULT_ALARM_SOUND,
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+    bookmarkBarVisible: DEFAULT_BOOKMARK_BAR_VISIBLE,
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
     defaultTab: DEFAULT_TAB,
@@ -236,6 +247,7 @@ function loadStored(): StoredShape {
       values: { ...DEFAULTS, ...parsed.values },
       alarmSound: parsed.alarmSound ?? DEFAULT_ALARM_SOUND,
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
+      bookmarkBarVisible: parsed.bookmarkBarVisible ?? DEFAULT_BOOKMARK_BAR_VISIBLE,
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
       defaultTab: parsed.defaultTab ?? DEFAULT_TAB,
@@ -271,6 +283,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [keepActiveCardCentered, setKeepActiveCardCentered] = useState(
     DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
   );
+  const [bookmarkBarVisible, setBookmarkBarVisible] = useState(DEFAULT_BOOKMARK_BAR_VISIBLE);
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultTab, setDefaultTab] = useState<StatusTab>(DEFAULT_TAB);
@@ -287,6 +300,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setValues(stored.values);
     setAlarmSound(stored.alarmSound);
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
+    setBookmarkBarVisible(stored.bookmarkBarVisible);
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
     setDefaultTab(stored.defaultTab);
@@ -308,6 +322,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       values,
       alarmSound,
       keepActiveCardCentered,
+      bookmarkBarVisible,
       dayStart,
       dayEnd,
       defaultTab,
@@ -324,6 +339,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     values,
     alarmSound,
     keepActiveCardCentered,
+    bookmarkBarVisible,
     dayStart,
     dayEnd,
     defaultTab,
@@ -349,6 +365,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setValues(DEFAULTS);
     setAlarmSound(DEFAULT_ALARM_SOUND);
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
+    setBookmarkBarVisible(DEFAULT_BOOKMARK_BAR_VISIBLE);
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
     setDefaultTab(DEFAULT_TAB);
@@ -378,6 +395,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setAlarmSound,
       keepActiveCardCentered,
       setKeepActiveCardCentered,
+      bookmarkBarVisible,
+      setBookmarkBarVisible,
       dayStart,
       setDayStart,
       dayEnd,
@@ -405,6 +424,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       resetOne,
       alarmSound,
       keepActiveCardCentered,
+      bookmarkBarVisible,
       dayStart,
       dayEnd,
       defaultTab,

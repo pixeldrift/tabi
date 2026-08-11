@@ -146,6 +146,47 @@ function statusColors(status: IntervalStatus, recency: Recency) {
     : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
+/** Everything the bookmark bar's Timestamp chip needs. `elapsed` (like
+ *  Rate's own denominator) ticks automatically whenever the session is
+ *  running via the real TimestampCard's own `subscribeTick` effect — this
+ *  hook only reads it (live via the store's useSyncExternalStore
+ *  subscription), never re-subscribes to the tick itself. `currentIndex` is
+ *  a pure function of `elapsed`, same formula the real card uses, so both
+ *  agree on which interval is "current" without any shared mutable index.
+ *  Scoring writes `statuses` directly — a single tap, safe even while the
+ *  real card is also mounted — and clears any matching "time to check"
+ *  alert, mirroring the real card's own `scoreFromCard` (not the alert's own
+ *  `score`, which deliberately leaves that alert to clear itself). */
+export function useTimestampChip(cardKey: string, intervalMin: number, intervalCount?: number) {
+  const [elapsed] = useCardState(cardKey, "elapsed", 0);
+  const { markDirty, canRecordData } = useCardSession();
+  const { clearByDedupeKey } = useNotifications();
+
+  const intervalMs = intervalMin * 60 * 1000;
+  const gracedIndex = Math.max(0, Math.floor((elapsed - intervalMs / 2) / intervalMs));
+  const currentIndex =
+    intervalCount !== undefined ? Math.min(intervalCount - 1, gracedIndex) : gracedIndex;
+
+  const [statuses, setStatuses] = useCardState<IntervalStatus[]>(cardKey, "statuses", () =>
+    Array(currentIndex + 1).fill(null),
+  );
+
+  const score = (value: Exclude<IntervalStatus, null>) => {
+    markDirty();
+    setStatuses((prev) => {
+      const next =
+        currentIndex < prev.length
+          ? [...prev]
+          : [...prev, ...Array(currentIndex + 1 - prev.length).fill(null)];
+      next[currentIndex] = next[currentIndex] === value ? null : value;
+      return next;
+    });
+    clearByDedupeKey(`timestamp-check:${cardKey}:${currentIndex}`);
+  };
+
+  return { currentIndex, currentStatus: statuses[currentIndex] ?? null, score, canRecordData };
+}
+
 export function TimestampCard({
   id,
   title,
@@ -755,7 +796,10 @@ const SPRING_TRANSITION = { type: "spring", stiffness: 300, damping: 32 } as con
 // viewed interval sits centered in the viewport with past/future segments
 // trailing off on either side, so both directions need to fade out. Narrow
 // and hugging the edge, rather than eating a big chunk of the viewport.
-const HORIZONTAL_FADE_MASK = {
+// Exported for BookmarkBar.tsx, which reuses this same CSS mask (just not
+// the rest of this file's Framer-Motion-driven carousel) for its own
+// edge-fade over native overflow-x scroll.
+export const HORIZONTAL_FADE_MASK = {
   WebkitMaskImage:
     "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",
   maskImage: "linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%)",

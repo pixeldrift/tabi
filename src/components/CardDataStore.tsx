@@ -1,6 +1,18 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
-type Store = Map<string, unknown>;
+interface Store {
+  values: Map<string, unknown>;
+  // Per-key subscriber sets — a write to one key only wakes components
+  // actually reading that key, not every card on the page.
+  listeners: Map<string, Set<() => void>>;
+}
 
 const CardDataStoreContext = createContext<Store | null>(null);
 
@@ -16,9 +28,18 @@ const CardDataStoreContext = createContext<Store | null>(null);
  *  on every update, so a freshly-mounted component instance picks up exactly
  *  where the last one left off. Mounted once, above the whole card list, so
  *  the Map itself is never recreated by the same remounts it exists to
- *  survive. */
+ *  survive.
+ *
+ *  Built on useSyncExternalStore (not plain useState mirroring a Map) since
+ *  the bookmark bar means a card's data can now have TWO concurrently
+ *  mounted readers at once — the real card (possibly just scrolled
+ *  off-screen, since the list isn't virtualized) and its bookmark-bar chip.
+ *  A bare useState only reads the Map once at its own mount, so the two
+ *  would silently drift out of sync with each other until one happened to
+ *  re-render for an unrelated reason; a real subscription keeps every
+ *  concurrent reader of the same key live. */
 export function CardDataStoreProvider({ children }: { children: ReactNode }) {
-  const store = useRef<Store>(new Map()).current;
+  const store = useRef<Store>({ values: new Map(), listeners: new Map() }).current;
   return <CardDataStoreContext.Provider value={store}>{children}</CardDataStoreContext.Provider>;
 }
 
@@ -45,19 +66,44 @@ export function useCardState<T>(
 ): [T, (next: T | ((prev: T) => T)) => void] {
   const store = useStore();
   const key = `${cardId}:${slot}`;
-  const [value, setValue] = useState<T>(() => {
-    if (store.has(key)) return store.get(key) as T;
+
+  // Seeds on first read for this key, same as the old lazy useState
+  // initializer — idempotent, so re-running this check on later renders
+  // (unlike a true lazy initializer) is harmless.
+  if (!store.values.has(key)) {
     const v = typeof initial === "function" ? (initial as () => T)() : initial;
-    store.set(key, v);
-    return v;
-  });
+    store.values.set(key, v);
+  }
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      let set = store.listeners.get(key);
+      if (!set) {
+        set = new Set();
+        store.listeners.set(key, set);
+      }
+      set.add(onStoreChange);
+      return () => {
+        set.delete(onStoreChange);
+        if (set.size === 0) store.listeners.delete(key);
+      };
+    },
+    [store, key],
+  );
+  const getSnapshot = useCallback(() => store.values.get(key) as T, [store, key]);
+  // getServerSnapshot === getSnapshot: the same Map, seeded synchronously
+  // above before this call regardless of client vs. server, so there's
+  // nothing server-specific to special-case — omitting this third argument
+  // entirely made React fall back to full client rendering on every SSR
+  // pass (see the "Missing getServerSnapshot" warning it throws otherwise).
+  const value = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
   const setAndPersist = useCallback(
     (next: T | ((prev: T) => T)) => {
-      setValue((prev) => {
-        const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
-        store.set(key, resolved);
-        return resolved;
-      });
+      const prev = store.values.get(key) as T;
+      const resolved = typeof next === "function" ? (next as (p: T) => T)(prev) : next;
+      store.values.set(key, resolved);
+      store.listeners.get(key)?.forEach((listener) => listener());
     },
     [store, key],
   );

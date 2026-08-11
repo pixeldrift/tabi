@@ -1,4 +1,4 @@
-import { GripVertical, Heart, EyeOff } from "lucide-react";
+import { GripVertical, Bookmark, EyeOff } from "lucide-react";
 import type { DragControls } from "motion/react";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ export function CardEditControls({
             favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
           )}
         >
-          <Heart className="size-4" fill={favorited ? "currentColor" : "none"} />
+          <Bookmark className="size-4" fill={favorited ? "currentColor" : "none"} />
         </button>
         <button
           type="button"

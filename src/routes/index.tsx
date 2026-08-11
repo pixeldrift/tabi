@@ -37,6 +37,7 @@ import { NOTIFICATION_AREA_TRANSITION, NotificationsPane } from "@/components/No
 import { useStickyTop } from "@/hooks/use-sticky-top";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { DataToolbar } from "@/components/DataToolbar";
+import { BookmarkBar } from "@/components/BookmarkBar";
 import {
   DataToolbarProvider,
   useDataToolbar,
@@ -71,7 +72,7 @@ export const Route = createFileRoute("/")({
 // stable identity for drag-reorder, favoriting, hiding, and active-card
 // tracking, independent of array position (which filtering/reordering
 // otherwise makes an unreliable key).
-type CardConfig = {
+export type CardConfig = {
   id: string;
   behaviorRole?: "interfering";
   teachingProcedure?: TeachingProcedure;
@@ -953,6 +954,32 @@ function getVisibleCards(
   });
 }
 
+// Same manual-order-then-append idiom as getVisibleCards' own ordering
+// block above, applied for the bookmark bar's two lists — deliberately
+// independent of the main toolbar's own `filters`/`searchQuery` state, so
+// switching the bar's corner toggle never touches (or is touched by) what
+// the main list is currently showing. Hidden cards are excluded outright
+// (not gated behind a "show hidden" toggle of the bar's own) — same
+// "hidden wins over favorited" precedent getVisibleCards already applies.
+function getOrderedCards(
+  cards: CardConfig[],
+  order: string[],
+  predicate: (c: CardConfig) => boolean,
+): CardConfig[] {
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const orderedIds =
+    order.length > 0
+      ? [
+          ...order.filter((id) => byId.has(id)),
+          ...cards.map((c) => c.id).filter((id) => !order.includes(id)),
+        ]
+      : cards.map((c) => c.id);
+  return orderedIds
+    .map((id) => byId.get(id))
+    .filter((c): c is CardConfig => c !== undefined)
+    .filter(predicate);
+}
+
 // Native `scrollIntoView({block: "center"})` centers an element against the
 // full scroll container, with no way to bias that centering — it always
 // splits the leftover space evenly above and below. Centering by hand here
@@ -1122,6 +1149,22 @@ function IndexInner({
       ),
     [order, filters, searchQuery, favorites, hidden, hasData, completion, editMode],
   );
+
+  // The bookmark bar's own two source lists — see getOrderedCards' own
+  // comment on why these stay independent of the main toolbar's filters.
+  const favoriteCards = useMemo(
+    () => getOrderedCards(cards, order, (c) => favorites.has(c.id) && !hidden.has(c.id)),
+    [order, favorites, hidden],
+  );
+  const interferingCards = useMemo(
+    () =>
+      getOrderedCards(cards, order, (c) => c.behaviorRole === "interfering" && !hidden.has(c.id)),
+    [order, hidden],
+  );
+  // A card missing from this set is genuinely unmounted right now (filtered
+  // out of the main list), not just scrolled off-screen — see
+  // BookmarkChip's DurationChip for the one place this actually matters.
+  const mountedIds = useMemo(() => new Set(visibleCards.map((c) => c.id)), [visibleCards]);
 
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -1576,6 +1619,11 @@ function IndexInner({
                         </motion.div>
                       )}
                     </AnimatePresence>
+                    <BookmarkBar
+                      favoriteCards={favoriteCards}
+                      interferingCards={interferingCards}
+                      mountedIds={mountedIds}
+                    />
                   </DataToolbar>
                 )
               }

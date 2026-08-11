@@ -41,6 +41,22 @@ const STAR_SIZE_STEP = 9;
 // to its own size so its margin-top offset comes out to zero.
 const ROW_STAR_SIZE = 36;
 
+/** Everything the bookmark bar's Rating chip needs — `rating` is a single
+ *  overwritable value (no running count/trial list to keep in sync), safe
+ *  to write straight through the store even while the real RatingCard is
+ *  also mounted elsewhere. `min`/`max` are passed through unchanged (not
+ *  read from the store) so the chip's own star picker can be built with the
+ *  same range as the card it mirrors. */
+export function useRatingChip(cardKey: string, max: number, min = 0) {
+  const [rating, setRating] = useCardState(cardKey, "rating", 0);
+  const { markDirty, canRecordData } = useCardSession();
+  const pick = (value: number) => {
+    markDirty();
+    setRating((r) => (r === value ? 0 : value));
+  };
+  return { rating, min, max, pick, canRecordData };
+}
+
 export function RatingCard({
   id,
   title,
@@ -431,7 +447,10 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
  *  the same style as the grid tile's own star row (no level descriptions —
  *  those only appear in Card mode's roomier expanded view). The triangle is
  *  the same "more choices below" cue every other button-with-a-menu uses. */
-function ListRatingButton({
+// Also reused as-is by the bookmark bar's own Rating chip (see
+// BookmarkChip.tsx), which is why the collision boundary below is pinned
+// to the document rather than left at Radix's default.
+export function ListRatingButton({
   rating,
   numStars,
   min,
@@ -495,7 +514,11 @@ function ListRatingButton({
         side="top"
         align="center"
         collisionPadding={8}
-        className="group w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        // See ListPromptLevelButton's own comment in TrialCard.tsx — same
+        // fix, needed for the same reason once this is reused inside the
+        // bookmark bar's overflow-x-auto strip.
+        collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
+        className="group z-[70] w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex items-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {

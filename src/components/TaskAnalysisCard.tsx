@@ -136,6 +136,95 @@ function statusDotColor(status: StepStatus) {
         : "bg-stone-300";
 }
 
+/** Everything the bookmark bar's Task Analysis chip needs, independent of
+ *  whether the real TaskAnalysisCard is currently mounted anywhere — reads/
+ *  writes the same useCardState-backed `statuses`/`current`/`promptLevel`
+ *  slots TaskAnalysisCard itself uses, with lighter versions of its own
+ *  `setStep`/`pickPromptLevel` (no expanded-list bubble-track animation
+ *  state, no advance delay). `totalSteps` comes from the card's own
+ *  `steps.length`, same as TaskAnalysisCard's own initial `statuses` —
+ *  unlike Trial's `trials` array, this length is fixed by the card's
+ *  config rather than growing dynamically, so no defensive padding is
+ *  needed. When `promptLevels` is set, the chip's Prompted button reuses
+ *  TaskAnalysisCard's own exported `ListTaskAnalysisPromptLevelButton` (see
+ *  BookmarkChip.tsx) rather than a plain toggle — `pickPromptLevel` below
+ *  is that button's write path. */
+export function useTaskAnalysisChip(cardKey: string, totalSteps: number, promptLevels?: string[]) {
+  const { markDirty, canRecordData } = useCardSession();
+  const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () =>
+    Array.from({ length: totalSteps }, () => null),
+  );
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
+  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>>(
+    cardKey,
+    "promptLevel",
+    {},
+  );
+
+  const firstUnscored = statuses.indexOf(null);
+  const canScoreCurrent = firstUnscored === -1 || current <= firstUnscored;
+  const currentStatus: StepStatus = statuses[current] ?? null;
+  const needsPromptLevelPicker = (promptLevels?.length ?? 0) > 0;
+  const advanceCurrent = () => setCurrent((c) => Math.min(c + 1, totalSteps - 1));
+
+  const setStep = (value: Exclude<StepStatus, null>) => {
+    if (!canScoreCurrent) return;
+    markDirty();
+    const isToggleOff = currentStatus === value;
+    if (!isToggleOff) {
+      playSoundEffect(
+        value === "independent" ? "correct" : value === "error" ? "error" : "prompted",
+      );
+    }
+    setStatuses((prev) => {
+      const next = [...prev];
+      next[current] = isToggleOff ? null : value;
+      return next;
+    });
+    if (value !== "prompted" || isToggleOff) {
+      setPromptLevel((prev) => {
+        if (!(current in prev)) return prev;
+        const next = { ...prev };
+        delete next[current];
+        return next;
+      });
+    }
+    if (!isToggleOff) advanceCurrent();
+  };
+
+  const pickPromptLevel = (level: string) => {
+    if (!canScoreCurrent) return;
+    markDirty();
+    const isUnspecified = level === UNSPECIFIED_LEVEL;
+    const isToggleOff =
+      currentStatus === "prompted" &&
+      (isUnspecified ? !(current in promptLevel) : promptLevel[current] === level);
+    setStatuses((prev) => {
+      const next = [...prev];
+      next[current] = isToggleOff ? null : "prompted";
+      return next;
+    });
+    setPromptLevel((prev) => {
+      const next = { ...prev };
+      if (isToggleOff || isUnspecified) delete next[current];
+      else next[current] = level;
+      return next;
+    });
+    if (!isToggleOff) advanceCurrent();
+  };
+
+  return {
+    current,
+    currentStatus,
+    currentPromptLevel: promptLevel[current] ?? null,
+    canScoreCurrent,
+    needsPromptLevelPicker,
+    setStep,
+    pickPromptLevel,
+    canRecordData,
+  };
+}
+
 export function TaskAnalysisCard({
   id,
   title,
@@ -1030,8 +1119,11 @@ function TaskAnalysisPromptLevelButton({
 
 /** Icon-only circular version of TaskAnalysisPromptLevelButton for the List
  *  display mode's floating action row — same popover-picker behavior,
- *  styled to match ListActionButton (including its "more choices" triangle). */
-function ListTaskAnalysisPromptLevelButton({
+ *  styled to match ListActionButton (including its "more choices" triangle).
+ *  Also reused as-is by the bookmark bar's own Task Analysis chip (see
+ *  BookmarkChip.tsx), which is why the collision boundary below is pinned
+ *  to the document rather than left at Radix's default. */
+export function ListTaskAnalysisPromptLevelButton({
   levels,
   selectedLevel,
   selected,
@@ -1081,6 +1173,10 @@ function ListTaskAnalysisPromptLevelButton({
         side="top"
         align="center"
         collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        // See ListPromptLevelButton's own comment in TrialCard.tsx — same
+        // fix, needed for the same reason once this is reused inside the
+        // bookmark bar's overflow-x-auto strip.
+        collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
         className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-amber-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <PromptLevelList

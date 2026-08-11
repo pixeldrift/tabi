@@ -38,6 +38,164 @@ const CENTER_W = 210;
 const CENTER_H = 52;
 const GAP = 8;
 
+type CardStateSetter<T> = (next: T | ((prev: T) => T)) => void;
+
+/** Folds a running instance's accumulated `liveMs` back into `instances`
+ *  and zeroes the live counter — shared by the toggle path below and by
+ *  DurationCard's own "session paused" effect, both of which need to bank
+ *  whatever time has ticked so far before anything else changes. */
+function flushDurationLive(args: {
+  running: boolean;
+  runningIdx: number | null;
+  liveMs: number;
+  setInstances: CardStateSetter<number[]>;
+  setLiveMs: CardStateSetter<number>;
+}) {
+  const { running, runningIdx, liveMs, setInstances, setLiveMs } = args;
+  if (running && runningIdx !== null) {
+    const idx = runningIdx;
+    setInstances((arr) => {
+      const next = arr.slice();
+      next[idx] = (next[idx] ?? 0) + liveMs;
+      return next;
+    });
+  }
+  setLiveMs(0);
+}
+
+/** The actual play/pause logic for one Duration instance, pulled out of
+ *  DurationCard so the bookmark bar's chip can trigger the exact same
+ *  start/stop behavior — including the "wait for the next whole session
+ *  second" start alignment (see the comment this used to carry inline) —
+ *  without re-subscribing to the session tick itself. Only the real,
+ *  already-mounted DurationCard owns that subscription (see its own
+ *  `subscribeTick` effect); this function only ever touches the
+ *  useCardState-backed slots both the card and the chip read through, so
+ *  whichever one is actually ticking stays the single source of truth
+ *  regardless of which one triggered the toggle. `onStart` is optional
+ *  purely so DurationCard can layer its own pulse-animation timing on top
+ *  — the chip has no equivalent animation and just omits it. */
+function toggleDurationInstance(args: {
+  idx: number;
+  instances: number[];
+  liveMs: number;
+  running: boolean;
+  runningIdx: number | null;
+  pendingStartRef: { current: number | null };
+  getElapsedMsNow: () => number;
+  markDirty: () => void;
+  setInstances: CardStateSetter<number[]>;
+  setViewIdx: CardStateSetter<number>;
+  setLiveMs: CardStateSetter<number>;
+  setRunning: CardStateSetter<boolean>;
+  setRunningIdx: CardStateSetter<number | null>;
+  onStart?: () => void;
+}) {
+  const {
+    idx,
+    instances,
+    liveMs,
+    running,
+    runningIdx,
+    pendingStartRef,
+    getElapsedMsNow,
+    markDirty,
+    setInstances,
+    setViewIdx,
+    setLiveMs,
+    setRunning,
+    setRunningIdx,
+    onStart,
+  } = args;
+  markDirty();
+  if (pendingStartRef.current !== null) {
+    window.clearTimeout(pendingStartRef.current);
+    pendingStartRef.current = null;
+  }
+  const flushLive = () =>
+    flushDurationLive({ running, runningIdx, liveMs, setInstances, setLiveMs });
+  if (running && runningIdx === idx) {
+    const wasLast = idx === instances.length - 1;
+    flushLive();
+    setRunning(false);
+    setRunningIdx(null);
+    if (wasLast) {
+      setInstances((arr) => [...arr, 0]);
+      setViewIdx(idx + 1);
+    }
+  } else {
+    if (running) {
+      flushLive();
+      setRunning(false);
+      setRunningIdx(null);
+    }
+    setViewIdx(idx);
+    const msUntilNextSecond = 1000 - (getElapsedMsNow() % 1000 || 1000);
+    pendingStartRef.current = window.setTimeout(() => {
+      pendingStartRef.current = null;
+      setRunningIdx(idx);
+      setRunning(true);
+      onStart?.();
+    }, msUntilNextSecond);
+  }
+}
+
+/** Everything the bookmark bar's Duration chip needs, independent of
+ *  whether the real DurationCard is currently mounted anywhere — reads the
+ *  same useCardState-backed slots (kept live across both readers by the
+ *  store's useSyncExternalStore subscription) and writes through the same
+ *  toggleDurationInstance the real card uses. Deliberately does NOT touch
+ *  `subscribeTick` — see toggleDurationInstance's own comment on why only
+ *  the real card may ever own that subscription. */
+export function useDurationChip(cardKey: string) {
+  const { getElapsedMsNow } = useSession();
+  const { markDirty, resetSignal, canRecordData } = useCardSession();
+  const [instances, setInstances] = useCardState<number[]>(cardKey, "instances", [0]);
+  const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", 0);
+  const [liveMs, setLiveMs] = useCardState(cardKey, "liveMs", 0);
+  const [running, setRunning] = useCardState(cardKey, "running", false);
+  const [runningIdx, setRunningIdx] = useCardState<number | null>(cardKey, "runningIdx", null);
+  const pendingStartRef = useRef<number | null>(null);
+  // A reset landing right as this chip has a start pending (rare, but the
+  // real card's own equivalent ref only guards ITS instance) shouldn't let
+  // that stale timeout fire after the fact.
+  useEffect(() => {
+    if (pendingStartRef.current !== null) {
+      window.clearTimeout(pendingStartRef.current);
+      pendingStartRef.current = null;
+    }
+  }, [resetSignal]);
+  useEffect(
+    () => () => {
+      if (pendingStartRef.current !== null) window.clearTimeout(pendingStartRef.current);
+    },
+    [],
+  );
+
+  const isRunning = running && runningIdx === viewIdx;
+  const displayMs = isRunning ? (instances[viewIdx] ?? 0) + liveMs : (instances[viewIdx] ?? 0);
+
+  const toggle = () => {
+    toggleDurationInstance({
+      idx: viewIdx,
+      instances,
+      liveMs,
+      running,
+      runningIdx,
+      pendingStartRef,
+      getElapsedMsNow,
+      markDirty,
+      setInstances,
+      setViewIdx,
+      setLiveMs,
+      setRunning,
+      setRunningIdx,
+    });
+  };
+
+  return { running: isRunning, displayMs, toggle, canRecordData };
+}
+
 export function DurationCard({
   id,
   title,
@@ -165,17 +323,8 @@ export function DurationCard({
     unit: "Total Time",
   });
 
-  const flushLive = () => {
-    if (running && runningIdx !== null) {
-      const idx = runningIdx;
-      setInstances((arr) => {
-        const next = arr.slice();
-        next[idx] = (next[idx] ?? 0) + liveMs;
-        return next;
-      });
-    }
-    setLiveMs(0);
-  };
+  const flushLive = () =>
+    flushDurationLive({ running, runningIdx, liveMs, setInstances, setLiveMs });
 
   // When the session pauses, pause the current instance too.
   useEffect(() => {
@@ -196,36 +345,22 @@ export function DurationCard({
   // and it means every timer's displayed seconds tick over in unison instead
   // of drifting out of phase depending on the exact moment each was started.
   const toggleInstance = (idx: number) => {
-    markDirty();
-    clearPendingStart();
-    if (running && runningIdx === idx) {
-      const wasLast = idx === instances.length - 1;
-      flushLive();
-      setRunning(false);
-      setRunningIdx(null);
-      if (wasLast) {
-        setInstances((arr) => [...arr, 0]);
-        // Only auto-advance the view when the paused instance was the last
-        // one — pausing an earlier instance (after navigating back to fix
-        // up its time) shouldn't yank the view forward past instances that
-        // already have their own data.
-        setViewIdx(idx + 1);
-      }
-    } else {
-      if (running) {
-        flushLive();
-        setRunning(false);
-        setRunningIdx(null);
-      }
-      setViewIdx(idx);
-      const msUntilNextSecond = 1000 - (getElapsedMsNow() % 1000 || 1000);
-      pendingStartRef.current = window.setTimeout(() => {
-        pendingStartRef.current = null;
-        setRunningIdx(idx);
-        setRunning(true);
-        setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS));
-      }, msUntilNextSecond);
-    }
+    toggleDurationInstance({
+      idx,
+      instances,
+      liveMs,
+      running,
+      runningIdx,
+      pendingStartRef,
+      getElapsedMsNow,
+      markDirty,
+      setInstances,
+      setViewIdx,
+      setLiveMs,
+      setRunning,
+      setRunningIdx,
+      onStart: () => setPulseDelayMs(-(getElapsedMsNow() % PULSE_BEAT_MS)),
+    });
   };
 
   const togglePause = () => toggleInstance(viewIdx);
@@ -1027,7 +1162,8 @@ function formatTime(ms: number) {
 // minute, so leaving it unpadded made the pill's own digit count (and the
 // button riding along with it) visibly hop by one character width on every
 // single-to-double-digit rollover, not just the rare hour-gain crossing.
-function formatCompactTime(ms: number) {
+// Exported for BookmarkChip.tsx's own even-narrower Duration chip badge.
+export function formatCompactTime(ms: number) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);

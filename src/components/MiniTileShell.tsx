@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { GripVertical, Heart, EyeOff } from "lucide-react";
+import { GripVertical, Bookmark, EyeOff } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -278,7 +278,7 @@ function MiniEditControls({
             favorited ? "text-blue-500" : "text-stone-400 hover:text-stone-600",
           )}
         >
-          <Heart className={icon} fill={favorited ? "currentColor" : "none"} />
+          <Bookmark className={icon} fill={favorited ? "currentColor" : "none"} />
         </button>
         <button
           type="button"
