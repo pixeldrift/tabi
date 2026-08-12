@@ -84,8 +84,12 @@ export function BookmarkBar({
          *  toolbar's own view-mode toggle) rather than one button that
          *  cycles — there's room for both, and it reads which mode is
          *  active (and that a second one exists at all) at a glance
-         *  instead of only after tapping. */}
-        <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+         *  instead of only after tapping. Stacked vertically (not side by
+         *  side) — horizontal space here is what's actually scarce, since
+         *  every px this toggle claims is a px the chip strip doesn't get;
+         *  stacking trades that for height the row already has spare,
+         *  bounded by whatever the tallest chip's own 2-line title needs. */}
+        <div className="flex flex-col items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
           <button
             type="button"
             onClick={() => setBookmarkBarMode("favorites")}
