@@ -44,6 +44,24 @@ export const KIND_META: Record<
   timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
 };
 
+// Fades the collapsing button group's own trailing (right) edge — the one
+// nearest the search box, where a button visually "dissolves into" it as
+// the box expands leftward and eats the group's own width — instead of
+// each button just getting hard-clipped by the shrinking box's own edge.
+// Applied only while collapsing/collapsed (searchFocused, see below): at
+// rest the group is full width and every button stays fully opaque, same
+// idiom as BookmarkBar's own scroll-position-gated fade mask.
+const TOOLBAR_COLLAPSE_FADE_MASK = {
+  WebkitMaskImage: "linear-gradient(to right, black 0%, black 60%, transparent 100%)",
+  maskImage: "linear-gradient(to right, black 0%, black 60%, transparent 100%)",
+};
+
+// Below this rendered width (px), "Search" no longer comfortably fits
+// next to the icon at this input's own padding/font size — the search
+// box falls back to an icon-only affordance rather than letting the
+// placeholder clip.
+const SEARCH_LABEL_MIN_WIDTH = 110;
+
 export interface DataToolbarProps {
   availableKinds: CardKind[];
   availablePhases: string[];
@@ -75,6 +93,25 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterContentRef = useRef<HTMLDivElement>(null);
   const [filterArrowLeft, setFilterArrowLeft] = useState(16);
+
+  // Drives the search box's own expand-leftward-on-focus behavior — see
+  // the collapsing wrapper around the other toolbar controls below.
+  const [searchFocused, setSearchFocused] = useState(false);
+  // Whether the search box is currently too narrow to fit "Search" next to
+  // its icon — independent of searchFocused, since this only matters at
+  // rest (focusing always triggers the expand above, which gives it room
+  // regardless of this measurement).
+  const [searchNarrow, setSearchNarrow] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = searchBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setSearchNarrow(entry.contentRect.width < SEARCH_LABEL_MIN_WIDTH);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Re-centers the popover horizontally on the viewport after Radix
   // positions it (which otherwise hugs the button's own left-of-center
@@ -137,6 +174,13 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
     (filters.favoritesOnly ? 1 : 0) +
     (filters.showHidden ? 1 : 0);
 
+  // Icon-only affordance — no room for "Search" next to the icon, and
+  // nothing already typed that would need the icon out of the way. Never
+  // true while focused (that always triggers the expand above, which
+  // gives it room) or while there's an actual query (real typed text
+  // takes over the box regardless of width).
+  const showSearchIconOnly = searchNarrow && !searchFocused && searchQuery.length === 0;
+
   return (
     <div
       // Named so the shared drawer's own top offset can be measured off
@@ -161,207 +205,243 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
        *  outer toolbar, which grows by the banner's variable height. */}
       <div data-toolbar-row className="py-1.5 px-4">
         <div className="flex items-center gap-1.5 max-w-3xl mx-auto">
-          {/* View mode segmented toggle — nudged left within the toolbar's own
-           *  px-4 padding, since its rounded pill reads with more empty edge
-           *  space than the toolbar's other controls at the same inset. */}
+          {/* Collapses to zero width while the search box is focused, via
+           *  the CSS grid 0fr/1fr trick — animatable with a plain
+           *  transition regardless of this group's own (several buttons,
+           *  a popover trigger) width, no JS measurement needed. The
+           *  search box below is this row's only flex-1 sibling, so it
+           *  automatically expands leftward into whatever space this
+           *  reclaims. */}
           <div
-            // Named so the data details drawer can measure this cluster's
-            // own right edge (see useElementRight) and keep its normal-width
-            // left edge from resting on top of it for the list/card display
-            // modes, whose drawer width isn't otherwise tied to any tile's
-            // own measured position the way the grid modes' hugCardRight is.
-            data-view-mode-toggle
-            className="flex items-center -ml-1 rounded-full border border-border bg-stone-100/60 p-0.5 shrink-0"
+            className={cn(
+              "grid transition-[grid-template-columns] duration-300 ease-in-out",
+              searchFocused ? "grid-cols-[0fr]" : "grid-cols-[1fr]",
+            )}
           >
-            {DISPLAY_MODES.map(({ mode, label, icon }) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setDisplayMode(mode)}
-                aria-pressed={displayMode === mode}
-                aria-label={`${label} view`}
-                title={`${label} view`}
-                className={cn(
-                  "grid place-items-center size-6 rounded-full transition-colors",
-                  displayMode === mode
-                    ? "btn-bevel bg-blue-500 text-white"
-                    : "text-stone-500 hover:text-stone-800",
-                )}
+            <div
+              className="flex min-w-0 items-center gap-1.5 overflow-hidden"
+              style={searchFocused ? TOOLBAR_COLLAPSE_FADE_MASK : undefined}
+            >
+              {/* View mode segmented toggle — nudged left within the toolbar's own
+               *  px-4 padding, since its rounded pill reads with more empty edge
+               *  space than the toolbar's other controls at the same inset. */}
+              <div
+                // Named so the data details drawer can measure this cluster's
+                // own right edge (see useElementRight) and keep its normal-width
+                // left edge from resting on top of it for the list/card display
+                // modes, whose drawer width isn't otherwise tied to any tile's
+                // own measured position the way the grid modes' hugCardRight is.
+                data-view-mode-toggle
+                className="flex items-center -ml-1 rounded-full border border-border bg-stone-100/60 p-0.5 shrink-0"
               >
-                {icon({ className: "size-3.5" })}
-              </button>
-            ))}
-          </div>
+                {DISPLAY_MODES.map(({ mode, label, icon }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setDisplayMode(mode)}
+                    aria-pressed={displayMode === mode}
+                    aria-label={`${label} view`}
+                    title={`${label} view`}
+                    className={cn(
+                      "grid place-items-center size-6 rounded-full transition-colors",
+                      displayMode === mode
+                        ? "btn-bevel bg-blue-500 text-white"
+                        : "text-stone-500 hover:text-stone-800",
+                    )}
+                  >
+                    {icon({ className: "size-3.5" })}
+                  </button>
+                ))}
+              </div>
 
-          {/* Filter */}
-          <Popover
-            open={filterOpen}
-            onOpenChange={(open) => {
-              setFilterOpen(open);
-              if (open) playSoundEffect("popup");
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                ref={filterBtnRef}
-                type="button"
-                aria-label="Filter cards"
-                title="Filter cards — double-tap to clear"
-                // Double-click/tap clears every active filter without having
-                // to open the popover first — the two intervening single
-                // clicks still toggle the popover open then closed, but that
-                // happens too fast to notice.
-                onDoubleClick={clearFilters}
-                className={cn(
-                  "relative grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
-                  activeFilterCount > 0
-                    ? "border-blue-400 bg-blue-50 text-blue-600"
-                    : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
-                )}
+              {/* Filter */}
+              <Popover
+                open={filterOpen}
+                onOpenChange={(open) => {
+                  setFilterOpen(open);
+                  if (open) playSoundEffect("popup");
+                }}
               >
-                <FilterIcon className="size-3.5" />
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 grid place-items-center size-3.5 rounded-full bg-blue-500 text-white text-[9px] font-semibold leading-none">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-            </PopoverTrigger>
-            {/* z-[70]: the arrow straddles the seam with the trigger, poking
+                <PopoverTrigger asChild>
+                  <button
+                    ref={filterBtnRef}
+                    type="button"
+                    aria-label="Filter cards"
+                    title="Filter cards — double-tap to clear"
+                    // Double-click/tap clears every active filter without having
+                    // to open the popover first — the two intervening single
+                    // clicks still toggle the popover open then closed, but that
+                    // happens too fast to notice.
+                    onDoubleClick={clearFilters}
+                    className={cn(
+                      "relative grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
+                      activeFilterCount > 0
+                        ? "border-blue-400 bg-blue-50 text-blue-600"
+                        : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
+                    )}
+                  >
+                    <FilterIcon className="size-3.5" />
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1 -right-1 grid place-items-center size-3.5 rounded-full bg-blue-500 text-white text-[9px] font-semibold leading-none">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                {/* z-[70]: the arrow straddles the seam with the trigger, poking
               up slightly into the toolbar's own row — the toolbar itself is
               z-[60] (see its own className comment), so the popover needs to
               paint above that or the sticky bar's opaque background hides
               the arrow (and the top sliver of the box) behind it. */}
-            <PopoverContent
-              ref={filterContentRef}
-              side="bottom"
-              align="center"
-              sideOffset={8}
-              className="group z-[70] w-64 p-3"
-            >
-              <FilterPopoverContent
-                availableKinds={availableKinds}
-                availablePhases={availablePhases}
-                filters={filters}
-                toggleKindFilter={toggleKindFilter}
-                togglePhaseFilter={togglePhaseFilter}
-                cycleDataFilter={cycleDataFilter}
-                cycleCompletionFilter={cycleCompletionFilter}
-                setFavoritesOnly={setFavoritesOnly}
-                setShowHidden={setShowHidden}
-                clearFilters={clearFilters}
-                onClose={() => setFilterOpen(false)}
-              />
-              {/* Arrow — points back at the filter button, same rotated-square
+                <PopoverContent
+                  ref={filterContentRef}
+                  side="bottom"
+                  align="center"
+                  sideOffset={8}
+                  className="group z-[70] w-64 p-3"
+                >
+                  <FilterPopoverContent
+                    availableKinds={availableKinds}
+                    availablePhases={availablePhases}
+                    filters={filters}
+                    toggleKindFilter={toggleKindFilter}
+                    togglePhaseFilter={togglePhaseFilter}
+                    cycleDataFilter={cycleDataFilter}
+                    cycleCompletionFilter={cycleCompletionFilter}
+                    setFavoritesOnly={setFavoritesOnly}
+                    setShowHidden={setShowHidden}
+                    clearFilters={clearFilters}
+                    onClose={() => setFilterOpen(false)}
+                  />
+                  {/* Arrow — points back at the filter button, same rotated-square
                 idiom as NumberKeypad's popup. Since the box is no longer
                 positioned relative to the button, its left offset is
                 measured (see the effect above) rather than a fixed value. */}
-              <div
-                className={cn(
-                  "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-border bg-popover",
-                  "-top-[7px] border-l-2 border-t-2",
-                  "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
-                  "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
-                  "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
-                )}
-                style={{ left: filterArrowLeft }}
-              />
-            </PopoverContent>
-          </Popover>
+                  <div
+                    className={cn(
+                      "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-border bg-popover",
+                      "-top-[7px] border-l-2 border-t-2",
+                      "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[7px]",
+                      "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+                      "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+                    )}
+                    style={{ left: filterArrowLeft }}
+                  />
+                </PopoverContent>
+              </Popover>
 
-          {/* Interfering behavior / target goal 3-way filter — cycles both
+              {/* Interfering behavior / target goal 3-way filter — cycles both
             (default, no constraint) -> interfering-only -> target-only ->
             back to both on each click, rather than the independent-pair
             toggles used elsewhere in the popover, since only one of these
             three states can be active at a time. */}
-          <button
-            type="button"
-            onClick={cycleBehaviorFilter}
-            data-tour="behavior-filter-toggle"
-            aria-pressed={filters.behaviorFilter !== "both"}
-            aria-label={
-              filters.behaviorFilter === "interfering"
-                ? "Showing interfering behaviors only — click to show target goals only"
-                : filters.behaviorFilter === "target"
-                  ? "Showing target goals only — click to show all cards"
-                  : "Showing all cards — click to show interfering behaviors only"
-            }
-            title={
-              filters.behaviorFilter === "interfering"
-                ? "Interfering behaviors only"
-                : filters.behaviorFilter === "target"
-                  ? "Target goals only"
-                  : "Filter: interfering behaviors / target goals"
-            }
-            className={cn(
-              "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
-              filters.behaviorFilter !== "both"
-                ? "border-blue-400 bg-blue-50 text-blue-600"
-                : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
-            )}
-          >
-            {filters.behaviorFilter === "target" ? (
-              <Target className="size-3.5" />
-            ) : (
-              <Frown className="size-3.5" />
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={cycleBehaviorFilter}
+                data-tour="behavior-filter-toggle"
+                aria-pressed={filters.behaviorFilter !== "both"}
+                aria-label={
+                  filters.behaviorFilter === "interfering"
+                    ? "Showing interfering behaviors only — click to show target goals only"
+                    : filters.behaviorFilter === "target"
+                      ? "Showing target goals only — click to show all cards"
+                      : "Showing all cards — click to show interfering behaviors only"
+                }
+                title={
+                  filters.behaviorFilter === "interfering"
+                    ? "Interfering behaviors only"
+                    : filters.behaviorFilter === "target"
+                      ? "Target goals only"
+                      : "Filter: interfering behaviors / target goals"
+                }
+                className={cn(
+                  "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
+                  filters.behaviorFilter !== "both"
+                    ? "border-blue-400 bg-blue-50 text-blue-600"
+                    : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
+                )}
+              >
+                {filters.behaviorFilter === "target" ? (
+                  <Target className="size-3.5" />
+                ) : (
+                  <Frown className="size-3.5" />
+                )}
+              </button>
 
-          {/* Edit mode */}
-          <button
-            type="button"
-            onClick={() => setEditMode(!editMode)}
-            aria-pressed={editMode}
-            aria-label={editMode ? "Done editing" : "Edit cards"}
-            title={editMode ? "Done editing" : "Edit cards"}
-            data-tour="edit-mode-toggle"
-            className={cn(
-              "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
-              editMode
-                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
-            )}
-          >
-            {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-          </button>
+              {/* Edit mode */}
+              <button
+                type="button"
+                onClick={() => setEditMode(!editMode)}
+                aria-pressed={editMode}
+                aria-label={editMode ? "Done editing" : "Edit cards"}
+                title={editMode ? "Done editing" : "Edit cards"}
+                data-tour="edit-mode-toggle"
+                className={cn(
+                  "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
+                  editMode
+                    ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+                    : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
+                )}
+              >
+                {editMode ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+              </button>
 
-          {/* Bookmark bar reopen toggle — the inline X on the bar itself and
+              {/* Bookmark bar reopen toggle — the inline X on the bar itself and
             the Settings switch (see SettingsPane.tsx) are the other two ways
             to flip the same bookmarkBarVisible setting; this is the only one
             of the three still reachable once the bar itself is closed. */}
-          <button
-            type="button"
-            onClick={() => setBookmarkBarVisible(!bookmarkBarVisible)}
-            aria-pressed={bookmarkBarVisible}
-            aria-label={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
-            title={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
-            className={cn(
-              "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
-              bookmarkBarVisible
-                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
-            )}
-          >
-            {bookmarkBarVisible ? (
-              <PanelBottomClose className="size-3.5" />
-            ) : (
-              <PanelBottomOpen className="size-3.5" />
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={() => setBookmarkBarVisible(!bookmarkBarVisible)}
+                aria-pressed={bookmarkBarVisible}
+                aria-label={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
+                title={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
+                className={cn(
+                  "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
+                  bookmarkBarVisible
+                    ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+                    : "border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100",
+                )}
+              >
+                {bookmarkBarVisible ? (
+                  <PanelBottomClose className="size-3.5" />
+                ) : (
+                  <PanelBottomOpen className="size-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
 
           {/* Search — trimmed a bit short of the row's full width (mr-6) so
             the details drawer's tab, now pinned to the top of the drawer
             and overlapping this row, has clear space to sit in. min-w-8
             (not min-w-0) keeps a sliver of usable tap target once the
             fourth view-mode pill above claims its share of this shrink-0
-            row's space, rather than letting it collapse to nothing first. */}
-          <div className="relative flex-1 min-w-8 mr-6">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-stone-400 pointer-events-none" />
+            row's space, rather than letting it collapse to nothing first.
+            Focusing it collapses the button group above (see its own
+            comment) so this flex-1 box expands leftward to fill the space
+            that reclaims — the search box itself needs no width rule of
+            its own for that, just to already be the row's only flex-1
+            child. */}
+          <div ref={searchBoxRef} className="relative flex-1 min-w-8 mr-6">
+            <Search
+              className={cn(
+                "absolute top-1/2 size-3.5 -translate-y-1/2 text-stone-400 pointer-events-none transition-[left,transform] duration-300 ease-in-out",
+                showSearchIconOnly ? "left-1/2 -translate-x-1/2" : "left-2",
+              )}
+            />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search"
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              // Empty (not "Search") once the box is too narrow to fit the
+              // word next to its icon at rest — an icon-only affordance
+              // instead of letting the placeholder clip. Bypassed while
+              // focused, since focusing always triggers the expand above,
+              // which gives it room regardless of this narrow measurement.
+              placeholder={showSearchIconOnly ? "" : "Search"}
               aria-label="Search cards"
               // 16px (text-base) on phones — iOS Safari auto-zooms the whole
               // page on focus for any input whose computed font-size is under
