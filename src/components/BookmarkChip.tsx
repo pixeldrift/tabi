@@ -113,24 +113,32 @@ interface ChipSelectionProps {
  *  own exported List*Button) — a plain direct-tap action for Frequency/
  *  Rate/Duration, or an already-self-contained mini-popover button for the
  *  cases that need to disambiguate (Trial/Task Analysis's prompt-level
- *  picker, Rating's star picker), same as a List row already gets. Width
- *  is fixed (not content-sized) so the bar's chips read as a uniform
- *  scrollable row rather than jumping around per kind — sized to
- *  comfortably fit the widest control row (Trial's badge + up to 3
- *  buttons). `justify-between` (rather than just stacking title-then-
- *  controls) bottom-aligns the controls row — the horizontal scroll
- *  strip's own flex row stretches every chip to match its tallest sibling
- *  (default cross-axis `align-items: stretch`), so a 1-line-title chip and
- *  a 2-line-title chip end up the same height, and `justify-between` then
- *  pins both chips' own controls to that same shared bottom edge instead
- *  of each sitting immediately under its own (differently tall) title. */
+ *  picker, Rating's star picker), same as a List row already gets.
+ *
+ *  Laid out in the same three bands as MiniTileShell's own small-grid tile
+ *  (title / centered readout / bottom action row) rather than the wide
+ *  single-row badge-plus-buttons layout this used before — splitting the
+ *  readout out of the buttons' own row means the row's width only has to
+ *  fit the buttons themselves, so the chip can be as narrow as a small
+ *  grid tile instead of as wide as the badge and every button laid out
+ *  side by side. `content` sits in a flex-1 band so it absorbs whatever
+ *  extra height the horizontal scroll strip's own cross-axis stretch adds
+ *  above a shorter title (see the strip's default `align-items: stretch`
+ *  in BookmarkBar.tsx) — that keeps `actions` pinned to the same shared
+ *  bottom edge across chips with 1-line vs. 2-line titles, the same
+ *  guarantee the old `justify-between` row gave. */
 function ChipShell({
   title,
   active,
   onSelect,
   onJumpToCard,
-  children,
-}: { title: string; children: ReactNode } & ChipSelectionProps) {
+  content,
+  actions,
+}: {
+  title: string;
+  content?: ReactNode;
+  actions: ReactNode;
+} & ChipSelectionProps) {
   return (
     <div
       onClick={onSelect}
@@ -142,16 +150,17 @@ function ChipShell({
         // double-click's own default browser behavior), flashing a text
         // selection highlight for a gesture that has nothing to do with
         // text at all.
-        "flex w-36 shrink-0 cursor-pointer select-none flex-col justify-between gap-1.5 rounded-xl border px-2 py-1.5 transition-colors",
+        "flex w-32 shrink-0 cursor-pointer select-none flex-col gap-1 rounded-xl border px-2 py-1.5 transition-colors",
         active
           ? "border-blue-400/80 bg-card ring-2 ring-inset ring-blue-400/80"
           : "border-border bg-card opacity-80 hover:opacity-95",
       )}
     >
-      <h3 className="line-clamp-2 w-full break-words text-[11px] font-medium leading-tight text-foreground">
+      <h3 className="line-clamp-2 w-full break-words text-[10.5px] font-medium leading-tight text-foreground">
         {renderBreakableTitle(title)}
       </h3>
-      <div className="flex items-center gap-1">{children}</div>
+      <div className="flex-1 min-h-0 flex items-center justify-center">{content}</div>
+      <div className="flex items-center justify-center gap-1">{actions}</div>
     </div>
   );
 }
@@ -174,45 +183,53 @@ function TrialChip({
   } = useTrialChip(card.id, card.maxTrials, card.minTrials, card.promptLevels);
   const disabled = !canRecordData || (isMaxReached && currentResult === null);
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListActionBadge value={current + 1} />
-      {needsPromptLevelPicker ? (
-        <ListPromptLevelButton
-          levels={card.promptLevels!}
-          selectedLevel={currentPromptLevel}
-          selected={currentResult === "incorrect"}
-          disabled={disabled}
-          onPick={pickPromptLevel}
-        />
-      ) : (
-        <ListActionButton
-          icon={X}
-          variant="red"
-          selected={currentResult === "incorrect"}
-          disabled={disabled}
-          ariaLabel="Error"
-          onClick={() => setResult("incorrect")}
-        />
-      )}
-      {card.noResponse && (
-        <ListActionButton
-          icon={CircleSlash2}
-          variant="amber"
-          selected={currentResult === "no-response"}
-          disabled={disabled}
-          ariaLabel="No Response"
-          onClick={() => setResult("no-response")}
-        />
-      )}
-      <ListActionButton
-        icon={Check}
-        variant="green"
-        selected={currentResult === "correct"}
-        disabled={disabled}
-        ariaLabel="Correct"
-        onClick={() => setResult("correct")}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      content={<ListActionBadge value={current + 1} weight="bold" />}
+      actions={
+        <>
+          {needsPromptLevelPicker ? (
+            <ListPromptLevelButton
+              levels={card.promptLevels!}
+              selectedLevel={currentPromptLevel}
+              selected={currentResult === "incorrect"}
+              disabled={disabled}
+              onPick={pickPromptLevel}
+            />
+          ) : (
+            <ListActionButton
+              icon={X}
+              variant="red"
+              selected={currentResult === "incorrect"}
+              disabled={disabled}
+              ariaLabel="Error"
+              onClick={() => setResult("incorrect")}
+            />
+          )}
+          {card.noResponse && (
+            <ListActionButton
+              icon={CircleSlash2}
+              variant="amber"
+              selected={currentResult === "no-response"}
+              disabled={disabled}
+              ariaLabel="No Response"
+              onClick={() => setResult("no-response")}
+            />
+          )}
+          <ListActionButton
+            icon={Check}
+            variant="green"
+            selected={currentResult === "correct"}
+            disabled={disabled}
+            ariaLabel="Correct"
+            onClick={() => setResult("correct")}
+          />
+        </>
+      }
+    />
   );
 }
 
@@ -224,23 +241,31 @@ function FrequencyChip({
 }: { card: Extract<CardConfig, { kind: "frequency" }> } & ChipSelectionProps) {
   const { count, increment, decrement, canRecordData } = useFrequencyChip(card.id);
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListActionBadge value={count} weight="bold" />
-      <ListActionButton
-        icon={Minus}
-        variant="neutral"
-        disabled={!canRecordData || count === 0}
-        ariaLabel="Decrement"
-        onClick={decrement}
-      />
-      <ListActionButton
-        icon={Plus}
-        variant="blue-solid"
-        disabled={!canRecordData}
-        ariaLabel="Increment"
-        onClick={increment}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      content={<ListActionBadge value={count} weight="bold" />}
+      actions={
+        <>
+          <ListActionButton
+            icon={Minus}
+            variant="neutral"
+            disabled={!canRecordData || count === 0}
+            ariaLabel="Decrement"
+            onClick={decrement}
+          />
+          <ListActionButton
+            icon={Plus}
+            variant="blue-solid"
+            disabled={!canRecordData}
+            ariaLabel="Increment"
+            onClick={increment}
+          />
+        </>
+      }
+    />
   );
 }
 
@@ -252,23 +277,31 @@ function RateChip({
 }: { card: Extract<CardConfig, { kind: "rate" }> } & ChipSelectionProps) {
   const { count, increment, decrement, canRecordData } = useRateChip(card.id);
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListActionBadge value={count} weight="bold" />
-      <ListActionButton
-        icon={Minus}
-        variant="neutral"
-        disabled={!canRecordData || count === 0}
-        ariaLabel="Decrement"
-        onClick={decrement}
-      />
-      <ListActionButton
-        icon={Plus}
-        variant="blue-solid"
-        disabled={!canRecordData}
-        ariaLabel="Increment"
-        onClick={increment}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      content={<ListActionBadge value={count} weight="bold" />}
+      actions={
+        <>
+          <ListActionButton
+            icon={Minus}
+            variant="neutral"
+            disabled={!canRecordData || count === 0}
+            ariaLabel="Decrement"
+            onClick={decrement}
+          />
+          <ListActionButton
+            icon={Plus}
+            variant="blue-solid"
+            disabled={!canRecordData}
+            ariaLabel="Increment"
+            onClick={increment}
+          />
+        </>
+      }
+    />
   );
 }
 
@@ -291,43 +324,52 @@ function DurationChip({
   const disabled = !canRecordData || needsMount;
   const disabledReason = canRecordData && needsMount ? "Open this card to start timing" : undefined;
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      {/* Same time-pill-plus-play/pause idea as the List row's own Duration
-          pill (see DurationCard's listMode actions), just without that
-          row's own TimeKeypad direct-edit affordance or instance
-          navigation — the chip only ever shows/controls whichever instance
-          is currently being viewed. */}
-      <div
-        className={cn(
-          "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
-          running ? "border-blue-500" : "border-border",
-        )}
-      >
-        <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem]">
-          {formatCompactTime(displayMs)}
-        </span>
-        <button
-          type="button"
-          // stopPropagation — same as every reused ListActionButton already
-          // does — so toggling the timer doesn't also bubble up as a tap-
-          // to-select on the chip's own root.
-          onClick={(e) => {
-            e.stopPropagation();
-            toggle();
-          }}
-          disabled={disabled}
-          title={disabled ? (disabledReason ?? undefined) : undefined}
-          aria-label={running ? "Pause" : "Start"}
-          className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
-        >
-          {running ? (
-            <Pause className="size-3" fill="currentColor" strokeWidth={0} />
-          ) : (
-            <Play className="size-3 translate-x-px" fill="currentColor" strokeWidth={0} />
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      // No separate `content` band — the pill below already carries the
+      // readout, same as Rating's single star button, so it's the whole
+      // bottom `actions` row rather than something to show large above it.
+      actions={
+        // Same time-pill-plus-play/pause idea as the List row's own
+        // Duration pill (see DurationCard's listMode actions), just
+        // without that row's own TimeKeypad direct-edit affordance or
+        // instance navigation — the chip only ever shows/controls
+        // whichever instance is currently being viewed.
+        <div
+          className={cn(
+            "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
+            running ? "border-blue-500" : "border-border",
           )}
-        </button>
-      </div>
-    </ChipShell>
+        >
+          <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[3rem]">
+            {formatCompactTime(displayMs)}
+          </span>
+          <button
+            type="button"
+            // stopPropagation — same as every reused ListActionButton
+            // already does — so toggling the timer doesn't also bubble up
+            // as a tap-to-select on the chip's own root.
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle();
+            }}
+            disabled={disabled}
+            title={disabled ? (disabledReason ?? undefined) : undefined}
+            aria-label={running ? "Pause" : "Start"}
+            className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
+          >
+            {running ? (
+              <Pause className="size-3" fill="currentColor" strokeWidth={0} />
+            ) : (
+              <Play className="size-3 translate-x-px" fill="currentColor" strokeWidth={0} />
+            )}
+          </button>
+        </div>
+      }
+    />
   );
 }
 
@@ -349,43 +391,51 @@ function TaskAnalysisChip({
   } = useTaskAnalysisChip(card.id, card.steps.length, card.promptLevels);
   const disabled = !canRecordData || !canScoreCurrent;
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListActionBadge value={current + 1} />
-      <ListActionButton
-        icon={X}
-        variant="red"
-        selected={currentStatus === "error"}
-        disabled={disabled}
-        ariaLabel="Error"
-        onClick={() => setStep("error")}
-      />
-      {needsPromptLevelPicker ? (
-        <ListTaskAnalysisPromptLevelButton
-          levels={card.promptLevels!}
-          selectedLevel={currentPromptLevel}
-          selected={currentStatus === "prompted"}
-          disabled={disabled}
-          onPick={pickPromptLevel}
-        />
-      ) : (
-        <ListActionButton
-          icon={HandHelping}
-          variant="amber"
-          selected={currentStatus === "prompted"}
-          disabled={disabled}
-          ariaLabel="Prompted"
-          onClick={() => setStep("prompted")}
-        />
-      )}
-      <ListActionButton
-        icon={Check}
-        variant="green"
-        selected={currentStatus === "independent"}
-        disabled={disabled}
-        ariaLabel="Independent"
-        onClick={() => setStep("independent")}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      content={<ListActionBadge value={current + 1} weight="bold" />}
+      actions={
+        <>
+          <ListActionButton
+            icon={X}
+            variant="red"
+            selected={currentStatus === "error"}
+            disabled={disabled}
+            ariaLabel="Error"
+            onClick={() => setStep("error")}
+          />
+          {needsPromptLevelPicker ? (
+            <ListTaskAnalysisPromptLevelButton
+              levels={card.promptLevels!}
+              selectedLevel={currentPromptLevel}
+              selected={currentStatus === "prompted"}
+              disabled={disabled}
+              onPick={pickPromptLevel}
+            />
+          ) : (
+            <ListActionButton
+              icon={HandHelping}
+              variant="amber"
+              selected={currentStatus === "prompted"}
+              disabled={disabled}
+              ariaLabel="Prompted"
+              onClick={() => setStep("prompted")}
+            />
+          )}
+          <ListActionButton
+            icon={Check}
+            variant="green"
+            selected={currentStatus === "independent"}
+            disabled={disabled}
+            ariaLabel="Independent"
+            onClick={() => setStep("independent")}
+          />
+        </>
+      }
+    />
   );
 }
 
@@ -397,15 +447,23 @@ function RatingChip({
 }: { card: Extract<CardConfig, { kind: "rating" }> } & ChipSelectionProps) {
   const { rating, min, max, pick, canRecordData } = useRatingChip(card.id, card.max, card.min);
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListRatingButton
-        rating={rating}
-        numStars={max - min}
-        min={min}
-        disabled={!canRecordData}
-        onPick={pick}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      // No separate `content` band — the star button already shows the
+      // current rating itself, same as Duration's own pill.
+      actions={
+        <ListRatingButton
+          rating={rating}
+          numStars={max - min}
+          min={min}
+          disabled={!canRecordData}
+          onPick={pick}
+        />
+      }
+    />
   );
 }
 
@@ -423,24 +481,32 @@ function TimestampChip({
   const positiveLabel = card.positiveLabel ?? "Correct";
   const negativeLabel = card.negativeLabel ?? "Incorrect";
   return (
-    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
-      <ListActionBadge value={currentIndex + 1} />
-      <ListActionButton
-        icon={X}
-        variant="red"
-        selected={currentStatus === "incorrect"}
-        disabled={!canRecordData}
-        ariaLabel={negativeLabel}
-        onClick={() => score("incorrect")}
-      />
-      <ListActionButton
-        icon={Check}
-        variant="green"
-        selected={currentStatus === "correct"}
-        disabled={!canRecordData}
-        ariaLabel={positiveLabel}
-        onClick={() => score("correct")}
-      />
-    </ChipShell>
+    <ChipShell
+      title={card.title}
+      active={active}
+      onSelect={onSelect}
+      onJumpToCard={onJumpToCard}
+      content={<ListActionBadge value={currentIndex + 1} weight="bold" />}
+      actions={
+        <>
+          <ListActionButton
+            icon={X}
+            variant="red"
+            selected={currentStatus === "incorrect"}
+            disabled={!canRecordData}
+            ariaLabel={negativeLabel}
+            onClick={() => score("incorrect")}
+          />
+          <ListActionButton
+            icon={Check}
+            variant="green"
+            selected={currentStatus === "correct"}
+            disabled={!canRecordData}
+            ariaLabel={positiveLabel}
+            onClick={() => score("correct")}
+          />
+        </>
+      }
+    />
   );
 }
