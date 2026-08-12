@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bookmark, Frown, X } from "lucide-react";
+import { Bookmark, Frown, Pencil, X } from "lucide-react";
 import { BookmarkChip } from "./BookmarkChip";
 import { HORIZONTAL_FADE_MASK } from "./TimestampCard";
 import { useDataToolbar } from "./DataToolbarContext";
@@ -78,26 +78,57 @@ export function BookmarkBar({
 
   return (
     <div data-bookmark-bar className="border-t border-border/70 bg-stone-50/70 px-2.5 py-1.5">
-      <div className="flex items-center gap-1.5 max-w-3xl mx-auto">
-        <button
-          type="button"
-          onClick={() => setBookmarkBarMode(isFavorites ? "interfering" : "favorites")}
-          aria-label={
-            isFavorites
-              ? "Showing favorites — switch to interfering behaviors"
-              : "Showing interfering behaviors — switch to favorites"
-          }
-          title={isFavorites ? "Favorites" : "Interfering behaviors"}
-          className="grid place-items-center size-7 shrink-0 rounded-full border border-stone-200 text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
-        >
-          {isFavorites ? <Bookmark className="size-3.5" /> : <Frown className="size-3.5" />}
-        </button>
+      <div className="flex items-start gap-1.5 max-w-3xl mx-auto">
+        {/* Both source lists stay visible as a two-option segmented control
+         *  (same rounded-pill-of-circular-buttons idiom as the main
+         *  toolbar's own view-mode toggle) rather than one button that
+         *  cycles — there's room for both, and it reads which mode is
+         *  active (and that a second one exists at all) at a glance
+         *  instead of only after tapping. */}
+        <div className="flex items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setBookmarkBarMode("favorites")}
+            aria-pressed={isFavorites}
+            aria-label="Show favorites"
+            title="Favorites"
+            className={cn(
+              "grid place-items-center size-6 rounded-full transition-colors",
+              isFavorites
+                ? "btn-bevel bg-blue-500 text-white"
+                : "text-stone-400 hover:text-stone-600",
+            )}
+          >
+            <Bookmark className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setBookmarkBarMode("interfering")}
+            aria-pressed={!isFavorites}
+            aria-label="Show interfering behaviors"
+            title="Interfering behaviors"
+            className={cn(
+              "grid place-items-center size-6 rounded-full transition-colors",
+              !isFavorites
+                ? "btn-bevel bg-blue-500 text-white"
+                : "text-stone-400 hover:text-stone-600",
+            )}
+          >
+            <Frown className="size-3.5" />
+          </button>
+        </div>
 
         {cards.length === 0 ? (
-          <p className="flex-1 min-w-0 px-2 py-4 text-center text-xs text-muted-foreground">
-            {isFavorites
-              ? "No favorites yet — tap the bookmark icon on a card to add one."
-              : "No interfering behaviors in this list."}
+          <p className="flex-1 min-w-0 px-2 py-1.5 text-center text-xs text-muted-foreground">
+            {isFavorites ? (
+              <>
+                Nothing bookmarked. Use Edit Mode{" "}
+                <Pencil className="inline-block size-3 -translate-y-px" aria-hidden /> to add your
+                own.
+              </>
+            ) : (
+              "No interfering behaviors in this list."
+            )}
           </p>
         ) : (
           <div
