@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bookmark, Frown, X } from "lucide-react";
 import { BookmarkChip } from "./BookmarkChip";
 import { HORIZONTAL_FADE_MASK } from "./TimestampCard";
@@ -5,6 +6,20 @@ import { useDataToolbar } from "./DataToolbarContext";
 import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
 import type { CardConfig } from "@/routes/index";
+
+// HORIZONTAL_FADE_MASK fades both edges — right for TimestampCard's own
+// centered carousel, where either direction can always have more content.
+// The bar's strip isn't like that: it starts pinned at scrollLeft 0, right
+// up against the corner toggle, so a left fade there would feather the
+// very first chip even though there's nothing further left to reveal.
+// This is the same right-only fade with the left edge left fully opaque —
+// swapped in below only until the strip has actually been scrolled away
+// from that starting position, at which point the left edge legitimately
+// has hidden chips behind it again and gets the normal two-edge mask back.
+const RIGHT_EDGE_FADE_MASK = {
+  WebkitMaskImage: "linear-gradient(to right, black 0%, black 94%, transparent 100%)",
+  maskImage: "linear-gradient(to right, black 0%, black 94%, transparent 100%)",
+};
 
 export interface BookmarkBarProps {
   /** Already ordered (see routes/index.tsx's getOrderedCards) — this
@@ -47,6 +62,11 @@ export function BookmarkBar({
 }: BookmarkBarProps) {
   const { bookmarkBarMode, setBookmarkBarMode, editMode } = useDataToolbar();
   const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
+  // Only flips (not tracked continuously) so this doesn't re-render on
+  // every scroll tick — just the two moments that actually change which
+  // mask applies: leaving position 0, and (on a reset/re-favorite) landing
+  // back on it.
+  const [scrolledFromStart, setScrolledFromStart] = useState(false);
   // Reorder-editing and "quick-score from the shelf" are competing modes
   // for the same moment (dragging a tile while the shelf keeps trying to
   // register taps underneath it), so the bar steps aside entirely while
@@ -82,7 +102,11 @@ export function BookmarkBar({
         ) : (
           <div
             className={cn("flex-1 min-w-0 flex gap-1.5 overflow-x-auto no-scrollbar py-1")}
-            style={HORIZONTAL_FADE_MASK}
+            style={scrolledFromStart ? HORIZONTAL_FADE_MASK : RIGHT_EDGE_FADE_MASK}
+            onScroll={(e) => {
+              const next = e.currentTarget.scrollLeft > 0;
+              setScrolledFromStart((prev) => (prev === next ? prev : next));
+            }}
           >
             {cards.map((card) => (
               <BookmarkChip
