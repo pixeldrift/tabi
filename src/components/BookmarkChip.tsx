@@ -110,20 +110,21 @@ interface ChipSelectionProps {
  *  controls instead of a decorative glyph) and no popover reveal of its
  *  own. Every kind's controls are reused directly from the List display
  *  mode's own floating action row (see ListRowActions.tsx and each card's
- *  own exported List*Button) — a plain direct-tap action for Frequency/
- *  Rate/Duration, or an already-self-contained mini-popover button for the
- *  cases that need to disambiguate (Trial/Task Analysis's prompt-level
- *  picker, Rating's star picker), same as a List row already gets. Width
- *  is fixed (not content-sized) so the bar's chips read as a uniform
- *  scrollable row rather than jumping around per kind — sized to
- *  comfortably fit the widest control row (Trial's badge + up to 3
- *  buttons). `justify-between` (rather than just stacking title-then-
- *  controls) bottom-aligns the controls row — the horizontal scroll
- *  strip's own flex row stretches every chip to match its tallest sibling
- *  (default cross-axis `align-items: stretch`), so a 1-line-title chip and
- *  a 2-line-title chip end up the same height, and `justify-between` then
- *  pins both chips' own controls to that same shared bottom edge instead
- *  of each sitting immediately under its own (differently tall) title. */
+ *  own exported List*Button), laid out the same way List mode arranges
+ *  them too — the badge (tally/trial number) leftmost, then buttons in
+ *  reading order. Rounded like a small grid tile (`rounded-[14px]` —
+ *  MiniTileShell's own small-density radius, smaller than its large tile's
+ *  18px), but wide enough (`w-36`) to fit a badge and the widest control
+ *  row (Trial's with No Response, or Task Analysis's) on one line rather
+ *  than wrapping — a wrapped second line read as broken/misaligned rather
+ *  than intentional. `justify-end` on the row's own flex-1 wrapper keeps
+ *  it pinned to a shared bottom edge regardless of title height: the
+ *  strip's cross-axis stretch (`align-items: stretch`) matches every
+ *  chip's box to its tallest sibling, and only the space above the row
+ *  (not the row itself) absorbs that difference, so a 1-line and 2-line
+ *  title still leave their control row starting at the same position
+ *  instead of each sitting immediately under its own (differently tall)
+ *  title. */
 function ChipShell({
   title,
   active,
@@ -142,16 +143,18 @@ function ChipShell({
         // double-click's own default browser behavior), flashing a text
         // selection highlight for a gesture that has nothing to do with
         // text at all.
-        "flex w-36 shrink-0 cursor-pointer select-none flex-col justify-between gap-1.5 rounded-xl border px-2 py-1.5 transition-colors",
+        "flex w-36 shrink-0 cursor-pointer select-none flex-col gap-1 rounded-[14px] border px-2 py-1.5 transition-colors",
         active
           ? "border-blue-400/80 bg-card ring-2 ring-inset ring-blue-400/80"
           : "border-border bg-card opacity-80 hover:opacity-95",
       )}
     >
-      <h3 className="line-clamp-2 w-full break-words text-[11px] font-medium leading-tight text-foreground">
+      <h3 className="line-clamp-2 w-full break-words text-[10.5px] font-medium leading-tight text-foreground">
         {renderBreakableTitle(title)}
       </h3>
-      <div className="flex items-center gap-1">{children}</div>
+      <div className="flex-1 min-h-0 flex flex-col justify-end">
+        <div className="flex items-center gap-1">{children}</div>
+      </div>
     </div>
   );
 }
