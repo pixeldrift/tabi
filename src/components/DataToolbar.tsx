@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PHASE_ICONS } from "@/lib/phaseIcons";
 import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
 import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
 import { RateIcon } from "@/components/icons/RateIcon";
@@ -219,7 +220,20 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
             )}
           >
             <div
-              className="flex min-w-0 items-center gap-1.5 overflow-hidden"
+              // py-1.5 -my-1.5: overflow-hidden here only needs to clip
+              // horizontally (the group shrinking away under the search
+              // box, above) but clips both axes regardless — with zero
+              // vertical slack of its own, that flat-cropped the filter
+              // badge (which pokes above/right of its button via negative
+              // offsets) and the active view-mode button's own btn-bevel
+              // drop shadow (which extends a few px past its border) at
+              // this box's top/bottom edge. The padding gives both room to
+              // render in full; the matching negative margin cancels its
+              // footprint back out so this box still reports the same
+              // height to the row's own `items-center` alignment as
+              // before — the search box's vertical position doesn't
+              // shift.
+              className="flex min-w-0 items-center gap-1.5 overflow-hidden py-1.5 -my-1.5"
               style={searchFocused ? TOOLBAR_COLLAPSE_FADE_MASK : undefined}
             >
               {/* View mode segmented toggle — nudged left within the toolbar's own
@@ -611,6 +625,11 @@ function FilterPopoverContent({
         <div className="flex flex-wrap gap-1.5">
           {availablePhases.map((phase) => {
             const selected = filters.phases.has(phase);
+            // Same map CardShell/DrawerQuickFacts already key their own
+            // phase icon off (see PhaseInfoLabel) — an unrecognized custom
+            // phase just renders without one rather than needing this kept
+            // exhaustively in sync.
+            const PhaseIcon = PHASE_ICONS[phase];
             return (
               <button
                 key={phase}
@@ -618,12 +637,13 @@ function FilterPopoverContent({
                 onClick={() => togglePhaseFilter(phase)}
                 aria-pressed={selected}
                 className={cn(
-                  "rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
+                  "flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors",
                   selected
                     ? "bg-blue-500 border-blue-600 text-white"
                     : "border-stone-200 text-stone-600 hover:bg-stone-100",
                 )}
               >
+                {PhaseIcon && <PhaseIcon className="size-3" />}
                 {phase}
               </button>
             );
