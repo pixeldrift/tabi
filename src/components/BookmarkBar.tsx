@@ -215,9 +215,9 @@ export function BookmarkBar({
                       <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
                         {isFavorites ? (
                           <>
-                            Nothing bookmarked. Use Edit Mode{" "}
+                            Use Edit{" "}
                             <Pencil className="inline-block size-3 -translate-y-px" aria-hidden />{" "}
-                            to add your own.
+                            mode to bookmark frequently used targets.
                           </>
                         ) : (
                           "No interfering behaviors in this list."
