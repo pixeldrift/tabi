@@ -37,9 +37,22 @@ export function TipOverlay() {
             onChange={setTipsEnabled}
             label="Show Tabi Tips on startup."
           />
-          <Button size="sm" onClick={nextTip}>
-            Next Tabi Tip
-          </Button>
+          <div className="flex shrink-0 items-center gap-3">
+            {/* A plain text link, not a second button — "dismiss" is the
+                action most people want most of the time, so it gets the
+                only real button; browsing more tips is secondary and
+                shouldn't visually compete with it. */}
+            <button
+              type="button"
+              onClick={nextTip}
+              className="text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Show another
+            </button>
+            <Button size="sm" onClick={dismiss}>
+              Got it!
+            </Button>
+          </div>
         </>
       }
     />
