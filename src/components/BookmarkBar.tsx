@@ -61,7 +61,7 @@ export function BookmarkBar({
   onSelectCard,
   onJumpToCard,
 }: BookmarkBarProps) {
-  const { bookmarkBarMode, setBookmarkBarMode, editMode } = useDataToolbar();
+  const { bookmarkBarMode, setBookmarkBarMode, editMode, setEditMode } = useDataToolbar();
   const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
   // Only flips (not tracked continuously) so this doesn't re-render on
   // every scroll tick — just the two moments that actually change which
@@ -215,9 +215,16 @@ export function BookmarkBar({
                       <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
                         {isFavorites ? (
                           <>
-                            Use Edit{" "}
-                            <Pencil className="inline-block size-3 -translate-y-px" aria-hidden />{" "}
-                            mode to bookmark frequently used targets.
+                            Use{" "}
+                            <button
+                              type="button"
+                              onClick={() => setEditMode(true)}
+                              className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground"
+                            >
+                              Edit
+                              <Pencil className="inline-block size-3 -translate-y-px" aria-hidden />
+                            </button>{" "}
+                            mode to add your own bookmarks.
                           </>
                         ) : (
                           "No interfering behaviors in this list."
