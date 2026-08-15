@@ -28,16 +28,8 @@ export function TipOverlay() {
       dismissLabel="Dismiss tip"
       ariaLabel="Did you know?"
       footer={
-        <>
-          {/* Same setting SettingsPane's own "Show 'Did you know?' tips"
-              toggle controls — this is just a more discoverable surface
-              for it, not a second parallel flag. */}
-          <SpotlightCheckbox
-            checked={tipsEnabled}
-            onChange={setTipsEnabled}
-            label="Show Tabi Tips on startup."
-          />
-          <div className="flex shrink-0 items-center gap-3">
+        <div className="flex w-full flex-col gap-2">
+          <div className="flex items-center justify-end gap-3">
             {/* A plain text link, not a second button — "dismiss" is the
                 action most people want most of the time, so it gets the
                 only real button; browsing more tips is secondary and
@@ -53,7 +45,18 @@ export function TipOverlay() {
               Got it!
             </Button>
           </div>
-        </>
+          {/* Same setting SettingsPane's own "Show 'Did you know?' tips"
+              toggle controls — this is just a more discoverable surface
+              for it, not a second parallel flag. Sits below the real
+              actions, smaller and italic, so it reads as a passive
+              preference rather than competing with them. */}
+          <SpotlightCheckbox
+            checked={tipsEnabled}
+            onChange={setTipsEnabled}
+            label="Show Tabi Tips on startup."
+            className="text-[11px] italic text-stone-400"
+          />
+        </div>
       }
     />
   );
