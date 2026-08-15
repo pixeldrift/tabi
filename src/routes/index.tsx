@@ -1763,22 +1763,29 @@ function IndexInner({
             offset+blur-spread) past this scrollport's newly-smaller edge —
             reading as the shadow clipping and unclipping in step with the
             toolbar's own show/hide, on real devices no fixed-viewport
-            desktop testing reproduces. A flat extra 96px (StatusBar's own
-            review-dialog sizing does the same, for the identical reason)
-            covers the common case, but the toolbar's real height varies by
-            device — `100lvh - 100svh` is that exact delta, computed by the
-            browser itself rather than guessed (svh = smallest viewport,
-            toolbar fully expanded; lvh = largest, toolbar fully collapsed),
-            and is 0 wherever there's no such chrome to begin with (desktop,
-            or a device that doesn't auto-hide it) so this never over-pads
-            there. */}
+            desktop testing reproduces (confirmed live on-device: it recurs
+            roughly once a second, in sync with the toolbar, and only while
+            a session is running — paused, the page settles and it stops).
+            `100lvh - 100svh` is the browser's own computed delta between the
+            toolbar fully expanded (svh, smallest viewport) and fully
+            collapsed (lvh, largest) — the exact worst-case shrink, rather
+            than a guess — and correctly evaluates to 0 wherever there's no
+            such chrome (desktop) so this never over-pads there. It's ADDED
+            ON TOP of a deliberately generous flat 128px floor rather than
+            relied on alone: `svh`/`lvh` are recent CSS units, and if a given
+            engine version computes them subtly wrong (or not at all), a
+            too-small flat term would leave the real shrink uncovered with
+            nothing to fall back on. 128px alone already exceeds any
+            realistic toolbar height (commonly 44-56px) plus the shadow's own
+            ~36px bleed, so the dvh term only ever adds extra headroom here,
+            never supplies the only protection. */}
             <section
               ref={dataContentRef}
               onScroll={(e) => {
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >
@@ -1892,7 +1899,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "info" && "hidden",
               )}
             >
@@ -1916,7 +1923,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -1933,7 +1940,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -1946,7 +1953,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "settings" && "hidden",
               )}
             >
