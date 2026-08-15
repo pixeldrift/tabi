@@ -503,6 +503,7 @@ function NotificationRow({
 
       <motion.div
         drag="x"
+        data-tour="notification-swipe-row"
         dragConstraints={
           canSwipeRight
             ? { left: -threshold * 1.4, right: threshold * 1.4 }
@@ -993,7 +994,6 @@ function NotificationListRow({
   return (
     <motion.div
       layout
-      data-tour="notification-swipe-row"
       initial={{ opacity: 0, y: 12, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.2, ease: "easeOut" } }}

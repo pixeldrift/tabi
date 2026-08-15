@@ -133,7 +133,7 @@ export const TABI_TIPS: TabiTip[] = [
   },
   {
     id: "notification-swipe-dismiss",
-    tab: "notifications",
+    tab: "data",
     selector: '[data-tour="notification-swipe-row"]',
     title: "Swipe away alerts",
     body: "You can quickly dismiss or silence alarms by swiping the notification away.",
