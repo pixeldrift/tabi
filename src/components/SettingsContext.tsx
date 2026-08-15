@@ -64,19 +64,18 @@ const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
 const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
 
-// The guided welcome tour (TourContext.tsx). `tourHintsEnabled` stays on by
-// default — it's what a genuinely first-time user's own toggle would read,
-// were this a real install rather than a repeatedly-demoed prototype.
-// `tourCompleted` defaults true instead of false, though: this demo's own
-// "first load" isn't actually anyone's first look at the app the way a
-// fresh real install would be, so it starts pretending the tour has
-// already been seen once rather than auto-firing on every demo/reload.
-// WelcomeScreen's "Preview guided tour" button (TourContext's own
-// forceLaunch) bypasses this flag entirely, so the tour's still one tap
-// away regardless. `tourCompleted` flips true again the first time it's
+// The guided welcome tour (TourContext.tsx). `tourHintsEnabled` defaults
+// off — auto-launching on a fresh load isn't needed when both WelcomeScreen's
+// "Preview guided tour" button and Settings' own "Replay welcome tour" button
+// already reach it in one tap; a user who wants the tour on every fresh load
+// can still flip this Settings switch back on themselves. `tourCompleted`
+// stays defaulted true regardless (its own original reason still applies —
+// this demo's "first load" isn't really anyone's first look at the app, so
+// flipping tourHintsEnabled back on later shouldn't itself auto-fire the
+// tour on THAT reload) — it flips true again the first time the tour is
 // finished or skipped through the normal flow, and a full "Reset all"
 // re-arms both to these same defaults.
-const DEFAULT_TOUR_HINTS_ENABLED = true;
+const DEFAULT_TOUR_HINTS_ENABLED = false;
 const DEFAULT_TOUR_COMPLETED = true;
 
 // The "Did you know?" tip rotation (TipContext.tsx). Unlike the tour,
