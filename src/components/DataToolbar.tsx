@@ -233,7 +233,19 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
               // height to the row's own `items-center` alignment as
               // before — the search box's vertical position doesn't
               // shift.
-              className="flex min-w-0 items-center gap-1.5 overflow-hidden py-1.5 -my-1.5"
+              //
+              // pl-1 -ml-1: same trick, same axis the view-mode toggle
+              // below nudges itself into (its own -ml-1) — that nudge
+              // shifts it 4px left of where this box's own padding-edge
+              // (the overflow clip boundary) sits, clipping its left edge
+              // by exactly that much. The padding gives it 4px of room to
+              // land in without crossing the clip boundary; the matching
+              // negative margin on this box shifts the box itself left by
+              // the same 4px so the toggle still ends up nudged left by
+              // the intended amount relative to the toolbar's own edge,
+              // not pulled back to un-nudged by the padding that's now
+              // absorbing it.
+              className="flex min-w-0 items-center gap-1.5 overflow-hidden py-1.5 -my-1.5 pl-1 -ml-1"
               style={searchFocused ? TOOLBAR_COLLAPSE_FADE_MASK : undefined}
             >
               {/* View mode segmented toggle — nudged left within the toolbar's own
