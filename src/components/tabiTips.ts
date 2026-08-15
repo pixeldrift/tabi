@@ -174,6 +174,13 @@ export const TABI_TIPS: TabiTip[] = [
     body: "Use edit mode to rearrange the order of your data collection cards, hide them, or mark them as favorites.",
   },
   {
+    id: "bookmark-bar-visibility-toggle",
+    tab: "data",
+    selector: '[data-tour="bookmark-bar-visibility-toggle"]',
+    title: "Show or tuck away the bookmark bar",
+    body: "This button shows or hides the bookmark bar — your pinned shelf of favorited cards and interfering behaviors — whenever you want the screen space back or need it again.",
+  },
+  {
     id: "bookmark-bar-mode-toggle",
     tab: "data",
     selector: '[data-tour="bookmark-bar-mode-toggle"]',
