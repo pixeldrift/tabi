@@ -1752,13 +1752,28 @@ function IndexInner({
             collapsed the whole section (and every card in it) down to a few
             px with nothing forcing it wide. `w-full` restores the intended
             stretch-then-cap-at-max-w behavior regardless of what's inside. */}
+            {/* pb-24 (not a smaller value): `<main>` above is sized via
+            `h-dvh`, which — unlike `h-screen` — genuinely shrinks and grows
+            live as mobile Safari's own collapsing toolbar shows/hides,
+            flexing this section's own client height (it's `flex-1` inside
+            that shell) right along with it. Scrolled to the very bottom, a
+            shrinking viewport clamps this section's scrollTop down to match,
+            which can push the last card's own selected-state shadow (up to
+            ~36px of visible bleed: `shadow-[0_10px_30px_-4px_...]`'s
+            offset+blur-spread) past this scrollport's newly-smaller edge —
+            reading as the shadow clipping and unclipping in step with the
+            toolbar's own show/hide, on real devices no fixed-viewport
+            desktop testing reproduces. 96px covers a full toolbar reveal
+            (commonly ~50px) on top of the shadow's own ~36px, with a little
+            to spare, the same "extra slack to absorb mobile Safari's chrome"
+            fix StatusBar's own review-dialog sizing already uses. */}
             <section
               ref={dataContentRef}
               onScroll={(e) => {
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >
@@ -1872,7 +1887,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "info" && "hidden",
               )}
             >
@@ -1896,7 +1911,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -1913,7 +1928,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -1926,7 +1941,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "settings" && "hidden",
               )}
             >
