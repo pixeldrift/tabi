@@ -1409,13 +1409,17 @@ function SaveIndicator({
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
 
   return (
-    <div className="flex items-center gap-1.5">
+    // data-tour on the whole pair, not just the "Saved" text button below —
+    // the save-status-indicator tip is about the status AND the cloud
+    // together ("Tap the cloud to force an instant save... or tap the
+    // status for precise details"), so its own spotlight needs to cover
+    // both rather than just the text half of what it's describing.
+    <div className="flex items-center gap-1.5" data-tour="save-status">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             ref={anchorRef}
             type="button"
-            data-tour="save-status"
             className="flex items-center text-right hover:opacity-80 transition-opacity h-8"
           >
             <span className={cn("text-[11px] font-medium leading-none", labelColor)}>{label}</span>

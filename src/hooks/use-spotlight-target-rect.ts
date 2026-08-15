@@ -9,6 +9,30 @@ export interface SpotlightRect {
 
 export type SpotlightTargetStatus = "measuring" | "settled" | "not-found";
 
+// A target can be genuinely present in the DOM with a real (non-zero) box
+// and still not be something scrolling could ever reveal — a details
+// drawer collapsed to its own pull tab, say, whose nav buttons still exist
+// but sit almost entirely past the viewport's own right edge as part of
+// that collapsed state's design, not because the page just needs to
+// scroll further. `el.scrollIntoView` below already handles the common
+// case (something merely further down a normal scrollable list); this
+// catches what's left over — treated the same as a selector that matched
+// nothing at all, so the caller redraws to a target that's actually
+// reachable instead of pointing an arrow at a mostly-invisible sliver.
+const MIN_VISIBLE_FRACTION = 0.5;
+function isMeaningfullyVisible(r: SpotlightRect): boolean {
+  if (r.width <= 0 || r.height <= 0) return false;
+  const visibleWidth = Math.max(
+    0,
+    Math.min(r.left + r.width, window.innerWidth) - Math.max(r.left, 0),
+  );
+  const visibleHeight = Math.max(
+    0,
+    Math.min(r.top + r.height, window.innerHeight) - Math.max(r.top, 0),
+  );
+  return (visibleWidth * visibleHeight) / (r.width * r.height) >= MIN_VISIBLE_FRACTION;
+}
+
 /** Poll-until-stable, then keep tracking, measurement for a spotlight
  *  target (the guided tour's current step, or the tip engine's current
  *  tip) — same idiom as useElementRight (use-element-height.ts): a target
@@ -104,7 +128,7 @@ export function useSpotlightTargetRect(selector: string | null, generation: numb
         (settledStreak >= SETTLED_STREAK_TARGET || framesElapsed >= MAX_POLL_FRAMES)
       ) {
         hasSettled = true;
-        setStatus("settled");
+        setStatus(isMeaningfullyVisible(next) ? "settled" : "not-found");
       }
       // Keep polling indefinitely rather than stopping once settled — see
       // this hook's own doc comment.

@@ -1031,7 +1031,14 @@ function NotificationListRow({
               onClick={() => {
                 if (!wasDragging.current) onActivate();
               }}
-              data-tour="notification-view-schedule"
+              // Only this button's specifically-"View Schedule" case, not
+              // "View Info"/"View Card" too — the alarm-click-to-schedule
+              // tip's own text ("takes you directly to that item on the
+              // schedule") only actually holds for an activity's own alarm,
+              // so it needs to land on a row that's guaranteed to say
+              // exactly that rather than whichever sourceRef.type happens
+              // to be showing.
+              data-tour={n.sourceRef.type === "activity" ? "notification-view-schedule" : undefined}
               className="text-xs font-medium text-blue-500 hover:text-blue-600"
             >
               {viewLabel}

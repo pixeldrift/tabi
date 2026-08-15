@@ -193,7 +193,7 @@ export function useDurationChip(cardKey: string) {
     });
   };
 
-  return { running: isRunning, displayMs, toggle, canRecordData };
+  return { running: isRunning, displayMs, viewIdx, toggle, canRecordData };
 }
 
 export function DurationCard({
