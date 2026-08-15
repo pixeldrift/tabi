@@ -1109,6 +1109,7 @@ function IndexInner({
     displayMode,
     setDisplayMode,
     editMode,
+    setEditMode,
     searchQuery,
     filters,
     favorites,
@@ -1677,6 +1678,51 @@ function IndexInner({
                       onSelectCard={handleSelectFromBar}
                       onJumpToCard={handleJumpFromBar}
                     />
+                    {/* Same height+opacity slide as the "Start session" banner
+                    above and the bookmark bar's own visibility toggle — the
+                    bar itself already collapses out the instant editMode
+                    turns on (see its own `visible` check), so this grows
+                    into that same shelf slot right as it vacates it, reading
+                    as one continuous swap rather than two unrelated
+                    animations. No save/cancel: every edit-mode action
+                    (reorder, hide, favorite) writes through immediately and
+                    isn't something to commit or revert, so "Done" is the
+                    only affordance this needs. */}
+                    <AnimatePresence initial={false}>
+                      {editMode && (
+                        <motion.div
+                          key="edit-mode-banner"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{
+                            height: {
+                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              ease: [0.4, 0, 0.2, 1],
+                            },
+                            opacity: { duration: 0.25 },
+                          }}
+                          className="overflow-hidden border-t border-blue-200/70 bg-blue-50/70"
+                        >
+                          <div className="flex items-center justify-between gap-3 px-4 py-2 max-w-3xl mx-auto">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-blue-800">Edit mode</p>
+                              <p className="text-xs text-blue-800/70">
+                                Drag cards to reorder them, or use the icons on each to hide it or
+                                mark it a favorite.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditMode(false)}
+                              className="btn-bevel shrink-0 rounded-full bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </DataToolbar>
                 )
               }

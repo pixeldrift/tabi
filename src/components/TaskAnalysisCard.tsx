@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, HandHelping, X } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
+import { Check, HandHelping, Plus, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
@@ -138,34 +138,49 @@ function statusDotColor(status: StepStatus) {
 
 /** Everything the bookmark bar's Task Analysis chip needs, independent of
  *  whether the real TaskAnalysisCard is currently mounted anywhere — reads/
- *  writes the same useCardState-backed `statuses`/`current`/`promptLevel`
- *  slots TaskAnalysisCard itself uses, with lighter versions of its own
- *  `setStep`/`pickPromptLevel` (no expanded-list bubble-track animation
- *  state, no advance delay). `totalSteps` comes from the card's own
- *  `steps.length`, same as TaskAnalysisCard's own initial `statuses` —
- *  unlike Trial's `trials` array, this length is fixed by the card's
- *  config rather than growing dynamically, so no defensive padding is
- *  needed. When `promptLevels` is set, the chip's Prompted button reuses
- *  TaskAnalysisCard's own exported `ListTaskAnalysisPromptLevelButton` (see
- *  BookmarkChip.tsx) rather than a plain toggle — `pickPromptLevel` below
- *  is that button's write path. */
+ *  writes the same useCardState-backed `statuses`/`current`/`promptLevel`/
+ *  `viewIdx` slots TaskAnalysisCard itself uses, with lighter versions of
+ *  its own `setStep`/`pickPromptLevel` (no expanded-list bubble-track
+ *  animation state, no advance delay). `statuses`/`current`/`promptLevel`
+ *  are now one entry per instance (see TaskAnalysisCard's own comment on
+ *  why) — the chip always reads/writes whichever instance `viewIdx` points
+ *  at, same as the real card, but has no way to create a new one itself;
+ *  that's deliberately only reachable from the full card view's own "New
+ *  Instance" button, not a quick-score surface. `totalSteps` comes from the
+ *  card's own `steps.length`, same as TaskAnalysisCard's own initial
+ *  per-instance `statuses` entry — unlike Trial's `trials` array, this
+ *  length is fixed by the card's config rather than growing dynamically, so
+ *  no defensive padding is needed. When `promptLevels` is set, the chip's
+ *  Prompted button reuses TaskAnalysisCard's own exported
+ *  `ListTaskAnalysisPromptLevelButton` (see BookmarkChip.tsx) rather than a
+ *  plain toggle — `pickPromptLevel` below is that button's write path. */
 export function useTaskAnalysisChip(cardKey: string, totalSteps: number, promptLevels?: string[]) {
   const { markDirty, canRecordData } = useCardSession();
-  const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () =>
+  const [statuses, setStatuses] = useCardState<StepStatus[][]>(cardKey, "statuses", () => [
     Array.from({ length: totalSteps }, () => null),
-  );
-  const [current, setCurrent] = useCardState(cardKey, "current", 0);
-  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>>(
+  ]);
+  const [current, setCurrent] = useCardState<number[]>(cardKey, "current", () => [0]);
+  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>[]>(
     cardKey,
     "promptLevel",
-    {},
+    () => [{}],
   );
+  const [viewIdx] = useCardState(cardKey, "viewIdx", 0);
 
-  const firstUnscored = statuses.indexOf(null);
-  const canScoreCurrent = firstUnscored === -1 || current <= firstUnscored;
-  const currentStatus: StepStatus = statuses[current] ?? null;
+  const activeStatuses = statuses[viewIdx] ?? [];
+  const activeCurrent = current[viewIdx] ?? 0;
+  const activePromptLevel = promptLevel[viewIdx] ?? {};
+
+  const firstUnscored = activeStatuses.indexOf(null);
+  const canScoreCurrent = firstUnscored === -1 || activeCurrent <= firstUnscored;
+  const currentStatus: StepStatus = activeStatuses[activeCurrent] ?? null;
   const needsPromptLevelPicker = (promptLevels?.length ?? 0) > 0;
-  const advanceCurrent = () => setCurrent((c) => Math.min(c + 1, totalSteps - 1));
+  const advanceCurrent = () =>
+    setCurrent((prev) => {
+      const next = prev.slice();
+      next[viewIdx] = Math.min((next[viewIdx] ?? 0) + 1, totalSteps - 1);
+      return next;
+    });
 
   const setStep = (value: Exclude<StepStatus, null>) => {
     if (!canScoreCurrent) return;
@@ -177,15 +192,19 @@ export function useTaskAnalysisChip(cardKey: string, totalSteps: number, promptL
       );
     }
     setStatuses((prev) => {
-      const next = [...prev];
-      next[current] = isToggleOff ? null : value;
+      const next = prev.slice();
+      const instanceNext = next[viewIdx].slice();
+      instanceNext[activeCurrent] = isToggleOff ? null : value;
+      next[viewIdx] = instanceNext;
       return next;
     });
     if (value !== "prompted" || isToggleOff) {
       setPromptLevel((prev) => {
-        if (!(current in prev)) return prev;
-        const next = { ...prev };
-        delete next[current];
+        if (!(activeCurrent in (prev[viewIdx] ?? {}))) return prev;
+        const next = prev.slice();
+        const instanceNext = { ...next[viewIdx] };
+        delete instanceNext[activeCurrent];
+        next[viewIdx] = instanceNext;
         return next;
       });
     }
@@ -198,25 +217,31 @@ export function useTaskAnalysisChip(cardKey: string, totalSteps: number, promptL
     const isUnspecified = level === UNSPECIFIED_LEVEL;
     const isToggleOff =
       currentStatus === "prompted" &&
-      (isUnspecified ? !(current in promptLevel) : promptLevel[current] === level);
+      (isUnspecified
+        ? !(activeCurrent in activePromptLevel)
+        : activePromptLevel[activeCurrent] === level);
     setStatuses((prev) => {
-      const next = [...prev];
-      next[current] = isToggleOff ? null : "prompted";
+      const next = prev.slice();
+      const instanceNext = next[viewIdx].slice();
+      instanceNext[activeCurrent] = isToggleOff ? null : "prompted";
+      next[viewIdx] = instanceNext;
       return next;
     });
     setPromptLevel((prev) => {
-      const next = { ...prev };
-      if (isToggleOff || isUnspecified) delete next[current];
-      else next[current] = level;
+      const next = prev.slice();
+      const instanceNext = { ...next[viewIdx] };
+      if (isToggleOff || isUnspecified) delete instanceNext[activeCurrent];
+      else instanceNext[activeCurrent] = level;
+      next[viewIdx] = instanceNext;
       return next;
     });
     if (!isToggleOff) advanceCurrent();
   };
 
   return {
-    current,
+    current: activeCurrent,
     currentStatus,
-    currentPromptLevel: promptLevel[current] ?? null,
+    currentPromptLevel: activePromptLevel[activeCurrent] ?? null,
     canScoreCurrent,
     needsPromptLevelPicker,
     setStep,
@@ -257,18 +282,29 @@ export function TaskAnalysisCard({
   onWidthModeChange,
 }: TaskAnalysisCardProps) {
   const cardKey = id ?? title;
-  const [statuses, setStatuses] = useCardState<StepStatus[]>(cardKey, "statuses", () =>
+  // One entry per instance (a kid washing hands twice in one session, say,
+  // is two independent runs through the same steps) — `viewIdx` is which
+  // one is currently shown, same shape as Duration's own
+  // `instances`/`viewIdx` split. Unlike Duration, a new instance is never
+  // created implicitly (there's no natural "that one's obviously done"
+  // signal the way stopping a timer is) — only the "New Instance" button
+  // in the full card view creates one, via `addInstance` below.
+  const [statuses, setStatuses] = useCardState<StepStatus[][]>(cardKey, "statuses", () => [
     steps.map(() => null),
-  );
-  const [current, setCurrent] = useCardState(cardKey, "current", 0);
-  // Keyed by step index, same idiom as TrialCard's promptLevel — entries
-  // just don't exist for steps that aren't "prompted" (or don't have a
-  // level chosen yet).
-  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>>(
+  ]);
+  const [current, setCurrent] = useCardState<number[]>(cardKey, "current", () => [0]);
+  // Keyed by step index within each instance, same idiom as TrialCard's
+  // promptLevel — entries just don't exist for steps that aren't "prompted"
+  // (or don't have a level chosen yet).
+  const [promptLevel, setPromptLevel] = useCardState<Record<number, string>[]>(
     cardKey,
     "promptLevel",
-    {},
+    () => [{}],
   );
+  const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", 0);
+  const activeStatuses = statuses[viewIdx] ?? [];
+  const activeCurrent = current[viewIdx] ?? 0;
+  const activePromptLevel = promptLevel[viewIdx] ?? {};
   const [expanded, setExpanded] = useState(false);
   const { markDirty, resetSignal, canRecordData } = useCardSession();
   const [shouldReset, markResetHandled] = useResetGuard(cardKey, resetSignal);
@@ -295,27 +331,32 @@ export function TaskAnalysisCard({
   useEffect(() => {
     if (!shouldReset) return;
     markResetHandled();
-    setStatuses(steps.map(() => null));
-    setCurrent(0);
-    setPromptLevel({});
+    setStatuses([steps.map(() => null)]);
+    setCurrent([0]);
+    setPromptLevel([{}]);
+    setViewIdx(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset, steps]);
 
   // Mirrors TrialCard's setResult: read the pre-toggle value from the
   // current render's closure (not inside the setState updater) so we know
   // whether this was a genuine score vs. a toggle-off before deciding
-  // whether to auto-advance.
+  // whether to auto-advance. `idx` is always a step within the CURRENTLY
+  // VIEWED instance — every caller reads/derives it from `activeCurrent` or
+  // an expanded-list row, never a raw cross-instance index.
   const setStep = (idx: number, value: Exclude<StepStatus, null>, advance = false) => {
     markDirty();
-    const isToggleOff = statuses[idx] === value;
+    const isToggleOff = activeStatuses[idx] === value;
     if (!isToggleOff) {
       playSoundEffect(
         value === "independent" ? "correct" : value === "error" ? "error" : "prompted",
       );
     }
     setStatuses((prev) => {
-      const next = [...prev];
-      next[idx] = isToggleOff ? null : value;
+      const next = prev.slice();
+      const instanceNext = next[viewIdx].slice();
+      instanceNext[idx] = isToggleOff ? null : value;
+      next[viewIdx] = instanceNext;
       return next;
     });
     // Any outcome other than "prompted" (including toggling it off) clears
@@ -324,16 +365,26 @@ export function TaskAnalysisCard({
     // reflects a prompt at all.
     if (value !== "prompted" || isToggleOff) {
       setPromptLevel((prev) => {
-        if (!(idx in prev)) return prev;
-        const next = { ...prev };
-        delete next[idx];
+        if (!(idx in (prev[viewIdx] ?? {}))) return prev;
+        const next = prev.slice();
+        const instanceNext = { ...next[viewIdx] };
+        delete instanceNext[idx];
+        next[viewIdx] = instanceNext;
         return next;
       });
     }
-    setCurrent(idx);
+    setCurrent((prev) => {
+      const next = prev.slice();
+      next[viewIdx] = idx;
+      return next;
+    });
     if (advance && !isToggleOff) {
       window.setTimeout(() => {
-        setCurrent((c) => Math.min(c + 1, steps.length - 1));
+        setCurrent((prev) => {
+          const next = prev.slice();
+          next[viewIdx] = Math.min((next[viewIdx] ?? 0) + 1, steps.length - 1);
+          return next;
+        });
       }, 260);
     }
   };
@@ -346,37 +397,74 @@ export function TaskAnalysisCard({
     markDirty();
     const isUnspecified = level === UNSPECIFIED_LEVEL;
     const isToggleOff =
-      statuses[idx] === "prompted" &&
-      (isUnspecified ? !(idx in promptLevel) : promptLevel[idx] === level);
+      activeStatuses[idx] === "prompted" &&
+      (isUnspecified ? !(idx in activePromptLevel) : activePromptLevel[idx] === level);
     setStatuses((prev) => {
-      const next = [...prev];
-      next[idx] = isToggleOff ? null : "prompted";
+      const next = prev.slice();
+      const instanceNext = next[viewIdx].slice();
+      instanceNext[idx] = isToggleOff ? null : "prompted";
+      next[viewIdx] = instanceNext;
       return next;
     });
     setPromptLevel((prev) => {
-      const next = { ...prev };
-      if (isToggleOff || isUnspecified) delete next[idx];
-      else next[idx] = level;
+      const next = prev.slice();
+      const instanceNext = { ...next[viewIdx] };
+      if (isToggleOff || isUnspecified) delete instanceNext[idx];
+      else instanceNext[idx] = level;
+      next[viewIdx] = instanceNext;
       return next;
     });
-    setCurrent(idx);
+    setCurrent((prev) => {
+      const next = prev.slice();
+      next[viewIdx] = idx;
+      return next;
+    });
     if (advance && !isToggleOff) {
       window.setTimeout(() => {
-        setCurrent((c) => Math.min(c + 1, steps.length - 1));
+        setCurrent((prev) => {
+          const next = prev.slice();
+          next[viewIdx] = Math.min((next[viewIdx] ?? 0) + 1, steps.length - 1);
+          return next;
+        });
       }, 260);
     }
   };
 
   const goTo = (idx: number) => {
-    setCurrent(Math.max(0, Math.min(idx, steps.length - 1)));
+    setCurrent((prev) => {
+      const next = prev.slice();
+      next[viewIdx] = Math.max(0, Math.min(idx, steps.length - 1));
+      return next;
+    });
   };
 
-  const completed = statuses.filter((s) => s !== null).length;
-  const independent = statuses.filter((s) => s === "independent").length;
+  // A fresh, fully-unmarked run through the same steps — pressing "New
+  // Instance" in the full card view. Doesn't touch or clear any earlier
+  // instance's data; it's just appended, and `viewIdx` moving to it is what
+  // the outer AnimatePresence (see the CardShell-view return below) reads
+  // to slide the whole card over to it.
+  const addInstance = () => {
+    markDirty();
+    const newIdx = statuses.length;
+    setStatuses((prev) => [...prev, steps.map(() => null)]);
+    setCurrent((prev) => [...prev, 0]);
+    setPromptLevel((prev) => [...prev, {}]);
+    setViewIdx(newIdx);
+  };
+
+  const completed = activeStatuses.filter((s) => s !== null).length;
+  const independent = activeStatuses.filter((s) => s === "independent").length;
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const isComplete = completed >= steps.length;
   const remaining = Math.max(0, steps.length - completed);
-  useReportCardStatus(cardKey, completed > 0, isComplete, {
+  // hasData looks across every instance (any step scored anywhere counts,
+  // same as Duration's own totalMs summing every instance) — but
+  // isComplete/progress/the value reported below describe only the
+  // instance actually on screen, since "how far along is this run"
+  // is inherently a per-instance question the way Duration's cumulative
+  // elapsed time isn't.
+  const hasAnyData = statuses.some((instanceStatuses) => instanceStatuses.some((s) => s !== null));
+  useReportCardStatus(cardKey, hasAnyData, isComplete, {
     title,
     kind: "task-analysis",
     value: `${independent}/${steps.length}`,
@@ -386,13 +474,13 @@ export function TaskAnalysisCard({
   // Steps must be scored in order — a step can't be scored while an earlier
   // one is still blank, so its own score buttons stay disabled until the
   // gap behind it closes. -1 (all scored) allows everything.
-  const firstUnscored = statuses.indexOf(null);
+  const firstUnscored = activeStatuses.indexOf(null);
   const canScore = (idx: number) => firstUnscored === -1 || idx <= firstUnscored;
 
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
-    () => -(current * stepWidth + BUBBLE_CENTER / 2),
-    [current, stepWidth],
+    () => -(activeCurrent * stepWidth + BUBBLE_CENTER / 2),
+    [activeCurrent, stepWidth],
   );
 
   // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
@@ -443,6 +531,7 @@ export function TaskAnalysisCard({
                   label: "Chaining",
                   value: chainingDirection === "backward" ? "Backward" : "Forward",
                 },
+                { label: "Instances", value: statuses.length },
                 { label: "Steps", value: steps.length },
                 { label: "Scored", value: `${completed} / ${steps.length}` },
                 { label: "Independent", value: `${independent} / ${steps.length}` },
@@ -463,16 +552,16 @@ export function TaskAnalysisCard({
           <div className={cn("flex items-center justify-center", large ? "gap-2" : "gap-1.5")}>
             {OPTIONS.map((opt) => {
               const Icon = opt.icon;
-              const selected = statuses[current] === opt.value;
+              const selected = activeStatuses[activeCurrent] === opt.value;
               return (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setStep(current, opt.value, true);
+                    setStep(activeCurrent, opt.value, true);
                   }}
-                  disabled={!canRecordData || !canScore(current)}
+                  disabled={!canRecordData || !canScore(activeCurrent)}
                   aria-label={opt.label}
                   className={cn(
                     "shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
@@ -506,7 +595,7 @@ export function TaskAnalysisCard({
             own dot row uses (see Duration's). */}
           <SwipeStrip
             count={steps.length}
-            current={current}
+            current={activeCurrent}
             onCurrentChange={goTo}
             variant="centered"
             className="-mt-1 w-full"
@@ -514,7 +603,7 @@ export function TaskAnalysisCard({
             itemWrapperClassName="flex items-center justify-center"
           >
             {(i) => {
-              const isCurrent = i === current;
+              const isCurrent = i === activeCurrent;
               return (
                 <span
                   onClick={(e) => {
@@ -524,7 +613,7 @@ export function TaskAnalysisCard({
                   className={cn(
                     "rounded-full transition-all duration-300",
                     isCurrent ? (large ? "size-2.5" : "size-2") : large ? "size-1.5" : "size-1",
-                    statusDotColor(statuses[i]),
+                    statusDotColor(activeStatuses[i]),
                   )}
                   style={{ opacity: isCurrent ? 1 : 0.5 }}
                   aria-hidden
@@ -534,7 +623,7 @@ export function TaskAnalysisCard({
           </SwipeStrip>
           <SwipeStrip
             count={steps.length}
-            current={current}
+            current={activeCurrent}
             onCurrentChange={goTo}
             variant="centered"
             className="w-full"
@@ -542,7 +631,7 @@ export function TaskAnalysisCard({
             itemWrapperClassName="flex items-center justify-center"
           >
             {(i, isCenter) => {
-              const status = statuses[i];
+              const status = activeStatuses[i];
               const color =
                 status === "independent"
                   ? "text-green-700"
@@ -637,6 +726,7 @@ export function TaskAnalysisCard({
                   label: "Chaining",
                   value: chainingDirection === "backward" ? "Backward" : "Forward",
                 },
+                { label: "Instances", value: statuses.length },
                 { label: "Steps", value: steps.length },
                 { label: "Scored", value: `${completed} / ${steps.length}` },
                 { label: "Independent", value: `${independent} / ${steps.length}` },
@@ -657,18 +747,18 @@ export function TaskAnalysisCard({
           // Badge and buttons slide together — each button scores THIS step
           // specifically, so advancing to the next step should read as the
           // whole row moving on, not just the number changing in place.
-          <ListActionSlide actionKey={current}>
-            <ListActionBadge value={current + 1} />
+          <ListActionSlide actionKey={activeCurrent}>
+            <ListActionBadge value={activeCurrent + 1} />
             {OPTIONS.map((opt) => {
               if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
                 return (
                   <ListTaskAnalysisPromptLevelButton
                     key={opt.value}
                     levels={promptLevels}
-                    selectedLevel={promptLevel[current] ?? null}
-                    selected={statuses[current] === "prompted"}
-                    disabled={!canRecordData || !canScore(current)}
-                    onPick={(level) => pickPromptLevel(current, level, true)}
+                    selectedLevel={activePromptLevel[activeCurrent] ?? null}
+                    selected={activeStatuses[activeCurrent] === "prompted"}
+                    disabled={!canRecordData || !canScore(activeCurrent)}
+                    onPick={(level) => pickPromptLevel(activeCurrent, level, true)}
                     topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
                   />
                 );
@@ -680,10 +770,10 @@ export function TaskAnalysisCard({
                   variant={
                     opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"
                   }
-                  selected={statuses[current] === opt.value}
-                  disabled={!canRecordData || !canScore(current)}
+                  selected={activeStatuses[activeCurrent] === opt.value}
+                  disabled={!canRecordData || !canScore(activeCurrent)}
                   ariaLabel={opt.label}
-                  onClick={() => setStep(current, opt.value, true)}
+                  onClick={() => setStep(activeCurrent, opt.value, true)}
                 />
               );
             })}
@@ -694,286 +784,344 @@ export function TaskAnalysisCard({
   }
 
   return (
-    <CardShell
-      title={title}
-      phase={phase}
-      dataType="Task Analysis"
-      dataTypeIcon={<TaskAnalysisIcon />}
-      kind="task-analysis"
-      isActive={isActive}
-      onActivate={onActivate}
-      reorderEditing={reorderEditing}
-      favorited={favorited}
-      onToggleFavorite={onToggleFavorite}
-      cardHidden={cardHidden}
-      onToggleHidden={onToggleHidden}
-      dragControls={dragControls}
-      detailsOpen={detailsOpen}
-      onDetailsOpenChange={onDetailsOpenChange}
-      onOpenDetails={onOpenDetails}
-      stickyTop={stickyTop}
-      onPrevCard={onPrevCard}
-      onNextCard={onNextCard}
-      slideFrom={slideFrom}
-      widthMode={widthMode}
-      onWidthModeChange={onWidthModeChange}
-      progress={progress}
-      isComplete={isComplete}
-      expanded={expanded}
-      onToggleExpanded={() => {
-        if (!expanded) playSoundEffect("twirldown");
-        setExpanded((v) => !v);
-      }}
-      helperText={
-        isComplete ? (
-          <span>
-            All steps scored ·{" "}
-            <strong className="font-semibold">
-              {independent}/{steps.length} independent
-            </strong>
-          </span>
-        ) : (
-          <span>
-            Score <strong className="font-semibold">{remaining} more</strong>{" "}
-            {remaining === 1 ? "step" : "steps"}.
-          </span>
-        )
-      }
-      details={
-        <>
-          <DrawerQuickFacts
-            icon={<TaskAnalysisIcon />}
-            kind="task-analysis"
-            dataTypeLabel="Task analysis"
-            phase={phase}
-            stats={[
-              {
-                label: "Chaining",
-                value: chainingDirection === "backward" ? "Backward" : "Forward",
-              },
-              { label: "Steps", value: steps.length },
-              { label: "Scored", value: `${completed} / ${steps.length}` },
-              { label: "Independent", value: `${independent} / ${steps.length}` },
-            ]}
-          />
-          {(teachingProcedure || description) && (
-            <div className="mt-4">
-              <TeachingProcedureAccordion
-                description={description}
-                data={teachingProcedure}
+    // Keyed on viewIdx so creating a new instance (addInstance, above) swaps
+    // this whole card over to it with a full-width slide — the new instance
+    // enters from the right, the one just left behind exits to the left,
+    // same "moving forward" direction as swiping ahead on a phone. Only
+    // `addInstance` ever changes `viewIdx` today (there's no way yet to
+    // browse back to an earlier instance), so this only ever plays in the
+    // one direction; the exit/enter offsets are still written as a genuine
+    // pair rather than hardcoded to that one case, so a future "previous
+    // instance" control could reverse it for free. No explicit
+    // overflow-hidden clip wrapper — this card already reads full-bleed at
+    // the phone widths this app targets, so sliding a full `x: "100%"`
+    // off either side already lands past the edge of what a horizontally
+    // non-scrolling page shows, without needing to also clip (and, with
+    // it, needing extra padding to keep CardShell's own drop shadow from
+    // getting cropped mid-slide).
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.div
+        key={viewIdx}
+        initial={{ x: "100%", opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: "-100%", opacity: 0 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+      >
+        <CardShell
+          title={title}
+          phase={phase}
+          dataType="Task Analysis"
+          dataTypeIcon={<TaskAnalysisIcon />}
+          kind="task-analysis"
+          isActive={isActive}
+          onActivate={onActivate}
+          reorderEditing={reorderEditing}
+          favorited={favorited}
+          onToggleFavorite={onToggleFavorite}
+          cardHidden={cardHidden}
+          onToggleHidden={onToggleHidden}
+          dragControls={dragControls}
+          detailsOpen={detailsOpen}
+          onDetailsOpenChange={onDetailsOpenChange}
+          onOpenDetails={onOpenDetails}
+          stickyTop={stickyTop}
+          onPrevCard={onPrevCard}
+          onNextCard={onNextCard}
+          slideFrom={slideFrom}
+          widthMode={widthMode}
+          onWidthModeChange={onWidthModeChange}
+          progress={progress}
+          isComplete={isComplete}
+          expanded={expanded}
+          onToggleExpanded={() => {
+            if (!expanded) playSoundEffect("twirldown");
+            setExpanded((v) => !v);
+          }}
+          helperText={
+            isComplete ? (
+              <span>
+                All steps scored ·{" "}
+                <strong className="font-semibold">
+                  {independent}/{steps.length} independent
+                </strong>
+              </span>
+            ) : (
+              <span>
+                Score <strong className="font-semibold">{remaining} more</strong>{" "}
+                {remaining === 1 ? "step" : "steps"}.
+              </span>
+            )
+          }
+          details={
+            <>
+              <DrawerQuickFacts
+                icon={<TaskAnalysisIcon />}
                 kind="task-analysis"
+                dataTypeLabel="Task analysis"
+                phase={phase}
+                stats={[
+                  {
+                    label: "Chaining",
+                    value: chainingDirection === "backward" ? "Backward" : "Forward",
+                  },
+                  { label: "Instances", value: statuses.length },
+                  { label: "Steps", value: steps.length },
+                  { label: "Scored", value: `${completed} / ${steps.length}` },
+                  { label: "Independent", value: `${independent} / ${steps.length}` },
+                ]}
               />
-            </div>
-          )}
-        </>
-      }
-      expandedView={
-        <ol className="px-3 pt-1 pb-3 space-y-1">
-          {steps.map((step, i) => (
-            <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
-              <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
-                {i + 1}
-              </span>
-              <span
-                className={cn("flex-1 text-sm leading-tight", statuses[i] && "text-foreground/80")}
+              {(teachingProcedure || description) && (
+                <div className="mt-4">
+                  <TeachingProcedureAccordion
+                    description={description}
+                    data={teachingProcedure}
+                    kind="task-analysis"
+                  />
+                </div>
+              )}
+            </>
+          }
+          expandedView={
+            <ol className="px-3 pt-1 pb-3 space-y-1">
+              {steps.map((step, i) => (
+                <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+                  <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
+                    {i + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex-1 text-sm leading-tight",
+                      activeStatuses[i] && "text-foreground/80",
+                    )}
+                  >
+                    {step}
+                  </span>
+                  <StepPlanBadge level={stepPlan?.[i]} />
+                  <div className="flex items-center gap-1 shrink-0">
+                    {OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      const selected = activeStatuses[i] === opt.value;
+                      if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
+                        return (
+                          <RowPromptLevelButton
+                            key={opt.value}
+                            levels={promptLevels}
+                            selectedLevel={activePromptLevel[i] ?? null}
+                            selected={selected}
+                            disabled={!canRecordData || !canScore(i)}
+                            onPick={(level) => pickPromptLevel(i, level, false)}
+                            topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
+                          />
+                        );
+                      }
+                      return (
+                        <motion.button
+                          key={opt.value}
+                          onClick={() => setStep(i, opt.value)}
+                          disabled={!canRecordData || !canScore(i)}
+                          whileTap={{ scale: 0.9 }}
+                          aria-label={opt.value}
+                          className={cn(
+                            "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
+                            opt.classes,
+                            selected && cn("btn-bevel", opt.selectedClasses),
+                          )}
+                        >
+                          <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          }
+        >
+          <div className="relative px-2 pt-3 pb-1">
+            <div className="relative h-16">
+              <TriangleNav
+                direction="left"
+                onClick={() => goTo(activeCurrent - 1)}
+                disabled={activeCurrent === 0}
+              />
+              <TriangleNav
+                direction="right"
+                onClick={() => goTo(activeCurrent + 1)}
+                disabled={activeCurrent >= steps.length - 1}
+              />
+              <div
+                className="relative h-16 overflow-hidden"
+                style={{
+                  WebkitMaskImage:
+                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                  maskImage:
+                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                }}
               >
-                {step}
-              </span>
-              <StepPlanBadge level={stepPlan?.[i]} />
-              <div className="flex items-center gap-1 shrink-0">
-                {OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const selected = statuses[i] === opt.value;
-                  if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
+                <motion.div
+                  className="absolute top-1/2 left-1/2 flex items-center"
+                  style={{ gap: GAP, x: dragX, translateY: "-50%" }}
+                  animate={{ x: trackOffset }}
+                  transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                  drag="x"
+                  dragConstraints={{ left: -((steps.length - 1) * stepWidth) - 200, right: 200 }}
+                  dragElastic={0.08}
+                  onDragEnd={handleDragEnd}
+                >
+                  {steps.map((_, i) => {
+                    const isCenter = i === activeCurrent;
+                    const status = activeStatuses[i];
                     return (
-                      <RowPromptLevelButton
-                        key={opt.value}
-                        levels={promptLevels}
-                        selectedLevel={promptLevel[i] ?? null}
-                        selected={selected}
-                        disabled={!canRecordData || !canScore(i)}
-                        onPick={(level) => pickPromptLevel(i, level, false)}
-                        topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
-                      />
+                      <motion.button
+                        key={i}
+                        onClick={() => goTo(i)}
+                        className="relative shrink-0 grid place-items-center rounded-full font-medium select-none border"
+                        animate={{
+                          width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                          height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                        }}
+                        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                      >
+                        <span
+                          className={cn(
+                            "absolute inset-0 rounded-full grid place-items-center",
+                            isCenter ? "border-2" : "border",
+                            status === "independent"
+                              ? "bg-green-50 border-green-300 text-green-700"
+                              : status === "prompted"
+                                ? "bg-amber-50 border-amber-300 text-amber-700"
+                                : status === "error"
+                                  ? "bg-red-50 border-red-300 text-red-700"
+                                  : "bg-foreground/5 border-foreground/10 text-foreground/40",
+                            isCenter && !status && "bg-card border-foreground/30 text-foreground",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              isCenter
+                                ? "font-display text-2xl leading-none tabular-nums"
+                                : "text-[7px] leading-none",
+                            )}
+                          >
+                            {i + 1}
+                          </span>
+                        </span>
+                      </motion.button>
                     );
-                  }
-                  return (
-                    <motion.button
-                      key={opt.value}
-                      onClick={() => setStep(i, opt.value)}
-                      disabled={!canRecordData || !canScore(i)}
-                      whileTap={{ scale: 0.9 }}
-                      aria-label={opt.value}
-                      className={cn(
-                        "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
-                        opt.classes,
-                        selected && cn("btn-bevel", opt.selectedClasses),
-                      )}
-                    >
-                      <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
-                    </motion.button>
-                  );
-                })}
+                  })}
+                  {/* End bar — same "quota boundary" divider as Percent
+                      Correct's own maxTrials marker. Task analysis steps
+                      are always a fixed count (there's no separate max to
+                      configure), so this sits after the last step
+                      unconditionally rather than behind a maxTrials
+                      check. */}
+                  <div
+                    className="shrink-0 w-px bg-foreground/40 mx-2"
+                    style={{ height: 40 }}
+                    aria-hidden
+                  />
+                  {/* New Instance — the one deliberate way a new run gets
+                      created (see addInstance's own comment on why this
+                      never happens implicitly the way Duration's does).
+                      Lives right after the end bar in the same draggable
+                      strip, the same "one more swipe past the last step"
+                      idiom the strip already uses for reaching anything
+                      past where a normal step count would put the mask's
+                      own fade — not hidden, just the next thing along the
+                      same track. onClick (not a plain button here) plus
+                      stopPropagation matches every OTHER interactive
+                      control already living inside this drag="x" parent
+                      (the step bubbles' own onClick={() => goTo(i)}),
+                      which already coexists with real dragging via
+                      Motion's own built-in drag-vs-tap threshold. */}
+                  <motion.button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addInstance();
+                    }}
+                    disabled={!canRecordData}
+                    whileTap={{ scale: 0.94 }}
+                    className="shrink-0 h-10 flex items-center gap-1.5 rounded-full border-2 border-blue-300 bg-blue-50 px-3 text-blue-700 transition-colors disabled:opacity-40"
+                  >
+                    <Plus className="size-4 shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs font-semibold whitespace-nowrap">New Instance</span>
+                  </motion.button>
+                </motion.div>
               </div>
-            </li>
-          ))}
-        </ol>
-      }
-    >
-      <div className="relative px-2 pt-3 pb-1">
-        <div className="relative h-16">
-          <TriangleNav
-            direction="left"
-            onClick={() => goTo(current - 1)}
-            disabled={current === 0}
-          />
-          <TriangleNav
-            direction="right"
-            onClick={() => goTo(current + 1)}
-            disabled={current >= steps.length - 1}
-          />
-          <div
-            className="relative h-16 overflow-hidden"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-              maskImage:
-                "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-            }}
-          >
-            <motion.div
-              className="absolute top-1/2 left-1/2 flex items-center"
-              style={{ gap: GAP, x: dragX, translateY: "-50%" }}
-              animate={{ x: trackOffset }}
-              transition={{ type: "spring", stiffness: 320, damping: 34 }}
-              drag="x"
-              dragConstraints={{ left: -((steps.length - 1) * stepWidth) - 200, right: 200 }}
-              dragElastic={0.08}
-              onDragEnd={handleDragEnd}
-            >
-              {steps.map((_, i) => {
-                const isCenter = i === current;
-                const status = statuses[i];
+            </div>
+            <div className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
+              <span
+                title={chainingDirection === "backward" ? "Backward chaining" : "Forward chaining"}
+                className="inline-flex shrink-0"
+              >
+                {chainingDirection === "backward" ? (
+                  <BackwardChainingIcon className="size-3.5" />
+                ) : (
+                  <ForwardChainingIcon className="size-3.5" />
+                )}
+              </span>
+              <span>
+                Step {activeCurrent + 1} (of {steps.length})
+              </span>
+            </div>
+
+            {/* flex+justify-center on the row, rather than text-align:center
+             *  on the paragraph itself: a centered *line* pushes overflow
+             *  past both edges equally, and CardShell's own rounded-corner
+             *  overflow-hidden then clips the beginning of a too-long word
+             *  along with the end. Centering the *box* instead means a
+             *  short line (which fits, so the box shrinks to its content)
+             *  still reads as centered, but a long line's box gets capped
+             *  at max-w-full — leaving nothing left to center around — so
+             *  it truncates from its natural (left) start, losing only the
+             *  tail. */}
+            <div className="mt-2 px-3 flex justify-center items-center gap-1.5">
+              <StepPlanBadge level={stepPlan?.[activeCurrent]} />
+              <p className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
+                {steps[activeCurrent]}
+              </p>
+            </div>
+
+            <div className="mt-3 flex justify-center gap-1 px-2">
+              {OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const selected = activeStatuses[activeCurrent] === opt.value;
+                if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
+                  return (
+                    <TaskAnalysisPromptLevelButton
+                      key={opt.value}
+                      levels={promptLevels}
+                      selectedLevel={activePromptLevel[activeCurrent] ?? null}
+                      selected={selected}
+                      disabled={!canRecordData || !canScore(activeCurrent)}
+                      onPick={(level) => pickPromptLevel(activeCurrent, level, true)}
+                      topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
+                    />
+                  );
+                }
                 return (
                   <motion.button
-                    key={i}
-                    onClick={() => goTo(i)}
-                    className="relative shrink-0 grid place-items-center rounded-full font-medium select-none border"
-                    animate={{
-                      width: isCenter ? BUBBLE_CENTER : BUBBLE,
-                      height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                    }}
-                    transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                    key={opt.value}
+                    onClick={() => setStep(activeCurrent, opt.value, true)}
+                    disabled={!canRecordData || !canScore(activeCurrent)}
+                    whileTap={{ scale: 0.96 }}
+                    className={cn(
+                      "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors disabled:opacity-40",
+                      opt.classes,
+                      selected && cn("btn-bevel", opt.selectedClasses),
+                    )}
                   >
-                    <span
-                      className={cn(
-                        "absolute inset-0 rounded-full grid place-items-center",
-                        isCenter ? "border-2" : "border",
-                        status === "independent"
-                          ? "bg-green-50 border-green-300 text-green-700"
-                          : status === "prompted"
-                            ? "bg-amber-50 border-amber-300 text-amber-700"
-                            : status === "error"
-                              ? "bg-red-50 border-red-300 text-red-700"
-                              : "bg-foreground/5 border-foreground/10 text-foreground/40",
-                        isCenter && !status && "bg-card border-foreground/30 text-foreground",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          isCenter
-                            ? "font-display text-2xl leading-none tabular-nums"
-                            : "text-[7px] leading-none",
-                        )}
-                      >
-                        {i + 1}
-                      </span>
-                    </span>
+                    <Icon className="size-3.5 shrink-0" strokeWidth={opt.strokeWidth} />
+                    <span className="truncate">{opt.label}</span>
                   </motion.button>
                 );
               })}
-              {/* End bar — same "quota boundary" divider as Percent Correct's
-                  own maxTrials marker. Task analysis steps are always a
-                  fixed count (there's no separate max to configure), so
-                  this sits after the last step unconditionally rather than
-                  behind a maxTrials check. */}
-              <div
-                className="shrink-0 w-px bg-foreground/40 mx-2"
-                style={{ height: 40 }}
-                aria-hidden
-              />
-            </motion.div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-          <span
-            title={chainingDirection === "backward" ? "Backward chaining" : "Forward chaining"}
-            className="inline-flex shrink-0"
-          >
-            {chainingDirection === "backward" ? (
-              <BackwardChainingIcon className="size-3.5" />
-            ) : (
-              <ForwardChainingIcon className="size-3.5" />
-            )}
-          </span>
-          <span>
-            Step {current + 1} (of {steps.length})
-          </span>
-        </div>
-
-        {/* flex+justify-center on the row, rather than text-align:center on
-         *  the paragraph itself: a centered *line* pushes overflow past
-         *  both edges equally, and CardShell's own rounded-corner
-         *  overflow-hidden then clips the beginning of a too-long word
-         *  along with the end. Centering the *box* instead means a short
-         *  line (which fits, so the box shrinks to its content) still reads
-         *  as centered, but a long line's box gets capped at max-w-full —
-         *  leaving nothing left to center around — so it truncates from its
-         *  natural (left) start, losing only the tail. */}
-        <div className="mt-2 px-3 flex justify-center items-center gap-1.5">
-          <StepPlanBadge level={stepPlan?.[current]} />
-          <p className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
-            {steps[current]}
-          </p>
-        </div>
-
-        <div className="mt-3 flex justify-center gap-1 px-2">
-          {OPTIONS.map((opt) => {
-            const Icon = opt.icon;
-            const selected = statuses[current] === opt.value;
-            if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
-              return (
-                <TaskAnalysisPromptLevelButton
-                  key={opt.value}
-                  levels={promptLevels}
-                  selectedLevel={promptLevel[current] ?? null}
-                  selected={selected}
-                  disabled={!canRecordData || !canScore(current)}
-                  onPick={(level) => pickPromptLevel(current, level, true)}
-                  topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
-                />
-              );
-            }
-            return (
-              <motion.button
-                key={opt.value}
-                onClick={() => setStep(current, opt.value, true)}
-                disabled={!canRecordData || !canScore(current)}
-                whileTap={{ scale: 0.96 }}
-                className={cn(
-                  "flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors disabled:opacity-40",
-                  opt.classes,
-                  selected && cn("btn-bevel", opt.selectedClasses),
-                )}
-              >
-                <Icon className="size-3.5 shrink-0" strokeWidth={opt.strokeWidth} />
-                <span className="truncate">{opt.label}</span>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-    </CardShell>
+        </CardShell>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

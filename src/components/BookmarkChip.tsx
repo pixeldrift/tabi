@@ -285,7 +285,7 @@ function DurationChip({
   card: Extract<CardConfig, { kind: "duration" }>;
   mounted: boolean;
 } & ChipSelectionProps) {
-  const { running, displayMs, toggle, canRecordData } = useDurationChip(card.id);
+  const { running, displayMs, viewIdx, toggle, canRecordData } = useDurationChip(card.id);
   // Starting a timer with nothing mounted anywhere to tick it would
   // silently do nothing (see useDurationChip's own comment) — but stopping
   // an already-running one is always safe, since that just banks whatever
@@ -295,6 +295,11 @@ function DurationChip({
   const disabledReason = canRecordData && needsMount ? "Open this card to start timing" : undefined;
   return (
     <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
+      {/* Same position-marker badge every other kind's chip leads with
+          (Trial's trial number, Task Analysis's step number, ...) — the
+          instance being viewed, not a tally, so `weight="regular"` (the
+          colon-suffixed style) rather than "bold". */}
+      <ListActionBadge value={viewIdx + 1} />
       {/* Same time-pill-plus-play/pause idea as the List row's own Duration
           pill (see DurationCard's listMode actions), just without that
           row's own TimeKeypad direct-edit affordance or instance

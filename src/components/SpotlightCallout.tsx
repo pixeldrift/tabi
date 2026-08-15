@@ -9,9 +9,13 @@ const GAP = 16;
 const VIEWPORT_MARGIN = 16;
 // Same reasoning as StatusBar's PresenceIndicator/SaveIndicator arrow
 // margins (rounded-2xl corner + rotated h-3 w-3 arrow square needs real
-// clearance) — this box is narrower, so its own smaller-but-still-safe
-// margin.
-const ARROW_MARGIN = 24;
+// clearance): this box's own real radius is 16px (rounded-2xl), and the
+// h-3 w-3 arrow square's half-diagonal once rotated 45° is ~8.5px, so the
+// arrow needs at least ~24.5px of clearance from either edge to clear the
+// curve — 24 was already just short of that (StatusBar's own margin=34
+// for its larger 24px-radius box works out the same way, with a similar
+// few-px buffer past its own ~32.5px minimum).
+const ARROW_MARGIN = 28;
 
 /** Shared positioning + rendering for every spotlight-style callout in the
  *  app — the guided tour's own steps and the "Did you know?" tip engine

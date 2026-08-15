@@ -59,15 +59,52 @@ export function SwipeStrip({
   // scroll in the first place, sometimes right back to where it started.
   const programmaticScrollRef = useRef(false);
   const programmaticScrollTimeoutRef = useRef(0);
+  // The index the most recent programmatic scroll was asked to reach —
+  // compared against where the strip actually lands (see the "scrollend"
+  // effect below) so a premature/misfired settle can be told apart from a
+  // genuine one instead of being taken at face value.
+  const targetIndexRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    isFirstRender.current = false;
-  }, []);
+  const computeClosestIndex = (el: HTMLDivElement): number => {
+    if (variant === "paged") {
+      const idx = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+      return Math.max(0, Math.min(count - 1, idx));
+    }
+    const rect = el.getBoundingClientRect();
+    const mid = rect.left + rect.width / 2;
+    let closest = -1;
+    let closestDist = Infinity;
+    itemRefs.current.forEach((item, i) => {
+      if (!item) return;
+      const r = item.getBoundingClientRect();
+      const d = Math.abs(r.left + r.width / 2 - mid);
+      if (d < closestDist) {
+        closestDist = d;
+        closest = i;
+      }
+    });
+    return closest;
+  };
+
+  const scrollToIndex = (el: HTMLDivElement, index: number, behavior: ScrollBehavior) => {
+    if (variant === "paged") {
+      el.scrollTo({ left: index * el.clientWidth, behavior });
+    } else {
+      itemRefs.current[index]?.scrollIntoView({ inline: "center", block: "nearest", behavior });
+    }
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Read (and consume) the first-mount flag here, in the same effect that
+    // uses it — a separate `[]`-deps effect for this used to fire and flip
+    // it to false BEFORE this one ever read it (React runs a component's
+    // effects in declaration order within the same commit), so `behavior`
+    // was silently always "smooth", never "auto", even on true first mount.
     const behavior: ScrollBehavior = isFirstRender.current ? "auto" : "smooth";
+    isFirstRender.current = false;
+    targetIndexRef.current = current;
     programmaticScrollRef.current = true;
     window.clearTimeout(programmaticScrollTimeoutRef.current);
     // "scrollend" is the precise signal, but isn't universally supported —
@@ -76,11 +113,7 @@ export function SwipeStrip({
     programmaticScrollTimeoutRef.current = window.setTimeout(() => {
       programmaticScrollRef.current = false;
     }, 500);
-    if (variant === "paged") {
-      el.scrollTo({ left: current * el.clientWidth, behavior });
-    } else {
-      itemRefs.current[current]?.scrollIntoView({ inline: "center", block: "nearest", behavior });
-    }
+    scrollToIndex(el, current, behavior);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, variant]);
 
@@ -88,12 +121,28 @@ export function SwipeStrip({
     const el = scrollRef.current;
     if (!el) return;
     const onScrollEnd = () => {
+      // CSS scroll-snap can end an in-flight smooth scroll early — e.g. a
+      // layout shift mid-animation (a sibling ResizeObserver update, a
+      // width still settling right after mount) makes the browser treat
+      // the nearest snap point as "arrived" and fire scrollend well short
+      // of the actual target. Trusting that blindly let handleScroll read
+      // the (wrong, barely-moved) settle position and report it back as if
+      // the user had swiped there, silently overwriting real `current`
+      // state on nothing more than a display-mode remount. Verifying we
+      // actually reached the requested index — and retrying once,
+      // instantly, if not — makes this self-correct instead.
+      const target = targetIndexRef.current;
+      if (target !== null && computeClosestIndex(el) !== target) {
+        scrollToIndex(el, target, "auto");
+        return;
+      }
       window.clearTimeout(programmaticScrollTimeoutRef.current);
       programmaticScrollRef.current = false;
     };
     el.addEventListener("scrollend", onScrollEnd);
     return () => el.removeEventListener("scrollend", onScrollEnd);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant]);
 
   const handleScroll = () => {
     if (programmaticScrollRef.current) return;
@@ -101,25 +150,7 @@ export function SwipeStrip({
     rafRef.current = requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (!el) return;
-      if (variant === "paged") {
-        const idx = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
-        const clamped = Math.max(0, Math.min(count - 1, idx));
-        if (clamped !== current) onCurrentChange(clamped);
-        return;
-      }
-      const rect = el.getBoundingClientRect();
-      const mid = rect.left + rect.width / 2;
-      let closest = -1;
-      let closestDist = Infinity;
-      itemRefs.current.forEach((item, i) => {
-        if (!item) return;
-        const r = item.getBoundingClientRect();
-        const d = Math.abs(r.left + r.width / 2 - mid);
-        if (d < closestDist) {
-          closestDist = d;
-          closest = i;
-        }
-      });
+      const closest = computeClosestIndex(el);
       if (closest !== -1 && closest !== current) onCurrentChange(closest);
     });
   };

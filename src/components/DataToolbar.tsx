@@ -422,6 +422,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
                 aria-pressed={bookmarkBarVisible}
                 aria-label={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
                 title={bookmarkBarVisible ? "Hide bookmark bar" : "Show bookmark bar"}
+                data-tour="bookmark-bar-visibility-toggle"
                 className={cn(
                   "grid place-items-center size-7 shrink-0 rounded-full border transition-colors",
                   bookmarkBarVisible

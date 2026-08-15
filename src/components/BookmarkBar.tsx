@@ -61,7 +61,7 @@ export function BookmarkBar({
   onSelectCard,
   onJumpToCard,
 }: BookmarkBarProps) {
-  const { bookmarkBarMode, setBookmarkBarMode, editMode } = useDataToolbar();
+  const { bookmarkBarMode, setBookmarkBarMode, editMode, setEditMode } = useDataToolbar();
   const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
   // Only flips (not tracked continuously) so this doesn't re-render on
   // every scroll tick — just the two moments that actually change which
@@ -140,7 +140,10 @@ export function BookmarkBar({
                *  trades that for height the row already has spare,
                *  bounded by whatever the tallest chip's own 2-line title
                *  needs. */}
-              <div className="flex flex-col items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+              <div
+                data-tour="bookmark-bar-mode-toggle"
+                className="flex flex-col items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0"
+              >
                 <button
                   type="button"
                   onClick={() => {
@@ -212,9 +215,16 @@ export function BookmarkBar({
                       <p className="px-2 py-1.5 text-center text-xs text-muted-foreground">
                         {isFavorites ? (
                           <>
-                            Nothing bookmarked. Use Edit Mode{" "}
-                            <Pencil className="inline-block size-3 -translate-y-px" aria-hidden />{" "}
-                            to add your own.
+                            Use{" "}
+                            <button
+                              type="button"
+                              onClick={() => setEditMode(true)}
+                              className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground"
+                            >
+                              Edit
+                              <Pencil className="inline-block size-3 -translate-y-px" aria-hidden />
+                            </button>{" "}
+                            mode to add your own bookmarks.
                           </>
                         ) : (
                           "No interfering behaviors in this list."
