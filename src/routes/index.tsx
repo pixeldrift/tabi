@@ -1752,13 +1752,28 @@ function IndexInner({
             collapsed the whole section (and every card in it) down to a few
             px with nothing forcing it wide. `w-full` restores the intended
             stretch-then-cap-at-max-w behavior regardless of what's inside. */}
+            {/* pb-24 (not a smaller value): `<main>` above is sized via
+            `h-dvh`, which — unlike `h-screen` — genuinely shrinks and grows
+            live as mobile Safari's own collapsing toolbar shows/hides,
+            flexing this section's own client height (it's `flex-1` inside
+            that shell) right along with it. Scrolled to the very bottom, a
+            shrinking viewport clamps this section's scrollTop down to match,
+            which can push the last card's own selected-state shadow (up to
+            ~36px of visible bleed: `shadow-[0_10px_30px_-4px_...]`'s
+            offset+blur-spread) past this scrollport's newly-smaller edge —
+            reading as the shadow clipping and unclipping in step with the
+            toolbar's own show/hide, on real devices no fixed-viewport
+            desktop testing reproduces. 96px covers a full toolbar reveal
+            (commonly ~50px) on top of the shadow's own ~36px, with a little
+            to spare, the same "extra slack to absorb mobile Safari's chrome"
+            fix StatusBar's own review-dialog sizing already uses. */}
             <section
               ref={dataContentRef}
               onScroll={(e) => {
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >
@@ -1872,7 +1887,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "info" && "hidden",
               )}
             >
@@ -1896,7 +1911,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -1913,7 +1928,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -1926,7 +1941,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "settings" && "hidden",
               )}
             >
@@ -2151,14 +2166,32 @@ function MorphContent({
   // for any later in-place content growth (a trial's row expanding, a
   // frequency counter growing), which the old transitionEnd approach had to
   // hand off to "auto" for since it had no other way to keep tracking it.
+  // Debounced (unlike the initial synchronous `measure()` call below) —
+  // matches useElementHeight/useStickyTop's own established fix for the
+  // identical class of problem: a card's content can be genuinely
+  // fluctuating for a few frames (a font/kerning-driven sub-pixel reflow as
+  // a live counter's digits change width, or several rapid layout shifts
+  // from unrelated sibling content) rather than settling in one step.
+  // Undebounced, every intermediate ResizeObserver firing fed straight into
+  // `height` and replayed through Motion's own eased height `animate`
+  // above, so a card whose content kept nudging its own scrollHeight by a
+  // px in both directions never stopped re-triggering that animation.
+  const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const measure = () => setHeight(el.scrollHeight);
-    measure();
+    const commit = () => setHeight(el.scrollHeight);
+    const measure = () => {
+      if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
+      measureDebounceRef.current = window.setTimeout(commit, 60);
+    };
+    commit();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
+      ro.disconnect();
+    };
   }, [displayMode]);
 
   useEffect(() => {
