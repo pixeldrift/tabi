@@ -1752,7 +1752,7 @@ function IndexInner({
             collapsed the whole section (and every card in it) down to a few
             px with nothing forcing it wide. `w-full` restores the intended
             stretch-then-cap-at-max-w behavior regardless of what's inside. */}
-            {/* pb-24 (not a smaller value): `<main>` above is sized via
+            {/* Bottom padding isn't a flat guess: `<main>` above is sized via
             `h-dvh`, which — unlike `h-screen` — genuinely shrinks and grows
             live as mobile Safari's own collapsing toolbar shows/hides,
             flexing this section's own client height (it's `flex-1` inside
@@ -1763,17 +1763,22 @@ function IndexInner({
             offset+blur-spread) past this scrollport's newly-smaller edge —
             reading as the shadow clipping and unclipping in step with the
             toolbar's own show/hide, on real devices no fixed-viewport
-            desktop testing reproduces. 96px covers a full toolbar reveal
-            (commonly ~50px) on top of the shadow's own ~36px, with a little
-            to spare, the same "extra slack to absorb mobile Safari's chrome"
-            fix StatusBar's own review-dialog sizing already uses. */}
+            desktop testing reproduces. A flat extra 96px (StatusBar's own
+            review-dialog sizing does the same, for the identical reason)
+            covers the common case, but the toolbar's real height varies by
+            device — `100lvh - 100svh` is that exact delta, computed by the
+            browser itself rather than guessed (svh = smallest viewport,
+            toolbar fully expanded; lvh = largest, toolbar fully collapsed),
+            and is 0 wherever there's no such chrome to begin with (desktop,
+            or a device that doesn't auto-hide it) so this never over-pads
+            there. */}
             <section
               ref={dataContentRef}
               onScroll={(e) => {
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >
@@ -1887,7 +1892,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "info" && "hidden",
               )}
             >
@@ -1911,7 +1916,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -1928,7 +1933,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -1941,7 +1946,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-24 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-[calc(2.5rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "settings" && "hidden",
               )}
             >
