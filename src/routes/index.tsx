@@ -1641,10 +1641,15 @@ function IndexInner({
           this, because the problem isn't insufficient room — it's that the
           room itself won't hold still. `h-svh` pins this shell to the
           SMALLEST the viewport can ever be (toolbar fully expanded) and
-          never reflows again regardless of what the toolbar does — trading
-          away the reclaimed-space benefit of `dvh` (a strip of unused
-          background is briefly visible at the bottom while the toolbar is
-          hidden) for a layout that's simply stable. */}
+          never reflows again regardless of what the toolbar does — nominally
+          trading away `dvh`'s reclaimed-space benefit (a strip of unused
+          background briefly visible at the bottom while the toolbar is
+          hidden), but that trade is actually free in practice: an earlier,
+          separate fix (see the app's own animation-loop history) already
+          keeps mobile Safari's toolbar permanently expanded, so `dvh` was
+          never actually reclaiming anything to begin with — `svh` and `dvh`
+          resolve to the same value here either way, just with `svh` not
+          also reflowing on every phantom toolbar recalculation. */}
           <main className="h-svh flex flex-col overflow-hidden bg-background">
             <StatusBar
               activeTab={tab}
