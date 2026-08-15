@@ -140,7 +140,10 @@ export function BookmarkBar({
                *  trades that for height the row already has spare,
                *  bounded by whatever the tallest chip's own 2-line title
                *  needs. */}
-              <div className="flex flex-col items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0">
+              <div
+                data-tour="bookmark-bar-mode-toggle"
+                className="flex flex-col items-center rounded-full border border-stone-200 bg-stone-100/60 p-0.5 shrink-0"
+              >
                 <button
                   type="button"
                   onClick={() => {
