@@ -1625,10 +1625,32 @@ function IndexInner({
           {/* App-shell layout: a content-sized header (shrink-0, ordinary CSS
           flow) above a fixed-height, internally-scrolling content pane —
           replacing the old whole-page-scrolls-with-a-sticky-header model.
-          `h-dvh` (not `h-screen`) matches this codebase's existing
-          convention for reasoning about mobile browser chrome (see
-          StatusBar's own dvh usage). */}
-          <main className="h-dvh flex flex-col overflow-hidden bg-background">
+          `h-svh` (not `h-dvh` or `h-screen`) is deliberate: `h-dvh` tracks
+          mobile Safari's collapsing/expanding toolbar LIVE, which sounds
+          like the right idea (use the full screen when the toolbar hides)
+          but in practice means this whole shell's height — and therefore
+          every scrollable pane's own client height, each one `flex-1`
+          inside it — genuinely reflows in real time as the toolbar
+          animates. Confirmed live on a real device: with an active
+          (shadow-bearing) card at the bottom of a pane, that reflow reads
+          as its shadow clipping and unclipping in step with the toolbar,
+          worse the more animated content (e.g. live notification alerts)
+          competes for the toolbar's attention — up to a PERMANENT clip with
+          several alerts live, since the toolbar then never settles into
+          its larger state at all. No amount of extra bottom padding fixes
+          this, because the problem isn't insufficient room — it's that the
+          room itself won't hold still. `h-svh` pins this shell to the
+          SMALLEST the viewport can ever be (toolbar fully expanded) and
+          never reflows again regardless of what the toolbar does — nominally
+          trading away `dvh`'s reclaimed-space benefit (a strip of unused
+          background briefly visible at the bottom while the toolbar is
+          hidden), but that trade is actually free in practice: an earlier,
+          separate fix (see the app's own animation-loop history) already
+          keeps mobile Safari's toolbar permanently expanded, so `dvh` was
+          never actually reclaiming anything to begin with — `svh` and `dvh`
+          resolve to the same value here either way, just with `svh` not
+          also reflowing on every phantom toolbar recalculation. */}
+          <main className="h-svh flex flex-col overflow-hidden bg-background">
             <StatusBar
               activeTab={tab}
               onTabChange={handleTabChange}
@@ -1752,40 +1774,21 @@ function IndexInner({
             collapsed the whole section (and every card in it) down to a few
             px with nothing forcing it wide. `w-full` restores the intended
             stretch-then-cap-at-max-w behavior regardless of what's inside. */}
-            {/* Bottom padding isn't a flat guess: `<main>` above is sized via
-            `h-dvh`, which — unlike `h-screen` — genuinely shrinks and grows
-            live as mobile Safari's own collapsing toolbar shows/hides,
-            flexing this section's own client height (it's `flex-1` inside
-            that shell) right along with it. Scrolled to the very bottom, a
-            shrinking viewport clamps this section's scrollTop down to match,
-            which can push the last card's own selected-state shadow (up to
-            ~36px of visible bleed: `shadow-[0_10px_30px_-4px_...]`'s
-            offset+blur-spread) past this scrollport's newly-smaller edge —
-            reading as the shadow clipping and unclipping in step with the
-            toolbar's own show/hide, on real devices no fixed-viewport
-            desktop testing reproduces (confirmed live on-device: it recurs
-            roughly once a second, in sync with the toolbar, and only while
-            a session is running — paused, the page settles and it stops).
-            `100lvh - 100svh` is the browser's own computed delta between the
-            toolbar fully expanded (svh, smallest viewport) and fully
-            collapsed (lvh, largest) — the exact worst-case shrink, rather
-            than a guess — and correctly evaluates to 0 wherever there's no
-            such chrome (desktop) so this never over-pads there. It's ADDED
-            ON TOP of a deliberately generous flat 128px floor rather than
-            relied on alone: `svh`/`lvh` are recent CSS units, and if a given
-            engine version computes them subtly wrong (or not at all), a
-            too-small flat term would leave the real shrink uncovered with
-            nothing to fall back on. 128px alone already exceeds any
-            realistic toolbar height (commonly 44-56px) plus the shadow's own
-            ~36px bleed, so the dvh term only ever adds extra headroom here,
-            never supplies the only protection. */}
+            {/* pb-16: room for the last card's own selected-state shadow
+            (`shadow-[0_10px_30px_-4px_...]` bleeds ~36px past its box) to
+            render within this pane's own scrollable content instead of
+            getting clipped flush against the bottom. `<main>` above is
+            `h-svh` specifically so this pane's client height — and
+            therefore where that clip boundary actually sits — stays fixed
+            regardless of mobile Safari's toolbar (see `<main>`'s own
+            comment); this padding no longer needs to also chase that. */}
             <section
               ref={dataContentRef}
               onScroll={(e) => {
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >
@@ -1899,7 +1902,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "info" && "hidden",
               )}
             >
@@ -1923,7 +1926,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -1940,7 +1943,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -1953,7 +1956,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-[calc(8rem+(100lvh-100svh))] max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
                 tab !== "settings" && "hidden",
               )}
             >
