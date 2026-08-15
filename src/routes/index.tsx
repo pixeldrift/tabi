@@ -2151,14 +2151,32 @@ function MorphContent({
   // for any later in-place content growth (a trial's row expanding, a
   // frequency counter growing), which the old transitionEnd approach had to
   // hand off to "auto" for since it had no other way to keep tracking it.
+  // Debounced (unlike the initial synchronous `measure()` call below) —
+  // matches useElementHeight/useStickyTop's own established fix for the
+  // identical class of problem: a card's content can be genuinely
+  // fluctuating for a few frames (a font/kerning-driven sub-pixel reflow as
+  // a live counter's digits change width, or several rapid layout shifts
+  // from unrelated sibling content) rather than settling in one step.
+  // Undebounced, every intermediate ResizeObserver firing fed straight into
+  // `height` and replayed through Motion's own eased height `animate`
+  // above, so a card whose content kept nudging its own scrollHeight by a
+  // px in both directions never stopped re-triggering that animation.
+  const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const measure = () => setHeight(el.scrollHeight);
-    measure();
+    const commit = () => setHeight(el.scrollHeight);
+    const measure = () => {
+      if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
+      measureDebounceRef.current = window.setTimeout(commit, 60);
+    };
+    commit();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
+      ro.disconnect();
+    };
   }, [displayMode]);
 
   useEffect(() => {
