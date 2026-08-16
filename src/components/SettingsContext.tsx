@@ -81,11 +81,16 @@ const DEFAULT_TOUR_COMPLETED = true;
 // The "Did you know?" tip rotation (TipContext.tsx). Unlike the tour,
 // there's no "completed" concept to gate on — tips are meant to keep
 // resurfacing every visit, so `tipsEnabled` just suppresses the auto-show
-// entirely when off. `tipBag`/`lastShownTipId` are the shuffle bag's own
-// persisted state (see tipShuffleBag.ts) — persisted rather than kept in
-// memory specifically so the anti-repeat guarantee survives a reload
-// landing right as the bag empties, not just a same-session reshuffle.
-const DEFAULT_TIPS_ENABLED = true;
+// entirely when off. Defaults off for the same reason `tourHintsEnabled`
+// does (see above) — both "Preview a tip" on WelcomeScreen and Settings'
+// own "Show a tip now" already reach it in one tap, so an unprompted
+// dialog auto-popping up on every fresh load isn't needed; a user who
+// wants it back on every load can flip this Settings switch themselves.
+// `tipBag`/`lastShownTipId` are the shuffle bag's own persisted state (see
+// tipShuffleBag.ts) — persisted rather than kept in memory specifically so
+// the anti-repeat guarantee survives a reload landing right as the bag
+// empties, not just a same-session reshuffle.
+const DEFAULT_TIPS_ENABLED = false;
 const DEFAULT_TIP_BAG: string[] = [];
 const DEFAULT_LAST_SHOWN_TIP_ID: string | null = null;
 
