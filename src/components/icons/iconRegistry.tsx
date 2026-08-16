@@ -49,6 +49,14 @@ import {
   CheckCircle2,
   ChevronsUpDown,
   ChevronsDownUp,
+  ChevronLeft,
+  ChevronRight,
+  Brain,
+  Ruler,
+  Package,
+  AlignLeft,
+  Video,
+  Lightbulb,
 } from "lucide-react";
 import { PercentCorrectIcon } from "./PercentCorrectIcon";
 import { FrequencyIcon } from "./FrequencyIcon";
@@ -261,12 +269,25 @@ export const ICON_GROUPS: IconGroup[] = [
     ],
   },
   {
-    group: "Info tab",
+    group: "Client Info tab",
     icons: [
       lucide("CheckCircle2", '"Pickup OK" badge — Guardians row', CheckCircle2),
       lucide("ChevronsUpDown", "Expand All — About Me section", ChevronsUpDown),
       lucide("ChevronsDownUp", "Collapse All — About Me section", ChevronsDownUp),
       custom("Request Edit", "Suggest a change to an About Me field", RequestEditIcon),
+    ],
+  },
+  {
+    group: "Card details drawer",
+    icons: [
+      lucide("Video", "Video row (tutorial-clip placeholder)", Video),
+      lucide("AlignLeft", "Description row", AlignLeft),
+      lucide("Brain", "Rationale row", Brain),
+      lucide("Ruler", "Measurement row", Ruler),
+      lucide("Package", "Materials row", Package),
+      lucide("Lightbulb", "Instructional Notes row; also the Phase/Data-type info popup", Lightbulb),
+      lucide("ChevronLeft", "Previous card, within the drawer", ChevronLeft),
+      lucide("ChevronRight", "Next card, within the drawer", ChevronRight),
     ],
   },
 ];
