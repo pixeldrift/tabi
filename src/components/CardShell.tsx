@@ -154,9 +154,32 @@ export function CardShell({
         // squared-off corner instead of fading past the rounded edge.
         "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
-          ? editing
-            ? "border border-border shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-            : "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          ? cn(
+              // will-change-transform: pins this card to its own stable GPU
+              // compositing layer instead of one the browser opportunistically
+              // creates and tears down. Without it, on real mobile hardware
+              // (confirmed on both iOS Safari and Android Chrome — not an
+              // engine-specific bug) an active card sitting at the bottom of
+              // a scrollable pane periodically has its shadow clip and
+              // unclip like a blinker, roughly once a second, ONLY while a
+              // session is running — i.e. only while something nearby (the
+              // running session's own tick) keeps re-triggering this card's
+              // ancestor `layout="position"` projection (see DataCardList).
+              // Every one of those ticks is a repaint of this subtree, and a
+              // repaint's invalidation rect can be computed from this
+              // element's own layout box rather than its full paint bounds —
+              // box-shadow bleeds ~36px past the box, so a box-only rect
+              // silently drops it for that one frame. A dedicated layer is
+              // rasterized (shadow included) once and then just recomposited
+              // on subsequent ticks, so it never gets re-clipped. Scoped to
+              // isActive only — only the active card ever has this bleeding
+              // shadow at all, so promoting the other ~20 cards would just be
+              // wasted GPU memory.
+              "will-change-transform",
+              editing
+                ? "border border-border shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+                : "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]",
+            )
           : "border border-border opacity-80 hover:opacity-95",
       )}
     >
