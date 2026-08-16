@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -98,21 +98,24 @@ export interface CardShellProps extends CardEditAndDrawerProps {
 
 const EXPAND_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
-/** The twirl-down's actual mechanic, kept deliberately plain: one
- *  container, pinned right under the header's divider, holding whichever
- *  of children/expandedView is current — swapped instantly, no crossfade
- *  of its own — with only the CONTAINER's own height animated and
- *  overflow clipped to it. A standard rolldown: the box's top edge never
- *  moves, its bottom edge eases open or shut, and whatever's inside is
- *  revealed or hidden by that boundary alone. Earlier attempts layered a
- *  crossfade (and briefly a translateY) on top of this same height
- *  animation to make the content itself feel like it was "entering" —
- *  that fought the clip instead of matching it, at best adding visible
- *  double-exposure ghosting and at worst (the translateY) shifting which
- *  slice of the content the clip window landed on, reading as the reveal
- *  opening from the middle instead of the top. Exported — TrialCard's own
- *  swipeable trial history uses the identical mechanic and used to carry
- *  its own separate (and separately buggy) copy of this same pattern. */
+/** The twirl-down's actual mechanic: one container, pinned right under the
+ *  header's divider, holding whichever of children/expandedView is
+ *  current, crossfading between them — with only the CONTAINER's own
+ *  height animated and overflow clipped to it. A standard rolldown: the
+ *  box's top edge never moves, its bottom edge eases open or shut, and
+ *  that boundary alone is what reveals or hides the content — the "drop
+ *  down into place" feel comes entirely from that boundary moving, not
+ *  from any transform on the content itself. A whole-block Y-translate on
+ *  the entering side was tried and reverted twice: transforms don't
+ *  affect what the clip reads as the element's box, so translating it
+ *  while it's still clipped to a smaller-than-full height shifts which
+ *  slice of the content the clip window lands on — geometrically, a rigid
+ *  block sliding down into a fixed window necessarily reveals its BOTTOM
+ *  first (whatever's closest to the window as it arrives from above), the
+ *  opposite of the top-first reveal this needs. Exported — TrialCard's
+ *  own swipeable trial history uses the identical mechanic and used to
+ *  carry its own separate (and separately buggy) copy of this same
+ *  pattern. */
 export function ExpandableArea({
   expanded,
   children,
@@ -158,7 +161,45 @@ export function ExpandableArea({
       // straight to the real height instead of animating up from nothing.
       transition={isFirstMeasure.current ? { duration: 0 } : EXPAND_TRANSITION}
     >
-      <div ref={measureRef}>{expanded ? expandedView : children}</div>
+      {/* Opacity-only crossfade — no y-translate here (see the geometry
+          argument above: a whole-block Y-offset on the entering side, while
+          it's still being clipped to a smaller-than-full height, shifts
+          which slice of the content the clip window lands on, since
+          transforms don't affect what the clip reads as the element's box).
+          The downward "drop into place" motion already comes entirely from
+          the container's own height easing open beneath its fixed top edge
+          above — this only adds the fade. mode="popLayout" (not "wait")
+          lets the entering side mount immediately instead of waiting for
+          the exiting one to finish first. */}
+      <AnimatePresence initial={false} mode="popLayout">
+        <motion.div
+          key={expanded ? "expanded" : "standard"}
+          ref={measureRef}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          // position: absolute applies instantly (not animated) rather than
+          // easing there, pulling the old content out of flow the moment it
+          // starts fading — matches MorphContent's own AnimatePresence exit
+          // (in routes/index.tsx), so its footprint can't hold this
+          // container's height up a beat longer than the entering side
+          // actually needs. Quicker than the entering side's own
+          // EXPAND_TRANSITION — sharing that same duration left the
+          // outgoing content's own text/buttons still clearly legible while
+          // the incoming content faded in over it, reading as a confusing
+          // double-exposure rather than one thing replacing another.
+          exit={{
+            opacity: 0,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            transition: { duration: 0.12 },
+          }}
+          transition={EXPAND_TRANSITION}
+        >
+          {expanded ? expandedView : children}
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 }
