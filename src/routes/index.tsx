@@ -682,9 +682,8 @@ function GoalChangeDemoTrigger() {
  *  push directly (see that provider's own nesting in Index below). */
 function SessionActivityTrigger() {
   const { push } = useNotifications();
-  const { status, isSessionMine, isAbandoned, startedById } = useSession();
+  const { status, isSessionMine, startedById } = useSession();
   const joinedRef = useRef(false);
-  const abandonedRef = useRef(false);
 
   useEffect(() => {
     const joinedSomeoneElses =
@@ -700,33 +699,15 @@ function SessionActivityTrigger() {
         // Just a confirmation, not something to act on — fades on its own
         // (general notifications' own default auto-fade, see
         // NotificationContext's push()) rather than sitting there until
-        // dismissed the way the abandonment alert below deliberately does.
-        // ...and once it's gone, it's gone — not something worth digging
-        // back up in the Notifications tab's own persistent history later.
+        // dismissed. ...and once it's gone, it's gone — not something worth
+        // digging back up in the Notifications tab's own persistent history
+        // later.
         excludeFromHistory: true,
       });
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;
     }
   }, [status, isSessionMine, startedById, push]);
-
-  useEffect(() => {
-    if (isAbandoned && !abandonedRef.current) {
-      abandonedRef.current = true;
-      push({
-        kind: "announcement",
-        title: "Session Unattended",
-        body: `${startedById ? staffName(startedById) : "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
-        icon: "bell",
-        // Opts out of general notifications' own default auto-fade (see
-        // NotificationContext's push()) — this one's worth actually
-        // noticing, not a toast that's gone before anyone reads it.
-        autofadeMs: null,
-      });
-    } else if (!isAbandoned) {
-      abandonedRef.current = false;
-    }
-  }, [isAbandoned, startedById, push]);
 
   return null;
 }
@@ -2180,41 +2161,49 @@ function MorphContent({
     return () => window.clearTimeout(id);
   }, [displayMode]);
 
-  // ResizeObserver instead of the more obvious "measure scrollHeight in a
-  // useLayoutEffect keyed on displayMode, animate to it, then transitionEnd
-  // back to auto" — that trick doesn't hold up here. AnimatePresence's own
-  // `exit` (below) pulls the OLD content out of flow via position:absolute
-  // the INSTANT the key changes, not animated, so this wrapper's "auto"
-  // height can already reflow to match the ENTERING content alone before a
-  // same-pass layout effect ever runs — collapsing the animation's start
-  // and end to the same number, so it snaps instead of morphing. A regular
-  // (non-layout) effect here, by contrast, naturally fires AFTER that
-  // paint — so `height` state still holds the OLD value through that first
-  // paint, and only advances to the new measurement afterward, which is
-  // exactly the two genuinely-different, two-separately-painted values
-  // Motion needs to interpolate between. Same ResizeObserver-based pattern
-  // StatusBar's own boxNaturalHeight/miniSlotHeight already use, for the
-  // identical reason ("Motion's own auto height resolution wasn't
-  // reliable") — and it doubles as the ongoing remeasure this wrapper needs
-  // for any later in-place content growth (a trial's row expanding, a
-  // frequency counter growing), which the old transitionEnd approach had to
-  // hand off to "auto" for since it had no other way to keep tracking it.
-  // Debounced (unlike the initial synchronous `measure()` call below) —
-  // matches useElementHeight/useStickyTop's own established fix for the
-  // identical class of problem: a card's content can be genuinely
-  // fluctuating for a few frames (a font/kerning-driven sub-pixel reflow as
-  // a live counter's digits change width, or several rapid layout shifts
-  // from unrelated sibling content) rather than settling in one step.
-  // Undebounced, every intermediate ResizeObserver firing fed straight into
-  // `height` and replayed through Motion's own eased height `animate`
-  // above, so a card whose content kept nudging its own scrollHeight by a
-  // px in both directions never stopped re-triggering that animation.
+  // Same story as isTransitioning above, but for a resize a card triggers
+  // on its own — not a mode switch, but CardShell's own expandedView
+  // twirl-down, a trial's row growing, a frequency counter growing, etc.
+  // Without this, this wrapper's own height animation (which is what
+  // determines how much space is reserved for the sibling card below,
+  // since this wrapper is an ordinary normal-flow block) only starts once
+  // measureDebounceRef's 60ms settles and runs on its own
+  // CARD_MORPH_TRANSITION timeline from there — meanwhile, since overflow
+  // stays "visible" the rest of the time, the card's own already-grown
+  // content (e.g. CardShell's expandedView, revealed near-instantly by its
+  // own CSS transition) bleeds straight past this not-yet-caught-up
+  // wrapper into whatever the next sibling currently occupies, painting
+  // UNDER that sibling's own opaque card background — then, once this
+  // wrapper's own delayed animation finally catches up and pushes the
+  // sibling out of the way, that same already-rendered content reads as
+  // newly emerging from beneath it, a full beat after the "expand"
+  // actually happened. Clipping to this wrapper's own (still catching-up)
+  // height during any active resize, same as during a mode switch, means
+  // nothing can ever bleed past it in the first place — the sibling below
+  // only ever needs to move because there's genuinely nothing left here to
+  // reveal, not because it's racing a wrapper that hasn't grown yet.
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeClearRef = useRef<number | null>(null);
+
   const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const commit = () => setHeight(el.scrollHeight);
+    const commit = () => {
+      setHeight(el.scrollHeight);
+      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
+      resizeClearRef.current = window.setTimeout(
+        () => setIsResizing(false),
+        CARD_MORPH_TRANSITION.duration * 1000 + 50,
+      );
+    };
+    // ResizeObserver fires once immediately on observe() even with no real
+    // resize yet, just confirming the size the synchronous commit() below
+    // already captured — only later callbacks are genuine in-place growth.
+    let skippedInitialObservation = false;
     const measure = () => {
+      if (!skippedInitialObservation) skippedInitialObservation = true;
+      else setIsResizing(true);
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
       measureDebounceRef.current = window.setTimeout(commit, 60);
     };
@@ -2223,6 +2212,7 @@ function MorphContent({
     ro.observe(el);
     return () => {
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
+      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
       ro.disconnect();
     };
   }, [displayMode]);
@@ -2234,7 +2224,7 @@ function MorphContent({
   return (
     <motion.div
       className="w-full"
-      style={{ overflow: isTransitioning ? "hidden" : "visible" }}
+      style={{ overflow: isTransitioning || isResizing ? "hidden" : "visible" }}
       animate={{ height: height ?? "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
