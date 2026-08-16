@@ -682,9 +682,8 @@ function GoalChangeDemoTrigger() {
  *  push directly (see that provider's own nesting in Index below). */
 function SessionActivityTrigger() {
   const { push } = useNotifications();
-  const { status, isSessionMine, isAbandoned, startedById } = useSession();
+  const { status, isSessionMine, startedById } = useSession();
   const joinedRef = useRef(false);
-  const abandonedRef = useRef(false);
 
   useEffect(() => {
     const joinedSomeoneElses =
@@ -700,33 +699,15 @@ function SessionActivityTrigger() {
         // Just a confirmation, not something to act on — fades on its own
         // (general notifications' own default auto-fade, see
         // NotificationContext's push()) rather than sitting there until
-        // dismissed the way the abandonment alert below deliberately does.
-        // ...and once it's gone, it's gone — not something worth digging
-        // back up in the Notifications tab's own persistent history later.
+        // dismissed. ...and once it's gone, it's gone — not something worth
+        // digging back up in the Notifications tab's own persistent history
+        // later.
         excludeFromHistory: true,
       });
     } else if (!joinedSomeoneElses) {
       joinedRef.current = false;
     }
   }, [status, isSessionMine, startedById, push]);
-
-  useEffect(() => {
-    if (isAbandoned && !abandonedRef.current) {
-      abandonedRef.current = true;
-      push({
-        kind: "announcement",
-        title: "Session Unattended",
-        body: `${startedById ? staffName(startedById) : "A staff member"} started this session, but nobody's currently in it. Join to pause or end it.`,
-        icon: "bell",
-        // Opts out of general notifications' own default auto-fade (see
-        // NotificationContext's push()) — this one's worth actually
-        // noticing, not a toast that's gone before anyone reads it.
-        autofadeMs: null,
-      });
-    } else if (!isAbandoned) {
-      abandonedRef.current = false;
-    }
-  }, [isAbandoned, startedById, push]);
 
   return null;
 }
