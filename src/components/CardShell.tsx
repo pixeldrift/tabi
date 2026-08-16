@@ -110,8 +110,10 @@ const EXPAND_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
  *  that fought the clip instead of matching it, at best adding visible
  *  double-exposure ghosting and at worst (the translateY) shifting which
  *  slice of the content the clip window landed on, reading as the reveal
- *  opening from the middle instead of the top. */
-function ExpandableArea({
+ *  opening from the middle instead of the top. Exported — TrialCard's own
+ *  swipeable trial history uses the identical mechanic and used to carry
+ *  its own separate (and separately buggy) copy of this same pattern. */
+export function ExpandableArea({
   expanded,
   children,
   expandedView,
