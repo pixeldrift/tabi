@@ -521,6 +521,11 @@ export function TaskAnalysisCard({
 
   const hasPrevInstance = viewIdx > 0;
   const stepWidth = BUBBLE + GAP;
+  // Previous Instance button + its own end-bar divider, when both are
+  // rendered (see the track JSX below) — how many extra children sit
+  // before bubble 0 in the track, so the measurement/drag math below can
+  // find the right one by index.
+  const leadingChildren = hasPrevInstance ? 2 : 0;
 
   // Which real DOM element the track should center — the active step
   // bubble normally, or (once every step in view is scored) the Next
@@ -529,11 +534,12 @@ export function TaskAnalysisCard({
   // reachable only by a deliberate extra drag. Measured off the real DOM
   // (see tileContentWidth's own comment above on why) rather than derived
   // from BUBBLE/GAP by hand — that math can't account for a leading
-  // Previous Instance button shifting every bubble's true position, and
-  // re-deriving that shift by hand here would just be the same class of
-  // bug this file already learned from once. Track children, in order:
-  // [Previous Instance button?], one per step, the end-bar divider, Next
-  // Instance — so the active bubble sits at a fixed, known child index.
+  // Previous Instance button (and its own divider) shifting every bubble's
+  // true position, and re-deriving that shift by hand here would just be
+  // the same class of bug this file already learned from once. Track
+  // children, in order: [Previous Instance button, its end bar]?, one per
+  // step, the end-bar divider, Next Instance — so the active bubble sits
+  // at a fixed, known child index.
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackOffset, setTrackOffset] = useState(-(BUBBLE_CENTER / 2));
   useLayoutEffect(() => {
@@ -545,7 +551,7 @@ export function TaskAnalysisCard({
       const target = (
         showingNextInstance
           ? children[children.length - 1]
-          : children[(hasPrevInstance ? 1 : 0) + activeCurrent]
+          : children[leadingChildren + activeCurrent]
       ) as HTMLElement | undefined;
       if (target) setTrackOffset(-(target.offsetLeft + target.offsetWidth / 2));
     };
@@ -553,7 +559,7 @@ export function TaskAnalysisCard({
     const ro = new ResizeObserver(measure);
     ro.observe(track);
     return () => ro.disconnect();
-  }, [activeCurrent, isComplete, steps.length, hasPrevInstance]);
+  }, [activeCurrent, isComplete, steps.length, leadingChildren]);
 
   // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
   // mouse dragging in addition to the triangle nav buttons, snapping to
@@ -562,10 +568,10 @@ export function TaskAnalysisCard({
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const finalOffset = trackOffset + info.offset.x;
     // Same real-DOM read as the measurement above — a leading Previous
-    // Instance button shifts step 0 away from the track's own left edge,
-    // and this needs to know by how much to land on the right step.
-    const firstBubble = trackRef.current?.children[hasPrevInstance ? 1 : 0] as
-      HTMLElement | undefined;
+    // Instance button (and its own divider) shifts step 0 away from the
+    // track's own left edge, and this needs to know by how much to land on
+    // the right step.
+    const firstBubble = trackRef.current?.children[leadingChildren] as HTMLElement | undefined;
     const leadingOffset = firstBubble?.offsetLeft ?? 0;
     const targetIdx = Math.round(-(finalOffset + leadingOffset + BUBBLE_CENTER / 2) / stepWidth);
     goTo(targetIdx);
@@ -1099,6 +1105,18 @@ export function TaskAnalysisCard({
                         Previous Instance
                       </span>
                     </motion.button>
+                  )}
+                  {/* Same "quota boundary" end bar as the one after the last
+                      step below, mirrored here — the pair of them read as
+                      the step count's own start/end brackets once there's
+                      more than one instance to browse past on either
+                      side. */}
+                  {hasPrevInstance && (
+                    <div
+                      className="shrink-0 w-px bg-foreground/40 mx-2"
+                      style={{ height: 40 }}
+                      aria-hidden
+                    />
                   )}
                   {steps.map((_, i) => {
                     const isCenter = i === activeCurrent;
