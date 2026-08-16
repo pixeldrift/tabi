@@ -1,5 +1,5 @@
-import { useRef, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -94,6 +94,89 @@ export interface CardShellProps extends CardEditAndDrawerProps {
   onToggleExpanded?: () => void;
   expandedView?: ReactNode;
   children: ReactNode;
+}
+
+const EXPAND_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
+
+/** The twirl-down's actual mechanic: one container, below the header's
+ *  divider, whose CONTENTS get replaced — not two separate boxes/tracks
+ *  stacking or racing each other. The entering side (whichever of
+ *  children/expandedView is now current) slides down from just above its
+ *  own resting position while fading in, and the container's own height
+ *  eases to match it — so it reads as "this card's content changed,
+ *  sliding into place from under the divider," not as a new panel
+ *  unfurling or the old one being peeled back. */
+function ExpandableArea({
+  expanded,
+  children,
+  expandedView,
+}: {
+  expanded: boolean;
+  children: ReactNode;
+  expandedView: ReactNode;
+}) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | null>(null);
+  const isFirstMeasure = useRef(true);
+
+  // Re-measures on every render where `expanded` flips AND on any later
+  // resize of whichever side is currently mounted (scoring a step can grow
+  // a row within the expanded list, for instance) — the observer isn't
+  // torn down until `expanded` changes again, so it keeps tracking those
+  // too, not just the initial swap.
+  useEffect(() => {
+    const el = measureRef.current;
+    if (!el) return;
+    const commit = () => setHeight(el.scrollHeight);
+    commit();
+    const ro = new ResizeObserver(commit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded]);
+
+  useEffect(() => {
+    isFirstMeasure.current = false;
+  }, []);
+
+  return (
+    <motion.div
+      className="overflow-hidden"
+      animate={{ height: height ?? "auto" }}
+      // No prior state to visually transition from on first mount — skip
+      // straight to the real height instead of animating up from nothing.
+      transition={isFirstMeasure.current ? { duration: 0 } : EXPAND_TRANSITION}
+    >
+      <AnimatePresence initial={false} mode="popLayout">
+        <motion.div
+          key={expanded ? "expanded" : "standard"}
+          ref={measureRef}
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          // position: absolute applies instantly (not animated) rather than
+          // easing there, pulling the old content out of flow the moment it
+          // starts fading — matches MorphContent's own AnimatePresence exit
+          // below, so its footprint can't hold this container's height up a
+          // beat longer than the entering side actually needs. Quicker and
+          // no slide of its own (unlike the entering side's full
+          // EXPAND_TRANSITION) — sharing that same duration left the
+          // outgoing content's own text/buttons still clearly legible while
+          // the incoming list slid down over it, reading as a confusing
+          // double-exposure rather than one thing replacing another.
+          exit={{
+            opacity: 0,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            transition: { duration: 0.12 },
+          }}
+          transition={EXPAND_TRANSITION}
+        >
+          {expanded ? expandedView : children}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  );
 }
 
 export function CardShell({
@@ -278,28 +361,9 @@ export function CardShell({
         )}
 
         {hasExpandedView ? (
-          <>
-            {/* Removed from flow the instant `expanded` flips, rather than
-                animating its own grid-template-rows track down to 0fr in
-                parallel with expandedView's below growing — two tracks
-                shrinking/growing at once meant expandedView's own top edge
-                kept sliding upward as this one vacated space above it,
-                which read as the revealed content sliding up out of the
-                bottom rather than unfurling downward from a fixed point
-                under the header. With this gone instantly, expandedView's
-                own track is the only one ever animating, so its top edge —
-                anchored right under the header's divider — never moves;
-                only its bottom edge grows to reveal more. */}
-            {!expanded && <div>{children}</div>}
-            <div
-              className={cn(
-                "grid transition-[grid-template-rows] duration-300 ease-out",
-                expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-              )}
-            >
-              <div className="overflow-hidden">{expandedView}</div>
-            </div>
-          </>
+          <ExpandableArea expanded={expanded} expandedView={expandedView}>
+            {children}
+          </ExpandableArea>
         ) : (
           children
         )}
