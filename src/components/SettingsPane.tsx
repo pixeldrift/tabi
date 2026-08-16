@@ -66,14 +66,11 @@ export function SettingsPane({
   const {
     values,
     setValue,
-    resetAll,
     resetOne,
     alarmSound,
     setAlarmSound,
     keepActiveCardCentered,
     setKeepActiveCardCentered,
-    bookmarkBarVisible,
-    setBookmarkBarVisible,
     dayStart,
     setDayStart,
     dayEnd,
@@ -102,25 +99,8 @@ export function SettingsPane({
 
   return (
     <div className="max-w-2xl mx-auto pb-16">
-      <div className="mt-6 px-4 flex items-start justify-between gap-3 mb-1">
-        <div>
-          <h2 className="font-display text-lg leading-tight">Settings</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Notification and data-view behavior.
-          </p>
-        </div>
-        {groups.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={resetAll}
-            className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <RotateCcw className="size-3.5" />
-            Reset all
-          </Button>
-        )}
+      <div className="mt-6 px-4 mb-1">
+        <h2 className="font-display text-lg leading-tight">Settings</h2>
       </div>
 
       <SectionJumpBar sections={jumpSections} contentRef={contentRef} />
@@ -325,24 +305,6 @@ export function SettingsPane({
               id="keepActiveCardCentered"
               checked={keepActiveCardCentered}
               onCheckedChange={setKeepActiveCardCentered}
-              className="shrink-0"
-            />
-          </div>
-
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <label htmlFor="bookmarkBarVisible" className="text-sm font-medium">
-                Bookmark bar
-              </label>
-              <p className="text-xs text-muted-foreground/80 mt-0.5">
-                A pinned strip of your favorited cards below the toolbar, for quick-scoring without
-                losing your place while scrolling.
-              </p>
-            </div>
-            <Switch
-              id="bookmarkBarVisible"
-              checked={bookmarkBarVisible}
-              onCheckedChange={setBookmarkBarVisible}
               className="shrink-0"
             />
           </div>
