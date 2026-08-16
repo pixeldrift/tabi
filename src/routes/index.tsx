@@ -1649,8 +1649,26 @@ function IndexInner({
           keeps mobile Safari's toolbar permanently expanded, so `dvh` was
           never actually reclaiming anything to begin with — `svh` and `dvh`
           resolve to the same value here either way, just with `svh` not
-          also reflowing on every phantom toolbar recalculation. */}
-          <main className="h-svh flex flex-col overflow-hidden bg-background">
+          also reflowing on every phantom toolbar recalculation.
+
+          overflow-x-CLIP, not hidden — same technique as the Data tab's own
+          inner wrapper (see its comment below): this shell only ever needed
+          to contain HORIZONTAL overshoot (the SINGLE_UNIT_VARIANTS
+          slide-exit transitions, and any StatusBar-area content that
+          animates sideways, e.g. NotificationBar's alerts) — `<section>`
+          below already clips its own scroll axis independently (overflow-y
+          non-visible forces its own overflow-x to auto too), so this was
+          never load-bearing for THAT. It was never meant to clip
+          vertically, but plain `overflow-hidden` clips both axes — and per
+          the h-svh fix above having turned out NOT to be the actual fix for
+          the shadow-clip bug (confirmed still reproducing on mobile Chrome,
+          not just Safari, which rules out the toolbar-reflow theory
+          entirely), this is one less non-visible ancestor sitting between
+          the last card's own bleeding selected-state shadow and the
+          document root. `clip` is the one non-visible value exempted from
+          the "sibling axis forced to auto" rule, so overflow-y actually
+          stays `visible` here. */}
+          <main className="h-svh flex flex-col overflow-x-clip overflow-y-visible bg-background">
             <StatusBar
               activeTab={tab}
               onTabChange={handleTabChange}
