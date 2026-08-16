@@ -2138,16 +2138,15 @@ function MorphContent({
   const [height, setHeight] = useState<number | null>(null);
   const isFirstMeasure = useRef(true);
 
-  // overflow:hidden only while a mode switch is actually mid-flight — not a
-  // permanent property of this wrapper. Left on all the time, it clips the
-  // wrapper to the exact measured `scrollHeight` of its content, which
-  // (correctly, per spec) never includes a child's own box-shadow — so an
-  // active card's selected-state shadow got hard-clipped right at its own
-  // bottom edge instead of fading out naturally, reading as a flat gray
-  // smudge with a sharp corner where the fade should have continued. Only
-  // clipping during the brief crossfade (where it's genuinely needed, to
-  // hide the old/new content pair briefly overlapping) and lifting it once
-  // settled lets any static shadow bleed past the box normally at rest.
+  // isTransitioning: true only during an active mode switch — drives the
+  // eased-vs-snap choice in `transition` below and how long the
+  // ResizeObserver effect debounces its remeasurement. A regular
+  // (non-layout) effect, not a render-time adjustment: `animate` below
+  // never targets the literal string "auto" past the first measurement
+  // (see below), so there's no "auto" DOM value whose resolution could
+  // race the same commit that swaps in the new mode's content — a render-
+  // time flip isn't needed to dodge that, and the extra render it costs
+  // isn't worth paying for nothing.
   const [isTransitioning, setIsTransitioning] = useState(false);
   const prevDisplayModeRef = useRef(displayMode);
   useEffect(() => {
@@ -2161,49 +2160,60 @@ function MorphContent({
     return () => window.clearTimeout(id);
   }, [displayMode]);
 
-  // Same story as isTransitioning above, but for a resize a card triggers
-  // on its own — not a mode switch, but CardShell's own expandedView
-  // twirl-down, a trial's row growing, a frequency counter growing, etc.
-  // Without this, this wrapper's own height animation (which is what
-  // determines how much space is reserved for the sibling card below,
-  // since this wrapper is an ordinary normal-flow block) only starts once
-  // measureDebounceRef's 60ms settles and runs on its own
-  // CARD_MORPH_TRANSITION timeline from there — meanwhile, since overflow
-  // stays "visible" the rest of the time, the card's own already-grown
-  // content (e.g. CardShell's expandedView, revealed near-instantly by its
-  // own CSS transition) bleeds straight past this not-yet-caught-up
-  // wrapper into whatever the next sibling currently occupies, painting
-  // UNDER that sibling's own opaque card background — then, once this
-  // wrapper's own delayed animation finally catches up and pushes the
-  // sibling out of the way, that same already-rendered content reads as
-  // newly emerging from beneath it, a full beat after the "expand"
-  // actually happened. Clipping to this wrapper's own (still catching-up)
-  // height during any active resize, same as during a mode switch, means
-  // nothing can ever bleed past it in the first place — the sibling below
-  // only ever needs to move because there's genuinely nothing left here to
-  // reveal, not because it's racing a wrapper that hasn't grown yet.
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeClearRef = useRef<number | null>(null);
+  // overflow:hidden any time this wrapper's own height is genuinely
+  // catching up to real content — a mode switch (isTransitioning above) OR
+  // a resize a card triggers on its own (CardShell's own expandedView
+  // twirl-down, a trial's row growing, a frequency counter growing).
+  // isSettling covers the latter: `height` below is snapped, not eased,
+  // for in-place growth, so the lag this guards against is at most a
+  // frame or two of ResizeObserver's own reporting cycle — not the
+  // hundreds of milliseconds an eased catch-up would take, so it doesn't
+  // read as squaring off the card's own rounded corners the way that did
+  // (see below); it's just enough to stop that one-frame lag from
+  // painting past this wrapper into the next sibling's territory. At true
+  // rest (nothing resizing or transitioning), lifting this back to
+  // visible is what lets a selected card's own shadow bleed past its box
+  // normally instead of getting clipped flat at the bottom edge.
+  const [isSettling, setIsSettling] = useState(false);
+  const settleTimeoutRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (settleTimeoutRef.current !== null) window.clearTimeout(settleTimeoutRef.current);
+    },
+    [],
+  );
 
+  // `height` always tracks the measured scrollHeight — for a mode switch
+  // AND for in-place growth. What differs is how it gets there: eased over
+  // CARD_MORPH_TRANSITION while isTransitioning, where Motion genuinely
+  // needs two real numbers to interpolate between two different DOM
+  // subtrees, or snapped instantly otherwise, since in-place growth
+  // already has its own real-time answer for "how tall am I right now"
+  // and just needs this wrapper to keep pace, not layer a second,
+  // separately-eased animation on top with its own debounce lag — a
+  // debounced, eased copy chasing the real height on its own delayed
+  // timeline is what let already-grown content bleed past this
+  // not-yet-caught-up wrapper into the next sibling, painting UNDER that
+  // sibling's own opaque card background. `animate` below never targets
+  // the literal string "auto" once this has measured at least once — only
+  // switching a target in and out of "auto" mid-lifecycle forces Motion to
+  // measure the current DOM height itself to resolve it, and that
+  // measurement can race a same-commit content swap (the mode switch's
+  // new, already-rendered JSX) and grab the WRONG side of the transition;
+  // keeping it a plain number the whole time sidesteps that race entirely.
   const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const commit = () => {
-      setHeight(el.scrollHeight);
-      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
-      resizeClearRef.current = window.setTimeout(
-        () => setIsResizing(false),
-        CARD_MORPH_TRANSITION.duration * 1000 + 50,
-      );
-    };
-    // ResizeObserver fires once immediately on observe() even with no real
-    // resize yet, just confirming the size the synchronous commit() below
-    // already captured — only later callbacks are genuine in-place growth.
-    let skippedInitialObservation = false;
+    const commit = () => setHeight(el.scrollHeight);
     const measure = () => {
-      if (!skippedInitialObservation) skippedInitialObservation = true;
-      else setIsResizing(true);
+      if (!isTransitioning) {
+        setIsSettling(true);
+        if (settleTimeoutRef.current !== null) window.clearTimeout(settleTimeoutRef.current);
+        settleTimeoutRef.current = window.setTimeout(() => setIsSettling(false), 120);
+        commit();
+        return;
+      }
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
       measureDebounceRef.current = window.setTimeout(commit, 60);
     };
@@ -2212,10 +2222,9 @@ function MorphContent({
     ro.observe(el);
     return () => {
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
-      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
       ro.disconnect();
     };
-  }, [displayMode]);
+  }, [displayMode, isTransitioning]);
 
   useEffect(() => {
     isFirstMeasure.current = false;
@@ -2224,13 +2233,16 @@ function MorphContent({
   return (
     <motion.div
       className="w-full"
-      style={{ overflow: isTransitioning || isResizing ? "hidden" : "visible" }}
+      style={{ overflow: isTransitioning || isSettling ? "hidden" : "visible" }}
       animate={{ height: height ?? "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
       // itself would otherwise be a no-op anyway. Every later mode switch
-      // gets the real eased transition.
-      transition={isFirstMeasure.current ? { duration: 0 } : CARD_MORPH_TRANSITION}
+      // gets the real eased transition; in-place growth always snaps (see
+      // the ResizeObserver comment above).
+      transition={
+        isFirstMeasure.current || !isTransitioning ? { duration: 0 } : CARD_MORPH_TRANSITION
+      }
     >
       <div className="relative w-full">
         {/* popLayout (not "wait") lets the new mode's content mount
