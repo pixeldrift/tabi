@@ -46,6 +46,17 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   Copy,
+  CheckCircle2,
+  ChevronsUpDown,
+  ChevronsDownUp,
+  ChevronLeft,
+  ChevronRight,
+  Brain,
+  Ruler,
+  Package,
+  AlignLeft,
+  Video,
+  Lightbulb,
 } from "lucide-react";
 import { PercentCorrectIcon } from "./PercentCorrectIcon";
 import { FrequencyIcon } from "./FrequencyIcon";
@@ -80,6 +91,7 @@ import { SmileyIcon } from "./SmileyIcon";
 import { ChatIcon } from "./ChatIcon";
 import { EmailIcon } from "./EmailIcon";
 import { PhoneIcon } from "./PhoneIcon";
+import { RequestEditIcon } from "./RequestEditIcon";
 
 export interface IconEntry {
   name: string;
@@ -249,11 +261,33 @@ export const ICON_GROUPS: IconGroup[] = [
     ],
   },
   {
-    group: "Contact (BCBA info card)",
+    group: "Contact (staff mini bio)",
     icons: [
-      custom("Chat", "Message the BCBA — Info tab (planned)", ChatIcon),
-      custom("Email", "Email the BCBA — Info tab (planned)", EmailIcon),
-      custom("Phone", "Call the BCBA — Info tab (planned)", PhoneIcon),
+      custom("Chat", "Message a staff member — mini bio popup (StaffDirectory)", ChatIcon),
+      custom("Email", "Email a staff member — mini bio popup (StaffDirectory)", EmailIcon),
+      custom("Phone", "Call a staff member — mini bio popup, also guardian rows on Info tab", PhoneIcon),
+    ],
+  },
+  {
+    group: "Client Info tab",
+    icons: [
+      lucide("CheckCircle2", '"Pickup OK" badge — Guardians row', CheckCircle2),
+      lucide("ChevronsUpDown", "Expand All — About Me section", ChevronsUpDown),
+      lucide("ChevronsDownUp", "Collapse All — About Me section", ChevronsDownUp),
+      custom("Request Edit", "Suggest a change to an About Me field", RequestEditIcon),
+    ],
+  },
+  {
+    group: "Card details drawer",
+    icons: [
+      lucide("Video", "Video row (tutorial-clip placeholder)", Video),
+      lucide("AlignLeft", "Description row", AlignLeft),
+      lucide("Brain", "Rationale row", Brain),
+      lucide("Ruler", "Measurement row", Ruler),
+      lucide("Package", "Materials row", Package),
+      lucide("Lightbulb", "Instructional Notes row; also the Phase/Data-type info popup", Lightbulb),
+      lucide("ChevronLeft", "Previous card, within the drawer", ChevronLeft),
+      lucide("ChevronRight", "Next card, within the drawer", ChevronRight),
     ],
   },
 ];

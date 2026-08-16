@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, HandHelping, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, HandHelping, X } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
@@ -144,11 +144,11 @@ function statusDotColor(status: StepStatus) {
  *  animation state, no advance delay). `statuses`/`current`/`promptLevel`
  *  are now one entry per instance (see TaskAnalysisCard's own comment on
  *  why) — the chip always reads/writes whichever instance `viewIdx` points
- *  at, same as the real card, but has no way to create a new one itself;
- *  that's deliberately only reachable from the full card view's own "New
- *  Instance" button, not a quick-score surface. `totalSteps` comes from the
- *  card's own `steps.length`, same as TaskAnalysisCard's own initial
- *  per-instance `statuses` entry — unlike Trial's `trials` array, this
+ *  at, same as the real card, but has no way to switch instances itself;
+ *  that's deliberately only reachable from the full card view's own
+ *  Previous/Next Instance buttons, not a quick-score surface. `totalSteps`
+ *  comes from the card's own `steps.length`, same as TaskAnalysisCard's own
+ *  initial per-instance `statuses` entry — unlike Trial's `trials` array, this
  *  length is fixed by the card's config rather than growing dynamically, so
  *  no defensive padding is needed. When `promptLevels` is set, the chip's
  *  Prompted button reuses TaskAnalysisCard's own exported
@@ -287,8 +287,10 @@ export function TaskAnalysisCard({
   // one is currently shown, same shape as Duration's own
   // `instances`/`viewIdx` split. Unlike Duration, a new instance is never
   // created implicitly (there's no natural "that one's obviously done"
-  // signal the way stopping a timer is) — only the "New Instance" button
-  // in the full card view creates one, via `addInstance` below.
+  // signal the way stopping a timer is) — only the "Next Instance" button
+  // in the full card view creates one (via `addInstance` below), and only
+  // once there's no already-existing later instance for it to just browse
+  // to instead (see `nextInstance`).
   const [statuses, setStatuses] = useCardState<StepStatus[][]>(cardKey, "statuses", () => [
     steps.map(() => null),
   ]);
@@ -341,12 +343,18 @@ export function TaskAnalysisCard({
   // Mirrors TrialCard's setResult: read the pre-toggle value from the
   // current render's closure (not inside the setState updater) so we know
   // whether this was a genuine score vs. a toggle-off before deciding
-  // whether to auto-advance. `idx` is always a step within the CURRENTLY
-  // VIEWED instance — every caller reads/derives it from `activeCurrent` or
-  // an expanded-list row, never a raw cross-instance index.
-  const setStep = (idx: number, value: Exclude<StepStatus, null>, advance = false) => {
+  // whether to auto-advance. `idx` is a step within `instanceIdx`, which
+  // defaults to the CURRENTLY VIEWED instance — every caller except the
+  // expanded, all-instances list (which passes its own row's instance
+  // index explicitly) relies on that default rather than naming it.
+  const setStep = (
+    idx: number,
+    value: Exclude<StepStatus, null>,
+    advance = false,
+    instanceIdx = viewIdx,
+  ) => {
     markDirty();
-    const isToggleOff = activeStatuses[idx] === value;
+    const isToggleOff = (statuses[instanceIdx] ?? [])[idx] === value;
     if (!isToggleOff) {
       playSoundEffect(
         value === "independent" ? "correct" : value === "error" ? "error" : "prompted",
@@ -354,9 +362,9 @@ export function TaskAnalysisCard({
     }
     setStatuses((prev) => {
       const next = prev.slice();
-      const instanceNext = next[viewIdx].slice();
+      const instanceNext = next[instanceIdx].slice();
       instanceNext[idx] = isToggleOff ? null : value;
-      next[viewIdx] = instanceNext;
+      next[instanceIdx] = instanceNext;
       return next;
     });
     // Any outcome other than "prompted" (including toggling it off) clears
@@ -365,24 +373,24 @@ export function TaskAnalysisCard({
     // reflects a prompt at all.
     if (value !== "prompted" || isToggleOff) {
       setPromptLevel((prev) => {
-        if (!(idx in (prev[viewIdx] ?? {}))) return prev;
+        if (!(idx in (prev[instanceIdx] ?? {}))) return prev;
         const next = prev.slice();
-        const instanceNext = { ...next[viewIdx] };
+        const instanceNext = { ...next[instanceIdx] };
         delete instanceNext[idx];
-        next[viewIdx] = instanceNext;
+        next[instanceIdx] = instanceNext;
         return next;
       });
     }
     setCurrent((prev) => {
       const next = prev.slice();
-      next[viewIdx] = idx;
+      next[instanceIdx] = idx;
       return next;
     });
     if (advance && !isToggleOff) {
       window.setTimeout(() => {
         setCurrent((prev) => {
           const next = prev.slice();
-          next[viewIdx] = Math.min((next[viewIdx] ?? 0) + 1, steps.length - 1);
+          next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
           return next;
         });
       }, 260);
@@ -392,38 +400,41 @@ export function TaskAnalysisCard({
   // Prompted, when promptLevels is set, opens a picker instead of a plain
   // toggle — picking a level marks the step prompted AND records which
   // level, so the two always stay in sync. Mirrors TrialCard's own
-  // pickPromptLevel for its Error button.
-  const pickPromptLevel = (idx: number, level: string, advance: boolean) => {
+  // pickPromptLevel for its Error button. Same `instanceIdx` default as
+  // setStep above, for the same reason.
+  const pickPromptLevel = (idx: number, level: string, advance: boolean, instanceIdx = viewIdx) => {
     markDirty();
+    const instanceStatuses = statuses[instanceIdx] ?? [];
+    const instancePromptLevel = promptLevel[instanceIdx] ?? {};
     const isUnspecified = level === UNSPECIFIED_LEVEL;
     const isToggleOff =
-      activeStatuses[idx] === "prompted" &&
-      (isUnspecified ? !(idx in activePromptLevel) : activePromptLevel[idx] === level);
+      instanceStatuses[idx] === "prompted" &&
+      (isUnspecified ? !(idx in instancePromptLevel) : instancePromptLevel[idx] === level);
     setStatuses((prev) => {
       const next = prev.slice();
-      const instanceNext = next[viewIdx].slice();
+      const instanceNext = next[instanceIdx].slice();
       instanceNext[idx] = isToggleOff ? null : "prompted";
-      next[viewIdx] = instanceNext;
+      next[instanceIdx] = instanceNext;
       return next;
     });
     setPromptLevel((prev) => {
       const next = prev.slice();
-      const instanceNext = { ...next[viewIdx] };
+      const instanceNext = { ...next[instanceIdx] };
       if (isToggleOff || isUnspecified) delete instanceNext[idx];
       else instanceNext[idx] = level;
-      next[viewIdx] = instanceNext;
+      next[instanceIdx] = instanceNext;
       return next;
     });
     setCurrent((prev) => {
       const next = prev.slice();
-      next[viewIdx] = idx;
+      next[instanceIdx] = idx;
       return next;
     });
     if (advance && !isToggleOff) {
       window.setTimeout(() => {
         setCurrent((prev) => {
           const next = prev.slice();
-          next[viewIdx] = Math.min((next[viewIdx] ?? 0) + 1, steps.length - 1);
+          next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
           return next;
         });
       }, 260);
@@ -438,11 +449,18 @@ export function TaskAnalysisCard({
     });
   };
 
-  // A fresh, fully-unmarked run through the same steps — pressing "New
-  // Instance" in the full card view. Doesn't touch or clear any earlier
-  // instance's data; it's just appended, and `viewIdx` moving to it is what
-  // the outer AnimatePresence (see the CardShell-view return below) reads
-  // to slide the whole card over to it.
+  // Which way the full-card slide (see the AnimatePresence below) plays —
+  // forward (enter from right) for Next Instance, reversed for Previous
+  // Instance, so going back actually reads as going back instead of
+  // replaying the same "moving on" motion. Set right before the `viewIdx`
+  // change that triggers it, same render.
+  const [slideDir, setSlideDir] = useState<1 | -1>(1);
+
+  // A fresh, fully-unmarked run through the same steps — the ONLY thing
+  // "Next Instance" does at the end of the list (see nextInstance below).
+  // Doesn't touch or clear any earlier instance's data; it's just appended,
+  // and `viewIdx` moving to it is what the outer AnimatePresence reads to
+  // slide the whole card over to it.
   const addInstance = () => {
     markDirty();
     const newIdx = statuses.length;
@@ -450,6 +468,27 @@ export function TaskAnalysisCard({
     setCurrent((prev) => [...prev, 0]);
     setPromptLevel((prev) => [...prev, {}]);
     setViewIdx(newIdx);
+  };
+
+  // "Next Instance" both browses an already-created later instance AND
+  // creates the next one — same button either way, since from the tech's
+  // side both read as "move on to the next run." Only actually creates one
+  // once there's nowhere existing left to move on to.
+  const nextInstance = () => {
+    setSlideDir(1);
+    if (viewIdx < statuses.length - 1) {
+      setViewIdx(viewIdx + 1);
+      return;
+    }
+    addInstance();
+  };
+
+  // Never creates anything — instance 0 has no "previous" to go to, which
+  // is why this control only ever renders once viewIdx > 0 (see the track
+  // JSX below).
+  const prevInstance = () => {
+    setSlideDir(-1);
+    setViewIdx(Math.max(0, viewIdx - 1));
   };
 
   const completed = activeStatuses.filter((s) => s !== null).length;
@@ -473,15 +512,54 @@ export function TaskAnalysisCard({
 
   // Steps must be scored in order — a step can't be scored while an earlier
   // one is still blank, so its own score buttons stay disabled until the
-  // gap behind it closes. -1 (all scored) allows everything.
-  const firstUnscored = activeStatuses.indexOf(null);
-  const canScore = (idx: number) => firstUnscored === -1 || idx <= firstUnscored;
+  // gap behind it closes. -1 (all scored) allows everything. `instanceIdx`
+  // defaults to the viewed instance, same reasoning as setStep's own.
+  const canScore = (idx: number, instanceIdx = viewIdx) => {
+    const firstUnscoredForInstance = (statuses[instanceIdx] ?? []).indexOf(null);
+    return firstUnscoredForInstance === -1 || idx <= firstUnscoredForInstance;
+  };
 
+  const hasPrevInstance = viewIdx > 0;
   const stepWidth = BUBBLE + GAP;
-  const trackOffset = useMemo(
-    () => -(activeCurrent * stepWidth + BUBBLE_CENTER / 2),
-    [activeCurrent, stepWidth],
-  );
+  // Previous Instance button + its own end-bar divider, when both are
+  // rendered (see the track JSX below) — how many extra children sit
+  // before bubble 0 in the track, so the measurement/drag math below can
+  // find the right one by index.
+  const leadingChildren = hasPrevInstance ? 2 : 0;
+
+  // Which real DOM element the track should center — the active step
+  // bubble normally, or (once every step in view is scored) the Next
+  // Instance button itself, so finishing the last step reveals it
+  // automatically instead of leaving it sitting past the fade mask,
+  // reachable only by a deliberate extra drag. Measured off the real DOM
+  // (see tileContentWidth's own comment above on why) rather than derived
+  // from BUBBLE/GAP by hand — that math can't account for a leading
+  // Previous Instance button (and its own divider) shifting every bubble's
+  // true position, and re-deriving that shift by hand here would just be
+  // the same class of bug this file already learned from once. Track
+  // children, in order: [Previous Instance button, its end bar]?, one per
+  // step, the end-bar divider, Next Instance — so the active bubble sits
+  // at a fixed, known child index.
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [trackOffset, setTrackOffset] = useState(-(BUBBLE_CENTER / 2));
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const measure = () => {
+      const children = track.children;
+      const showingNextInstance = isComplete && activeCurrent === steps.length - 1;
+      const target = (
+        showingNextInstance
+          ? children[children.length - 1]
+          : children[leadingChildren + activeCurrent]
+      ) as HTMLElement | undefined;
+      if (target) setTrackOffset(-(target.offsetLeft + target.offsetWidth / 2));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [activeCurrent, isComplete, steps.length, leadingChildren]);
 
   // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
   // mouse dragging in addition to the triangle nav buttons, snapping to
@@ -489,7 +567,13 @@ export function TaskAnalysisCard({
   const dragX = useMotionValue(0);
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const finalOffset = trackOffset + info.offset.x;
-    const targetIdx = Math.round(-(finalOffset + BUBBLE_CENTER / 2) / stepWidth);
+    // Same real-DOM read as the measurement above — a leading Previous
+    // Instance button (and its own divider) shifts step 0 away from the
+    // track's own left edge, and this needs to know by how much to land on
+    // the right step.
+    const firstBubble = trackRef.current?.children[leadingChildren] as HTMLElement | undefined;
+    const leadingOffset = firstBubble?.offsetLeft ?? 0;
+    const targetIdx = Math.round(-(finalOffset + leadingOffset + BUBBLE_CENTER / 2) / stepWidth);
     goTo(targetIdx);
     animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
   };
@@ -784,27 +868,23 @@ export function TaskAnalysisCard({
   }
 
   return (
-    // Keyed on viewIdx so creating a new instance (addInstance, above) swaps
-    // this whole card over to it with a full-width slide — the new instance
-    // enters from the right, the one just left behind exits to the left,
-    // same "moving forward" direction as swiping ahead on a phone. Only
-    // `addInstance` ever changes `viewIdx` today (there's no way yet to
-    // browse back to an earlier instance), so this only ever plays in the
-    // one direction; the exit/enter offsets are still written as a genuine
-    // pair rather than hardcoded to that one case, so a future "previous
-    // instance" control could reverse it for free. No explicit
-    // overflow-hidden clip wrapper — this card already reads full-bleed at
-    // the phone widths this app targets, so sliding a full `x: "100%"`
-    // off either side already lands past the edge of what a horizontally
-    // non-scrolling page shows, without needing to also clip (and, with
-    // it, needing extra padding to keep CardShell's own drop shadow from
-    // getting cropped mid-slide).
+    // Keyed on viewIdx so switching instances (nextInstance/prevInstance,
+    // above) swaps this whole card over with a full-width slide — forward
+    // (Next Instance) enters from the right and exits to the left, same
+    // "moving on" direction as swiping ahead on a phone; backward (Previous
+    // Instance) reverses both, via `slideDir`. No explicit overflow-hidden
+    // clip wrapper — this card already reads full-bleed at the phone widths
+    // this app targets, so sliding a full `x: "100%"` off either side
+    // already lands past the edge of what a horizontally non-scrolling page
+    // shows, without needing to also clip (and, with it, needing extra
+    // padding to keep CardShell's own drop shadow from getting cropped
+    // mid-slide).
     <AnimatePresence mode="popLayout" initial={false}>
       <motion.div
         key={viewIdx}
-        initial={{ x: "100%", opacity: 0 }}
+        initial={{ x: slideDir === 1 ? "100%" : "-100%", opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        exit={{ x: "-100%", opacity: 0 }}
+        exit={{ x: slideDir === 1 ? "-100%" : "100%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 380, damping: 32 }}
       >
         <CardShell
@@ -882,59 +962,94 @@ export function TaskAnalysisCard({
             </>
           }
           expandedView={
-            <ol className="px-3 pt-1 pb-3 space-y-1">
-              {steps.map((step, i) => (
-                <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
-                  <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
-                    {i + 1}
-                  </span>
-                  <span
-                    className={cn(
-                      "flex-1 text-sm leading-tight",
-                      activeStatuses[i] && "text-foreground/80",
+            // Every instance, not just the one currently in view — expanded
+            // mode is the "see everything at once" surface, same idea as
+            // twirling open any other multi-instance card, so a divider (and
+            // label) between each instance's own step list is what actually
+            // tells them apart. Never rendered before the first one, so a
+            // single-instance card (by far the common case) looks exactly
+            // like it always has. Every row stays independently scoreable —
+            // setStep/pickPromptLevel/canScore all take an explicit
+            // instanceIdx here rather than relying on their viewIdx default,
+            // since a row belongs to whichever instance it's under, not
+            // necessarily the one the swipeable view above is showing.
+            <div className="px-3 pt-1 pb-3 space-y-1">
+              {statuses.map((instanceStatuses, instanceIdx) => {
+                const instancePromptLevel = promptLevel[instanceIdx] ?? {};
+                return (
+                  <div key={instanceIdx}>
+                    {instanceIdx > 0 && (
+                      <div className="flex items-center gap-2 pt-3 pb-2" aria-hidden>
+                        <span className="h-px flex-1 bg-border" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Instance {instanceIdx + 1}
+                        </span>
+                        <span className="h-px flex-1 bg-border" />
+                      </div>
                     )}
-                  >
-                    {step}
-                  </span>
-                  <StepPlanBadge level={stepPlan?.[i]} />
-                  <div className="flex items-center gap-1 shrink-0">
-                    {OPTIONS.map((opt) => {
-                      const Icon = opt.icon;
-                      const selected = activeStatuses[i] === opt.value;
-                      if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
-                        return (
-                          <RowPromptLevelButton
-                            key={opt.value}
-                            levels={promptLevels}
-                            selectedLevel={activePromptLevel[i] ?? null}
-                            selected={selected}
-                            disabled={!canRecordData || !canScore(i)}
-                            onPick={(level) => pickPromptLevel(i, level, false)}
-                            topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
-                          />
-                        );
-                      }
-                      return (
-                        <motion.button
-                          key={opt.value}
-                          onClick={() => setStep(i, opt.value)}
-                          disabled={!canRecordData || !canScore(i)}
-                          whileTap={{ scale: 0.9 }}
-                          aria-label={opt.value}
-                          className={cn(
-                            "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
-                            opt.classes,
-                            selected && cn("btn-bevel", opt.selectedClasses),
-                          )}
-                        >
-                          <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
-                        </motion.button>
-                      );
-                    })}
+                    <ol className="space-y-1">
+                      {steps.map((step, i) => (
+                        <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
+                          <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
+                            {i + 1}
+                          </span>
+                          <span
+                            className={cn(
+                              "flex-1 text-sm leading-tight",
+                              instanceStatuses[i] && "text-foreground/80",
+                            )}
+                          >
+                            {step}
+                          </span>
+                          <StepPlanBadge level={stepPlan?.[i]} />
+                          <div className="flex items-center gap-1 shrink-0">
+                            {OPTIONS.map((opt) => {
+                              const Icon = opt.icon;
+                              const selected = instanceStatuses[i] === opt.value;
+                              if (
+                                opt.value === "prompted" &&
+                                promptLevels &&
+                                promptLevels.length > 0
+                              ) {
+                                return (
+                                  <RowPromptLevelButton
+                                    key={opt.value}
+                                    levels={promptLevels}
+                                    selectedLevel={instancePromptLevel[i] ?? null}
+                                    selected={selected}
+                                    disabled={!canRecordData || !canScore(i, instanceIdx)}
+                                    onPick={(level) =>
+                                      pickPromptLevel(i, level, false, instanceIdx)
+                                    }
+                                    topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
+                                  />
+                                );
+                              }
+                              return (
+                                <motion.button
+                                  key={opt.value}
+                                  onClick={() => setStep(i, opt.value, false, instanceIdx)}
+                                  disabled={!canRecordData || !canScore(i, instanceIdx)}
+                                  whileTap={{ scale: 0.9 }}
+                                  aria-label={opt.value}
+                                  className={cn(
+                                    "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
+                                    opt.classes,
+                                    selected && cn("btn-bevel", opt.selectedClasses),
+                                  )}
+                                >
+                                  <Icon className="size-3.5" strokeWidth={opt.strokeWidth} />
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
-                </li>
-              ))}
-            </ol>
+                );
+              })}
+            </div>
           }
         >
           <div className="relative px-2 pt-3 pb-1">
@@ -959,6 +1074,7 @@ export function TaskAnalysisCard({
                 }}
               >
                 <motion.div
+                  ref={trackRef}
                   className="absolute top-1/2 left-1/2 flex items-center"
                   style={{ gap: GAP, x: dragX, translateY: "-50%" }}
                   animate={{ x: trackOffset }}
@@ -968,6 +1084,38 @@ export function TaskAnalysisCard({
                   dragElastic={0.08}
                   onDragEnd={handleDragEnd}
                 >
+                  {/* Previous Instance — only once there's actually an
+                      earlier instance to go back to (instance 0 has none).
+                      Mirrors Next Instance below: same pill shape, same
+                      "lives right in the draggable strip" placement, just on
+                      the opposite end and never creating anything (see
+                      prevInstance's own comment). */}
+                  {hasPrevInstance && (
+                    <motion.button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        prevInstance();
+                      }}
+                      whileTap={{ scale: 0.94 }}
+                      className="shrink-0 h-10 flex items-center gap-1.5 rounded-full border-2 border-blue-300 bg-blue-50 px-3 text-blue-700 transition-colors"
+                    >
+                      <ArrowLeft className="size-4 shrink-0" strokeWidth={2.5} />
+                      <span className="text-xs font-semibold whitespace-nowrap">Prev Instance</span>
+                    </motion.button>
+                  )}
+                  {/* Same "quota boundary" end bar as the one after the last
+                      step below, mirrored here — the pair of them read as
+                      the step count's own start/end brackets once there's
+                      more than one instance to browse past on either
+                      side. */}
+                  {hasPrevInstance && (
+                    <div
+                      className="shrink-0 w-px bg-foreground/40 mx-2"
+                      style={{ height: 40 }}
+                      aria-hidden
+                    />
+                  )}
                   {steps.map((_, i) => {
                     const isCenter = i === activeCurrent;
                     const status = activeStatuses[i];
@@ -1020,32 +1168,37 @@ export function TaskAnalysisCard({
                     style={{ height: 40 }}
                     aria-hidden
                   />
-                  {/* New Instance — the one deliberate way a new run gets
-                      created (see addInstance's own comment on why this
-                      never happens implicitly the way Duration's does).
-                      Lives right after the end bar in the same draggable
-                      strip, the same "one more swipe past the last step"
-                      idiom the strip already uses for reaching anything
-                      past where a normal step count would put the mask's
-                      own fade — not hidden, just the next thing along the
-                      same track. onClick (not a plain button here) plus
-                      stopPropagation matches every OTHER interactive
-                      control already living inside this drag="x" parent
-                      (the step bubbles' own onClick={() => goTo(i)}),
-                      which already coexists with real dragging via
-                      Motion's own built-in drag-vs-tap threshold. */}
+                  {/* Next Instance — browses an already-created later
+                      instance, or (only once there's nowhere existing left
+                      to browse to) creates one — see nextInstance's own
+                      comment. Lives right after the end bar in the same
+                      draggable strip, the same "one more swipe past the
+                      last step" idiom the strip already uses for reaching
+                      anything past where a normal step count would put the
+                      mask's own fade — not hidden, just the next thing
+                      along the same track. Once the viewed instance is
+                      complete, the track's own trackOffset (above) centers
+                      THIS button automatically, so finishing the last step
+                      is what actually reveals it rather than requiring an
+                      extra manual drag past the fade to find it. onClick
+                      (not a plain button here) plus stopPropagation matches
+                      every OTHER interactive control already living inside
+                      this drag="x" parent (the step bubbles' own
+                      onClick={() => goTo(i)}), which already coexists with
+                      real dragging via Motion's own built-in drag-vs-tap
+                      threshold. */}
                   <motion.button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      addInstance();
+                      nextInstance();
                     }}
                     disabled={!canRecordData}
                     whileTap={{ scale: 0.94 }}
                     className="shrink-0 h-10 flex items-center gap-1.5 rounded-full border-2 border-blue-300 bg-blue-50 px-3 text-blue-700 transition-colors disabled:opacity-40"
                   >
-                    <Plus className="size-4 shrink-0" strokeWidth={2.5} />
-                    <span className="text-xs font-semibold whitespace-nowrap">New Instance</span>
+                    <ArrowRight className="size-4 shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs font-semibold whitespace-nowrap">Next Instance</span>
                   </motion.button>
                 </motion.div>
               </div>
