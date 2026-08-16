@@ -2164,46 +2164,31 @@ function MorphContent({
   // Same story as isTransitioning above, but for a resize a card triggers
   // on its own — not a mode switch, but CardShell's own expandedView
   // twirl-down, a trial's row growing, a frequency counter growing, etc.
-  // Without this, this wrapper's own height animation (which is what
-  // determines how much space is reserved for the sibling card below,
-  // since this wrapper is an ordinary normal-flow block) only starts once
-  // measureDebounceRef's 60ms settles and runs on its own
-  // CARD_MORPH_TRANSITION timeline from there — meanwhile, since overflow
-  // stays "visible" the rest of the time, the card's own already-grown
-  // content (e.g. CardShell's expandedView, revealed near-instantly by its
-  // own CSS transition) bleeds straight past this not-yet-caught-up
-  // wrapper into whatever the next sibling currently occupies, painting
-  // UNDER that sibling's own opaque card background — then, once this
-  // wrapper's own delayed animation finally catches up and pushes the
-  // sibling out of the way, that same already-rendered content reads as
-  // newly emerging from beneath it, a full beat after the "expand"
-  // actually happened. Clipping to this wrapper's own (still catching-up)
-  // height during any active resize, same as during a mode switch, means
-  // nothing can ever bleed past it in the first place — the sibling below
-  // only ever needs to move because there's genuinely nothing left here to
-  // reveal, not because it's racing a wrapper that hasn't grown yet.
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeClearRef = useRef<number | null>(null);
-
+  // These already have their own real-time answer for "how tall am I right
+  // now" (a plain, unconstrained DOM box, or CardShell's own CSS
+  // grid-template-rows reveal), so this wrapper's job here is just to
+  // stay OUT OF THE WAY — an explicit, JS-measured height (needed below
+  // for mode switches specifically, see isTransitioning) would instead
+  // reserve document-flow space for the sibling card below on ITS OWN
+  // separate, debounced timeline, independent of however fast the content
+  // actually grew. That mismatch is what let already-grown content bleed
+  // past this not-yet-caught-up wrapper into the next sibling, painting
+  // UNDER that sibling's own opaque card background (a first attempt at
+  // clipping this wrapper to fix that instead traded it for a worse bug:
+  // this plain, unrounded wrapper became the visible bottom edge for
+  // however long the clip lasted, squaring off the card's own rounded
+  // corners and border every time it grew). Plain CSS `height: auto`
+  // sidesteps the mismatch entirely — the browser's own layout keeps this
+  // wrapper exactly as tall as its content on every single frame, for
+  // free, so the sibling below only ever moves because there's genuinely
+  // nothing left here to reveal, never because it's racing a wrapper that
+  // hasn't caught up yet.
   const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-    const commit = () => {
-      setHeight(el.scrollHeight);
-      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
-      resizeClearRef.current = window.setTimeout(
-        () => setIsResizing(false),
-        CARD_MORPH_TRANSITION.duration * 1000 + 50,
-      );
-    };
-    // ResizeObserver fires once immediately on observe() even with no real
-    // resize yet, just confirming the size the synchronous commit() below
-    // already captured — only later callbacks are genuine in-place growth.
-    let skippedInitialObservation = false;
+    const commit = () => setHeight(el.scrollHeight);
     const measure = () => {
-      if (!skippedInitialObservation) skippedInitialObservation = true;
-      else setIsResizing(true);
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
       measureDebounceRef.current = window.setTimeout(commit, 60);
     };
@@ -2212,7 +2197,6 @@ function MorphContent({
     ro.observe(el);
     return () => {
       if (measureDebounceRef.current !== null) window.clearTimeout(measureDebounceRef.current);
-      if (resizeClearRef.current !== null) window.clearTimeout(resizeClearRef.current);
       ro.disconnect();
     };
   }, [displayMode]);
@@ -2224,8 +2208,16 @@ function MorphContent({
   return (
     <motion.div
       className="w-full"
-      style={{ overflow: isTransitioning || isResizing ? "hidden" : "visible" }}
-      animate={{ height: height ?? "auto" }}
+      style={{ overflow: isTransitioning ? "hidden" : "visible" }}
+      // Only actually USES the measured `height` number while a mode
+      // switch is mid-flight, where Motion genuinely needs two real
+      // numbers to interpolate between (see the ResizeObserver comment
+      // above). At every other moment — including the instant right after
+      // one settles — this is plain "auto", continuously, not just once
+      // the animation completes; `height` itself keeps getting measured
+      // the whole time regardless, so it's already the right number and
+      // ready to animate FROM the next time a real mode switch starts.
+      animate={{ height: isTransitioning ? (height ?? "auto") : "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
       // itself would otherwise be a no-op anyway. Every later mode switch
