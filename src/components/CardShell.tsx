@@ -279,14 +279,18 @@ export function CardShell({
 
         {hasExpandedView ? (
           <>
-            <div
-              className={cn(
-                "grid transition-[grid-template-rows] duration-300 ease-out",
-                expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
-              )}
-            >
-              <div className="overflow-hidden">{children}</div>
-            </div>
+            {/* Removed from flow the instant `expanded` flips, rather than
+                animating its own grid-template-rows track down to 0fr in
+                parallel with expandedView's below growing — two tracks
+                shrinking/growing at once meant expandedView's own top edge
+                kept sliding upward as this one vacated space above it,
+                which read as the revealed content sliding up out of the
+                bottom rather than unfurling downward from a fixed point
+                under the header. With this gone instantly, expandedView's
+                own track is the only one ever animating, so its top edge —
+                anchored right under the header's divider — never moves;
+                only its bottom edge grows to reveal more. */}
+            {!expanded && <div>{children}</div>}
             <div
               className={cn(
                 "grid transition-[grid-template-rows] duration-300 ease-out",

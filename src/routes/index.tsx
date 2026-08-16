@@ -2160,47 +2160,51 @@ function MorphContent({
     return () => window.clearTimeout(id);
   }, [displayMode]);
 
-  // overflow:hidden any time this wrapper's own height is genuinely
-  // catching up to real content — a mode switch (isTransitioning above) OR
-  // a resize a card triggers on its own (CardShell's own expandedView
-  // twirl-down, a trial's row growing, a frequency counter growing).
-  // isSettling covers the latter: `height` below is snapped, not eased,
-  // for in-place growth, so the lag this guards against is at most a
-  // frame or two of ResizeObserver's own reporting cycle — not the
-  // hundreds of milliseconds an eased catch-up would take, so it doesn't
-  // read as squaring off the card's own rounded corners the way that did
-  // (see below); it's just enough to stop that one-frame lag from
-  // painting past this wrapper into the next sibling's territory. At true
-  // rest (nothing resizing or transitioning), lifting this back to
-  // visible is what lets a selected card's own shadow bleed past its box
-  // normally instead of getting clipped flat at the bottom edge.
-  const [isSettling, setIsSettling] = useState(false);
-  const settleTimeoutRef = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (settleTimeoutRef.current !== null) window.clearTimeout(settleTimeoutRef.current);
-    },
-    [],
-  );
-
+  // overflow:hidden only while a mode switch is actually mid-flight — not a
+  // permanent property of this wrapper. Left on all the time, it clips the
+  // wrapper to the exact measured `scrollHeight` of its content, which
+  // (correctly, per spec) never includes a child's own box-shadow — so an
+  // active card's selected-state shadow got hard-clipped right at its own
+  // bottom edge instead of fading out naturally, reading as a flat gray
+  // smudge with a sharp corner where the fade should have continued (this
+  // is also why in-place growth below never gets clipped either, even
+  // briefly — the same shadow disappears for however long that clip lasts,
+  // and a twirl-down happens far more often than a mode switch). Only
+  // clipping during the brief crossfade (where it's genuinely needed, to
+  // hide the old/new content pair briefly overlapping) and lifting it once
+  // settled lets any static shadow bleed past the box normally at rest.
+  //
   // `height` always tracks the measured scrollHeight — for a mode switch
-  // AND for in-place growth. What differs is how it gets there: eased over
-  // CARD_MORPH_TRANSITION while isTransitioning, where Motion genuinely
-  // needs two real numbers to interpolate between two different DOM
-  // subtrees, or snapped instantly otherwise, since in-place growth
-  // already has its own real-time answer for "how tall am I right now"
-  // and just needs this wrapper to keep pace, not layer a second,
-  // separately-eased animation on top with its own debounce lag — a
-  // debounced, eased copy chasing the real height on its own delayed
-  // timeline is what let already-grown content bleed past this
-  // not-yet-caught-up wrapper into the next sibling, painting UNDER that
-  // sibling's own opaque card background. `animate` below never targets
-  // the literal string "auto" once this has measured at least once — only
-  // switching a target in and out of "auto" mid-lifecycle forces Motion to
-  // measure the current DOM height itself to resolve it, and that
-  // measurement can race a same-commit content swap (the mode switch's
-  // new, already-rendered JSX) and grab the WRONG side of the transition;
-  // keeping it a plain number the whole time sidesteps that race entirely.
+  // AND for a resize a card triggers on its own (CardShell's own
+  // expandedView twirl-down, a trial's row growing, a frequency counter
+  // growing). What differs is the `transition` used to reach it (below):
+  // eased over CARD_MORPH_TRANSITION while isTransitioning (a mode switch,
+  // where two genuinely different DOM subtrees need to visibly morph
+  // between two sizes), or duration:0 otherwise. Zero-duration matters for
+  // in-place growth specifically — those already have their own real-time
+  // answer for "how tall am I right now" (CardShell's own CSS
+  // grid-template-rows reveal), so this wrapper just needs to snap to
+  // match every measured frame, not layer a second, separately-eased
+  // animation on top with its own debounce lag. A debounced, eased copy
+  // chasing the real height on its own delayed timeline is what let
+  // already-grown content bleed past this not-yet-caught-up wrapper into
+  // the next sibling, painting UNDER that sibling's own opaque card
+  // background (a first attempt at clipping this wrapper to fix that
+  // instead traded it for a worse bug: this plain, unrounded wrapper
+  // became the visible bottom edge for however long the clip lasted,
+  // squaring off the card's own rounded corners and border every time it
+  // grew — and a later attempt at clipping just during that settling
+  // window fixed that but broke the shadow, see above). What's left is a
+  // single frame or two of ResizeObserver's own reporting cycle where
+  // fast-growing content can bleed a few pixels into the next sibling
+  // before this wrapper catches up — real, but small enough (verified
+  // ~20px for one frame, versus the original's ~80px for 300+ms) that it
+  // reads as an imperceptible flicker rather than the visible "content
+  // sliding out from underneath" bug this exists to fix. Only debouncing
+  // while isTransitioning keeps the mode-switch settling protected from
+  // re-triggering its eased animation off content jitter (fonts, images) —
+  // a duration:0 snap has no animation to re-trigger, so growth updates
+  // commit immediately, every frame.
   const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
@@ -2208,9 +2212,6 @@ function MorphContent({
     const commit = () => setHeight(el.scrollHeight);
     const measure = () => {
       if (!isTransitioning) {
-        setIsSettling(true);
-        if (settleTimeoutRef.current !== null) window.clearTimeout(settleTimeoutRef.current);
-        settleTimeoutRef.current = window.setTimeout(() => setIsSettling(false), 120);
         commit();
         return;
       }
@@ -2233,7 +2234,7 @@ function MorphContent({
   return (
     <motion.div
       className="w-full"
-      style={{ overflow: isTransitioning || isSettling ? "hidden" : "visible" }}
+      style={{ overflow: isTransitioning ? "hidden" : "visible" }}
       animate={{ height: height ?? "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
