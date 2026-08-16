@@ -100,12 +100,13 @@ const EXPAND_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
 /** The twirl-down's actual mechanic: one container, below the header's
  *  divider, whose CONTENTS get replaced — not two separate boxes/tracks
- *  stacking or racing each other. The entering side (whichever of
- *  children/expandedView is now current) slides down from just above its
- *  own resting position while fading in, and the container's own height
- *  eases to match it — so it reads as "this card's content changed,
- *  sliding into place from under the divider," not as a new panel
- *  unfurling or the old one being peeled back. */
+ *  stacking or racing each other. The container's own height eases open
+ *  from a fixed top edge (anchored right under the divider) to reveal
+ *  whichever of children/expandedView is now current, clipped by that
+ *  same growing boundary the whole way — so it reads as "this card's
+ *  content changed, sliding down from under the divider," not as a new
+ *  panel unfurling, the old one being peeled back, or (see the entering
+ *  content's own comment below) opening from somewhere in the middle. */
 function ExpandableArea({
   expanded,
   children,
@@ -150,8 +151,22 @@ function ExpandableArea({
         <motion.div
           key={expanded ? "expanded" : "standard"}
           ref={measureRef}
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
+          // No y-translate here — the container above is already clipping
+          // to a height smaller than this content's own full height for
+          // most of the transition, so a translateY offset on top of that
+          // shifts which slice of the content the clip window lands on
+          // (transforms don't affect layout, so the clip still reads this
+          // element's box as if it were untranslated) rather than sliding
+          // the content itself into view. With a small container and a
+          // -16px offset, that window could land 16px into the content
+          // instead of at its very top, reading as the reveal starting
+          // partway down rather than anchored under the divider — the
+          // "opens from the middle" look. Opacity alone still gives the
+          // entering content its own bit of motion without fighting the
+          // clip; the actual "slides down" comes entirely from the
+          // container's own height easing open beneath a fixed top edge.
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           // position: absolute applies instantly (not animated) rather than
           // easing there, pulling the old content out of flow the moment it
           // starts fading — matches MorphContent's own AnimatePresence exit
