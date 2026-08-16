@@ -2148,18 +2148,31 @@ function MorphContent({
   // clipping during the brief crossfade (where it's genuinely needed, to
   // hide the old/new content pair briefly overlapping) and lifting it once
   // settled lets any static shadow bleed past the box normally at rest.
+  //
+  // Flips true DURING render (comparing against a state-stored previous
+  // value, not a ref checked inside an effect) — same "adjust state while
+  // rendering" pattern IndexInner's own suppressCardLayout already uses
+  // just above. That's not just style: `animate` below only actually uses
+  // the measured `height` number while this is true, falling back to
+  // plain "auto" otherwise — an effect-based flip lands one render AFTER
+  // displayMode actually changes, so the very first paint of a mode switch
+  // would still read isTransitioning as false and use "auto" for it — the
+  // exact premature-reflow snap the ResizeObserver comment below already
+  // explains "auto" can't survive, just relocated one level up.
+  const [prevDisplayModeForTransition, setPrevDisplayModeForTransition] = useState(displayMode);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const prevDisplayModeRef = useRef(displayMode);
-  useEffect(() => {
-    if (prevDisplayModeRef.current === displayMode) return;
-    prevDisplayModeRef.current = displayMode;
+  if (displayMode !== prevDisplayModeForTransition) {
+    setPrevDisplayModeForTransition(displayMode);
     setIsTransitioning(true);
+  }
+  useEffect(() => {
+    if (!isTransitioning) return;
     const id = window.setTimeout(
       () => setIsTransitioning(false),
       CARD_MORPH_TRANSITION.duration * 1000 + 50,
     );
     return () => window.clearTimeout(id);
-  }, [displayMode]);
+  }, [isTransitioning]);
 
   // Same story as isTransitioning above, but for a resize a card triggers
   // on its own — not a mode switch, but CardShell's own expandedView
