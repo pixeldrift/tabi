@@ -21,7 +21,7 @@ import { SwipeStrip } from "./SwipeStrip";
 import { PhaseInfoLabel, DataTypeInfoLabel } from "./KindInfoLabels";
 import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
-import { type CardEditAndDrawerProps } from "./CardShell";
+import { ExpandableArea, type CardEditAndDrawerProps } from "./CardShell";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -794,226 +794,12 @@ export function TrialCard({
           expanded views, not just faded in while expanded. */}
         <div className="mx-[18px] mt-2.5 border-t border-dashed border-border" />
 
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows] duration-300 ease-out",
-            expanded ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
-          )}
-        >
-          <div className="overflow-hidden">
-            {/* Bubble row */}
-            <div className="relative px-2 mt-1">
-              <div className="relative h-16">
-                {/* Triangle nav buttons — centered with bubbles */}
-                <TriangleNav
-                  direction="left"
-                  onClick={() => goTo(current - 1)}
-                  disabled={current === 0}
-                />
-                <TriangleNav
-                  direction="right"
-                  onClick={() => goTo(current + 1)}
-                  disabled={
-                    (trials[current] === null && current >= completedCount) ||
-                    (maxTrials ? current >= maxTrials - 1 : false)
-                  }
-                />
-
-                <div
-                  ref={containerRef}
-                  className="relative h-16 overflow-visible"
-                  style={{
-                    WebkitMaskImage:
-                      "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-                    maskImage:
-                      "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
-                  }}
-                >
-                  <motion.div
-                    className="absolute top-1/2 left-1/2 flex items-center"
-                    style={{
-                      gap: GAP,
-                      x: dragX,
-                      translateY: "-50%",
-                    }}
-                    animate={{ x: trackOffset }}
-                    transition={{ type: "spring", stiffness: 320, damping: 34 }}
-                    drag="x"
-                    dragConstraints={{ left: -((trials.length - 1) * stepWidth) - 200, right: 200 }}
-                    dragElastic={0.08}
-                    onDragEnd={handleDragEnd}
-                  >
-                    {trials.map((t, i) => {
-                      const isCenter = i === current;
-                      const bg =
-                        t === "correct"
-                          ? "bg-green-50 border-green-300"
-                          : t === "incorrect"
-                            ? "bg-red-50 border-red-300"
-                            : t === "no-response"
-                              ? "bg-amber-50 border-amber-300"
-                              : "bg-foreground/5 border-foreground/10";
-                      const textColor =
-                        t === "correct"
-                          ? "text-green-700"
-                          : t === "incorrect"
-                            ? "text-red-700"
-                            : t === "no-response"
-                              ? "text-amber-700"
-                              : "text-foreground/40";
-                      const centerTextColor =
-                        t === "correct"
-                          ? "text-green-700"
-                          : t === "incorrect"
-                            ? "text-red-700"
-                            : t === "no-response"
-                              ? "text-amber-700"
-                              : "text-foreground";
-                      const centerBg =
-                        lastAction.value === "correct" && i === current - 1
-                          ? "bg-green-50 border-green-400/80"
-                          : lastAction.value === "incorrect" && i === current - 1
-                            ? "bg-red-50 border-red-400/80"
-                            : lastAction.value === "no-response" && i === current - 1
-                              ? "bg-amber-50 border-amber-400/80"
-                              : "";
-                      return (
-                        <motion.button
-                          key={i}
-                          onClick={() => goTo(i)}
-                          className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
-                          animate={{
-                            width: isCenter ? BUBBLE_CENTER : BUBBLE,
-                            height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                          }}
-                          transition={{ type: "spring", stiffness: 360, damping: 28 }}
-                        >
-                          <div
-                            key={`${i}-${t ?? "none"}`}
-                            className={cn(
-                              "absolute inset-0 rounded-full flex items-center justify-center",
-                              isCenter ? "border-2" : "border",
-                              bg,
-                              isCenter && !t && "bg-card border-foreground/30",
-                              isCenter && centerBg,
-                              isCenter && t && "animate-bubble-hop",
-                            )}
-                          >
-                            {isCenter ? (
-                              <AnimatePresence mode="wait">
-                                <motion.span
-                                  key={i}
-                                  initial={{ opacity: 0, y: 6 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -6 }}
-                                  transition={{ duration: 0.25 }}
-                                  className={cn(
-                                    "font-display text-4xl leading-none tabular-nums",
-                                    centerTextColor,
-                                  )}
-                                >
-                                  {i + 1}
-                                </motion.span>
-                              </AnimatePresence>
-                            ) : (
-                              <span
-                                className={cn("text-[7px] font-medium leading-none", textColor)}
-                              >
-                                {i + 1}
-                              </span>
-                            )}
-                          </div>
-                          {minTrials !== undefined && i < minTrials && !t && (
-                            <span
-                              data-tour="trial-min-dot"
-                              className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
-                              aria-hidden
-                            />
-                          )}
-                        </motion.button>
-                      );
-                    })}
-                    {maxTrials && (
-                      <div
-                        className="shrink-0 w-px bg-foreground/40 mx-2"
-                        style={{ height: 40 }}
-                        aria-hidden
-                      />
-                    )}
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Helper text under bubbles */}
-              <div className="text-center text-xs text-muted-foreground">
-                Trial {current + 1} (of {target} {maxTrials ? "max" : "required"})
-              </div>
-            </div>
-
-            {/* Action buttons row with slide animation */}
-            <div className="relative mt-3 px-5 h-12 overflow-hidden">
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.div
-                  key={current}
-                  initial={{ x: direction > 0 ? "60%" : "-60%", opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: direction > 0 ? "-60%" : "60%", opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 30 }}
-                  className={cn(
-                    "absolute inset-0 px-5 flex items-center",
-                    noResponse ? "gap-1.5" : "gap-3",
-                  )}
-                >
-                  {promptLevels && promptLevels.length > 0 ? (
-                    <PromptLevelButton
-                      levels={promptLevels}
-                      selectedLevel={promptLevel[current] ?? null}
-                      selected={trials[current] === "incorrect"}
-                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
-                      onPick={(level) => pickPromptLevel(current, level, true)}
-                      topInset={stickyTop + toolbarHeight}
-                    />
-                  ) : (
-                    <ActionButton
-                      variant="incorrect"
-                      selected={trials[current] === "incorrect"}
-                      onClick={() => setResult("incorrect")}
-                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
-                      dense={noResponse}
-                    />
-                  )}
-                  {noResponse && (
-                    <ActionButton
-                      variant="no-response"
-                      selected={trials[current] === "no-response"}
-                      onClick={() => setResult("no-response")}
-                      disabled={!canRecordData || (isMaxReached && trials[current] === null)}
-                      dense
-                    />
-                  )}
-                  <ActionButton
-                    variant="correct"
-                    selected={trials[current] === "correct"}
-                    onClick={() => setResult("correct")}
-                    disabled={!canRecordData || (isMaxReached && trials[current] === null)}
-                    dense={noResponse}
-                  />
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
-
-        {/* Expanded view — every trial as its own row, each with the same
-          Correct/Error buttons as the standard view, so a run of trials can
-          be corrected or filled in without stepping through one at a time. */}
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows] duration-300 ease-out",
-            expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-          )}
-        >
-          <div className="overflow-hidden">
+        <ExpandableArea
+          expanded={expanded}
+          expandedView={
+            /* Expanded view — every trial as its own row, each with the same
+              Correct/Error buttons as the standard view, so a run of trials can
+              be corrected or filled in without stepping through one at a time. */
             <ol className="px-3 pt-2 pb-3 space-y-1">
               {trials.map((t, i) => (
                 <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-1.5">
@@ -1079,8 +865,207 @@ export function TrialCard({
                 </li>
               ))}
             </ol>
+          }
+        >
+          {/* Bubble row */}
+          <div className="relative px-2 mt-1">
+            <div className="relative h-16">
+              {/* Triangle nav buttons — centered with bubbles */}
+              <TriangleNav
+                direction="left"
+                onClick={() => goTo(current - 1)}
+                disabled={current === 0}
+              />
+              <TriangleNav
+                direction="right"
+                onClick={() => goTo(current + 1)}
+                disabled={
+                  (trials[current] === null && current >= completedCount) ||
+                  (maxTrials ? current >= maxTrials - 1 : false)
+                }
+              />
+
+              <div
+                ref={containerRef}
+                className="relative h-16 overflow-visible"
+                style={{
+                  WebkitMaskImage:
+                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                  maskImage:
+                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                }}
+              >
+                <motion.div
+                  className="absolute top-1/2 left-1/2 flex items-center"
+                  style={{
+                    gap: GAP,
+                    x: dragX,
+                    translateY: "-50%",
+                  }}
+                  animate={{ x: trackOffset }}
+                  transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                  drag="x"
+                  dragConstraints={{ left: -((trials.length - 1) * stepWidth) - 200, right: 200 }}
+                  dragElastic={0.08}
+                  onDragEnd={handleDragEnd}
+                >
+                  {trials.map((t, i) => {
+                    const isCenter = i === current;
+                    const bg =
+                      t === "correct"
+                        ? "bg-green-50 border-green-300"
+                        : t === "incorrect"
+                          ? "bg-red-50 border-red-300"
+                          : t === "no-response"
+                            ? "bg-amber-50 border-amber-300"
+                            : "bg-foreground/5 border-foreground/10";
+                    const textColor =
+                      t === "correct"
+                        ? "text-green-700"
+                        : t === "incorrect"
+                          ? "text-red-700"
+                          : t === "no-response"
+                            ? "text-amber-700"
+                            : "text-foreground/40";
+                    const centerTextColor =
+                      t === "correct"
+                        ? "text-green-700"
+                        : t === "incorrect"
+                          ? "text-red-700"
+                          : t === "no-response"
+                            ? "text-amber-700"
+                            : "text-foreground";
+                    const centerBg =
+                      lastAction.value === "correct" && i === current - 1
+                        ? "bg-green-50 border-green-400/80"
+                        : lastAction.value === "incorrect" && i === current - 1
+                          ? "bg-red-50 border-red-400/80"
+                          : lastAction.value === "no-response" && i === current - 1
+                            ? "bg-amber-50 border-amber-400/80"
+                            : "";
+                    return (
+                      <motion.button
+                        key={i}
+                        onClick={() => goTo(i)}
+                        className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
+                        animate={{
+                          width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                          height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                        }}
+                        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                      >
+                        <div
+                          key={`${i}-${t ?? "none"}`}
+                          className={cn(
+                            "absolute inset-0 rounded-full flex items-center justify-center",
+                            isCenter ? "border-2" : "border",
+                            bg,
+                            isCenter && !t && "bg-card border-foreground/30",
+                            isCenter && centerBg,
+                            isCenter && t && "animate-bubble-hop",
+                          )}
+                        >
+                          {isCenter ? (
+                            <AnimatePresence mode="wait">
+                              <motion.span
+                                key={i}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.25 }}
+                                className={cn(
+                                  "font-display text-4xl leading-none tabular-nums",
+                                  centerTextColor,
+                                )}
+                              >
+                                {i + 1}
+                              </motion.span>
+                            </AnimatePresence>
+                          ) : (
+                            <span className={cn("text-[7px] font-medium leading-none", textColor)}>
+                              {i + 1}
+                            </span>
+                          )}
+                        </div>
+                        {minTrials !== undefined && i < minTrials && !t && (
+                          <span
+                            data-tour="trial-min-dot"
+                            className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
+                            aria-hidden
+                          />
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                  {maxTrials && (
+                    <div
+                      className="shrink-0 w-px bg-foreground/40 mx-2"
+                      style={{ height: 40 }}
+                      aria-hidden
+                    />
+                  )}
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Helper text under bubbles */}
+            <div className="text-center text-xs text-muted-foreground">
+              Trial {current + 1} (of {target} {maxTrials ? "max" : "required"})
+            </div>
           </div>
-        </div>
+
+          {/* Action buttons row with slide animation */}
+          <div className="relative mt-3 px-5 h-12 overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={current}
+                initial={{ x: direction > 0 ? "60%" : "-60%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: direction > 0 ? "-60%" : "60%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 280, damping: 30 }}
+                className={cn(
+                  "absolute inset-0 px-5 flex items-center",
+                  noResponse ? "gap-1.5" : "gap-3",
+                )}
+              >
+                {promptLevels && promptLevels.length > 0 ? (
+                  <PromptLevelButton
+                    levels={promptLevels}
+                    selectedLevel={promptLevel[current] ?? null}
+                    selected={trials[current] === "incorrect"}
+                    disabled={!canRecordData || (isMaxReached && trials[current] === null)}
+                    onPick={(level) => pickPromptLevel(current, level, true)}
+                    topInset={stickyTop + toolbarHeight}
+                  />
+                ) : (
+                  <ActionButton
+                    variant="incorrect"
+                    selected={trials[current] === "incorrect"}
+                    onClick={() => setResult("incorrect")}
+                    disabled={!canRecordData || (isMaxReached && trials[current] === null)}
+                    dense={noResponse}
+                  />
+                )}
+                {noResponse && (
+                  <ActionButton
+                    variant="no-response"
+                    selected={trials[current] === "no-response"}
+                    onClick={() => setResult("no-response")}
+                    disabled={!canRecordData || (isMaxReached && trials[current] === null)}
+                    dense
+                  />
+                )}
+                <ActionButton
+                  variant="correct"
+                  selected={trials[current] === "correct"}
+                  onClick={() => setResult("correct")}
+                  disabled={!canRecordData || (isMaxReached && trials[current] === null)}
+                  dense={noResponse}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </ExpandableArea>
 
         {/* Progress bar — inset from the card's own edges (not flush corner-
           to-corner) so it reads as sitting inside the card's border rather
