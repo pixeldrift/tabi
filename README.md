@@ -208,13 +208,36 @@ rather than kept checked off — see git history for what's already shipped.
 
 ### ⚙️ Functionality / Features
 
+- [ ] 🔴 Hierarchical goal structure: organize targets into categories and
+      sub-categories (a learning tree) instead of today's flat card list —
+      a data-model change, not just a UI one. What the tree view mode below
+      would actually render; will likely pair with breadcrumb-style
+      navigation in the Info Drawer later, showing where the active card
+      sits in that hierarchy
 - [ ] 🔴 Target/goal tree view — a new **view mode** alongside List/Card/
       Grid in DataToolbar's existing view-mode toggle, not a separate
       left-side drawer: same segmented control, the tree replaces the card
       list itself when selected. Shows titles (+ data type?), click
       scrolls to/activates the card. Depends on the hierarchical goal
-      structure (below) actually existing in the data — today's flat
+      structure above actually existing in the data — today's flat
       target list has no real categories to draw a tree from yet.
+- [ ] 🔴 Full calendar/scheduling integration, not just clinical appointments —
+      surface handoffs ("Transfer session to [person]"), make it clear who's
+      recording data vs. who's submitting it, and let a tech see their
+      appointment ending with another tech taking over. Needs a clear
+      distinction between "appointment" and "session"
+- [ ] 🟡 Settings: an "add a new goal" section at the top of the page — guided
+      workflow to pick a data-collection type and fill in its details (TA
+      steps; correct/incorrect/no-response/prompt-level options; min/max for
+      others), plus free-text sections for the standard drawer content
+      (rationale, procedure, etc.). Leaving a standard section blank should
+      simply omit it from the resulting card's drawer, matching today's
+      SD/Correction/Materials behavior — or a checkbox per section could let
+      the BCBA explicitly opt sections in/out instead — plus an area to add
+      one or more custom sections beyond the standard set. Ideally shows a
+      live preview of the resulting card as the form is filled in, and
+      supports editing in place afterward (access permitting). Lives on the
+      Settings tab for now — likely to move somewhere more prominent later
 
 ### 🗄️ Later (backlog — not sized)
 
@@ -267,9 +290,6 @@ and scheduling items below all need to respect that split.
   - No auth/multi-user model exists yet — this prototype hardcodes a
     single current user and simulates the others; swapping in real
     auth/backend later shouldn't require changing this state model
-- [ ] **Multi-instance Task Analysis entry** (step-by-step + trial
-      navigation, dual nav pattern) — a true necessary feature, not just
-      polish, hence near the top of this list
 - [ ] "Did you know?" periodic tips — reuses the guided tour's own
       spotlight/callout mechanism (see TourContext.tsx/TourOverlay.tsx),
       but single-step and resurfaced periodically (e.g. once per sign-in)
@@ -278,35 +298,12 @@ and scheduling items below all need to respect that split.
       quality-of-life touches, not re-explaining self-evident UI, and it
       doubles as a natural way to announce newly-added features. Settings
       toggle to turn it off, same as the tour's own hints toggle
-- [ ] Settings: an "add a new goal" section at the top of the page — guided
-      workflow to pick a data-collection type and fill in its details (TA
-      steps; correct/incorrect/no-response/prompt-level options; min/max for
-      others), plus free-text sections for the standard drawer content
-      (rationale, procedure, etc.). Leaving a standard section blank should
-      simply omit it from the resulting card's drawer, matching today's
-      SD/Correction/Materials behavior — or a checkbox per section could let
-      the BCBA explicitly opt sections in/out instead — plus an area to add
-      one or more custom sections beyond the standard set. Ideally shows a
-      live preview of the resulting card as the form is filled in, and
-      supports editing in place afterward (access permitting). Lives on the
-      Settings tab for now — likely to move somewhere more prominent later
-- [ ] Hierarchical goal structure: organize targets into categories and
-      sub-categories (a learning tree) instead of today's flat card list —
-      a data-model change, not just a UI one. What the tree view mode above
-      would actually render; will likely pair with breadcrumb-style
-      navigation in the Info Drawer later, showing where the active card
-      sits in that hierarchy
 - [ ] Real half-hour/hour reminder for an abandoned session — push
       notification if the last driver has the app open, otherwise a text
       or email — today the abandoned state only shows in-app
 - [ ] **Open-sessions dashboard** — a view listing all currently
       open/running sessions across clients, so anyone can see what's
       active and jump in
-- [ ] Full calendar/scheduling integration, not just clinical appointments —
-      surface handoffs ("Transfer session to [person]"), make it clear who's
-      recording data vs. who's submitting it, and let a tech see their
-      appointment ending with another tech taking over. Needs a clear
-      distinction between "appointment" and "session"
 - [ ] Targets that persist progress across sessions without needing to be
       graphed out first — pick up where you left off, with an icon/symbol
       denoting a persisted target
@@ -329,4 +326,4 @@ and scheduling items below all need to respect that split.
       on the RBT side. Deprioritized to the bottom of this list — this demo
       isn't focused on supervisor/BCBA-side functions
 
-_Roadmap last updated: 2026-08-02_
+_Roadmap last updated: 2026-08-16_
