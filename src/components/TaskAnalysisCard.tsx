@@ -1101,9 +1101,7 @@ export function TaskAnalysisCard({
                       className="shrink-0 h-10 flex items-center gap-1.5 rounded-full border-2 border-blue-300 bg-blue-50 px-3 text-blue-700 transition-colors"
                     >
                       <ArrowLeft className="size-4 shrink-0" strokeWidth={2.5} />
-                      <span className="text-xs font-semibold whitespace-nowrap">
-                        Previous Instance
-                      </span>
+                      <span className="text-xs font-semibold whitespace-nowrap">Prev Instance</span>
                     </motion.button>
                   )}
                   {/* Same "quota boundary" end bar as the one after the last
