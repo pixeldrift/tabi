@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Sparkles } from "lucide-react";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -98,15 +98,19 @@ export interface CardShellProps extends CardEditAndDrawerProps {
 
 const EXPAND_TRANSITION = { duration: 0.3, ease: [0.4, 0, 0.2, 1] } as const;
 
-/** The twirl-down's actual mechanic: one container, below the header's
- *  divider, whose CONTENTS get replaced — not two separate boxes/tracks
- *  stacking or racing each other. The container's own height eases open
- *  from a fixed top edge (anchored right under the divider) to reveal
- *  whichever of children/expandedView is now current, clipped by that
- *  same growing boundary the whole way — so it reads as "this card's
- *  content changed, sliding down from under the divider," not as a new
- *  panel unfurling, the old one being peeled back, or (see the entering
- *  content's own comment below) opening from somewhere in the middle. */
+/** The twirl-down's actual mechanic, kept deliberately plain: one
+ *  container, pinned right under the header's divider, holding whichever
+ *  of children/expandedView is current — swapped instantly, no crossfade
+ *  of its own — with only the CONTAINER's own height animated and
+ *  overflow clipped to it. A standard rolldown: the box's top edge never
+ *  moves, its bottom edge eases open or shut, and whatever's inside is
+ *  revealed or hidden by that boundary alone. Earlier attempts layered a
+ *  crossfade (and briefly a translateY) on top of this same height
+ *  animation to make the content itself feel like it was "entering" —
+ *  that fought the clip instead of matching it, at best adding visible
+ *  double-exposure ghosting and at worst (the translateY) shifting which
+ *  slice of the content the clip window landed on, reading as the reveal
+ *  opening from the middle instead of the top. */
 function ExpandableArea({
   expanded,
   children,
@@ -124,7 +128,12 @@ function ExpandableArea({
   // resize of whichever side is currently mounted (scoring a step can grow
   // a row within the expanded list, for instance) — the observer isn't
   // torn down until `expanded` changes again, so it keeps tracking those
-  // too, not just the initial swap.
+  // too, not just the initial swap. Content swaps synchronously with
+  // `expanded` (same commit, no AnimatePresence), so the very first paint
+  // of a toggle still shows the OLD `height` value as the target — genuinely
+  // unchanged from what's already on screen, since nothing about the
+  // container itself has moved yet — giving Motion a real, already-painted
+  // number to ease FROM once this effect's remeasurement lands the new one.
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
@@ -147,49 +156,7 @@ function ExpandableArea({
       // straight to the real height instead of animating up from nothing.
       transition={isFirstMeasure.current ? { duration: 0 } : EXPAND_TRANSITION}
     >
-      <AnimatePresence initial={false} mode="popLayout">
-        <motion.div
-          key={expanded ? "expanded" : "standard"}
-          ref={measureRef}
-          // No y-translate here — the container above is already clipping
-          // to a height smaller than this content's own full height for
-          // most of the transition, so a translateY offset on top of that
-          // shifts which slice of the content the clip window lands on
-          // (transforms don't affect layout, so the clip still reads this
-          // element's box as if it were untranslated) rather than sliding
-          // the content itself into view. With a small container and a
-          // -16px offset, that window could land 16px into the content
-          // instead of at its very top, reading as the reveal starting
-          // partway down rather than anchored under the divider — the
-          // "opens from the middle" look. Opacity alone still gives the
-          // entering content its own bit of motion without fighting the
-          // clip; the actual "slides down" comes entirely from the
-          // container's own height easing open beneath a fixed top edge.
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          // position: absolute applies instantly (not animated) rather than
-          // easing there, pulling the old content out of flow the moment it
-          // starts fading — matches MorphContent's own AnimatePresence exit
-          // below, so its footprint can't hold this container's height up a
-          // beat longer than the entering side actually needs. Quicker and
-          // no slide of its own (unlike the entering side's full
-          // EXPAND_TRANSITION) — sharing that same duration left the
-          // outgoing content's own text/buttons still clearly legible while
-          // the incoming list slid down over it, reading as a confusing
-          // double-exposure rather than one thing replacing another.
-          exit={{
-            opacity: 0,
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            transition: { duration: 0.12 },
-          }}
-          transition={EXPAND_TRANSITION}
-        >
-          {expanded ? expandedView : children}
-        </motion.div>
-      </AnimatePresence>
+      <div ref={measureRef}>{expanded ? expandedView : children}</div>
     </motion.div>
   );
 }
