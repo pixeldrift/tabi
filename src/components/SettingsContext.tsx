@@ -218,9 +218,16 @@ interface StoredShape {
   defaultTab: StatusTab;
   defaultDataView: DisplayMode;
   colorTheme: ColorTheme;
-  tourHintsEnabled: boolean;
+  // Renamed (not just re-defaulted) the day DEFAULT_TOUR_HINTS_ENABLED/
+  // DEFAULT_TIPS_ENABLED flipped to false — anyone who'd already loaded the
+  // app before that had `true` sitting in localStorage under the OLD key,
+  // and `??` only falls back to a new default on missing/undefined, never
+  // on an explicit stored `true`. A fresh key name means every existing
+  // visitor reads as "not yet set" and gets the new default for real,
+  // exactly once; toggling it afterward persists under this key normally.
+  tourHintsEnabledV2: boolean;
   tourCompleted: boolean;
-  tipsEnabled: boolean;
+  tipsEnabledV2: boolean;
   tipBag: string[];
   lastShownTipId: string | null;
 }
@@ -236,9 +243,9 @@ function loadStored(): StoredShape {
     defaultTab: DEFAULT_TAB,
     defaultDataView: DEFAULT_DATA_VIEW,
     colorTheme: DEFAULT_COLOR_THEME,
-    tourHintsEnabled: DEFAULT_TOUR_HINTS_ENABLED,
+    tourHintsEnabledV2: DEFAULT_TOUR_HINTS_ENABLED,
     tourCompleted: DEFAULT_TOUR_COMPLETED,
-    tipsEnabled: DEFAULT_TIPS_ENABLED,
+    tipsEnabledV2: DEFAULT_TIPS_ENABLED,
     tipBag: DEFAULT_TIP_BAG,
     lastShownTipId: DEFAULT_LAST_SHOWN_TIP_ID,
   };
@@ -257,9 +264,9 @@ function loadStored(): StoredShape {
       defaultTab: parsed.defaultTab ?? DEFAULT_TAB,
       defaultDataView: parsed.defaultDataView ?? DEFAULT_DATA_VIEW,
       colorTheme: parsed.colorTheme ?? DEFAULT_COLOR_THEME,
-      tourHintsEnabled: parsed.tourHintsEnabled ?? DEFAULT_TOUR_HINTS_ENABLED,
+      tourHintsEnabledV2: parsed.tourHintsEnabledV2 ?? DEFAULT_TOUR_HINTS_ENABLED,
       tourCompleted: parsed.tourCompleted ?? DEFAULT_TOUR_COMPLETED,
-      tipsEnabled: parsed.tipsEnabled ?? DEFAULT_TIPS_ENABLED,
+      tipsEnabledV2: parsed.tipsEnabledV2 ?? DEFAULT_TIPS_ENABLED,
       tipBag: parsed.tipBag ?? DEFAULT_TIP_BAG,
       lastShownTipId: parsed.lastShownTipId ?? DEFAULT_LAST_SHOWN_TIP_ID,
     };
@@ -310,9 +317,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setDefaultTab(stored.defaultTab);
     setDefaultDataView(stored.defaultDataView);
     setColorThemeState(stored.colorTheme);
-    setTourHintsEnabled(stored.tourHintsEnabled);
+    setTourHintsEnabled(stored.tourHintsEnabledV2);
     setTourCompleted(stored.tourCompleted);
-    setTipsEnabled(stored.tipsEnabled);
+    setTipsEnabled(stored.tipsEnabledV2);
     setTipBag(stored.tipBag);
     setLastShownTipId(stored.lastShownTipId);
     // Already applied pre-paint by __root.tsx's blocking script — this is
@@ -332,9 +339,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       defaultTab,
       defaultDataView,
       colorTheme,
-      tourHintsEnabled,
+      tourHintsEnabledV2: tourHintsEnabled,
       tourCompleted,
-      tipsEnabled,
+      tipsEnabledV2: tipsEnabled,
       tipBag,
       lastShownTipId,
     };
