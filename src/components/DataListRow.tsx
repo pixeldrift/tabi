@@ -88,7 +88,17 @@ export function DataListRow({
         // tile does, since it runs edge-to-edge across the whole list
         // rather than framing a smaller, more separated box.
         isActive
-          ? "border border-blue-400/80 ring-1 ring-inset ring-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]"
+          ? cn(
+              // Same GPU-layer pin as CardShell's own isActive branch (see
+              // its comment) — this row sits under the exact same per-card
+              // Reorder.Item's `layout="position"` projection (re-triggered
+              // on every running-session tick), so its shadow is just as
+              // prone to getting clipped/unclipped by the same repaint
+              // invalidation-rect issue. Never got this fix originally
+              // because list mode didn't exist yet when #151 landed.
+              "will-change-transform",
+              "border border-blue-400/80 ring-1 ring-inset ring-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]",
+            )
           : "border border-border opacity-80 hover:opacity-95",
       )}
     >

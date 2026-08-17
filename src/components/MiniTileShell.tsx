@@ -96,7 +96,15 @@ export function MiniTileShell({
         "relative aspect-square w-full bg-card text-card-foreground transition-all duration-200",
         large ? "rounded-[18px]" : "rounded-[14px]",
         isActive
-          ? "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]"
+          ? cn(
+              // Same GPU-layer pin as CardShell's own isActive branch (see
+              // its comment, and DataListRow's copy of it) — this tile sits
+              // under the same per-card Reorder.Item's `layout="position"`
+              // projection, so its shadow is just as prone to getting
+              // clipped/unclipped by session ticks without it.
+              "will-change-transform",
+              "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]",
+            )
           : "border border-border opacity-80 hover:opacity-95",
       )}
     >
