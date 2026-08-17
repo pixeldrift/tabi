@@ -41,13 +41,20 @@ export function ListActionBadge({
  *  just icon-only at a size that fits a single-line row. `hasMenu` draws a
  *  tiny solid triangle at the bottom edge — the same "more choices below"
  *  cue for every button that opens a picker popup (prompt level, rating)
- *  instead of acting directly. */
+ *  instead of acting directly. `strokeWidth` defaults to 3 (X/Check's own
+ *  weight) but is overridable — HandHelping has far more path detail than
+ *  those two, so the same strokeWidth reads noticeably heavier on it (see
+ *  TaskAnalysisCard's OPTIONS array, which thins it to 1.75 for exactly
+ *  this reason); a caller rendering that icon through here needs to pass
+ *  the same thinner value or it comes out bolder than its own picker-button
+ *  twin renders it as. */
 export function ListActionButton({
   icon: Icon,
   variant,
   selected = false,
   disabled = false,
   hasMenu = false,
+  strokeWidth = 3,
   ariaLabel,
   onClick,
 }: {
@@ -56,6 +63,7 @@ export function ListActionButton({
   selected?: boolean;
   disabled?: boolean;
   hasMenu?: boolean;
+  strokeWidth?: number;
   ariaLabel: string;
   onClick: (e: React.MouseEvent) => void;
 }) {
@@ -79,7 +87,7 @@ export function ListActionButton({
       {/* Nudged up a hair to leave room for the triangle below it, inside
           the button, rather than the icon sitting dead-center and pushing
           the triangle out past the button's own edge. */}
-      <Icon className={cn("size-3.5", hasMenu && "-translate-y-0.5")} strokeWidth={3} />
+      <Icon className={cn("size-3.5", hasMenu && "-translate-y-0.5")} strokeWidth={strokeWidth} />
       {hasMenu && (
         <span
           className="absolute bottom-1 left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[3.5px] border-l-transparent border-r-transparent border-t-current opacity-70"

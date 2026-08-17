@@ -66,7 +66,7 @@ export const TABI_TIPS: TabiTip[] = [
     tab: "schedule",
     selector: '[data-tour="schedule-now-button"]',
     title: "What's happening now",
-    body: 'When viewing the schedule, you can tap the "Now" button to jump directly to the current time to see what's on thr scheduke right now.',
+    body: 'When viewing the schedule, you can tap the "Now" button to jump directly to the current time to see what\'s on thr scheduke right now.',
   },
   {
     id: "timestamp-alert-jump",
@@ -115,7 +115,7 @@ export const TABI_TIPS: TabiTip[] = [
     tab: "data",
     selector: '[data-tour="step-plan-badge"]',
     title: "Know which prompt to use",
-    body: 'Task Analysis cards show a "helping hand" symbol to remind you which prompt level to use for each step in forward or backward chaining. There's no need to go read the description.',
+    body: 'Task Analysis cards show a "helping hand" symbol to remind you which prompt level to use for each step in forward or backward chaining. There\'s no need to go read the description.',
   },
   {
     id: "blurred-photos",

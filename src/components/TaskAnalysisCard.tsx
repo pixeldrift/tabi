@@ -866,6 +866,7 @@ export function TaskAnalysisCard({
                 <ListActionButton
                   key={opt.value}
                   icon={opt.icon}
+                  strokeWidth={opt.strokeWidth}
                   variant={
                     opt.value === "error" ? "red" : opt.value === "prompted" ? "amber" : "green"
                   }
