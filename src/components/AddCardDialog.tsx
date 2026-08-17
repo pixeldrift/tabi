@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Plus, X } from "lucide-react";
 import {
   Dialog,
@@ -160,6 +161,17 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
     { key: "negativeLabel", label: "Negative label", type: "text", placeholder: "Incorrect" },
   ],
 };
+
+/** Slide+fade variants for the two-step wizard body. `direction` (passed in
+ *  as the `custom` prop) picks which side each step enters/exits from, so
+ *  "Next" and "Back" animate as mirror images of each other rather than
+ *  both always sliding the same way. */
+const STEP_VARIANTS = {
+  enter: (direction: 1 | -1) => ({ x: direction > 0 ? "100%" : "-100%", opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: 1 | -1) => ({ x: direction > 0 ? "-100%" : "100%", opacity: 0 }),
+};
+const STEP_TRANSITION = { duration: 0.25, ease: "easeInOut" as const };
 
 type Content = Record<string, unknown>;
 
@@ -471,6 +483,8 @@ export function AddCardDialog({
   existingIds: Set<string>;
   onCreate: (card: CardConfig) => void;
 }) {
+  const [step, setStep] = useState<"kind" | "details">("kind");
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [kind, setKind] = useState<CardKind | null>(null);
   const [title, setTitle] = useState("");
   const [phase, setPhase] = useState("");
@@ -478,11 +492,24 @@ export function AddCardDialog({
   const [content, setContent] = useState<Content>({});
 
   const reset = () => {
+    setStep("kind");
+    setDirection(1);
     setKind(null);
     setTitle("");
     setPhase("");
     setDescription("");
     setContent({});
+  };
+
+  const goToDetails = () => {
+    if (!kind) return;
+    setDirection(1);
+    setStep("details");
+  };
+
+  const goBackToKind = () => {
+    setDirection(-1);
+    setStep("kind");
   };
 
   const isValid =
@@ -511,163 +538,203 @@ export function AddCardDialog({
       }}
     >
       <DialogContent className="w-[calc(100%-2rem)] max-w-lg h-[calc(100dvh-4rem)] flex flex-col gap-0 overflow-hidden rounded-xl">
-        <DialogHeader className="shrink-0 border-b border-border pb-4">
+        <DialogHeader className="text-left sm:text-left shrink-0 border-b border-border pb-4">
           <DialogTitle>Add New Card</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-left">
             Define a new goal or behavior for the treatment plan. It'll show up in the Data tab
             immediately.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 mt-4 pb-1">
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Data type
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {KIND_ORDER.map((k) => {
-                const info = DATA_TYPE_INFO[k];
-                const selected = kind === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => {
-                      setKind(k);
-                      setContent({});
-                    }}
-                    aria-pressed={selected}
-                    className={cn(
-                      "flex items-start gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
-                      selected
-                        ? "border-blue-400 bg-blue-50"
-                        : "border-border bg-white hover:bg-stone-50",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "shrink-0 grid place-items-center size-7 rounded-full [&>svg]:size-3.5",
-                        selected ? "bg-blue-500 text-white" : "bg-stone-100 text-stone-500",
-                      )}
-                    >
-                      {info.icon}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold leading-tight">
-                        {info.label}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {kind && (
-              <p className="text-xs text-muted-foreground/80 mt-2">
-                {DATA_TYPE_INFO[kind].description}
-              </p>
-            )}
-          </div>
-
-          {kind && (
-            <>
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
-                  Basics
+        <div className="relative flex-1 min-h-0 overflow-hidden mt-4">
+          <AnimatePresence initial={false} custom={direction}>
+            {step === "kind" ? (
+              <motion.div
+                key="kind"
+                custom={direction}
+                variants={STEP_VARIANTS}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={STEP_TRANSITION}
+                className="absolute inset-0 overflow-y-auto visible-scrollbar pb-1 pr-1"
+              >
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Data type
                 </h3>
-                <div>
-                  <label htmlFor="new-card-title" className="text-sm font-medium">
-                    Title <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    id="new-card-title"
-                    className="mt-1.5"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Requests preferred item"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-card-phase" className="text-sm font-medium">
-                    Phase <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    id="new-card-phase"
-                    className="mt-1.5"
-                    value={phase}
-                    onChange={(e) => setPhase(e.target.value)}
-                    placeholder="e.g. Baseline"
-                  />
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {KNOWN_PHASES.map((p) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {KIND_ORDER.map((k) => {
+                    const info = DATA_TYPE_INFO[k];
+                    const selected = kind === k;
+                    return (
                       <button
-                        key={p}
+                        key={k}
                         type="button"
-                        onClick={() => setPhase(p)}
+                        onClick={() => {
+                          setKind(k);
+                          setContent({});
+                        }}
+                        aria-pressed={selected}
                         className={cn(
-                          "h-6 rounded-full border px-2.5 text-[11px] font-medium transition-colors",
-                          phase === p
-                            ? "border-blue-400 bg-blue-50 text-blue-700"
-                            : "border-border text-muted-foreground hover:bg-stone-50",
+                          "flex items-start gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
+                          selected
+                            ? "border-blue-400 bg-blue-50"
+                            : "border-border bg-white hover:bg-stone-50",
                         )}
                       >
-                        {p}
+                        <span
+                          className={cn(
+                            "shrink-0 grid place-items-center size-7 rounded-full [&>svg]:size-3.5",
+                            selected ? "bg-blue-500 text-white" : "bg-stone-100 text-stone-500",
+                          )}
+                        >
+                          {info.icon}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold leading-tight">
+                            {info.label}
+                          </span>
+                        </span>
                       </button>
+                    );
+                  })}
+                </div>
+                {kind && (
+                  <p className="text-xs text-muted-foreground/80 mt-2">
+                    {DATA_TYPE_INFO[kind].description}
+                  </p>
+                )}
+              </motion.div>
+            ) : (
+              kind && (
+                <motion.div
+                  key="details"
+                  custom={direction}
+                  variants={STEP_VARIANTS}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={STEP_TRANSITION}
+                  className="absolute inset-0 overflow-y-auto visible-scrollbar flex flex-col gap-6 pb-1 pr-1"
+                >
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
+                      Basics
+                    </h3>
+                    <div>
+                      <label htmlFor="new-card-title" className="text-sm font-medium">
+                        Title <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="new-card-title"
+                        className="mt-1.5"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g. Requests preferred item"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="new-card-phase" className="text-sm font-medium">
+                        Phase <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="new-card-phase"
+                        className="mt-1.5"
+                        value={phase}
+                        onChange={(e) => setPhase(e.target.value)}
+                        placeholder="e.g. Baseline"
+                      />
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {KNOWN_PHASES.map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setPhase(p)}
+                            className={cn(
+                              "h-6 rounded-full border px-2.5 text-[11px] font-medium transition-colors",
+                              phase === p
+                                ? "border-blue-400 bg-blue-50 text-blue-700"
+                                : "border-border text-muted-foreground hover:bg-stone-50",
+                            )}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="new-card-description" className="text-sm font-medium">
+                        Description <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5 mb-1.5">
+                        Short "what to tally/score" instruction — shown in the card's own details
+                        drawer.
+                      </p>
+                      <textarea
+                        id="new-card-description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={3}
+                        className="flex w-full rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                        placeholder="Score correct if…"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
+                      {DATA_TYPE_INFO[kind].label} details
+                    </h3>
+                    {KIND_FIELD_SCHEMAS[kind].map((field) => (
+                      <SchemaField
+                        key={field.key}
+                        field={field}
+                        value={content[field.key]}
+                        onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
+                      />
                     ))}
                   </div>
-                </div>
-                <div>
-                  <label htmlFor="new-card-description" className="text-sm font-medium">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-xs text-muted-foreground/80 mt-0.5 mb-1.5">
-                    Short "what to tally/score" instruction — shown in the card's own details
-                    drawer.
-                  </p>
-                  <textarea
-                    id="new-card-description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
-                    className="flex w-full rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                    placeholder="Score correct if…"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
-                  {DATA_TYPE_INFO[kind].label} details
-                </h3>
-                {KIND_FIELD_SCHEMAS[kind].map((field) => (
-                  <SchemaField
-                    key={field.key}
-                    field={field}
-                    value={content[field.key]}
-                    onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+                </motion.div>
+              )
+            )}
+          </AnimatePresence>
         </div>
 
         <DialogFooter className="shrink-0 border-t border-border pt-4 flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
-          <Button
-            type="button"
-            onClick={handleCreate}
-            disabled={!isValid}
-            className="btn-bevel rounded-full bg-blue-500 hover:bg-blue-600 text-white w-full"
-          >
-            Create Card
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="w-full"
-          >
-            Cancel
-          </Button>
+          {step === "kind" ? (
+            <>
+              <Button
+                type="button"
+                onClick={goToDetails}
+                disabled={kind === null}
+                className="btn-bevel rounded-full bg-blue-500 hover:bg-blue-600 text-white w-full"
+              >
+                Next
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                onClick={handleCreate}
+                disabled={!isValid}
+                className="btn-bevel rounded-full bg-blue-500 hover:bg-blue-600 text-white w-full"
+              >
+                Create Card
+              </Button>
+              <Button type="button" variant="ghost" onClick={goBackToKind} className="w-full">
+                Back
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

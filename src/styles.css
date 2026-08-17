@@ -370,6 +370,32 @@
     display: none;
   }
 
+  /* Opposite intent from .no-scrollbar above — a persistently visible
+     (never auto-hiding), lightly styled scrollbar for a scrollable panel
+     where the content itself doesn't otherwise signal "there's more below"
+     (e.g. AddCardDialog's step body), so a trackpad/mouse user who hasn't
+     scrolled yet still gets an unambiguous cue rather than relying on
+     mobile Safari/OS auto-hide chrome that may never show up at all. */
+  .visible-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-stone-400) transparent;
+  }
+  .visible-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .visible-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .visible-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-stone-400);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .visible-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-stone-500);
+  }
+
   /* Master-pulse synced keyframes — all start at page load so phases align. */
   @keyframes lv-pulse-scale {
     0%,

@@ -104,11 +104,11 @@ export function SettingsPane({
   const { nextTip } = useTip();
   const groups = Array.from(new Set(SETTINGS.map((s) => s.group)));
   const jumpSections = [
+    { id: "settings-admin", label: "BCBA Tools" },
     { id: "settings-appearance", label: "Appearance" },
     ...groups.map((g) => ({ id: slugifyGroup(g), label: g })),
     { id: "settings-schedule", label: "Schedule" },
     { id: "settings-data", label: "Data" },
-    { id: "settings-admin", label: "BCBA Tools" },
     { id: "settings-help", label: "Help" },
   ];
 
@@ -137,6 +137,47 @@ export function SettingsPane({
       <SectionJumpBar sections={jumpSections} contentRef={contentRef} />
 
       <div className="mt-6 px-4 space-y-8">
+        <section id="settings-admin">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            BCBA Tools
+          </h3>
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-stone-50/60 p-3.5">
+            <span className="shrink-0 grid place-items-center size-9 rounded-full bg-blue-100 text-blue-700">
+              <UserCog className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">Define a new goal or behavior</p>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Adds a new data card to the treatment plan — typically handled by the supervising
+                BCBA when programming a new target, not day-to-day by the RBT running a session. See
+                the{" "}
+                <a
+                  href={CARD_TYPE_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-blue-600"
+                >
+                  full field reference
+                </a>{" "}
+                for what each data type supports.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setAddCardOpen(true)}
+                className="btn-bevel mt-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                + Add New Card
+              </Button>
+              {justAddedTitle && (
+                <p className="text-xs text-green-700 mt-2">
+                  &ldquo;{justAddedTitle}&rdquo; added to the Data tab.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
         <section id="settings-appearance">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Appearance
@@ -417,47 +458,6 @@ export function SettingsPane({
                   {icon({ className: "size-4" })}
                 </button>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="settings-admin">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            BCBA Tools
-          </h3>
-          <div className="flex items-start gap-3 rounded-xl border border-border bg-stone-50/60 p-3.5">
-            <span className="shrink-0 grid place-items-center size-9 rounded-full bg-blue-100 text-blue-700">
-              <UserCog className="size-4.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Define a new goal or behavior</p>
-              <p className="text-xs text-muted-foreground/80 mt-0.5">
-                Adds a new data card to the treatment plan — typically handled by the supervising
-                BCBA when programming a new target, not day-to-day by the RBT running a session. See
-                the{" "}
-                <a
-                  href={CARD_TYPE_DOCS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-blue-600"
-                >
-                  full field reference
-                </a>{" "}
-                for what each data type supports.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setAddCardOpen(true)}
-                className="btn-bevel mt-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                + Add New Card
-              </Button>
-              {justAddedTitle && (
-                <p className="text-xs text-green-700 mt-2">
-                  &ldquo;{justAddedTitle}&rdquo; added to the Data tab.
-                </p>
-              )}
             </div>
           </div>
         </section>
