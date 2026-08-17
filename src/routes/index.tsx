@@ -685,32 +685,41 @@ function GoalChangeDemoTrigger() {
  *  push directly (see that provider's own nesting in Index below). */
 function SessionActivityTrigger() {
   const { push } = useNotifications();
-  const { status, isSessionMine, startedById } = useSession();
-  const joinedRef = useRef(false);
+  const { status, isSessionMine, startedById, boxCollapsed } = useSession();
+  // Guards against re-pushing on every render while still joined, same as
+  // the old joinedRef did — just renamed since it now tracks "already
+  // fired" rather than "currently joined" (see below).
+  const firedRef = useRef(false);
 
   useEffect(() => {
     const joinedSomeoneElses =
       status === "running" && isSessionMine && !!startedById && startedById !== CURRENT_STAFF_ID;
-    if (joinedSomeoneElses && !joinedRef.current) {
-      joinedRef.current = true;
-      const starterName = staffName(startedById);
-      push({
-        kind: "announcement",
-        title: `You joined ${starterName}'s session`,
-        body: `${starterName} has been notified that you joined.`,
-        icon: "megaphone",
-        // Just a confirmation, not something to act on — fades on its own
-        // (general notifications' own default auto-fade, see
-        // NotificationContext's push()) rather than sitting there until
-        // dismissed. ...and once it's gone, it's gone — not something worth
-        // digging back up in the Notifications tab's own persistent history
-        // later.
-        excludeFromHistory: true,
-      });
-    } else if (!joinedSomeoneElses) {
-      joinedRef.current = false;
+    if (!joinedSomeoneElses) {
+      firedRef.current = false;
+      return;
     }
-  }, [status, isSessionMine, startedById, push]);
+    // Held back until the header's own box->pill morph has actually
+    // settled (see boxCollapsed's own comment in SessionContext) rather
+    // than firing the instant the join is detected — popping this in while
+    // the pill's still traveling read as competing with that motion for
+    // attention instead of confirming something that already finished.
+    if (!boxCollapsed || firedRef.current) return;
+    firedRef.current = true;
+    const starterName = staffName(startedById);
+    push({
+      kind: "announcement",
+      title: `You joined ${starterName}'s session`,
+      body: `${starterName} has been notified that you joined.`,
+      icon: "megaphone",
+      // Just a confirmation, not something to act on — fades on its own
+      // (general notifications' own default auto-fade, see
+      // NotificationContext's push()) rather than sitting there until
+      // dismissed. ...and once it's gone, it's gone — not something worth
+      // digging back up in the Notifications tab's own persistent history
+      // later.
+      excludeFromHistory: true,
+    });
+  }, [status, isSessionMine, startedById, boxCollapsed, push]);
 
   return null;
 }
