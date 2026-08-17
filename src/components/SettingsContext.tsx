@@ -108,12 +108,12 @@ export const COLOR_THEME_OPTIONS: { value: ColorTheme; label: string; descriptio
     value: "default",
     label: "Default",
     description:
-      "Sand, sage, rust, slate, ochre & mustard — an earthy palette, still evolving. A future dark mode will likely build on this same toggle.",
+      "Sand, sage, rust, slate, ochre & mustard. An earthy palette, still evolving. A future dark mode will likely build on this same toggle.",
   },
   {
     value: "alt",
     label: "Alternate",
-    description: "Warm cream and ink — the original palette.",
+    description: "Warm cream and ink. The original palette.",
   },
 ];
 

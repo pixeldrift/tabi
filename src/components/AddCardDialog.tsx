@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, X } from "lucide-react";
+import { ArrowRight, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +12,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DATA_TYPE_INFO, PHASE_INFO } from "@/lib/dataTypeInfo";
+import { PHASE_ICONS } from "@/lib/phaseIcons";
 import { PROMPT_LEVEL_ICONS } from "@/lib/promptLevels";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
+import { ROUNDED_STAR_PATH } from "./RatingCard";
 import type { CardKind } from "./DataToolbarContext";
 import type { CardConfig } from "@/routes/index";
 
@@ -47,7 +56,7 @@ interface FieldSchema {
    *  straight fold over the schema instead of per-kind assembly code. */
   key: string;
   label: string;
-  type: "text" | "number" | "switch" | "promptLevels" | "steps" | "chainingDirection";
+  type: "text" | "number" | "switch" | "promptLevels" | "steps" | "chainingDirection" | "ranking";
   required?: boolean;
   placeholder?: string;
   helpText?: string;
@@ -65,7 +74,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "maxTrials",
       label: "Maximum trials",
       type: "number",
-      helpText: "Hard cap on trials shown — also the completion threshold when set.",
+      helpText: "Hard cap on trials shown. It's also the completion threshold when set.",
     },
     {
       key: "noResponse",
@@ -92,7 +101,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "behaviorRole",
       label: "Interfering behavior",
       type: "switch",
-      helpText: "A reduction goal — zero instances counts as complete data, not missing data.",
+      helpText: "A reduction goal. Zero instances counts as complete data, not missing data.",
     },
   ],
   rate: [
@@ -114,7 +123,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "behaviorRole",
       label: "Interfering behavior",
       type: "switch",
-      helpText: "A reduction goal — zero duration counts as complete data, not missing data.",
+      helpText: "A reduction goal. Zero duration counts as complete data, not missing data.",
     },
   ],
   "task-analysis": [
@@ -134,13 +143,12 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
     },
   ],
   rating: [
-    { key: "min", label: "Minimum score", type: "number", placeholder: "0" },
     {
-      key: "max",
-      label: "Maximum score",
-      type: "number",
+      key: "levelDescriptions",
+      label: "Rankings",
+      type: "ranking",
       required: true,
-      helpText: "Also the number of stars shown.",
+      helpText: "One entry per star, low to high. That's the number of stars shown.",
     },
   ],
   timestamp: [
@@ -204,9 +212,9 @@ function kindContentValid(kind: CardKind, content: Content): boolean {
   return KIND_FIELD_SCHEMAS[kind]
     .filter((f) => f.required)
     .every((f) => {
-      if (f.type === "steps") {
-        const steps = (content[f.key] as string[] | undefined) ?? [];
-        return steps.some((s) => !isBlank(s));
+      if (f.type === "steps" || f.type === "ranking") {
+        const rows = (content[f.key] as string[] | undefined) ?? [];
+        return rows.some((s) => !isBlank(s));
       }
       return content[f.key] !== undefined && content[f.key] !== "";
     });
@@ -287,7 +295,10 @@ function buildCardConfig(
         promptLevels: promptLevels?.length ? promptLevels : undefined,
       };
     }
-    case "rating":
+    case "rating": {
+      const levelDescriptions = ((content.levelDescriptions as string[] | undefined) ?? []).filter(
+        (s) => !isBlank(s),
+      );
       return {
         id,
         kind,
@@ -295,9 +306,10 @@ function buildCardConfig(
         phase,
         description,
         behaviorRole,
-        min: num("min"),
-        max: num("max") ?? 5,
+        max: levelDescriptions.length,
+        levelDescriptions,
       };
+    }
     case "timestamp":
       return {
         id,
@@ -419,6 +431,12 @@ function SchemaField({
           onChange={(steps) => onChange(steps)}
         />
       )}
+      {field.type === "ranking" && (
+        <RankingListField
+          levels={(value as string[] | undefined) ?? [""]}
+          onChange={(levels) => onChange(levels)}
+        />
+      )}
     </div>
   );
 }
@@ -466,6 +484,175 @@ function StepListField({
         <Plus className="size-3.5" />
         Add step
       </Button>
+    </div>
+  );
+}
+
+const RANKING_STAR_SIZE = 28;
+
+/** A fixed-size version of the card interface's own numbered star (see
+ *  RatingCard's RatingStar) — every row here is a "filled/selected" star by
+ *  definition (it's being authored, not picked), so none of that
+ *  component's per-size alignment math or tap/select animation applies. */
+function RankingStar({ value }: { value: number }) {
+  return (
+    <span
+      className="relative shrink-0 grid place-items-center"
+      style={{ width: RANKING_STAR_SIZE, height: RANKING_STAR_SIZE }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width={RANKING_STAR_SIZE}
+        height={RANKING_STAR_SIZE}
+        className="fill-blue-500 stroke-blue-600"
+      >
+        <path
+          d={ROUNDED_STAR_PATH}
+          strokeWidth={2}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center font-display text-xs font-bold text-white tabular-nums">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+/** A textarea that grows to fit its own content instead of scrolling
+ *  internally — resized on every value change (typing, but also an
+ *  external reset) rather than only on input events, so it's correct even
+ *  when `value` changes from outside (e.g. removing an earlier row shifts
+ *  every row's own text up through this same component instance). */
+function AutoGrowTextarea({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      rows={1}
+      className="flex w-full resize-none overflow-hidden rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    />
+  );
+}
+
+function RankingListField({
+  levels,
+  onChange,
+}: {
+  levels: string[];
+  onChange: (levels: string[]) => void;
+}) {
+  return (
+    <div className="mt-1.5 flex flex-col gap-1.5">
+      {levels.map((level, i) => (
+        <div key={i} className="flex items-start gap-1.5">
+          <div className="mt-1">
+            <RankingStar value={i + 1} />
+          </div>
+          <AutoGrowTextarea
+            value={level}
+            placeholder={`Describe what a score of ${i + 1} looks like.`}
+            onChange={(v) => {
+              const next = [...levels];
+              next[i] = v;
+              onChange(next);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(levels.length > 1 ? levels.filter((_, j) => j !== i) : [""])}
+            aria-label={`Remove ranking ${i + 1}`}
+            className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors mt-0.5"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => onChange([...levels, ""])}
+        className="-ml-2 self-start text-muted-foreground"
+      >
+        <Plus className="size-3.5" />
+        Add ranking
+      </Button>
+    </div>
+  );
+}
+
+/** Wraps a step's scrollable content with a persistently visible scrollbar
+ *  (pushed to the panel's true right edge — the padding that keeps the text
+ *  readable lives on an inner wrapper, not on the scrolling element itself,
+ *  so the native scrollbar isn't inset by it) plus top/bottom fade overlays
+ *  that appear only while there's actually more content in that direction —
+ *  tracked via scroll position rather than shown unconditionally, so the
+ *  fade reads as "more below" instead of a fixed decorative vignette. */
+function ScrollFade({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 1);
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  }, []);
+
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [update]);
+
+  return (
+    <div className="relative h-full">
+      <div
+        ref={ref}
+        onScroll={update}
+        className="h-full overflow-y-auto visible-scrollbar pl-6 pr-2"
+      >
+        <div className="py-4">{children}</div>
+      </div>
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-background to-transparent transition-opacity duration-150",
+          canScrollUp ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-background to-transparent transition-opacity duration-150",
+          canScrollDown ? "opacity-100" : "opacity-0",
+        )}
+      />
     </div>
   );
 }
@@ -546,7 +733,7 @@ export function AddCardDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative flex-1 min-h-0 overflow-hidden mt-4">
+        <div className="relative flex-1 min-h-0 overflow-hidden -mx-6">
           <AnimatePresence initial={false} custom={direction}>
             {step === "kind" ? (
               <motion.div
@@ -557,53 +744,55 @@ export function AddCardDialog({
                 animate="center"
                 exit="exit"
                 transition={STEP_TRANSITION}
-                className="absolute inset-0 overflow-y-auto visible-scrollbar pb-1 pr-1"
+                className="absolute inset-0"
               >
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Data type
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {KIND_ORDER.map((k) => {
-                    const info = DATA_TYPE_INFO[k];
-                    const selected = kind === k;
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => {
-                          setKind(k);
-                          setContent({});
-                        }}
-                        aria-pressed={selected}
-                        className={cn(
-                          "flex items-start gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
-                          selected
-                            ? "border-blue-400 bg-blue-50"
-                            : "border-border bg-white hover:bg-stone-50",
-                        )}
-                      >
-                        <span
+                <ScrollFade>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Data type
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {KIND_ORDER.map((k) => {
+                      const info = DATA_TYPE_INFO[k];
+                      const selected = kind === k;
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => {
+                            setKind(k);
+                            setContent({});
+                          }}
+                          aria-pressed={selected}
                           className={cn(
-                            "shrink-0 grid place-items-center size-7 rounded-full [&>svg]:size-3.5",
-                            selected ? "bg-blue-500 text-white" : "bg-stone-100 text-stone-500",
+                            "flex items-center gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
+                            selected
+                              ? "border-blue-400 bg-blue-50"
+                              : "border-border bg-white hover:bg-stone-50",
                           )}
                         >
-                          {info.icon}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold leading-tight">
-                            {info.label}
+                          <span
+                            className={cn(
+                              "shrink-0 grid place-items-center size-7 rounded-full [&>svg]:size-3.5",
+                              selected ? "bg-blue-500 text-white" : "bg-stone-100 text-stone-500",
+                            )}
+                          >
+                            {info.icon}
                           </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {kind && (
-                  <p className="text-xs text-muted-foreground/80 mt-2">
-                    {DATA_TYPE_INFO[kind].description}
-                  </p>
-                )}
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold leading-tight">
+                              {info.label}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {kind && (
+                    <p className="text-xs text-muted-foreground/80 mt-2">
+                      {DATA_TYPE_INFO[kind].description}
+                    </p>
+                  )}
+                </ScrollFade>
               </motion.div>
             ) : (
               kind && (
@@ -615,85 +804,90 @@ export function AddCardDialog({
                   animate="center"
                   exit="exit"
                   transition={STEP_TRANSITION}
-                  className="absolute inset-0 overflow-y-auto visible-scrollbar flex flex-col gap-6 pb-1 pr-1"
+                  className="absolute inset-0"
                 >
-                  <div className="flex flex-col gap-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
-                      Basics
-                    </h3>
-                    <div>
-                      <label htmlFor="new-card-title" className="text-sm font-medium">
-                        Title <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="new-card-title"
-                        className="mt-1.5"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g. Requests preferred item"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="new-card-phase" className="text-sm font-medium">
-                        Phase <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="new-card-phase"
-                        className="mt-1.5"
-                        value={phase}
-                        onChange={(e) => setPhase(e.target.value)}
-                        placeholder="e.g. Baseline"
-                      />
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {KNOWN_PHASES.map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setPhase(p)}
-                            className={cn(
-                              "h-6 rounded-full border px-2.5 text-[11px] font-medium transition-colors",
-                              phase === p
-                                ? "border-blue-400 bg-blue-50 text-blue-700"
-                                : "border-border text-muted-foreground hover:bg-stone-50",
-                            )}
-                          >
-                            {p}
-                          </button>
+                  <ScrollFade>
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center gap-2">
+                        <span className="shrink-0 grid place-items-center size-8 rounded-full bg-blue-500 text-white [&>svg]:size-4">
+                          {DATA_TYPE_INFO[kind].icon}
+                        </span>
+                        <span className="text-sm font-semibold">{DATA_TYPE_INFO[kind].label}</span>
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
+                          Basics
+                        </h3>
+                        <div>
+                          <label htmlFor="new-card-title" className="text-sm font-medium">
+                            Title <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            id="new-card-title"
+                            className="mt-1.5"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. Requests preferred item"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="new-card-phase" className="text-sm font-medium">
+                            Phase <span className="text-red-500">*</span>
+                          </label>
+                          <Select value={phase} onValueChange={setPhase}>
+                            <SelectTrigger id="new-card-phase" className="mt-1.5">
+                              <SelectValue placeholder="Select phase to start in" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {KNOWN_PHASES.map((p) => {
+                                const PhaseIcon = PHASE_ICONS[p];
+                                return (
+                                  <SelectItem key={p} value={p}>
+                                    <span className="flex items-center gap-2">
+                                      {PhaseIcon && <PhaseIcon className="size-3.5" />}
+                                      {p}
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label htmlFor="new-card-description" className="text-sm font-medium">
+                            Description <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs text-muted-foreground/80 mt-0.5 mb-1.5">
+                            Short "what to tally/score" instruction. It's shown in the card's own
+                            details drawer.
+                          </p>
+                          <textarea
+                            id="new-card-description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows={3}
+                            className="flex w-full rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            placeholder="Score correct if…"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-4">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
+                          {DATA_TYPE_INFO[kind].label} details
+                        </h3>
+                        {KIND_FIELD_SCHEMAS[kind].map((field) => (
+                          <SchemaField
+                            key={field.key}
+                            field={field}
+                            value={content[field.key]}
+                            onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
+                          />
                         ))}
                       </div>
                     </div>
-                    <div>
-                      <label htmlFor="new-card-description" className="text-sm font-medium">
-                        Description <span className="text-red-500">*</span>
-                      </label>
-                      <p className="text-xs text-muted-foreground/80 mt-0.5 mb-1.5">
-                        Short "what to tally/score" instruction — shown in the card's own details
-                        drawer.
-                      </p>
-                      <textarea
-                        id="new-card-description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        rows={3}
-                        className="flex w-full rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                        placeholder="Score correct if…"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
-                      {DATA_TYPE_INFO[kind].label} details
-                    </h3>
-                    {KIND_FIELD_SCHEMAS[kind].map((field) => (
-                      <SchemaField
-                        key={field.key}
-                        field={field}
-                        value={content[field.key]}
-                        onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
-                      />
-                    ))}
-                  </div>
+                  </ScrollFade>
                 </motion.div>
               )
             )}
@@ -710,6 +904,7 @@ export function AddCardDialog({
                 className="btn-bevel rounded-full bg-blue-500 hover:bg-blue-600 text-white w-full"
               >
                 Next
+                <ArrowRight className="size-4" />
               </Button>
               <Button
                 type="button"

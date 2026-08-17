@@ -27,43 +27,43 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     label: "Percent Correct",
     icon: createElement(PercentCorrectIcon),
     description:
-      "Tracks correct vs. incorrect responses across a set of discrete trials, then reports the percentage answered correctly. Best for skills with a clear right or wrong answer — matching, labeling, answering a question — where each trial is logged as it happens.",
+      "Tracks correct vs. incorrect responses across a set of discrete trials, then reports the percentage answered correctly. Best for skills with a clear right or wrong answer, such as matching, labeling, or answering a question. Each trial is logged as it happens.",
   },
   frequency: {
     label: "Frequency",
     icon: createElement(FrequencyIcon),
     description:
-      "Counts how many times a behavior occurs during an observation period. Best for behaviors with a clear, quick start and end — like hand-raising or a vocal outburst — where what matters is simply how often it happens.",
+      "Counts how many times a behavior occurs during an observation period. Best for behaviors with a clear, quick start and end, like hand-raising or a vocal outburst. What matters is simply how often it happens.",
   },
   rate: {
     label: "Rate",
     icon: createElement(RateIcon),
     description:
-      "Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate (count per minute or hour) — so sessions of different lengths can still be compared fairly.",
+      "Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate, such as count per minute or hour. This lets sessions of different lengths still be compared fairly.",
   },
   duration: {
     label: "Duration",
     icon: createElement(DurationIcon),
     description:
-      "Times how long a behavior lasts, from start to finish, using a built-in stopwatch per instance. Best for behaviors that persist over a stretch of time — like a tantrum or staying on-task — rather than ones that happen instantly.",
+      "Times how long a behavior lasts, from start to finish, using a built-in stopwatch per instance. Best for behaviors that persist over a stretch of time, like a tantrum or staying on-task, rather than ones that happen instantly.",
   },
   "task-analysis": {
     label: "Task Analysis",
     icon: createElement(TaskAnalysisIcon),
     description:
-      "Breaks a multi-step skill — like handwashing or a morning routine — into its individual steps, then tracks each step's own level of independence (prompted vs. independent). Useful for measuring progress on complex, chained skills one step at a time.",
+      "Breaks a multi-step skill, like handwashing or a morning routine, into its individual steps, then tracks each step's own level of independence (prompted vs. independent). Useful for measuring progress on complex, chained skills one step at a time.",
   },
   rating: {
     label: "Score",
     icon: createElement(Star, { fill: "currentColor", strokeWidth: 0 }),
     description:
-      "Captures a subjective rating on a fixed scale for something that isn't a simple count — like how engaged or ready to learn a client seemed during a session.",
+      "Captures a subjective rating on a fixed scale for something that isn't a simple count. Good for things like how engaged or ready to learn a client seemed during a session.",
   },
   timestamp: {
     label: "Timestamp",
     icon: createElement(TimestampIcon),
     description:
-      "Logs the specific time a behavior occurred, without measuring how long it lasted or how many times it happened — useful for spotting patterns tied to time of day.",
+      "Logs the specific time a behavior occurred, without measuring how long it lasted or how many times it happened. Useful for spotting patterns tied to time of day.",
   },
 };
 
@@ -78,15 +78,15 @@ export interface PhaseInfo {
 export const PHASE_INFO: Record<string, PhaseInfo> = {
   Baseline: {
     description:
-      "A behavior is currently in the standard stages of normal activity for that client — the starting point before any teaching or behavior plan begins, so later progress has something to be measured against.",
+      "A behavior is currently in the standard stages of normal activity for that client. This is the starting point before any teaching or behavior plan begins, so later progress has something to be measured against.",
   },
   Intervention: {
     description:
-      "Trying to make a change in a behavior through targeted techniques — a specific teaching strategy or behavior plan is actively being used.",
+      "Trying to make a change in a behavior through targeted techniques. A specific teaching strategy or behavior plan is actively being used.",
   },
   Probing: {
     description:
-      "Investigating a client's abilities to establish what the baseline is — a quick, occasional check on a skill without ongoing teaching.",
+      "Investigating a client's abilities to establish what the baseline is. A quick, occasional check on a skill without ongoing teaching.",
   },
   Maintenance: {
     description:

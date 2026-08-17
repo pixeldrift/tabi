@@ -404,7 +404,7 @@ export function RatingCard({
 // polygon — reads as much less "spiky" while keeping the star's silhouette
 // recognizable. Outer points get a bigger rounding radius than the inner
 // notches, since those tips are what read as pointy.
-const ROUNDED_STAR_PATH =
+export const ROUNDED_STAR_PATH =
   "M10.5,5.05 Q12,2 13.5,5.05 L14.29,6.65 Q15.09,8.26 16.87,8.52 L18.64,8.78 Q22,9.27 19.56,11.64 " +
   "L18.29,12.88 Q17,14.14 17.3,15.91 L17.61,17.67 Q18.18,21.02 15.17,19.44 L13.59,18.61 Q12,17.77 10.41,18.61 " +
   "L8.83,19.44 Q5.82,21.02 6.39,17.67 L6.7,15.91 Q7,14.14 5.71,12.88 L4.44,11.64 Q2,9.27 5.36,8.78 " +
