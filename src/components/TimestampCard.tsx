@@ -680,7 +680,19 @@ export function TimestampCard({
         onWidthModeChange={onWidthModeChange}
         details={details}
         expanded={expanded}
-        onToggleExpanded={() => setExpanded((v) => !v)}
+        onToggleExpanded={() => {
+          if (expanded) {
+            // Same idea as TrialCard/TaskAnalysisCard's own twirl-down:
+            // collapsing should land back on whichever interval hasn't been
+            // marked yet, not wherever the stepper happened to be pointed
+            // before expanding. Temporary — the next real interval boundary
+            // snaps viewIdx back to live regardless (see viewIdx's own
+            // comment above).
+            const firstUnscored = statuses.indexOf(null);
+            if (firstUnscored !== -1) goTo(firstUnscored);
+          }
+          setExpanded((v) => !v);
+        }}
         expandedView={
           <TimestampExpandedView
             intervalCount={displayIntervalCount}
