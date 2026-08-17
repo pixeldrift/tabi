@@ -74,7 +74,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "maxTrials",
       label: "Maximum trials",
       type: "number",
-      helpText: "Hard cap on trials shown — also the completion threshold when set.",
+      helpText: "Hard cap on trials shown. It's also the completion threshold when set.",
     },
     {
       key: "noResponse",
@@ -101,7 +101,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "behaviorRole",
       label: "Interfering behavior",
       type: "switch",
-      helpText: "A reduction goal — zero instances counts as complete data, not missing data.",
+      helpText: "A reduction goal. Zero instances counts as complete data, not missing data.",
     },
   ],
   rate: [
@@ -123,7 +123,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       key: "behaviorRole",
       label: "Interfering behavior",
       type: "switch",
-      helpText: "A reduction goal — zero duration counts as complete data, not missing data.",
+      helpText: "A reduction goal. Zero duration counts as complete data, not missing data.",
     },
   ],
   "task-analysis": [
@@ -148,7 +148,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       label: "Rankings",
       type: "ranking",
       required: true,
-      helpText: "One entry per star, low to high — the number of stars shown.",
+      helpText: "One entry per star, low to high. That's the number of stars shown.",
     },
   ],
   timestamp: [
@@ -520,6 +520,41 @@ function RankingStar({ value }: { value: number }) {
   );
 }
 
+/** A textarea that grows to fit its own content instead of scrolling
+ *  internally — resized on every value change (typing, but also an
+ *  external reset) rather than only on input events, so it's correct even
+ *  when `value` changes from outside (e.g. removing an earlier row shifts
+ *  every row's own text up through this same component instance). */
+function AutoGrowTextarea({
+  value,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      rows={1}
+      className="flex w-full resize-none overflow-hidden rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    />
+  );
+}
+
 function RankingListField({
   levels,
   onChange,
@@ -530,14 +565,16 @@ function RankingListField({
   return (
     <div className="mt-1.5 flex flex-col gap-1.5">
       {levels.map((level, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <RankingStar value={i + 1} />
-          <Input
+        <div key={i} className="flex items-start gap-1.5">
+          <div className="mt-1">
+            <RankingStar value={i + 1} />
+          </div>
+          <AutoGrowTextarea
             value={level}
             placeholder={`Describe what a score of ${i + 1} looks like.`}
-            onChange={(e) => {
+            onChange={(v) => {
               const next = [...levels];
-              next[i] = e.target.value;
+              next[i] = v;
               onChange(next);
             }}
           />
@@ -545,7 +582,7 @@ function RankingListField({
             type="button"
             onClick={() => onChange(levels.length > 1 ? levels.filter((_, j) => j !== i) : [""])}
             aria-label={`Remove ranking ${i + 1}`}
-            className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors mt-0.5"
           >
             <X className="size-3.5" />
           </button>
@@ -727,7 +764,7 @@ export function AddCardDialog({
                           }}
                           aria-pressed={selected}
                           className={cn(
-                            "flex items-start gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
+                            "flex items-center gap-2 rounded-lg border-2 p-2.5 text-left transition-colors",
                             selected
                               ? "border-blue-400 bg-blue-50"
                               : "border-border bg-white hover:bg-stone-50",
@@ -798,9 +835,9 @@ export function AddCardDialog({
                           <label htmlFor="new-card-phase" className="text-sm font-medium">
                             Phase <span className="text-red-500">*</span>
                           </label>
-                          <Select value={phase || undefined} onValueChange={setPhase}>
+                          <Select value={phase} onValueChange={setPhase}>
                             <SelectTrigger id="new-card-phase" className="mt-1.5">
-                              <SelectValue placeholder="Select a phase" />
+                              <SelectValue placeholder="Select phase to start in" />
                             </SelectTrigger>
                             <SelectContent>
                               {KNOWN_PHASES.map((p) => {
@@ -822,7 +859,7 @@ export function AddCardDialog({
                             Description <span className="text-red-500">*</span>
                           </label>
                           <p className="text-xs text-muted-foreground/80 mt-0.5 mb-1.5">
-                            Short "what to tally/score" instruction — shown in the card's own
+                            Short "what to tally/score" instruction. It's shown in the card's own
                             details drawer.
                           </p>
                           <textarea

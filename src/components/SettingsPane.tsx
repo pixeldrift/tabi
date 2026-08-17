@@ -122,16 +122,6 @@ export function SettingsPane({
     <div className="max-w-2xl mx-auto pb-16">
       <div className="mt-6 px-4 mb-1">
         <h2 className="font-display text-lg leading-tight">Settings</h2>
-        <a
-          href={CARD_TYPE_DOCS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
-        >
-          <BookOpen className="size-3.5" />
-          Card type field reference
-          <span aria-hidden>↗</span>
-        </a>
       </div>
 
       <SectionJumpBar sections={jumpSections} contentRef={contentRef} />
@@ -148,15 +138,16 @@ export function SettingsPane({
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">Define a new goal or behavior</p>
               <p className="text-xs text-muted-foreground/80 mt-0.5">
-                Adds a new data card to the treatment plan — typically handled by the supervising
-                BCBA when programming a new target, not day-to-day by the RBT running a session. See
-                the{" "}
+                Adds a new data card to the treatment plan. This is typically handled by the
+                supervising BCBA when programming a new target, not day-to-day by the RBT running a
+                session. See the{" "}
                 <a
                   href={CARD_TYPE_DOCS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-blue-600"
+                  className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-blue-600"
                 >
+                  <BookOpen className="size-3" />
                   full field reference
                 </a>{" "}
                 for what each data type supports.
@@ -331,7 +322,8 @@ export function SettingsPane({
                 Clinic hours
               </label>
               <p className="text-xs text-muted-foreground/80 mt-0.5">
-                The Schedule tab's grid — and its "Add Activity" gaps — are bounded to this range.
+                The Schedule tab's grid, including its "Add Activity" gaps, is bounded to this
+                range.
               </p>
             </div>
             <button
@@ -369,8 +361,8 @@ export function SettingsPane({
                 Keep active card centered
               </label>
               <p className="text-xs text-muted-foreground/80 mt-0.5">
-                Smoothly scroll the Data tab so whichever card you select stays centered in view —
-                the same kind of auto-scroll as the Schedule tab's "Now" button.
+                Smoothly scroll the Data tab so whichever card you select stays centered in view.
+                It's the same kind of auto-scroll as the Schedule tab's "Now" button.
               </p>
             </div>
             <Switch
@@ -386,7 +378,7 @@ export function SettingsPane({
               <div className="min-w-0">
                 <label className="text-sm font-medium">Default tab</label>
                 <p className="text-xs text-muted-foreground/80 mt-0.5">
-                  The tab the app opens on — same options as the header's tab bar.
+                  The tab the app opens on. It has the same options as the header's tab bar.
                 </p>
               </div>
               <button
@@ -426,7 +418,8 @@ export function SettingsPane({
               <div className="min-w-0">
                 <label className="text-sm font-medium">Default data view</label>
                 <p className="text-xs text-muted-foreground/80 mt-0.5">
-                  The view the Data tab opens in — same options as the toolbar's view toggle.
+                  The view the Data tab opens in. It has the same options as the toolbar's view
+                  toggle.
                 </p>
               </div>
               <button
