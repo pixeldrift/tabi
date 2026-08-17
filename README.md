@@ -199,34 +199,16 @@ Roadmap below. Add to this list whenever a new little touch like this ships.
 - Per-field "request an edit" — doesn't edit directly, raises an approval
   request as a notification instead.
 
-## Roadmap
+## Roadmap - Features to Add
 
 Running tracker for UI/UX polish requests, grouped by type and tagged by
 complexity (🟢 Easy · 🟡 Medium · 🔴 Complex). "Later" items are backlog
-features, not sized yet. Completed requests are dropped from this list
-rather than kept checked off — see git history for what's already shipped.
+features. Completed requests are dropped from this list rather than kept
+checked off. See git history for what's already shipped.
 
 ### ⚙️ Functionality / Features
 
-- [ ] 🔴 Hierarchical goal structure: organize targets into categories and
-      sub-categories (a learning tree) instead of today's flat card list —
-      a data-model change, not just a UI one. What the tree view mode below
-      would actually render; will likely pair with breadcrumb-style
-      navigation in the Info Drawer later, showing where the active card
-      sits in that hierarchy
-- [ ] 🔴 Target/goal tree view — a new **view mode** alongside List/Card/
-      Grid in DataToolbar's existing view-mode toggle, not a separate
-      left-side drawer: same segmented control, the tree replaces the card
-      list itself when selected. Shows titles (+ data type?), click
-      scrolls to/activates the card. Depends on the hierarchical goal
-      structure above actually existing in the data — today's flat
-      target list has no real categories to draw a tree from yet.
-- [ ] 🔴 Full calendar/scheduling integration, not just clinical appointments —
-      surface handoffs ("Transfer session to [person]"), make it clear who's
-      recording data vs. who's submitting it, and let a tech see their
-      appointment ending with another tech taking over. Needs a clear
-      distinction between "appointment" and "session"
-- [ ] 🟡 Settings: an "add a new goal" section at the top of the page — guided
+- [ ] 🟡 Settings: "Add a new goal" section at the top of the page — A guided
       workflow to pick a data-collection type and fill in its details (TA
       steps; correct/incorrect/no-response/prompt-level options; min/max for
       others), plus free-text sections for the standard drawer content
@@ -238,8 +220,27 @@ rather than kept checked off — see git history for what's already shipped.
       live preview of the resulting card as the form is filled in, and
       supports editing in place afterward (access permitting). Lives on the
       Settings tab for now — likely to move somewhere more prominent later
+- [ ] 🔴 Hierarchical goal structure: Organize targets into categories and
+      sub-categories (a learning tree) instead of today's flat card list —
+      a data-model change, not just a UI one. What the tree view mode below
+      would actually render; will likely pair with breadcrumb-style
+      navigation in the Info Drawer later, showing where the active card
+      sits in that hierarchy
+- [ ] 🔴 Target/goal tree view — A new **view mode** alongside List/Card/
+      Grid in DataToolbar's existing view-mode toggle, not a separate
+      left-side drawer: same segmented control, the tree replaces the card
+      list itself when selected. Shows titles (+ data type?), click
+      scrolls to/activates the card. Depends on the hierarchical goal
+      structure above actually existing in the data — today's flat
+      target list has no real categories to draw a tree from yet.
+- [ ] 🔴 Full calendar/scheduling integration, not just clinical appointments —
+      Surface handoffs ("Transfer session to [person]"), make it clear who's
+      recording data vs. who's submitting it, and let a tech see their
+      appointment ending with another tech taking over. Needs a clear
+      distinction between "appointment" and "session"
 
-### 🗄️ Later (backlog — not sized)
+
+### 🗄️ Long-term Roadmap - Potential Future Features
 
 **Core concept to design around:** session timers are for data collection
 only — they are not connected to appointments or billing. Appointments and
