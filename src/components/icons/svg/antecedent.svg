@@ -1,7 +1,5 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(2 4.95) scale(1.0526)">
-    <path d="M1,5.21l1.67,3.68,3.29-1.89" />
-    <polygon points="7.19 12.4 11.37 5.51 15.55 12.4 7.19 12.4" />
-    <path d="M2.67,8.89s.71-6.59,6.88-7.77C15.34.02,18,6.57,18,6.57" />
-  </g>
+  <path d="M3.05 10.43l1.76 3.88 3.46-1.99" />
+  <polygon points="9.57,18 13.97,10.75 18.37,18 9.57,18" />
+  <path d="M4.81 14.31s0.75-6.94 7.24-8.18C18.15 4.97 20.95 11.87 20.95 11.87" />
 </svg>
