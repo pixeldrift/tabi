@@ -929,7 +929,15 @@ export function TaskAnalysisCard({
           isComplete={isComplete}
           expanded={expanded}
           onToggleExpanded={() => {
-            if (!expanded) playSoundEffect("twirldown");
+            if (!expanded) {
+              playSoundEffect("twirldown");
+            } else {
+              // Same idea as TrialCard's own twirl-down: collapsing should
+              // land back on whichever step still needs scoring, not
+              // wherever the stepper happened to be pointed before expanding.
+              const firstUnscored = activeStatuses.indexOf(null);
+              if (firstUnscored !== -1) goTo(firstUnscored);
+            }
             setExpanded((v) => !v);
           }}
           helperText={

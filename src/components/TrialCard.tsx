@@ -700,7 +700,16 @@ export function TrialCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (!expanded) playSoundEffect("twirldown");
+              if (!expanded) {
+                playSoundEffect("twirldown");
+              } else {
+                // Collapsing back to standard view — jump to whichever trial
+                // still needs scoring (the expanded list may have just been
+                // used to fill in ones out of order) rather than leaving the
+                // stepper wherever it happened to be pointed before expanding.
+                const firstUnscored = trials.findIndex((t) => t === null);
+                if (firstUnscored !== -1) goTo(firstUnscored);
+              }
               setExpanded((v) => !v);
             }}
             aria-expanded={expanded}

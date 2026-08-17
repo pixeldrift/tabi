@@ -758,7 +758,17 @@ export function DurationCard({
         progress={null}
         isComplete={isComplete}
         expanded={expanded}
-        onToggleExpanded={() => setExpanded((v) => !v)}
+        onToggleExpanded={() => {
+          if (expanded) {
+            // Same idea as TrialCard/TaskAnalysisCard's own twirl-down:
+            // collapsing should land back on whichever instance hasn't been
+            // timed yet, not wherever the stepper happened to be pointed
+            // before expanding.
+            const firstUnscored = instances.findIndex((_, i) => !isActivated(i));
+            if (firstUnscored !== -1) goTo(firstUnscored);
+          }
+          setExpanded((v) => !v);
+        }}
         helperText={
           <span>
             Combined Total{" "}
