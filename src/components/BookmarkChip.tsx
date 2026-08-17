@@ -378,6 +378,10 @@ function TaskAnalysisChip({
       ) : (
         <ListActionButton
           icon={HandHelping}
+          // Same thinning TaskAnalysisCard's own OPTIONS array applies to
+          // this icon (see ListActionButton's own comment) — HandHelping
+          // reads heavier than X/Check at the same strokeWidth.
+          strokeWidth={1.75}
           variant="amber"
           selected={currentStatus === "prompted"}
           disabled={disabled}
