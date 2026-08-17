@@ -1,5 +1,5 @@
-import type { RefObject } from "react";
-import { Lightbulb, RotateCcw, Volume2 } from "lucide-react";
+import { useState, type RefObject } from "react";
+import { BookOpen, Lightbulb, RotateCcw, UserCog, Volume2 } from "lucide-react";
 import {
   ALARM_SOUND_OPTIONS,
   COLOR_THEME_OPTIONS,
@@ -17,6 +17,7 @@ import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { useTour } from "./TourContext";
 import { useTip } from "./TipContext";
+import { AddCardDialog } from "./AddCardDialog";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,12 @@ import {
 } from "@/components/ui/select";
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { cn } from "@/lib/utils";
+import type { CardConfig } from "@/routes/index";
+
+// GitHub, not an in-app route — the field reference is developer/BCBA
+// documentation checked into the repo (docs/CARD-TYPES.md), not something
+// this prototype has a content-management view for.
+const CARD_TYPE_DOCS_URL = "https://github.com/pixeldrift/tabi/blob/main/docs/CARD-TYPES.md";
 
 // One id per jump-bar chip, matching whatever <section id="..."> each
 // heading below actually renders — group names come from SETTINGS' own
@@ -57,11 +64,18 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
 
 export function SettingsPane({
   contentRef,
+  cards,
+  onAddCard,
 }: {
   /** The app-shell's own internally-scrolling content pane — this pane
    *  renders inside it, not the window, so the jump bar's targets are
    *  measured and scrolled relative to it rather than the document. */
   contentRef: RefObject<HTMLElement | null>;
+  /** Every card currently defined (built-in + previously custom-created) —
+   *  passed through to AddCardDialog purely so a freshly created card's id
+   *  can be de-duplicated against ids that already exist. */
+  cards: CardConfig[];
+  onAddCard: (card: CardConfig) => void;
 }) {
   const {
     values,
@@ -94,13 +108,30 @@ export function SettingsPane({
     ...groups.map((g) => ({ id: slugifyGroup(g), label: g })),
     { id: "settings-schedule", label: "Schedule" },
     { id: "settings-data", label: "Data" },
+    { id: "settings-admin", label: "BCBA Tools" },
     { id: "settings-help", label: "Help" },
   ];
+
+  const [addCardOpen, setAddCardOpen] = useState(false);
+  // A quick "Added ✓" confirmation rather than a toast primitive this app
+  // doesn't otherwise have — clears itself a few seconds after the dialog
+  // hands back the new card's title.
+  const [justAddedTitle, setJustAddedTitle] = useState<string | null>(null);
 
   return (
     <div className="max-w-2xl mx-auto pb-16">
       <div className="mt-6 px-4 mb-1">
         <h2 className="font-display text-lg leading-tight">Settings</h2>
+        <a
+          href={CARD_TYPE_DOCS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-blue-600 transition-colors"
+        >
+          <BookOpen className="size-3.5" />
+          Card type field reference
+          <span aria-hidden>↗</span>
+        </a>
       </div>
 
       <SectionJumpBar sections={jumpSections} contentRef={contentRef} />
@@ -390,6 +421,47 @@ export function SettingsPane({
           </div>
         </section>
 
+        <section id="settings-admin">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            BCBA Tools
+          </h3>
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-stone-50/60 p-3.5">
+            <span className="shrink-0 grid place-items-center size-9 rounded-full bg-blue-100 text-blue-700">
+              <UserCog className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">Define a new goal or behavior</p>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Adds a new data card to the treatment plan — typically handled by the supervising
+                BCBA when programming a new target, not day-to-day by the RBT running a session. See
+                the{" "}
+                <a
+                  href={CARD_TYPE_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-blue-600"
+                >
+                  full field reference
+                </a>{" "}
+                for what each data type supports.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setAddCardOpen(true)}
+                className="btn-bevel mt-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                + Add New Card
+              </Button>
+              {justAddedTitle && (
+                <p className="text-xs text-green-700 mt-2">
+                  &ldquo;{justAddedTitle}&rdquo; added to the Data tab.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
         <section id="settings-help">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Help
@@ -452,6 +524,17 @@ export function SettingsPane({
         <IconsShowcase />
         <ColorPaletteShowcase />
       </div>
+
+      <AddCardDialog
+        open={addCardOpen}
+        onOpenChange={setAddCardOpen}
+        existingIds={new Set(cards.map((c) => c.id))}
+        onCreate={(card) => {
+          onAddCard(card);
+          setJustAddedTitle(card.title);
+          window.setTimeout(() => setJustAddedTitle(null), 4000);
+        }}
+      />
     </div>
   );
 }

@@ -160,7 +160,10 @@ export type CardConfig = {
     }
 );
 
-const cards: CardConfig[] = [
+// The built-in demo set — seed data for `cards` (see IndexInner), which
+// merges this with whatever's been created via the Settings "Add New Card"
+// flow and persisted separately. Never mutated itself.
+const BUILT_IN_CARDS: CardConfig[] = [
   {
     id: "holds-hand-transition",
     kind: "trial",
@@ -881,7 +884,27 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   timestamp: "Timestamp",
 };
 
+const CUSTOM_CARDS_STORAGE_KEY = "aba-daba-custom-cards-v1";
+
+// Cards created via Settings' "Add New Card" flow, persisted separately from
+// BUILT_IN_CARDS above (which never changes) — same loaded-once-on-mount,
+// saved-on-change idiom DataToolbarContext already uses for favorites/
+// hidden/order, just for the card definitions themselves rather than
+// presentation state layered on top of them.
+function loadCustomCards(): CardConfig[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_CARDS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CardConfig[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function getVisibleCards(
+  cards: CardConfig[],
   order: string[],
   filters: DataToolbarFilters,
   searchQuery: string,
@@ -1023,6 +1046,32 @@ function IndexInner({
   forceTipLaunch: boolean;
   onForceTipLaunchHandled: () => void;
 }) {
+  // See BUILT_IN_CARDS/loadCustomCards' own comments. Starts empty (not a
+  // lazy useState(() => loadCustomCards())) so the client's first render
+  // matches the server's — loading actually happens in the effect below,
+  // same SSR-safe idiom DataToolbarContext uses for favorites/hidden/order.
+  const [customCards, setCustomCards] = useState<CardConfig[]>([]);
+  useEffect(() => {
+    setCustomCards(loadCustomCards());
+  }, []);
+  // Guards the save effect below against writing back the empty initial
+  // state on the very first render, before the load effect above has had a
+  // chance to actually populate customCards — without this, every fresh
+  // page load would silently wipe out anything persisted.
+  const hasLoadedCustomCardsRef = useRef(false);
+  useEffect(() => {
+    if (!hasLoadedCustomCardsRef.current) {
+      hasLoadedCustomCardsRef.current = true;
+      return;
+    }
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CUSTOM_CARDS_STORAGE_KEY, JSON.stringify(customCards));
+  }, [customCards]);
+  const cards = useMemo(() => [...BUILT_IN_CARDS, ...customCards], [customCards]);
+  const addCard = useCallback((card: CardConfig) => {
+    setCustomCards((prev) => [...prev, card]);
+  }, []);
+
   const [activeId, setActiveId] = useState<string>(cards[0].id);
   // See the scroll-into-view effect's own comment below — flipped true just
   // before a bookmark-bar selection's own setActiveId, consumed by that
@@ -1110,7 +1159,7 @@ function IndexInner({
 
   const availableKinds = useMemo(
     () => CARD_KINDS_IN_ORDER.filter((k) => cards.some((c) => c.kind === k)),
-    [],
+    [cards],
   );
   const availablePhases = useMemo(() => {
     const present = new Set(cards.map((c) => c.phase));
@@ -1119,11 +1168,12 @@ function IndexInner({
       .filter((p) => !PHASE_ORDER.includes(p))
       .sort();
     return [...known, ...rest];
-  }, []);
+  }, [cards]);
 
   const visibleCards = useMemo(
     () =>
       getVisibleCards(
+        cards,
         order,
         filters,
         searchQuery,
@@ -1133,19 +1183,19 @@ function IndexInner({
         completion,
         editMode,
       ),
-    [order, filters, searchQuery, favorites, hidden, hasData, completion, editMode],
+    [cards, order, filters, searchQuery, favorites, hidden, hasData, completion, editMode],
   );
 
   // The bookmark bar's own two source lists — see getOrderedCards' own
   // comment on why these stay independent of the main toolbar's filters.
   const favoriteCards = useMemo(
     () => getOrderedCards(cards, order, (c) => favorites.has(c.id) && !hidden.has(c.id)),
-    [order, favorites, hidden],
+    [cards, order, favorites, hidden],
   );
   const interferingCards = useMemo(
     () =>
       getOrderedCards(cards, order, (c) => c.behaviorRole === "interfering" && !hidden.has(c.id)),
-    [order, hidden],
+    [cards, order, hidden],
   );
   // A card missing from this set is genuinely unmounted right now (filtered
   // out of the main list), not just scrolled off-screen — see
@@ -1959,7 +2009,7 @@ function IndexInner({
                 tab !== "settings" && "hidden",
               )}
             >
-              <SettingsPane contentRef={settingsContentRef} />
+              <SettingsPane contentRef={settingsContentRef} cards={cards} onAddCard={addCard} />
             </section>
           </main>
         </NotificationProvider>
