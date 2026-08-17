@@ -826,14 +826,13 @@ export function TrialCard({
                   <span className="flex-1" />
                   <div className="flex items-center gap-1.5 shrink-0">
                     {promptLevels && promptLevels.length > 0 ? (
-                      <ListPromptLevelButton
+                      <RowPromptLevelButton
                         levels={promptLevels}
                         selectedLevel={promptLevel[i] ?? null}
                         selected={t === "incorrect"}
                         disabled={!canRecordData}
                         onPick={(level) => pickPromptLevel(i, level, false)}
                         topInset={stickyTop + toolbarHeight}
-                        sizeClassName="size-8"
                       />
                     ) : (
                       <button
@@ -1388,20 +1387,139 @@ function PromptLevelButton({
   );
 }
 
+/** Compact pill version of PromptLevelButton for the expanded list's
+ *  per-trial row — same h-7 pill-with-label shape as that row's own
+ *  Correct/No Response buttons (see the plain buttons right next to this
+ *  one in the JSX below) rather than List mode's icon-only circle, since a
+ *  row here has the same horizontal room those siblings already use for
+ *  their own text. Shows the selected level in place of "Error" once one's
+ *  picked, same as the standard view's own sub-label, just inline instead
+ *  of on a second line since a pill this short has no room underneath. */
+function RowPromptLevelButton({
+  levels,
+  selectedLevel,
+  selected,
+  disabled,
+  onPick,
+  topInset = 0,
+}: {
+  levels: string[];
+  selectedLevel: string | null;
+  selected: boolean;
+  disabled?: boolean;
+  onPick: (level: string) => void;
+  topInset?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          ref={anchorRef}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          disabled={disabled}
+          aria-haspopup
+          className={cn(
+            "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
+            "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
+            selected && "btn-bevel bg-red-500 border-red-600 text-white",
+          )}
+        >
+          <X className="size-3 shrink-0" strokeWidth={3} />
+          {selectedLevel ?? "Error"}
+          <TimeChevronIcon
+            className={cn(
+              "size-2.5 shrink-0 transition-transform duration-200",
+              open && "-rotate-90",
+            )}
+          />
+        </button>
+      </PopoverAnchor>
+      <PopoverContent
+        ref={contentRef}
+        side="top"
+        align="center"
+        collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
+        className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-red-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(UNSPECIFIED_LEVEL);
+              setOpen(false);
+            }}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-left text-sm font-medium italic transition-colors",
+              selected && !selectedLevel
+                ? "bg-red-500 text-white"
+                : "text-red-700/70 hover:bg-red-50",
+            )}
+          >
+            {UNSPECIFIED_LEVEL}
+          </button>
+          {levels.map((level) => {
+            const LevelIcon = PROMPT_LEVEL_ICONS[level];
+            return (
+              <button
+                key={level}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPick(level);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-medium transition-colors",
+                  selectedLevel === level
+                    ? "bg-red-500 text-white"
+                    : "text-red-700 hover:bg-red-50",
+                )}
+              >
+                {LevelIcon && <LevelIcon className="size-3.5 shrink-0" />}
+                {level}
+              </button>
+            );
+          })}
+        </div>
+        <div
+          className={cn(
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-red-300 bg-card",
+            "-bottom-[6px] border-r-2 border-b-2",
+            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[6px]",
+            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
+            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
+          )}
+          style={{ left: arrowLeft ?? "50%" }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Icon-only circular version of PromptLevelButton — the shared "compact"
  *  convention (matching ListActionButton's own hasMenu affordance) used
  *  anywhere space is too tight for the standard view's pill-with-label:
- *  List mode's floating action row, the expanded list's per-row Error
- *  button, and both grid tile densities. Sized via sizeClassName/
- *  iconSizeClassName (defaulting to List mode's own size-7/size-3.5) rather
- *  than a fixed size, so one component covers every one of those contexts
- *  instead of three near-identical copies drifting out of sync with each
- *  other — which is exactly what happened before: the expanded-list row
- *  had its own pill-shaped variant with no triangle at all, and grid mode
- *  had no picker here whatsoever, just an immediate unspecified-level tap.
- *  Also reused as-is by the bookmark bar's own Trial chip (see
- *  BookmarkChip.tsx), which is why the collision boundary below is pinned
- *  to the document rather than left at Radix's default. */
+ *  List mode's floating action row and both grid tile densities. Sized via
+ *  sizeClassName/iconSizeClassName (defaulting to List mode's own
+ *  size-7/size-3.5) rather than a fixed size, so one component covers both
+ *  of those contexts instead of near-identical copies drifting out of sync
+ *  with each other — which is exactly what happened before: grid mode had
+ *  no picker here whatsoever, just an immediate unspecified-level tap. The
+ *  expanded list's own row uses RowPromptLevelButton instead (see above) —
+ *  that row has the horizontal room for a full pill-with-label to match its
+ *  Correct/No Response siblings, so it doesn't need the icon-only treatment
+ *  this one exists for. Also reused as-is by the bookmark bar's own Trial
+ *  chip (see BookmarkChip.tsx), which is why the collision boundary below
+ *  is pinned to the document rather than left at Radix's default. */
 export function ListPromptLevelButton({
   levels,
   selectedLevel,
