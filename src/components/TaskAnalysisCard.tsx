@@ -637,6 +637,21 @@ export function TaskAnalysisCard({
             {OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const selected = activeStatuses[activeCurrent] === opt.value;
+              if (opt.value === "prompted" && promptLevels && promptLevels.length > 0) {
+                return (
+                  <ListTaskAnalysisPromptLevelButton
+                    key={opt.value}
+                    levels={promptLevels}
+                    selectedLevel={activePromptLevel[activeCurrent] ?? null}
+                    selected={selected}
+                    disabled={!canRecordData || !canScore(activeCurrent)}
+                    onPick={(level) => pickPromptLevel(activeCurrent, level, true)}
+                    topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
+                    sizeClassName={large ? "size-10" : "size-7"}
+                    iconSizeClassName={large ? "size-[19px]" : "size-3.5"}
+                  />
+                );
+              }
               return (
                 <button
                   key={opt.value}
@@ -1012,7 +1027,7 @@ export function TaskAnalysisCard({
                                 promptLevels.length > 0
                               ) {
                                 return (
-                                  <RowPromptLevelButton
+                                  <ListTaskAnalysisPromptLevelButton
                                     key={opt.value}
                                     levels={promptLevels}
                                     selectedLevel={instancePromptLevel[i] ?? null}
@@ -1022,6 +1037,7 @@ export function TaskAnalysisCard({
                                       pickPromptLevel(i, level, false, instanceIdx)
                                     }
                                     topInset={(stickyTop ?? 0) + (toolbarHeight ?? 0)}
+                                    sizeClassName="size-8"
                                   />
                                 );
                               }
@@ -1418,12 +1434,19 @@ function TaskAnalysisPromptLevelButton({
   );
 }
 
-/** Icon-only circular version of TaskAnalysisPromptLevelButton for the List
- *  display mode's floating action row — same popover-picker behavior,
- *  styled to match ListActionButton (including its "more choices" triangle).
- *  Also reused as-is by the bookmark bar's own Task Analysis chip (see
- *  BookmarkChip.tsx), which is why the collision boundary below is pinned
- *  to the document rather than left at Radix's default. */
+/** Icon-only circular version of TaskAnalysisPromptLevelButton — the shared
+ *  "compact" convention (matching ListActionButton's own hasMenu affordance)
+ *  used anywhere space is too tight for the standard view's pill-with-label:
+ *  List mode's floating action row, the expanded list's per-step Prompted
+ *  button, and both grid tile densities. Sized via sizeClassName/
+ *  iconSizeClassName (defaulting to List mode's own size-7/size-3.5) rather
+ *  than a fixed size, so one component covers every one of those contexts
+ *  instead of near-identical copies drifting out of sync with each other —
+ *  which is exactly what happened before: the expanded-list row had its own
+ *  variant with no triangle at all, and grid mode had no picker here
+ *  whatsoever. Also reused as-is by the bookmark bar's own Task Analysis
+ *  chip (see BookmarkChip.tsx), which is why the collision boundary below is
+ *  pinned to the document rather than left at Radix's default. */
 export function ListTaskAnalysisPromptLevelButton({
   levels,
   selectedLevel,
@@ -1431,6 +1454,8 @@ export function ListTaskAnalysisPromptLevelButton({
   disabled,
   onPick,
   topInset = 0,
+  sizeClassName = "size-7",
+  iconSizeClassName = "size-3.5",
 }: {
   levels: string[];
   selectedLevel: string | null;
@@ -1438,6 +1463,8 @@ export function ListTaskAnalysisPromptLevelButton({
   disabled?: boolean;
   onPick: (level: string) => void;
   topInset?: number;
+  sizeClassName?: string;
+  iconSizeClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -1457,12 +1484,13 @@ export function ListTaskAnalysisPromptLevelButton({
           aria-label="Prompted"
           aria-haspopup
           className={cn(
-            "btn-bevel relative shrink-0 size-7 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+            "btn-bevel relative shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
+            sizeClassName,
             ACTION_BUTTON_COLORS.amber.classes,
             selected && cn("btn-bevel", ACTION_BUTTON_COLORS.amber.selectedClasses),
           )}
         >
-          <HandHelping className="size-3.5 -translate-y-0.5" strokeWidth={1.75} />
+          <HandHelping className={cn(iconSizeClassName, "-translate-y-0.5")} strokeWidth={1.75} />
           <span
             className="absolute bottom-1 left-1/2 -translate-x-1/2 size-0 border-l-[3px] border-r-[3px] border-t-[3.5px] border-l-transparent border-r-transparent border-t-current opacity-70"
             aria-hidden
@@ -1502,78 +1530,7 @@ export function ListTaskAnalysisPromptLevelButton({
   );
 }
 
-/** Compact version for the expanded list's per-step Prompted button — same
- *  popover-picker behavior, sized to match the row's other small pill
- *  buttons instead of the standard view's large ones. */
-function RowPromptLevelButton({
-  levels,
-  selectedLevel,
-  selected,
-  disabled,
-  onPick,
-  topInset = 0,
-}: {
-  levels: string[];
-  selectedLevel: string | null;
-  selected: boolean;
-  disabled?: boolean;
-  onPick: (level: string) => void;
-  topInset?: number;
-}) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverAnchor asChild>
-        <button
-          ref={anchorRef}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
-          disabled={disabled}
-          className={cn(
-            "size-8 rounded-full border-2 grid place-items-center transition-colors disabled:opacity-40",
-            ACTION_BUTTON_COLORS.amber.classes,
-            selected && cn("btn-bevel", ACTION_BUTTON_COLORS.amber.selectedClasses),
-          )}
-        >
-          <HandHelping className="size-3.5" strokeWidth={1.75} />
-        </button>
-      </PopoverAnchor>
-      <PopoverContent
-        ref={contentRef}
-        side="top"
-        align="center"
-        collisionPadding={{ top: topInset + 8, bottom: 8, left: 8, right: 8 }}
-        className="group z-[70] w-auto min-w-[9rem] rounded-2xl border-2 border-amber-300 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
-      >
-        <PromptLevelList
-          levels={levels}
-          selectedLevel={selectedLevel}
-          selected={selected}
-          onPick={onPick}
-          setOpen={setOpen}
-        />
-        <div
-          className={cn(
-            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-amber-300 bg-card",
-            "-bottom-[7px] border-r-2 border-b-2",
-            "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
-            "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
-            "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
-          )}
-          style={{ left: arrowLeft ?? "50%" }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** Shared popover body for all three Prompted-picker variants above — the
+/** Shared popover body for every Prompted-picker variant above — the
  *  "-unspecified-" catch-all plus one row per configured prompt level. */
 function PromptLevelList({
   levels,
