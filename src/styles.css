@@ -375,10 +375,12 @@
      where the content itself doesn't otherwise signal "there's more below"
      (e.g. AddCardDialog's step body), so a trackpad/mouse user who hasn't
      scrolled yet still gets an unambiguous cue rather than relying on
-     mobile Safari/OS auto-hide chrome that may never show up at all. */
+     mobile Safari/OS auto-hide chrome that may never show up at all.
+     Colored with the app's own primary (pine-teal) instead of a neutral
+     gray so it reads as part of the interface, not browser chrome. */
   .visible-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-stone-400) transparent;
+    scrollbar-color: var(--color-primary) transparent;
   }
   .visible-scrollbar::-webkit-scrollbar {
     width: 8px;
@@ -387,13 +389,13 @@
     background: transparent;
   }
   .visible-scrollbar::-webkit-scrollbar-thumb {
-    background-color: var(--color-stone-400);
+    background-color: var(--color-primary);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   .visible-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-stone-500);
+    background-color: color-mix(in oklch, var(--color-primary), black 15%);
   }
 
   /* Master-pulse synced keyframes — all start at page load so phases align. */
