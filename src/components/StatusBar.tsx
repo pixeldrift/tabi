@@ -1939,7 +1939,7 @@ function ExpandedSessionBox({
                 <button
                   onClick={onEnd}
                   data-tour="end-submit-button"
-                  className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+                  className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
                 >
                   End & Submit Data
                   <Upload className="size-3.5" strokeWidth={2.5} />
@@ -1975,7 +1975,7 @@ function ExpandedSessionBox({
             {isIdle && (
               <button
                 onClick={onStartNew}
-                className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-green-500 hover:bg-green-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+                className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
               >
                 Start New Session
                 <RefreshCw className="size-3.5" strokeWidth={2.5} />
