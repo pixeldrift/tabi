@@ -232,7 +232,7 @@ export function FrequencyCard({
           onAdd={(delta) => commit(count + delta)}
           onOpenChange={setEditing}
         >
-          {({ open }) => (
+          {({ isEditing, open }) => (
             <button
               type="button"
               onClick={(e) => {
@@ -244,7 +244,11 @@ export function FrequencyCard({
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
               <NumberPadIcon
-                className={cn("text-muted-foreground/40", large ? "size-3.5" : "size-3")}
+                className={cn(
+                  "transition-colors",
+                  isEditing ? "text-muted-foreground/40" : "text-blue-400",
+                  large ? "size-3.5" : "size-3",
+                )}
                 aria-hidden
               />
               <AnimatePresence mode="popLayout" initial={false}>
@@ -333,10 +337,9 @@ export function FrequencyCard({
                     open();
                   }}
                   disabled={!canRecordData}
-                  className="inline-flex items-center gap-0.5 cursor-text disabled:cursor-not-allowed"
+                  className="cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current count is ${count}. Tap to edit.`}
                 >
-                  <NumberPadIcon className="size-2.5 text-muted-foreground/40" aria-hidden />
                   <ListActionSlide actionKey={bumpKey} direction={dir}>
                     <ListActionBadge value={count} weight="bold" />
                   </ListActionSlide>
@@ -448,11 +451,11 @@ export function FrequencyCard({
               className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
-              <div className="flex items-center gap-1">
+              <div className="relative">
                 <NumberPadIcon
                   className={cn(
-                    "size-3.5 transition-colors",
-                    isEditing ? "text-blue-400" : "text-muted-foreground/40",
+                    "pointer-events-none absolute -left-2 top-1/2 -translate-y-1/2 size-3 transition-opacity",
+                    isEditing ? "opacity-0" : "text-blue-400 opacity-100",
                   )}
                   aria-hidden
                 />
