@@ -1120,11 +1120,9 @@ export function TrialCard({
                     "absolute inset-y-0 left-0",
                     isComplete
                       ? "bg-green-500/25"
-                      : progress < 33
-                        ? "bg-red-400/25"
-                        : progress >= 50
-                          ? "bg-yellow-400/30"
-                          : "bg-blue-400/25",
+                      : progress >= 50
+                        ? "bg-yellow-400/30"
+                        : "bg-red-400/25",
                   )}
                   animate={{ width: `${progress}%` }}
                   transition={{ type: "spring", stiffness: 180, damping: 26 }}

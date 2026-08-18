@@ -300,11 +300,12 @@ export function RateCard({
             </div>
           }
         >
-          {/* Number, then a "/Min" unit label — reads as "count per unit
-              time" (a rate), not just a bare count. The label pulses while
-              an instance is actually ticking, the same running cue the old
-              stopwatch icon gave. */}
-          <div className="inline-flex items-center gap-1">
+          {/* Number stays the one thing this row is actually centered on —
+              the tap-to-edit hint and the stopwatch unit icon both hang off
+              it via absolute positioning (same technique as the full-card
+              view's own version of this) rather than sitting in normal flex
+              flow, so neither one's width shifts the number off-center. */}
+          <div className="relative inline-flex items-center">
             <NumberKeypad
               value={count}
               onReplace={(v) => commit(v)}
@@ -319,14 +320,15 @@ export function RateCard({
                     open();
                   }}
                   disabled={!canRecordData}
-                  className="inline-flex items-center gap-1 cursor-text disabled:cursor-not-allowed"
+                  className="relative cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current tally is ${count}. Tap to edit.`}
                 >
                   <NumberPadIcon
                     className={cn(
-                      "transition-colors",
+                      "pointer-events-none absolute top-1/2 -translate-y-1/2 transition-colors",
+                      large ? "-left-4" : "-left-3.5",
                       isEditing ? "text-muted-foreground/40" : "text-blue-400",
-                      large ? "size-3.5" : "size-3",
+                      large ? "size-3" : "size-2.5",
                     )}
                     aria-hidden
                   />
@@ -350,15 +352,15 @@ export function RateCard({
                 </button>
               )}
             </NumberKeypad>
-            <span
+            <RateIcon
               className={cn(
-                "font-display text-foreground/30",
+                "pointer-events-none absolute top-1/2 -translate-y-1/2 text-blue-500",
+                large ? "-right-4" : "-right-3.5",
                 ticking && "animate-pulse-scale",
-                large ? "text-[10px]" : "text-[8px]",
+                large ? "size-3.5" : "size-3",
               )}
-            >
-              /min
-            </span>
+              aria-hidden
+            />
           </div>
         </MiniTileShell>
       </div>

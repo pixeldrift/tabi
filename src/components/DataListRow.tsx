@@ -71,13 +71,7 @@ export function DataListRow({
   const showActions = actions && !reorderEditing;
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
-  const barColor = isComplete
-    ? "bg-green-500"
-    : pct < 33
-      ? "bg-red-400"
-      : pct >= 50
-        ? "bg-yellow-400/30"
-        : "bg-blue-400";
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400/30" : "bg-red-400";
 
   return (
     <article
@@ -150,13 +144,20 @@ export function DataListRow({
           )}
         </div>
 
-        {/* Floated (not part of the header's flex flow) so it stays pinned to
-          this same vertically-centered right edge regardless of whether the
-          title above it wraps to one line or two — centered against the
-          row's full height (not the header alone) so it reads as equal top
-          and bottom margins within the box either way. */}
+        {/* Floated (not part of the header's flex flow) so it stays put at
+          the row's right edge regardless of whether the title above it
+          wraps to one line or two. top-[17px] (not top-1/2) is a fixed
+          anchor matched to the data-type icon's own vertical center — the
+          icon sits at a constant offset from the row's top regardless of
+          wrapping (items-start, never re-centers), so anchoring here the
+          same way keeps the actions cluster exactly where a one-line row
+          would put it instead of sliding down to stay centered in a now-
+          taller two-line row. Only the row's bottom edge should move when
+          the title wraps; -translate-y-1/2 still self-centers against
+          whichever kind's own actions height (a 28px button row vs. a
+          20px star row) around that fixed point. */}
         {showActions && (
-          <div className="absolute z-10 top-1/2 -translate-y-1/2 right-0.5">{actions}</div>
+          <div className="absolute z-10 top-[17px] -translate-y-1/2 right-0.5">{actions}</div>
         )}
 
         {/* A background wash tucked under the title only — stops well short
