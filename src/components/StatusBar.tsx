@@ -134,12 +134,19 @@ const ACTIONS_HEIGHT_MS = 250 * SESSION_TRANSITION_SPEED;
 // place. `ENTER_SCALE` is the reverse direction's counterpart: pausing
 // (the box expanding back out) gets its own entrance instead of just
 // being static content the growing box happens to reveal, scaling up
-// from slightly smaller over PILL_TRAVEL_MS — the same window the pill
-// itself is traveling back into the big slot — so the two read as one
-// coordinated motion instead of the buttons/info snapping to their final
-// state well before the timer has caught up.
+// from slightly smaller.
 const ACTIONS_DIM_MS = 450 * SESSION_TRANSITION_SPEED;
 const ACTIONS_DIM_SCALE = 0.94;
+// The label/context line and the actions row both stay hidden at
+// ENTER_SCALE/opacity 0 for the whole time the pill is still catching up
+// (see `awaitingPillLanding`, StatusBar's own comment) rather than fading
+// in the instant the box starts expanding — the buttons appearing well
+// before the timer pill has actually landed next to them was the biggest
+// remaining hiccup in the pause sequence. Once the pill lands, this is how
+// long the reveal itself takes — a plain, snappy pop-in, not tied to
+// PILL_TRAVEL_MS anymore, since there's no longer a moving target to keep
+// pace with by the time this starts.
+const ACTIONS_REVEAL_MS = 300 * SESSION_TRANSITION_SPEED;
 const ENTER_SCALE = 0.94;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
@@ -438,6 +445,25 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
+  // True once the box's own collapse (the height/opacity tween just below,
+  // in the boxCollapsed-true branch) has actually finished — not just
+  // started. Reset back to false the instant the box starts opening again.
+  // The travel overlay's own closing effect (see `visualTravelActive`)
+  // needs this real completion, not the bare `boxCollapsed` boolean: that
+  // flips true the moment the collapse is merely SCHEDULED to start, which
+  // is also roughly when the pill's own travel window ends — using it
+  // directly would hand off to the real destination pill element well
+  // before the box has visually finished shrinking to make room for it.
+  const [boxCollapseSettled, setBoxCollapseSettled] = useState(false);
+  const prevBoxCollapsedForSettleRef = useRef(boxCollapsed);
+  if (boxCollapsed !== prevBoxCollapsedForSettleRef.current) {
+    prevBoxCollapsedForSettleRef.current = boxCollapsed;
+    if (!boxCollapsed) setBoxCollapseSettled(false);
+  }
+  const handleBoxCollapseAnimationComplete = useCallback(() => {
+    if (boxCollapsed) setBoxCollapseSettled(true);
+  }, [boxCollapsed]);
+
   // Bumped once every time the box transitions from collapsed back to
   // expanded (pausing — the only route back into the big box that skips
   // `dimmed` entirely, since it's a plain, unstaged action) — keys the
@@ -455,6 +481,33 @@ export function StatusBar({
     prevBoxCollapsedForEntranceRef.current = boxCollapsed;
     if (!boxCollapsed) setExpandGen((g) => g + 1);
   }
+
+  // True from the moment the box re-opens (pause) until the timer pill has
+  // actually finished traveling into it — ExpandedSessionBox's label/
+  // actions-row entrance below stays hidden this whole time instead of
+  // fading in the instant the box starts expanding, which previously had
+  // the End & Submit/Unlock Review Mode/End & Discard buttons fully visible
+  // well before the pill had caught up next to them. Same "adjust during
+  // render" pattern as `expandGen` above for the open edge (so the very
+  // commit that unhides the box also starts it hidden), plus an effect for
+  // the close edge (pillTraveling only flips once travel starts, which
+  // itself now waits out the box's own expand — see SessionContext's
+  // `pausing` branch — so this can't just be read off boxCollapsed alone).
+  // Guarded on `status === "paused"` when clearing so an unrelated pill
+  // trip (e.g. immediately resuming again before this one even landed)
+  // can't clear it out from under a still-genuinely-waiting pause.
+  const [awaitingPillLanding, setAwaitingPillLanding] = useState(false);
+  const prevBoxCollapsedForPillWaitRef = useRef(boxCollapsed);
+  if (boxCollapsed !== prevBoxCollapsedForPillWaitRef.current) {
+    prevBoxCollapsedForPillWaitRef.current = boxCollapsed;
+    if (!boxCollapsed) setAwaitingPillLanding(true);
+  }
+  const prevPillTravelingForWaitRef = useRef(pillTraveling);
+  useEffect(() => {
+    if (pillTraveling === prevPillTravelingForWaitRef.current) return;
+    prevPillTravelingForWaitRef.current = pillTraveling;
+    if (!pillTraveling && status === "paused") setAwaitingPillLanding(false);
+  }, [pillTraveling, status]);
 
   // The big pill's own inline button is 3 different actions depending on
   // why the pill is even showing (see ExpandedSessionBox's own isPaused/
@@ -510,21 +563,22 @@ export function StatusBar({
   const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
   const pillTravelFromRef = useRef<DOMRect | null>(null);
   const prevPillTravelingRef = useRef(pillTraveling);
+  // Set alongside `pillTravelRect` below whenever this travel's `to` rect
+  // was predicted against a box collapse that hasn't actually happened yet
+  // (see that effect's own comment) — read by the closing effect further
+  // down to know whether it can hand off the instant travel ends, or needs
+  // to hold the overlay in place until the box genuinely catches up.
+  const pillTravelAwaitingCollapseRef = useRef(false);
 
-  // Reacts to the shared travel window opening/closing. On open: capture
-  // the outgoing element's rect fresh (before `pillView` flips and the DOM
-  // changes under it), then flip the view. On close: drop the captured
-  // rect so a future travel starts clean — the overlay below unmounts on
-  // its own once `visualTravelActive` goes false, AnimatePresence playing
-  // its own `exit` fade.
+  // Reacts to the shared travel window OPENING: capture the outgoing
+  // element's rect fresh (before `pillView` flips and the DOM changes under
+  // it), then flip the view. Closing is handled by a separate effect below
+  // — it isn't simply "the instant pillTraveling ends" (see that effect's
+  // own comment), so it can't share this one's [pillTraveling] dependency.
   useLayoutEffect(() => {
     if (pillTraveling === prevPillTravelingRef.current) return;
     prevPillTravelingRef.current = pillTraveling;
-    if (!pillTraveling) {
-      setVisualTravelActive(false);
-      setPillTravelRect(null);
-      return;
-    }
+    if (!pillTraveling) return;
     // Reads the OLD `pillView` (this render's, before the setPillView below
     // updates it) rather than deriving "which pill was showing" from
     // isRunning/isMineAndRunning — joining a not-mine running session
@@ -540,6 +594,25 @@ export function StatusBar({
     setVisualTravelActive(true);
     setPillView(isMineAndRunning ? "mini" : "big");
   }, [pillTraveling, isMineAndRunning, pillView]);
+
+  // Closes the travel overlay out — normally the instant `pillTraveling`
+  // ends, EXCEPT when this travel's `to` rect was predicted against a box
+  // collapse that hasn't actually finished yet (landing in "mini" ahead of
+  // the box closing around it — see the prediction effect below and
+  // `boxCollapseSettled`'s own comment). Handing off to the real
+  // destination pill element before the box has genuinely finished
+  // shrinking would reveal it sitting at its still-uncollapsed (lower)
+  // position — a second, seemingly independent copy — which then visibly
+  // jumps up once the box's own collapse actually catches up moments
+  // later. Waiting here instead means the overlay (already motionless at
+  // the correct predicted spot) simply stays put until that's genuinely
+  // true, so the handoff is invisible.
+  useEffect(() => {
+    if (pillTraveling || !visualTravelActive) return;
+    if (pillTravelAwaitingCollapseRef.current && !boxCollapseSettled) return;
+    setVisualTravelActive(false);
+    setPillTravelRect(null);
+  }, [pillTraveling, visualTravelActive, boxCollapseSettled]);
 
   // Once the destination element exists in the DOM (still invisible),
   // measure its natural resting rect and let the overlay start traveling
@@ -565,6 +638,11 @@ export function StatusBar({
     const to = willCollapseAfterLanding
       ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
       : rawTo;
+    // Read by the closing effect above — this travel's real destination
+    // element won't actually BE at `to` until the box has genuinely
+    // finished collapsing, so the handoff has to wait for that too, not
+    // just for this travel's own PILL_TRAVEL_MS to run out.
+    pillTravelAwaitingCollapseRef.current = willCollapseAfterLanding;
     setPillTravelRect({ from: fromRect, to });
   }, [visualTravelActive, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
 
@@ -695,6 +773,7 @@ export function StatusBar({
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
                   opacity: boxCollapsed ? 0 : 1,
                 }}
+                onAnimationComplete={handleBoxCollapseAnimationComplete}
                 transition={
                   boxCollapsed
                     ? {
@@ -702,7 +781,11 @@ export function StatusBar({
                         // point the pill has already landed in the mini slot and
                         // the box's own content has long since faded (stage 1's
                         // `dimmed`), so there's nothing left to see except the
-                        // space closing up.
+                        // space closing up. The travel overlay itself still holds
+                        // its position at the pill's predicted final rect through
+                        // this whole animation (see `boxCollapseSettled` above) —
+                        // this is genuinely just the box's own remaining chrome
+                        // closing up around a pill that already isn't moving.
                         height: { duration: BOX_COLLAPSE_MS / 1000, ease: SESSION_MORPH_EASE },
                         opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
                       }
@@ -754,6 +837,7 @@ export function StatusBar({
                     pillRef={bigPillRef}
                     dimmed={dimmed}
                     expandGen={expandGen}
+                    awaitingPillLanding={awaitingPillLanding}
                     transitionKind={dimmed ? transitionKind : null}
                     onPlay={requestPlay}
                     onStartNew={requestStartNew}
@@ -1620,6 +1704,7 @@ function ExpandedSessionBox({
   pillRef,
   dimmed = false,
   expandGen = 0,
+  awaitingPillLanding = false,
   transitionKind = null,
   onPlay,
   onStartNew,
@@ -1653,6 +1738,12 @@ function ExpandedSessionBox({
    *  rather than that content just sitting statically in place as the
    *  growing box happens to reveal it. */
   expandGen?: number;
+  /** True while the box has re-opened (pause) but the timer pill hasn't
+   *  finished traveling into it yet — see StatusBar's own comment. Keeps
+   *  this content hidden past `expandGen`'s own remount so the buttons
+   *  don't appear before the pill they're arranged around actually gets
+   *  there. */
+  awaitingPillLanding?: boolean;
   /** Which staged transition is actively dimming the box right now (null
    *  once it's settled or if `dimmed` is false) — drives the in-progress
    *  helper message that crossfades in over the label below, see its own
@@ -1764,9 +1855,11 @@ function ExpandedSessionBox({
           </motion.span>
           <motion.span
             key={expandGen}
-            animate={{ opacity: dimmed ? 0 : 1 }}
+            animate={{ opacity: dimmed || awaitingPillLanding ? 0 : 1 }}
             initial={expandGen === 0 ? false : { opacity: 0 }}
-            transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
+            transition={{
+              duration: dimmed || awaitingPillLanding ? 0.2 : ACTIONS_REVEAL_MS / 1000,
+            }}
             className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
           >
             {label}
@@ -1775,9 +1868,9 @@ function ExpandedSessionBox({
 
         <motion.div
           key={expandGen}
-          animate={{ opacity: dimmed ? 0 : 1 }}
+          animate={{ opacity: dimmed || awaitingPillLanding ? 0 : 1 }}
           initial={expandGen === 0 ? false : { opacity: 0 }}
-          transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
+          transition={{ duration: dimmed || awaitingPillLanding ? 0.2 : ACTIONS_REVEAL_MS / 1000 }}
           className="flex items-center gap-1 leading-tight"
         >
           {contextTime && (
@@ -1919,20 +2012,34 @@ function ExpandedSessionBox({
               motion.div above — Motion's onAnimationComplete fires once ALL
               of an element's own animated properties finish, and this pair
               deliberately runs on a slower, direction-dependent clock
-              (ACTIONS_DIM_MS fading out, PILL_TRAVEL_MS entering) than the
-              snappier ACTIONS_HEIGHT_MS the outer div's height — and by
+              (ACTIONS_DIM_MS fading out, ACTIONS_REVEAL_MS entering) than
+              the snappier ACTIONS_HEIGHT_MS the outer div's height — and by
               extension onActionsHeightSettled, and by extension
               boxNaturalHeight's own correction — needs to keep running on.
               `key={expandGen}` forces a fresh initial->animate replay on
               every entrance (mount doesn't otherwise change, since this row
               never unmounts) — `initial={false}` on the very first render
               only, matching every other dimmed-driven fade in this file
-              that intentionally skips an entrance flash on first paint. */}
+              that intentionally skips an entrance flash on first paint.
+              `awaitingPillLanding` holds this at its hidden/shrunk initial
+              values past that remount, for as long as the pill is still
+              traveling — see StatusBar's own comment on why these buttons
+              shouldn't appear before the pill they're arranged around does. */}
           <motion.div
             key={expandGen}
-            animate={{ opacity: dimmed ? 0 : 1, scale: dimmed ? ACTIONS_DIM_SCALE : 1 }}
+            animate={{
+              opacity: dimmed || awaitingPillLanding ? 0 : 1,
+              scale: dimmed ? ACTIONS_DIM_SCALE : awaitingPillLanding ? ENTER_SCALE : 1,
+            }}
             initial={expandGen === 0 ? false : { opacity: 0, scale: ENTER_SCALE }}
-            transition={{ duration: dimmed ? ACTIONS_DIM_MS / 1000 : PILL_TRAVEL_MS / 1000, ease }}
+            transition={{
+              duration: dimmed
+                ? ACTIONS_DIM_MS / 1000
+                : awaitingPillLanding
+                  ? 0.2
+                  : ACTIONS_REVEAL_MS / 1000,
+              ease,
+            }}
             className="flex flex-col gap-1"
           >
             {isPaused && (
