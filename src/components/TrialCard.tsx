@@ -389,6 +389,22 @@ export function TrialCard({
     setCurrentDir(clamped);
   };
 
+  // Shared by both the twirl-down chevron and the title next to it — either
+  // one toggling the same expanded state, the same way.
+  const toggleTrialExpanded = () => {
+    if (!expanded) {
+      playSoundEffect("twirldown");
+    } else {
+      // Collapsing back to standard view — jump to whichever trial still
+      // needs scoring (the expanded list may have just been used to fill in
+      // ones out of order) rather than leaving the stepper wherever it
+      // happened to be pointed before expanding.
+      const firstUnscored = trials.findIndex((t) => t === null);
+      if (firstUnscored !== -1) goTo(firstUnscored);
+    }
+    setExpanded((v) => !v);
+  };
+
   const stepWidth = BUBBLE + GAP;
   const trackOffset = useMemo(
     () => -(current * stepWidth + BUBBLE_CENTER / 2),
@@ -700,17 +716,7 @@ export function TrialCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (!expanded) {
-                playSoundEffect("twirldown");
-              } else {
-                // Collapsing back to standard view — jump to whichever trial
-                // still needs scoring (the expanded list may have just been
-                // used to fill in ones out of order) rather than leaving the
-                // stepper wherever it happened to be pointed before expanding.
-                const firstUnscored = trials.findIndex((t) => t === null);
-                if (firstUnscored !== -1) goTo(firstUnscored);
-              }
-              setExpanded((v) => !v);
+              toggleTrialExpanded();
             }}
             aria-expanded={expanded}
             aria-label={expanded ? "Show standard view" : "Show all trials"}
@@ -724,7 +730,22 @@ export function TrialCard({
               )}
             />
           </button>
-          <h2 className="font-display text-lg leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
+          <h2
+            className="font-display text-lg leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5 cursor-pointer"
+            role="button"
+            tabIndex={0}
+            aria-expanded={expanded}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTrialExpanded();
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              e.stopPropagation();
+              toggleTrialExpanded();
+            }}
+          >
             {renderBreakableTitle(title)}
           </h2>
           {reorderEditing ? (
@@ -1099,9 +1120,11 @@ export function TrialCard({
                     "absolute inset-y-0 left-0",
                     isComplete
                       ? "bg-green-500/25"
-                      : progress >= 50
-                        ? "bg-yellow-400/30"
-                        : "bg-blue-400/25",
+                      : progress < 33
+                        ? "bg-red-400/25"
+                        : progress >= 50
+                          ? "bg-yellow-400/30"
+                          : "bg-blue-400/25",
                   )}
                   animate={{ width: `${progress}%` }}
                   transition={{ type: "spring", stiffness: 180, damping: 26 }}

@@ -191,8 +191,9 @@ export function FrequencyCard({
             )}
           </>
         }
+        actionsFullWidth
         actions={
-          <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={(e) => {
