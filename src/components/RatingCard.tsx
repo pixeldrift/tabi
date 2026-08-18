@@ -264,7 +264,7 @@ export function RatingCard({
           </>
         }
         actions={
-          <ListRatingButton
+          <ListRatingRow
             rating={rating}
             numStars={numStars}
             min={min}
@@ -447,11 +447,75 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
   5: { x: 0, y: 0.5 },
 };
 
-/** The List display mode's single floating action — shows the current
- *  rating (or a bare star while unrated) and opens a plain star-row picker,
- *  the same style as the grid tile's own star row (no level descriptions —
- *  those only appear in Card mode's roomier expanded view). The triangle is
- *  the same "more choices below" cue every other button-with-a-menu uses. */
+/** The List display mode's own star row — every star tappable directly on
+ *  the row itself, no popover. A popover anchored this close to the row's
+ *  right edge (see the now-unused ListRatingButton below) had nowhere good
+ *  to point its own arrow, and reliably needed a mid-open correction to even
+ *  land on screen. Sized down as numStars grows so it still fits inside the
+ *  same fixed actions budget every other list-mode row (Trial's Error/
+ *  Correct, Frequency's Minus/Plus) already shares — plain filled/unfilled
+ *  stars, no per-star numeral (illegible at this size), matching the grid
+ *  tile's own star row rather than Card mode's roomier numbered one. */
+function ListRatingRow({
+  rating,
+  numStars,
+  min,
+  disabled,
+  onPick,
+}: {
+  rating: number;
+  numStars: number;
+  min: number;
+  disabled?: boolean;
+  onPick: (value: number) => void;
+}) {
+  const starSize = numStars <= 3 ? "size-7" : numStars === 4 ? "size-6" : "size-5";
+  const gap = numStars >= 5 ? "gap-0.5" : "gap-1";
+  return (
+    <div className={cn("flex items-center", gap)}>
+      {Array.from({ length: numStars }, (_, i) => {
+        const value = min + i + 1;
+        const filled = rating >= value;
+        return (
+          <motion.button
+            key={value}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(value);
+            }}
+            disabled={disabled}
+            whileTap={{ scale: 0.88 }}
+            animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+            transition={{ duration: 0.3 }}
+            aria-label={`Score ${value}`}
+            aria-pressed={filled}
+            className="shrink-0 disabled:opacity-40"
+          >
+            <Star
+              className={cn(
+                starSize,
+                filled
+                  ? "fill-blue-500 stroke-blue-600"
+                  : "fill-foreground/10 stroke-foreground/25",
+              )}
+              strokeWidth={1.5}
+            />
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The bookmark bar's own compact single floating action — shows the
+ *  current rating (or a bare star while unrated) and opens a plain
+ *  star-row picker, the same style as the grid tile's own star row (no
+ *  level descriptions — those only appear in Card mode's roomier expanded
+ *  view). The triangle is the same "more choices below" cue every other
+ *  button-with-a-menu uses. List mode itself now uses ListRatingRow above
+ *  instead — this is kept only for BookmarkChip.tsx's own tighter width
+ *  budget, where an inline row of stars doesn't fit next to the title. */
 // Also reused as-is by the bookmark bar's own Rating chip (see
 // BookmarkChip.tsx), which is why the collision boundary below is pinned
 // to the document rather than left at Radix's default.
