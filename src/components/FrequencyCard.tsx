@@ -454,8 +454,8 @@ export function FrequencyCard({
               <div className="relative">
                 <NumberPadIcon
                   className={cn(
-                    "pointer-events-none absolute -left-3.5 top-1/2 -translate-y-1/2 size-3 transition-colors",
-                    isEditing ? "text-muted-foreground/40" : "text-blue-400",
+                    "pointer-events-none absolute -left-2 top-1/2 -translate-y-1/2 size-3 transition-opacity",
+                    isEditing ? "opacity-0" : "text-blue-400 opacity-100",
                   )}
                   aria-hidden
                 />

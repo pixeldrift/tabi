@@ -353,10 +353,10 @@ export function RateCard({
               className={cn(
                 "font-display text-foreground/30",
                 ticking && "animate-pulse-scale",
-                large ? "text-xl" : "text-base",
+                large ? "text-[10px]" : "text-[8px]",
               )}
             >
-              /Min
+              /min
             </span>
           </div>
         </MiniTileShell>
@@ -540,8 +540,8 @@ export function RateCard({
                   <div className="relative">
                     <NumberPadIcon
                       className={cn(
-                        "pointer-events-none absolute -left-3.5 top-1/2 -translate-y-1/2 size-3 transition-colors",
-                        isEditing ? "text-muted-foreground/40" : "text-blue-400",
+                        "pointer-events-none absolute -left-2 top-1/2 -translate-y-1/2 size-3 transition-opacity",
+                        isEditing ? "opacity-0" : "text-blue-400 opacity-100",
                       )}
                       aria-hidden
                     />
