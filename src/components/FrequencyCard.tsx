@@ -240,9 +240,13 @@ export function FrequencyCard({
                 open();
               }}
               disabled={!canRecordData}
-              className="cursor-text disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 cursor-text disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
+              <NumberPadIcon
+                className={cn("text-muted-foreground/40", large ? "size-3.5" : "size-3")}
+                aria-hidden
+              />
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={bumpKey}
@@ -329,9 +333,10 @@ export function FrequencyCard({
                     open();
                   }}
                   disabled={!canRecordData}
-                  className="cursor-text disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-0.5 cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current count is ${count}. Tap to edit.`}
                 >
+                  <NumberPadIcon className="size-2.5 text-muted-foreground/40" aria-hidden />
                   <ListActionSlide actionKey={bumpKey} direction={dir}>
                     <ListActionBadge value={count} weight="bold" />
                   </ListActionSlide>
@@ -443,37 +448,39 @@ export function FrequencyCard({
               className="flex flex-col items-center justify-center min-w-[6rem] cursor-text rounded-lg px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label={`Current count is ${count}. Tap to edit.`}
             >
-              <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={bumpKey}
-                    initial={{ y: dir > 0 ? "100%" : "-100%", opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
-                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-                    className={cn(
-                      "block font-display text-4xl leading-none tabular-nums",
-                      isEditing ? "text-blue-600" : "text-foreground",
-                      flash && "text-blue-600",
-                    )}
-                  >
-                    {count}
-                  </motion.span>
-                </AnimatePresence>
-                {isEditing && (
-                  <span
-                    className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80"
-                    aria-hidden
-                  />
-                )}
+              <div className="flex items-center gap-1">
                 <NumberPadIcon
                   className={cn(
-                    "pointer-events-none absolute -right-3.5 -top-1 size-3 transition-colors",
-                    isEditing ? "text-blue-400" : "text-muted-foreground/50",
+                    "size-3.5 transition-colors",
+                    isEditing ? "text-blue-400" : "text-muted-foreground/40",
                   )}
                   aria-hidden
                 />
+                <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={bumpKey}
+                      initial={{ y: dir > 0 ? "100%" : "-100%", opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: dir > 0 ? "-100%" : "100%", opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                      style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                      className={cn(
+                        "block font-display text-4xl leading-none tabular-nums",
+                        isEditing ? "text-blue-600" : "text-foreground",
+                        flash && "text-blue-600",
+                      )}
+                    >
+                      {count}
+                    </motion.span>
+                  </AnimatePresence>
+                  {isEditing && (
+                    <span
+                      className="pointer-events-none absolute inset-0 rounded-lg border-2 border-blue-400/80"
+                      aria-hidden
+                    />
+                  )}
+                </div>
               </div>
               <span
                 className={cn(

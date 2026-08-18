@@ -1,9 +1,7 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(2 2) scale(0.9756)">
-    <circle cx="10.25" cy="10.25" r="9.25" />
-    <line x1="10.55" y1="8.88" x2="10.55" y2="14.36" />
-    <line x1="11.9" y1="14.35" x2="9.19" y2="14.35" />
-    <line x1="10.55" y1="8.88" x2="9.19" y2="8.88" />
-    <line x1="10.05" y1="5.38" x2="10.05" y2="5.38" />
-  </g>
+  <circle cx="12" cy="12" r="9.02" />
+  <line x1="12.29" y1="10.66" x2="12.29" y2="16.01" />
+  <line x1="13.61" y1="16" x2="10.97" y2="16" />
+  <line x1="12.29" y1="10.66" x2="10.97" y2="10.66" />
+  <line x1="11.8" y1="7.25" x2="11.8" y2="7.25" />
 </svg>

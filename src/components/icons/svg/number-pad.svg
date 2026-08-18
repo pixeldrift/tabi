@@ -1,21 +1,13 @@
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-  <g transform="translate(3.86 2) scale(1.0142)">
-    <rect x="1.2" y="1.2" width="13.66" height="17.32" rx="2.27" ry="2.27" />
-    <line x1="5.07" y1="4.78" x2="10.99" y2="4.78" />
-    <g>
-      <line x1="8.03" y1="8.24" x2="8.03" y2="8.24" />
-      <line x1="11.03" y1="8.24" x2="11.03" y2="8.24" />
-      <line x1="5.03" y1="8.24" x2="5.03" y2="8.24" />
-    </g>
-    <g>
-      <line x1="8.03" y1="11.38" x2="8.03" y2="11.38" />
-      <line x1="11.03" y1="11.38" x2="11.03" y2="11.38" />
-      <line x1="5.03" y1="11.38" x2="5.03" y2="11.38" />
-    </g>
-    <g>
-      <line x1="8.03" y1="14.53" x2="8.03" y2="14.53" />
-      <line x1="11.03" y1="14.53" x2="11.03" y2="14.53" />
-      <line x1="5.03" y1="14.53" x2="5.03" y2="14.53" />
-    </g>
-  </g>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5.08" y="3.22" width="13.85" height="17.57" rx="2.3" ry="2.3" />
+  <line x1="9" y1="6.85" x2="15.01" y2="6.85" />
+  <line x1="12" y1="10.36" x2="12" y2="10.36" />
+  <line x1="15.05" y1="10.36" x2="15.05" y2="10.36" />
+  <line x1="8.96" y1="10.36" x2="8.96" y2="10.36" />
+  <line x1="12" y1="13.54" x2="12" y2="13.54" />
+  <line x1="15.05" y1="13.54" x2="15.05" y2="13.54" />
+  <line x1="8.96" y1="13.54" x2="8.96" y2="13.54" />
+  <line x1="12" y1="16.74" x2="12" y2="16.74" />
+  <line x1="15.05" y1="16.74" x2="15.05" y2="16.74" />
+  <line x1="8.96" y1="16.74" x2="8.96" y2="16.74" />
 </svg>
