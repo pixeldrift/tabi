@@ -29,20 +29,28 @@ export function useSlidingArrowOffset(
       const raw = anchorRect.left + anchorRect.width / 2 - contentRect.left;
       setLeft(Math.min(Math.max(raw, margin), contentRect.width - margin));
     };
-    // Radix positions the content across its own layout effects, so wait a
-    // frame before measuring, same as DataToolbar's own filter popover.
-    // A single frame isn't always enough, though — floating-ui sometimes
-    // needs an extra pass to settle (e.g. an initial estimate followed by
-    // a collision-driven correction near a screen edge), and measuring
-    // between those two passes catches a transient position instead of the
-    // final one. Re-measuring for a few more frames converges on whatever
-    // Radix actually settles at, cheaply and boundedly.
-    let frame = 0;
-    let raf = requestAnimationFrame(function tick() {
+    // Radix's own mount animation (zoom-in-95 + slide-in-from-*, see
+    // PopoverContent) visually scales/slides the content into place via a
+    // CSS transform over its own ~150ms — getBoundingClientRect() reports
+    // that still-animating, not-yet-final box, so measuring on every early
+    // frame (the previous approach) chases a moving target and visibly
+    // drags the arrow sideways along with it as the box grows. Left at its
+    // plain CSS `50%` fallback for that stretch instead, the arrow already
+    // tracks the animating box correctly on its own (a CSS percentage is
+    // relative to the box's own current rendered width, transform and all)
+    // — so the only real work is a single authoritative measurement once
+    // the animation has actually settled, not a poll through it.
+    const content = contentRef.current;
+    let settled = false;
+    const finalize = () => {
+      if (settled) return;
+      settled = true;
       update();
-      frame += 1;
-      if (frame < 5) raf = requestAnimationFrame(tick);
-    });
+    };
+    content?.addEventListener("animationend", finalize, { once: true });
+    // Safety net for when the animation is skipped entirely (e.g.
+    // prefers-reduced-motion), so animationend never fires.
+    const timeoutId = window.setTimeout(finalize, 200);
     window.addEventListener("resize", update);
     // See useStickyTop's own comment: iOS Safari's address bar collapsing/
     // expanding resizes the visual viewport without reliably firing
@@ -53,7 +61,8 @@ export function useSlidingArrowOffset(
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
     return () => {
-      cancelAnimationFrame(raf);
+      content?.removeEventListener("animationend", finalize);
+      window.clearTimeout(timeoutId);
       window.removeEventListener("resize", update);
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
