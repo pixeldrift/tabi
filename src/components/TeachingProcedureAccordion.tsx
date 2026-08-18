@@ -13,11 +13,11 @@ import {
   X,
   Plus,
   Minus,
-  Star,
   Video,
   Play,
 } from "lucide-react";
 import { AccordionRow } from "./AccordionRow";
+import { ROUNDED_STAR_PATH } from "./RatingCard";
 import type { CardKind } from "./DataToolbarContext";
 import { cn } from "@/lib/utils";
 
@@ -220,16 +220,8 @@ export function TeachingProcedureAccordion({
               {"scale" in data.measurement ? (
                 data.measurement.scale.map((level) => (
                   <p key={level.value} className="flex gap-1.5">
-                    <span
-                      aria-hidden
-                      className="shrink-0 mt-0.5 grid place-items-center size-4 rounded-full border-[1.5px] border-blue-300 bg-blue-50 text-blue-700"
-                    >
-                      <Star className="size-2.5" strokeWidth={3} />
-                    </span>
-                    <span>
-                      <span className="font-semibold">Score {level.value}: </span>
-                      {level.description}
-                    </span>
+                    <ScaleStarBadge value={level.value} />
+                    <span>{level.description}</span>
                   </p>
                 ))
               ) : (
@@ -314,5 +306,22 @@ export function TeachingProcedureAccordion({
         </>
       )}
     </div>
+  );
+}
+
+// A plain (non-interactive) copy of RatingCard's own star-with-a-number-
+// inside look, for describing what each level of a rating scale means —
+// this is reference text, not a picker, so unlike RatingCard's ascending-
+// size row every level reads at the same fixed size here.
+function ScaleStarBadge({ value }: { value: number }) {
+  return (
+    <span aria-hidden className="relative shrink-0 mt-0.5 size-5 grid place-items-center">
+      <svg viewBox="0 0 24 24" className="absolute inset-0 fill-blue-100 stroke-blue-300">
+        <path d={ROUNDED_STAR_PATH} strokeWidth={1.5} strokeLinejoin="round" />
+      </svg>
+      <span className="relative text-[10px] font-bold text-blue-700 tabular-nums leading-none">
+        {value}
+      </span>
+    </span>
   );
 }
