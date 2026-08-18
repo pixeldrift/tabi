@@ -445,6 +445,25 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
+  // True once the box's own collapse (the height/opacity tween just below,
+  // in the boxCollapsed-true branch) has actually finished — not just
+  // started. Reset back to false the instant the box starts opening again.
+  // The travel overlay's own closing effect (see `visualTravelActive`)
+  // needs this real completion, not the bare `boxCollapsed` boolean: that
+  // flips true the moment the collapse is merely SCHEDULED to start, which
+  // is also roughly when the pill's own travel window ends — using it
+  // directly would hand off to the real destination pill element well
+  // before the box has visually finished shrinking to make room for it.
+  const [boxCollapseSettled, setBoxCollapseSettled] = useState(false);
+  const prevBoxCollapsedForSettleRef = useRef(boxCollapsed);
+  if (boxCollapsed !== prevBoxCollapsedForSettleRef.current) {
+    prevBoxCollapsedForSettleRef.current = boxCollapsed;
+    if (!boxCollapsed) setBoxCollapseSettled(false);
+  }
+  const handleBoxCollapseAnimationComplete = useCallback(() => {
+    if (boxCollapsed) setBoxCollapseSettled(true);
+  }, [boxCollapsed]);
+
   // Bumped once every time the box transitions from collapsed back to
   // expanded (pausing — the only route back into the big box that skips
   // `dimmed` entirely, since it's a plain, unstaged action) — keys the
@@ -544,21 +563,22 @@ export function StatusBar({
   const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
   const pillTravelFromRef = useRef<DOMRect | null>(null);
   const prevPillTravelingRef = useRef(pillTraveling);
+  // Set alongside `pillTravelRect` below whenever this travel's `to` rect
+  // was predicted against a box collapse that hasn't actually happened yet
+  // (see that effect's own comment) — read by the closing effect further
+  // down to know whether it can hand off the instant travel ends, or needs
+  // to hold the overlay in place until the box genuinely catches up.
+  const pillTravelAwaitingCollapseRef = useRef(false);
 
-  // Reacts to the shared travel window opening/closing. On open: capture
-  // the outgoing element's rect fresh (before `pillView` flips and the DOM
-  // changes under it), then flip the view. On close: drop the captured
-  // rect so a future travel starts clean — the overlay below unmounts on
-  // its own once `visualTravelActive` goes false, AnimatePresence playing
-  // its own `exit` fade.
+  // Reacts to the shared travel window OPENING: capture the outgoing
+  // element's rect fresh (before `pillView` flips and the DOM changes under
+  // it), then flip the view. Closing is handled by a separate effect below
+  // — it isn't simply "the instant pillTraveling ends" (see that effect's
+  // own comment), so it can't share this one's [pillTraveling] dependency.
   useLayoutEffect(() => {
     if (pillTraveling === prevPillTravelingRef.current) return;
     prevPillTravelingRef.current = pillTraveling;
-    if (!pillTraveling) {
-      setVisualTravelActive(false);
-      setPillTravelRect(null);
-      return;
-    }
+    if (!pillTraveling) return;
     // Reads the OLD `pillView` (this render's, before the setPillView below
     // updates it) rather than deriving "which pill was showing" from
     // isRunning/isMineAndRunning — joining a not-mine running session
@@ -574,6 +594,25 @@ export function StatusBar({
     setVisualTravelActive(true);
     setPillView(isMineAndRunning ? "mini" : "big");
   }, [pillTraveling, isMineAndRunning, pillView]);
+
+  // Closes the travel overlay out — normally the instant `pillTraveling`
+  // ends, EXCEPT when this travel's `to` rect was predicted against a box
+  // collapse that hasn't actually finished yet (landing in "mini" ahead of
+  // the box closing around it — see the prediction effect below and
+  // `boxCollapseSettled`'s own comment). Handing off to the real
+  // destination pill element before the box has genuinely finished
+  // shrinking would reveal it sitting at its still-uncollapsed (lower)
+  // position — a second, seemingly independent copy — which then visibly
+  // jumps up once the box's own collapse actually catches up moments
+  // later. Waiting here instead means the overlay (already motionless at
+  // the correct predicted spot) simply stays put until that's genuinely
+  // true, so the handoff is invisible.
+  useEffect(() => {
+    if (pillTraveling || !visualTravelActive) return;
+    if (pillTravelAwaitingCollapseRef.current && !boxCollapseSettled) return;
+    setVisualTravelActive(false);
+    setPillTravelRect(null);
+  }, [pillTraveling, visualTravelActive, boxCollapseSettled]);
 
   // Once the destination element exists in the DOM (still invisible),
   // measure its natural resting rect and let the overlay start traveling
@@ -599,6 +638,11 @@ export function StatusBar({
     const to = willCollapseAfterLanding
       ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
       : rawTo;
+    // Read by the closing effect above — this travel's real destination
+    // element won't actually BE at `to` until the box has genuinely
+    // finished collapsing, so the handoff has to wait for that too, not
+    // just for this travel's own PILL_TRAVEL_MS to run out.
+    pillTravelAwaitingCollapseRef.current = willCollapseAfterLanding;
     setPillTravelRect({ from: fromRect, to });
   }, [visualTravelActive, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
 
@@ -729,6 +773,7 @@ export function StatusBar({
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
                   opacity: boxCollapsed ? 0 : 1,
                 }}
+                onAnimationComplete={handleBoxCollapseAnimationComplete}
                 transition={
                   boxCollapsed
                     ? {
@@ -736,7 +781,11 @@ export function StatusBar({
                         // point the pill has already landed in the mini slot and
                         // the box's own content has long since faded (stage 1's
                         // `dimmed`), so there's nothing left to see except the
-                        // space closing up.
+                        // space closing up. The travel overlay itself still holds
+                        // its position at the pill's predicted final rect through
+                        // this whole animation (see `boxCollapseSettled` above) —
+                        // this is genuinely just the box's own remaining chrome
+                        // closing up around a pill that already isn't moving.
                         height: { duration: BOX_COLLAPSE_MS / 1000, ease: SESSION_MORPH_EASE },
                         opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
                       }
