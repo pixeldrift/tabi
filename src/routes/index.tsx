@@ -25,6 +25,7 @@ import {
   PILL_LAND_MS,
   CURRENT_STAFF_ID,
   DATA_BANNER_EXIT_MS,
+  SESSION_TRANSITION_SPEED,
   type TransitionKind,
 } from "@/components/SessionContext";
 import { staffName } from "@/components/StaffDirectory";
@@ -636,9 +637,9 @@ const BUILT_IN_CARDS: CardConfig[] = [
 ];
 
 // Data-submitted animation timing — TODO: surface in user settings.
-const DATA_SUBMIT_STAGGER_MS = 90;
-const DATA_SUBMIT_ENTER_DURATION_MS = 550;
-const DATA_SUBMIT_EXIT_DURATION_MS = 550;
+const DATA_SUBMIT_STAGGER_MS = 90 * SESSION_TRANSITION_SPEED;
+const DATA_SUBMIT_ENTER_DURATION_MS = 550 * SESSION_TRANSITION_SPEED;
+const DATA_SUBMIT_EXIT_DURATION_MS = 550 * SESSION_TRANSITION_SPEED;
 
 // How long into a session before the demo fires its one illustrative
 // "goal changed" notification — long enough that it reads as something
@@ -1507,10 +1508,18 @@ function IndexInner({
     prevStatusRef.current = status;
     const justSubmitted = prev === "paused" && status === "idle" && transitionKind === null;
     if (!justSubmitted) return;
-    const id = window.setTimeout(() => {
-      setCardsAnimKind("submit");
-      setCardsGen((n) => n + 1);
-    }, NOTIFICATION_AREA_TRANSITION.duration * 1000);
+    const id = window.setTimeout(
+      () => {
+        setCardsAnimKind("submit");
+        setCardsGen((n) => n + 1);
+      },
+      // Borrows NOTIFICATION_AREA_TRANSITION's duration (shared with
+      // unrelated notification-area animations, so not itself scaled) but
+      // still needs to keep pace with the rest of the session-transition
+      // sequence, hence the explicit SESSION_TRANSITION_SPEED multiply here
+      // rather than on the shared constant.
+      NOTIFICATION_AREA_TRANSITION.duration * 1000 * SESSION_TRANSITION_SPEED,
+    );
     return () => window.clearTimeout(id);
   }, [status, transitionKind]);
 
@@ -1893,7 +1902,10 @@ function IndexInner({
               >
                 <div
                   className={cn(
-                    "px-3 transition-[opacity,width] duration-300",
+                    // 300ms * SESSION_TRANSITION_SPEED (2) — a plain CSS
+                    // transition class, not a JS constant, so the multiply
+                    // is done by hand here rather than by reference.
+                    "px-3 transition-[opacity,width] duration-[600ms]",
                     !sessionActive && "opacity-50",
                     // Card mode's own cards are dense enough (button labels,
                     // wrapped text) that squeezing them into a narrower column
@@ -2164,8 +2176,8 @@ function renderCard(
 // still most of the way through sliding out (not gone yet) when the new
 // ones start sliding in, so it reads as one continuous relay — "one set
 // leaving as the other enters" — instead of "exit, dead pause, enter."
-const CARD_SLIDE_EXIT_MS = 560;
-const CARD_SLIDE_ENTER_MS = 560;
+const CARD_SLIDE_EXIT_MS = 560 * SESSION_TRANSITION_SPEED;
+const CARD_SLIDE_ENTER_MS = 560 * SESSION_TRANSITION_SPEED;
 
 // Shared by every per-card wrapper's `layout="position"` animation (see
 // DataCardList) — smoothly translates a card to its new spot when siblings

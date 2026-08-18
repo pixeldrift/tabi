@@ -49,6 +49,15 @@ function randomPreviousSessionMs() {
 // considered abandoned — see isAbandoned's own comment.
 export const ABANDONMENT_THRESHOLD_MS = 30 * 60 * 1000;
 
+// Every session start/pause/resume/end timing constant below (and the
+// matching ones StatusBar.tsx and routes/index.tsx define locally for the
+// same choreography) is multiplied by this. 2x, not new hand-picked
+// numbers, so the RELATIVE pacing between constants — which beat is meant
+// to read as quick vs. deliberate — stays intact; only the whole sequence's
+// wall-clock speed changes, slow enough to actually watch each step happen
+// instead of them blurring together at normal-app speed.
+export const SESSION_TRANSITION_SPEED = 2;
+
 // Shared 3-stage session-transition timing (ms) — CARD_EXIT_MS is stage 1's
 // dwell (below), which also drives the header's own dimming (StatusBar).
 // The card list's own slide animation is intentionally SLOWER than this
@@ -57,8 +66,8 @@ export const ABANDONMENT_THRESHOLD_MS = 30 * 60 * 1000;
 // through the old cards' own slide-out, so the two overlap into one
 // continuous relay instead of "exit, dead pause, enter." HEADER_MORPH_MS
 // matches the notification area's own transition elsewhere in the app.
-export const CARD_EXIT_MS = 350;
-export const HEADER_MORPH_MS = 350;
+export const CARD_EXIT_MS = 350 * SESSION_TRANSITION_SPEED;
+export const HEADER_MORPH_MS = 350 * SESSION_TRANSITION_SPEED;
 
 // The session box itself waits for the pill's HEADER_MORPH_MS morph to land
 // in the mini slot before it collapses (see StatusBar's boxCollapsed state),
@@ -67,7 +76,7 @@ export const HEADER_MORPH_MS = 350;
 // kinds that actually collapse the box (not discard) — so `dimmed`/
 // transitionStage don't reset (and card content reappear) before that
 // second beat has actually finished playing out.
-export const BOX_COLLAPSE_MS = 200;
+export const BOX_COLLAPSE_MS = 200 * SESSION_TRANSITION_SPEED;
 
 // The pill's own big<->mini morph (StatusBar's manual FLIP), broken into its
 // three beats: for a fresh start, the odometer visibly rolls down to zero
@@ -80,16 +89,16 @@ export const BOX_COLLAPSE_MS = 200;
 // 3x the plain per-tick digit roll (see OdometerDigits' `slow` prop) so the
 // reset-to-zero spin is actually watchable instead of a quick snap, with a
 // matching hold here so the pill doesn't start traveling mid-spin.
-export const DIGIT_SETTLE_MS = 900;
+export const DIGIT_SETTLE_MS = 900 * SESSION_TRANSITION_SPEED;
 export const PILL_TRAVEL_MS = HEADER_MORPH_MS;
-export const PILL_CROSSFADE_MS = 150;
+export const PILL_CROSSFADE_MS = 150 * SESSION_TRANSITION_SPEED;
 export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;
 
 // Duration for the "Start session to record data" banner's own exit/enter
 // (routes/index.tsx's dataToolbar) — lives here, not there, so any other
 // session-timing logic that needs to reason about the banner's own motion
 // has one shared constant instead of a duplicated guess.
-export const DATA_BANNER_EXIT_MS = 400;
+export const DATA_BANNER_EXIT_MS = 400 * SESSION_TRANSITION_SPEED;
 
 export interface ActiveTimer {
   id: string;

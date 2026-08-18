@@ -44,6 +44,7 @@ import {
   DIGIT_SETTLE_MS,
   PILL_TRAVEL_MS,
   PILL_CROSSFADE_MS,
+  SESSION_TRANSITION_SPEED,
   type SaveStatus,
   type SessionStatus,
   type TransitionKind,
@@ -123,7 +124,7 @@ const PILL_TRAVEL_EASE = [0.22, 1, 0.36, 1] as const;
 // Submit/Discard) animates its height over this long whenever `isPaused`
 // flips — see that component's own comment on why it's a measured pixel
 // number, not "auto".
-const ACTIONS_HEIGHT_MS = 250;
+const ACTIONS_HEIGHT_MS = 250 * SESSION_TRANSITION_SPEED;
 // The box's content fading OUT (starting/joining/resuming — on its way to
 // collapsing into the mini pill) reads as a graceful retreat, not an
 // abrupt cut, at a slower pace than ACTIONS_HEIGHT_MS above (which still
@@ -137,7 +138,7 @@ const ACTIONS_HEIGHT_MS = 250;
 // itself is traveling back into the big slot — so the two read as one
 // coordinated motion instead of the buttons/info snapping to their final
 // state well before the timer has caught up.
-const ACTIONS_DIM_MS = 450;
+const ACTIONS_DIM_MS = 450 * SESSION_TRANSITION_SPEED;
 const ACTIONS_DIM_SCALE = 0.94;
 const ENTER_SCALE = 0.94;
 
