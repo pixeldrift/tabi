@@ -348,14 +348,19 @@ export function RatingCard({
                   disabled={!canRecordData}
                   onClick={() => pick(value)}
                 />
-                <span
+                <button
+                  type="button"
+                  onClick={() => pick(value)}
+                  disabled={!canRecordData}
+                  aria-label={`Score ${value}: ${desc}`}
+                  aria-pressed={filled}
                   className={cn(
-                    "flex-1 text-sm leading-tight",
+                    "flex-1 text-left text-sm leading-tight disabled:pointer-events-none",
                     isTop ? "text-foreground" : "text-foreground/70",
                   )}
                 >
                   {desc}
-                </span>
+                </button>
               </li>
             );
           })}

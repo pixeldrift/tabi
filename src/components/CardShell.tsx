@@ -318,7 +318,33 @@ export function CardShell({
               />
             </button>
           )}
-          <h2 className="font-display text-base leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5">
+          <h2
+            className={cn(
+              "font-display text-base leading-[1.05] flex-1 min-w-0 break-words mr-auto mt-0.5",
+              hasExpandedView && "cursor-pointer",
+            )}
+            role={hasExpandedView ? "button" : undefined}
+            tabIndex={hasExpandedView ? 0 : undefined}
+            aria-expanded={hasExpandedView ? expanded : undefined}
+            onClick={
+              hasExpandedView
+                ? (e) => {
+                    e.stopPropagation();
+                    onToggleExpanded?.();
+                  }
+                : undefined
+            }
+            onKeyDown={
+              hasExpandedView
+                ? (e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggleExpanded?.();
+                  }
+                : undefined
+            }
+          >
             {renderBreakableTitle(title)}
           </h2>
           {reorderEditing ? (
