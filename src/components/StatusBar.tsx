@@ -134,12 +134,19 @@ const ACTIONS_HEIGHT_MS = 250 * SESSION_TRANSITION_SPEED;
 // place. `ENTER_SCALE` is the reverse direction's counterpart: pausing
 // (the box expanding back out) gets its own entrance instead of just
 // being static content the growing box happens to reveal, scaling up
-// from slightly smaller over PILL_TRAVEL_MS — the same window the pill
-// itself is traveling back into the big slot — so the two read as one
-// coordinated motion instead of the buttons/info snapping to their final
-// state well before the timer has caught up.
+// from slightly smaller.
 const ACTIONS_DIM_MS = 450 * SESSION_TRANSITION_SPEED;
 const ACTIONS_DIM_SCALE = 0.94;
+// The label/context line and the actions row both stay hidden at
+// ENTER_SCALE/opacity 0 for the whole time the pill is still catching up
+// (see `awaitingPillLanding`, StatusBar's own comment) rather than fading
+// in the instant the box starts expanding — the buttons appearing well
+// before the timer pill has actually landed next to them was the biggest
+// remaining hiccup in the pause sequence. Once the pill lands, this is how
+// long the reveal itself takes — a plain, snappy pop-in, not tied to
+// PILL_TRAVEL_MS anymore, since there's no longer a moving target to keep
+// pace with by the time this starts.
+const ACTIONS_REVEAL_MS = 300 * SESSION_TRANSITION_SPEED;
 const ENTER_SCALE = 0.94;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
@@ -456,6 +463,33 @@ export function StatusBar({
     if (!boxCollapsed) setExpandGen((g) => g + 1);
   }
 
+  // True from the moment the box re-opens (pause) until the timer pill has
+  // actually finished traveling into it — ExpandedSessionBox's label/
+  // actions-row entrance below stays hidden this whole time instead of
+  // fading in the instant the box starts expanding, which previously had
+  // the End & Submit/Unlock Review Mode/End & Discard buttons fully visible
+  // well before the pill had caught up next to them. Same "adjust during
+  // render" pattern as `expandGen` above for the open edge (so the very
+  // commit that unhides the box also starts it hidden), plus an effect for
+  // the close edge (pillTraveling only flips once travel starts, which
+  // itself now waits out the box's own expand — see SessionContext's
+  // `pausing` branch — so this can't just be read off boxCollapsed alone).
+  // Guarded on `status === "paused"` when clearing so an unrelated pill
+  // trip (e.g. immediately resuming again before this one even landed)
+  // can't clear it out from under a still-genuinely-waiting pause.
+  const [awaitingPillLanding, setAwaitingPillLanding] = useState(false);
+  const prevBoxCollapsedForPillWaitRef = useRef(boxCollapsed);
+  if (boxCollapsed !== prevBoxCollapsedForPillWaitRef.current) {
+    prevBoxCollapsedForPillWaitRef.current = boxCollapsed;
+    if (!boxCollapsed) setAwaitingPillLanding(true);
+  }
+  const prevPillTravelingForWaitRef = useRef(pillTraveling);
+  useEffect(() => {
+    if (pillTraveling === prevPillTravelingForWaitRef.current) return;
+    prevPillTravelingForWaitRef.current = pillTraveling;
+    if (!pillTraveling && status === "paused") setAwaitingPillLanding(false);
+  }, [pillTraveling, status]);
+
   // The big pill's own inline button is 3 different actions depending on
   // why the pill is even showing (see ExpandedSessionBox's own isPaused/
   // isSessionMine-driven icon): resume a genuinely paused session, join
@@ -754,6 +788,7 @@ export function StatusBar({
                     pillRef={bigPillRef}
                     dimmed={dimmed}
                     expandGen={expandGen}
+                    awaitingPillLanding={awaitingPillLanding}
                     transitionKind={dimmed ? transitionKind : null}
                     onPlay={requestPlay}
                     onStartNew={requestStartNew}
@@ -1620,6 +1655,7 @@ function ExpandedSessionBox({
   pillRef,
   dimmed = false,
   expandGen = 0,
+  awaitingPillLanding = false,
   transitionKind = null,
   onPlay,
   onStartNew,
@@ -1653,6 +1689,12 @@ function ExpandedSessionBox({
    *  rather than that content just sitting statically in place as the
    *  growing box happens to reveal it. */
   expandGen?: number;
+  /** True while the box has re-opened (pause) but the timer pill hasn't
+   *  finished traveling into it yet — see StatusBar's own comment. Keeps
+   *  this content hidden past `expandGen`'s own remount so the buttons
+   *  don't appear before the pill they're arranged around actually gets
+   *  there. */
+  awaitingPillLanding?: boolean;
   /** Which staged transition is actively dimming the box right now (null
    *  once it's settled or if `dimmed` is false) — drives the in-progress
    *  helper message that crossfades in over the label below, see its own
@@ -1764,9 +1806,11 @@ function ExpandedSessionBox({
           </motion.span>
           <motion.span
             key={expandGen}
-            animate={{ opacity: dimmed ? 0 : 1 }}
+            animate={{ opacity: dimmed || awaitingPillLanding ? 0 : 1 }}
             initial={expandGen === 0 ? false : { opacity: 0 }}
-            transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
+            transition={{
+              duration: dimmed || awaitingPillLanding ? 0.2 : ACTIONS_REVEAL_MS / 1000,
+            }}
             className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
           >
             {label}
@@ -1775,9 +1819,9 @@ function ExpandedSessionBox({
 
         <motion.div
           key={expandGen}
-          animate={{ opacity: dimmed ? 0 : 1 }}
+          animate={{ opacity: dimmed || awaitingPillLanding ? 0 : 1 }}
           initial={expandGen === 0 ? false : { opacity: 0 }}
-          transition={{ duration: dimmed ? 0.2 : PILL_TRAVEL_MS / 1000 }}
+          transition={{ duration: dimmed || awaitingPillLanding ? 0.2 : ACTIONS_REVEAL_MS / 1000 }}
           className="flex items-center gap-1 leading-tight"
         >
           {contextTime && (
@@ -1919,20 +1963,34 @@ function ExpandedSessionBox({
               motion.div above — Motion's onAnimationComplete fires once ALL
               of an element's own animated properties finish, and this pair
               deliberately runs on a slower, direction-dependent clock
-              (ACTIONS_DIM_MS fading out, PILL_TRAVEL_MS entering) than the
-              snappier ACTIONS_HEIGHT_MS the outer div's height — and by
+              (ACTIONS_DIM_MS fading out, ACTIONS_REVEAL_MS entering) than
+              the snappier ACTIONS_HEIGHT_MS the outer div's height — and by
               extension onActionsHeightSettled, and by extension
               boxNaturalHeight's own correction — needs to keep running on.
               `key={expandGen}` forces a fresh initial->animate replay on
               every entrance (mount doesn't otherwise change, since this row
               never unmounts) — `initial={false}` on the very first render
               only, matching every other dimmed-driven fade in this file
-              that intentionally skips an entrance flash on first paint. */}
+              that intentionally skips an entrance flash on first paint.
+              `awaitingPillLanding` holds this at its hidden/shrunk initial
+              values past that remount, for as long as the pill is still
+              traveling — see StatusBar's own comment on why these buttons
+              shouldn't appear before the pill they're arranged around does. */}
           <motion.div
             key={expandGen}
-            animate={{ opacity: dimmed ? 0 : 1, scale: dimmed ? ACTIONS_DIM_SCALE : 1 }}
+            animate={{
+              opacity: dimmed || awaitingPillLanding ? 0 : 1,
+              scale: dimmed ? ACTIONS_DIM_SCALE : awaitingPillLanding ? ENTER_SCALE : 1,
+            }}
             initial={expandGen === 0 ? false : { opacity: 0, scale: ENTER_SCALE }}
-            transition={{ duration: dimmed ? ACTIONS_DIM_MS / 1000 : PILL_TRAVEL_MS / 1000, ease }}
+            transition={{
+              duration: dimmed
+                ? ACTIONS_DIM_MS / 1000
+                : awaitingPillLanding
+                  ? 0.2
+                  : ACTIONS_REVEAL_MS / 1000,
+              ease,
+            }}
             className="flex flex-col gap-1"
           >
             {isPaused && (
