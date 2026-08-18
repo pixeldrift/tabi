@@ -115,7 +115,7 @@ export function DataListRow({
             // progress bar below, which is deliberately an absolutely
             // positioned background wash now (not a layout sibling the row
             // grows to fit) — see that div's own comment.
-            "relative z-10 flex items-start gap-1.5 pl-2 py-2",
+            "relative z-10 flex items-start gap-1 pl-2 py-2",
             reorderEditing ? "pr-3" : showActions ? "pr-32" : "pr-9",
           )}
         >
@@ -171,11 +171,11 @@ export function DataListRow({
         {showProgress && (
           <div
             className={cn(
-              // left-[30px]: lines up with the title's own left edge (pl-2's
-              // 8px + the data-type icon's 16px + the gap-1.5 between them),
+              // left-[28px]: lines up with the title's own left edge (pl-2's
+              // 8px + the data-type icon's 16px + the gap-1 between them),
               // not the icon's — the bar reads as belonging to the title, not
               // as a random line starting under an unrelated icon.
-              "absolute left-[30px] bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
+              "absolute left-[28px] bottom-1 z-0 h-0.5 rounded-full overflow-hidden bg-stone-200/80",
               showActions ? "right-32" : "right-9",
             )}
           >

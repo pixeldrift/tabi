@@ -451,11 +451,14 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
  *  the row itself, no popover. A popover anchored this close to the row's
  *  right edge (see the now-unused ListRatingButton below) had nowhere good
  *  to point its own arrow, and reliably needed a mid-open correction to even
- *  land on screen. Sized down as numStars grows so it still fits inside the
- *  same fixed actions budget every other list-mode row (Trial's Error/
- *  Correct, Frequency's Minus/Plus) already shares — plain filled/unfilled
- *  stars, no per-star numeral (illegible at this size), matching the grid
- *  tile's own star row rather than Card mode's roomier numbered one. */
+ *  land on screen. Fixed size regardless of numStars (still comfortably
+ *  inside the same fixed actions budget every other list-mode row shares —
+ *  Trial's Error/Correct, Frequency's Minus/Plus) plus its own extra right
+ *  margin, since it otherwise reads as pinned right up against the row's
+ *  rounded edge in a way those other kinds' smaller clusters don't. Plain
+ *  filled/unfilled stars, no per-star numeral (illegible at this size),
+ *  matching the grid tile's own star row rather than Card mode's roomier
+ *  numbered one. */
 function ListRatingRow({
   rating,
   numStars,
@@ -469,10 +472,13 @@ function ListRatingRow({
   disabled?: boolean;
   onPick: (value: number) => void;
 }) {
-  const starSize = numStars <= 3 ? "size-7" : numStars === 4 ? "size-6" : "size-5";
-  const gap = numStars >= 5 ? "gap-0.5" : "gap-1";
+  // One fixed size regardless of numStars — a 3-star and a 5-star card
+  // sitting in the same list previously read as two different UI scales
+  // rather than the same control at two lengths. Sized off the 5-star
+  // case (the tightest fit), so it's never the constraint even for a
+  // hypothetical 6+ star goal.
   return (
-    <div className={cn("flex items-center", gap)}>
+    <div className="flex items-center gap-1 mr-1.5">
       {Array.from({ length: numStars }, (_, i) => {
         const value = min + i + 1;
         const filled = rating >= value;
@@ -494,7 +500,7 @@ function ListRatingRow({
           >
             <Star
               className={cn(
-                starSize,
+                "size-5",
                 filled
                   ? "fill-blue-500 stroke-blue-600"
                   : "fill-foreground/10 stroke-foreground/25",
