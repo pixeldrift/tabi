@@ -20,6 +20,14 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
    *  as a separate slot (rather than just trailing content) so its gap is
    *  consistent across card kinds. */
   actions?: ReactNode;
+  /** Stretches the actions row to the tile's full content width instead of
+   *  shrink-wrapping it centered — for a kind whose own actions markup
+   *  pushes its buttons to opposite ends (`justify-between`) rather than
+   *  clustering them together, e.g. Frequency/Rate's Minus/Plus pair, kept
+   *  visibly apart so an accidental tap can't land on the wrong one. Kinds
+   *  whose actions read as one grouped control (Trial's Error/Correct,
+   *  Task Analysis's row) leave this unset and keep the centered default. */
+  actionsFullWidth?: boolean;
   /** 0–100 progress — a thin, color-coded bar flush to the tile's bottom
    *  edge, no label (unlike CardShell's own progress bar, which has room
    *  for helper text). Omit for kinds where a running percentage isn't
@@ -63,6 +71,7 @@ export function MiniTileShell({
   stickyTop = 0,
   children,
   actions,
+  actionsFullWidth = false,
   progress,
   isComplete = false,
   onPrevCard,
@@ -215,8 +224,12 @@ export function MiniTileShell({
           {actions && (
             // self-center (rather than the flex-col parent's default stretch)
             // so this wrapper shrinks to the actions row's own natural width
-            // instead of stretching to the full column width.
-            <div className="shrink-0 self-center">{actions}</div>
+            // instead of stretching to the full column width — unless the
+            // actions row itself wants that full width to spread its own
+            // buttons apart (see actionsFullWidth).
+            <div className={cn("shrink-0", actionsFullWidth ? "self-stretch" : "self-center")}>
+              {actions}
+            </div>
           )}
         </div>
 
