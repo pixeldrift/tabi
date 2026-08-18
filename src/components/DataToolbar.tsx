@@ -475,7 +475,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
               // that, regardless of the viewport meta tag's own scale limits
               // in current iOS versions. Desktop/tablet (sm+) doesn't have
               // that behavior, so it reverts to the toolbar's own compact size.
-              className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+              className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
             />
             {searchQuery && (
               <button
