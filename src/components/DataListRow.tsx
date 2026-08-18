@@ -71,13 +71,7 @@ export function DataListRow({
   const showActions = actions && !reorderEditing;
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
-  const barColor = isComplete
-    ? "bg-green-500"
-    : pct < 33
-      ? "bg-red-400"
-      : pct >= 50
-        ? "bg-yellow-400/30"
-        : "bg-blue-400";
+  const barColor = isComplete ? "bg-green-500" : pct >= 50 ? "bg-yellow-400/30" : "bg-red-400";
 
   return (
     <article
