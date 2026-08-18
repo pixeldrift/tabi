@@ -831,7 +831,7 @@ export function DataDetailsDrawer({
           }}
           aria-label="Open details drawer"
           aria-expanded={false}
-          className="absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg border border-border/70 border-r-0 bg-background text-stone-500 hover:text-stone-800 transition-colors touch-none"
+          className="absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg border-2 border-green-500/80 border-r-0 bg-background text-stone-500 hover:text-stone-800 transition-colors touch-none"
           style={{ height: toolbarRowHeight }}
         >
           {/* Only one direction does anything from here (drag/tap left to
