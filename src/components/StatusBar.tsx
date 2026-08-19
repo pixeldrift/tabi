@@ -658,15 +658,17 @@ export function StatusBar({
   // height, so the target is already correct from the first frame of
   // travel instead of needing to be predicted and re-predicted as the
   // box's own natural height settles on its own separate schedule. Landing
-  // in "big" (pausing) just measures the big pill's own rect directly, even
-  // though that travel now starts the instant the box begins re-expanding
-  // (see SessionContext's `pillTraveling` effect) rather than waiting for it
-  // to finish: the big pill is a DESCENDANT of the box, unlike the mini
-  // pill's sibling relationship to it, so the box's own `overflow-hidden`
-  // clip during its height tween only affects paint, never layout —
-  // `bigPillRef`'s `getBoundingClientRect()` already reflects its real,
-  // fully-expanded final position from the first frame, with nothing to
-  // anchor around.
+  // in "big" (pausing) just measures the big pill's own rect directly — the
+  // big pill is a DESCENDANT of the box, unlike the mini pill's sibling
+  // relationship to it, so the box's own `overflow-hidden` clip during its
+  // height tween only affects paint, never layout: `bigPillRef`'s
+  // `getBoundingClientRect()` already reflects its real, fully-expanded
+  // final position from the very first frame, regardless of how far the
+  // box's own height tween has actually gotten — there's nothing to anchor
+  // around POSITION-wise. (SessionContext's `pillTraveling` effect still
+  // waits out the box's own expand before this travel starts at all, but
+  // that's for a different reason — the tab bar/content pane below, not
+  // this rect's own accuracy — see that effect's own comment.)
   useLayoutEffect(() => {
     if (!visualTravelActive) return;
     const fromRect = pillTravelFromRef.current;
