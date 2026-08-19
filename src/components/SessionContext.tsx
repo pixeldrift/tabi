@@ -484,13 +484,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // up" with the mini-session slot's "push nav down" (which read as a
         // bounce). This dwell has to stay in step with that or `dimmed`
         // resets — and stage-2 content reappears — before the box has
-        // actually finished closing.
+        // actually finished closing. Resume no longer runs through here at
+        // all (see requestResume's own comment) — start-new and discard are
+        // the only two kinds this function is ever actually called with now.
         const dwellMs =
-          kind === "discard"
-            ? 0
-            : kind === "start-new"
-              ? DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS
-              : HEADER_MORPH_MS + BOX_COLLAPSE_MS;
+          kind === "discard" ? 0 : DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS;
         const t2 = window.setTimeout(() => {
           setTransitionStage(0);
           setTransitionKind(null);
@@ -507,10 +505,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => runStagedTransition("start-new", startFresh),
     [runStagedTransition, startFresh],
   );
-  const requestResume = useCallback(
-    () => runStagedTransition("resume", resume),
-    [runStagedTransition, resume],
-  );
+  // Unstaged, unlike start-new/discard above — same reasoning as `pause`
+  // itself: the box's own collapse, the pill's travel, and the label/
+  // actions row's own fade-out now all read as one smooth motion (the
+  // pill lands at a fixed anchor independent of the box's own current
+  // height — see StatusBar's own pill-travel comment — so there's no
+  // longer a "let the pill land, then close the box around it" ordering
+  // to protect by staging this). `requestResume` is kept as its own name
+  // (rather than exposing `resume` directly) so call sites don't need to
+  // know this used to be staged and could be again.
+  const requestResume = resume;
   const requestDiscard = useCallback(
     () => runStagedTransition("discard", clearAndDiscard),
     [runStagedTransition, clearAndDiscard],
@@ -546,14 +550,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const collapsed = isMineAndRunning || (transitionStage === 2 && transitionKind !== "discard");
 
   // Delays `collapsed`'s effect on the box's own real CSS height into a
-  // separate beat ("clock moves, then box closes" — see StatusBar's own
-  // render for the actual `animate={{height}}`) — a fresh start gets an
-  // extra DIGIT_SETTLE_MS head start so the odometer's reset-to-zero spin
-  // is visibly readable before anything starts shrinking. `collapseKindRef`
-  // captures `transitionKind` at the moment collapse begins (not read
-  // directly from `transitionKind` in the timeout below) so a later reset
-  // of `transitionKind` can't retroactively change an already-scheduled
-  // delay.
+  // separate beat for a fresh start ONLY — "clock moves, then box closes"
+  // (see StatusBar's own render for the actual `animate={{height}}`) — a
+  // fresh start gets an extra DIGIT_SETTLE_MS + HEADER_MORPH_MS head start
+  // so the odometer's reset-to-zero spin is visibly readable before
+  // anything starts shrinking, and the pill's own travel has time to
+  // finish before the box closes in around it. Resume and join don't get
+  // that delay — their pill lands at a fixed anchor independent of the
+  // box's own current height (see StatusBar's own pill-travel comment), so
+  // there's no longer a "let the pill land first" ordering to protect:
+  // the box's own collapse, the pill's travel, and the label/actions row's
+  // own fade-out all start on the same instant and read as one motion.
+  // `collapseKindRef` captures `transitionKind` at the moment collapse
+  // begins (not read directly from `transitionKind` in the timeout below)
+  // so a later reset of `transitionKind` can't retroactively change an
+  // already-scheduled delay.
   const collapseKindRef = useRef<TransitionKind>(null);
   const prevCollapsedRef = useRef(collapsed);
   if (collapsed !== prevCollapsedRef.current) {
@@ -562,15 +573,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
   const [boxCollapsed, setBoxCollapsed] = useState(collapsed);
   useEffect(() => {
-    if (collapsed) {
-      const delay =
-        collapseKindRef.current === "start-new"
-          ? DIGIT_SETTLE_MS + HEADER_MORPH_MS
-          : HEADER_MORPH_MS;
-      const id = window.setTimeout(() => setBoxCollapsed(true), delay);
+    if (!collapsed) {
+      setBoxCollapsed(false);
+      return;
+    }
+    if (collapseKindRef.current === "start-new") {
+      const id = window.setTimeout(() => setBoxCollapsed(true), DIGIT_SETTLE_MS + HEADER_MORPH_MS);
       return () => window.clearTimeout(id);
     }
-    setBoxCollapsed(false);
+    setBoxCollapsed(true);
   }, [collapsed]);
 
   // True while the mini-session pill is actually traveling between its big
