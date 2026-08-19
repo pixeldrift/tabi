@@ -658,15 +658,17 @@ export function StatusBar({
   // height, so the target is already correct from the first frame of
   // travel instead of needing to be predicted and re-predicted as the
   // box's own natural height settles on its own separate schedule. Landing
-  // in "big" (pausing) just measures the big pill's own rect directly, even
-  // though that travel now starts the instant the box begins re-expanding
-  // (see SessionContext's `pillTraveling` effect) rather than waiting for it
-  // to finish: the big pill is a DESCENDANT of the box, unlike the mini
-  // pill's sibling relationship to it, so the box's own `overflow-hidden`
-  // clip during its height tween only affects paint, never layout —
-  // `bigPillRef`'s `getBoundingClientRect()` already reflects its real,
-  // fully-expanded final position from the first frame, with nothing to
-  // anchor around.
+  // in "big" (pausing) just measures the big pill's own rect directly — the
+  // big pill is a DESCENDANT of the box, unlike the mini pill's sibling
+  // relationship to it, so the box's own `overflow-hidden` clip during its
+  // height tween only affects paint, never layout: `bigPillRef`'s
+  // `getBoundingClientRect()` already reflects its real, fully-expanded
+  // final position from the very first frame, regardless of how far the
+  // box's own height tween has actually gotten — there's nothing to anchor
+  // around POSITION-wise. (SessionContext's `pillTraveling` effect still
+  // waits out the box's own expand before this travel starts at all, but
+  // that's for a different reason — the tab bar/content pane below, not
+  // this rect's own accuracy — see that effect's own comment.)
   useLayoutEffect(() => {
     if (!visualTravelActive) return;
     const fromRect = pillTravelFromRef.current;
@@ -1805,6 +1807,64 @@ const TRANSITION_MESSAGES: Record<Exclude<TransitionKind, null>, string> = {
   discard: "Discarding Session",
 };
 
+// The paused action-button set — factored out so ExpandedSessionBox can
+// render it twice: once as the real, visible/interactive row, and once as
+// an always-mounted, invisible copy purely for measurement (see
+// `pausedActionsHeight`'s own comment). Its rendered height never actually
+// varies (fixed classes, no wrapping at this box's width), so a second copy
+// measured ahead of time tells the box its own eventual pause-open target
+// before pause is ever clicked, rather than only finding out afterward.
+function PausedActionsButtons({
+  onEnd,
+  onToggleReviewMode,
+  reviewModeUnlocked,
+  onRequestDiscard,
+}: {
+  onEnd: () => void;
+  onToggleReviewMode: () => void;
+  reviewModeUnlocked: boolean;
+  onRequestDiscard: () => void;
+}) {
+  return (
+    <>
+      <button
+        onClick={onEnd}
+        data-tour="end-submit-button"
+        className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
+      >
+        End & Submit Data
+        <Upload className="size-3.5" strokeWidth={2.5} />
+      </button>
+      {/* Parked sessions default to locked so nothing on a session someone
+        else may resume gets edited by accident — this is the one,
+        intentional action that unlocks editing without restarting the
+        (stopped) session timer. */}
+      <button
+        onClick={onToggleReviewMode}
+        aria-pressed={reviewModeUnlocked}
+        data-tour="review-mode-toggle"
+        className={cn(
+          "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
+          reviewModeUnlocked
+            ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+            : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50",
+        )}
+      >
+        {reviewModeUnlocked ? "Review Mode Unlocked" : "Unlock Review Mode"}
+        <LockKeyholeOpen className="size-3.5" />
+      </button>
+      <button
+        onClick={onRequestDiscard}
+        data-tour="end-discard-button"
+        className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
+      >
+        End & Discard Session!
+        <Trash2 className="size-3" />
+      </button>
+    </>
+  );
+}
+
 function ExpandedSessionBox({
   status,
   elapsedMs,
@@ -1937,6 +1997,41 @@ function ExpandedSessionBox({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // A second, permanently-mounted (but invisible) copy of the paused button
+  // set, measured continuously regardless of whether `isPaused` is even
+  // true right now — so its real height is already known well before pause
+  // ever happens, not just discovered afterward. Every OTHER route into
+  // this box (idle, running-not-mine) keeps the box already open the whole
+  // time (see `expandGen`'s own comment: pausing is the only transition
+  // that opens the box FRESH, from fully collapsed), so this is the one
+  // case where `actionsHeight`'s real measurement landing a beat late
+  // actually matters — StatusBar's own `boxNaturalHeight` needs the box's
+  // FINAL, buttons-included height as its target from the very first frame
+  // of that expand, not a smaller interim one corrected a moment later.
+  const pausedActionsShadowRef = useRef<HTMLDivElement>(null);
+  const [pausedActionsHeight, setPausedActionsHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = pausedActionsShadowRef.current;
+    if (!el) return;
+    const measure = () => setPausedActionsHeight(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // The instant the box opens fresh (expandGen bumps — always a pause, see
+  // above), seed `actionsHeight` straight from that already-known shadow
+  // measurement rather than waiting for the real, now-visible button row's
+  // own ResizeObserver to fire — same "adjust during render" pattern as
+  // `expandGen` itself. Since the paused button set's height never actually
+  // varies, this consistently lands on the exact right number the real row
+  // would have measured anyway, just without the lag.
+  const prevExpandGenForActionsRef = useRef(expandGen);
+  if (expandGen !== prevExpandGenForActionsRef.current) {
+    prevExpandGenForActionsRef.current = expandGen;
+    if (pausedActionsHeight !== null) setActionsHeight(pausedActionsHeight);
+  }
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
@@ -2154,42 +2249,12 @@ function ExpandedSessionBox({
             className="flex flex-col gap-1"
           >
             {isPaused && (
-              <>
-                <button
-                  onClick={onEnd}
-                  data-tour="end-submit-button"
-                  className="btn-bevel shrink-0 flex items-center justify-center gap-1.5 rounded-full h-9 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-3 w-full transition-colors active:scale-95"
-                >
-                  End & Submit Data
-                  <Upload className="size-3.5" strokeWidth={2.5} />
-                </button>
-                {/* Parked sessions default to locked so nothing on a session
-                  someone else may resume gets edited by accident — this is
-                  the one, intentional action that unlocks editing without
-                  restarting the (stopped) session timer. */}
-                <button
-                  onClick={onToggleReviewMode}
-                  aria-pressed={reviewModeUnlocked}
-                  data-tour="review-mode-toggle"
-                  className={cn(
-                    "shrink-0 flex items-center justify-center gap-1.5 rounded-full h-8 text-xs font-medium px-3 w-full border transition-colors active:scale-95",
-                    reviewModeUnlocked
-                      ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
-                      : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50",
-                  )}
-                >
-                  {reviewModeUnlocked ? "Review Mode Unlocked" : "Unlock Review Mode"}
-                  <LockKeyholeOpen className="size-3.5" />
-                </button>
-                <button
-                  onClick={onRequestDiscard}
-                  data-tour="end-discard-button"
-                  className="shrink-0 flex items-center justify-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 text-[10px] px-1.5 py-1 rounded-md transition-colors active:scale-95"
-                >
-                  End & Discard Session!
-                  <Trash2 className="size-3" />
-                </button>
-              </>
+              <PausedActionsButtons
+                onEnd={onEnd}
+                onToggleReviewMode={onToggleReviewMode}
+                reviewModeUnlocked={reviewModeUnlocked}
+                onRequestDiscard={onRequestDiscard}
+              />
             )}
             {isIdle && (
               <button
@@ -2207,6 +2272,28 @@ function ExpandedSessionBox({
           </motion.div>
         </div>
       </motion.div>
+      {/* Always mounted regardless of `isPaused`, and always clipped to 0
+          height here (never painted, never taking up real layout space) —
+          see `pausedActionsHeight`'s own comment. `pausedActionsShadowRef`
+          sits on the plain, UNCLIPPED inner div, same "measure via an
+          unconstrained child, not the clipping wrapper" split as
+          actionsRef/its own motion.div above — this outer div's own
+          `h-0 overflow-hidden` is what keeps it from ever contributing to
+          ITS OWN ancestors' scrollHeight (an absolutely-positioned child
+          would still inflate an ancestor's scrollHeight by overflowing it,
+          even invisibly — a real box-height feedback loop this avoids by
+          just never occupying more than 0px of real layout in the first
+          place). */}
+      <div aria-hidden="true" className="h-0 overflow-hidden invisible pointer-events-none">
+        <div ref={pausedActionsShadowRef} className="flex flex-col gap-1">
+          <PausedActionsButtons
+            onEnd={onEnd}
+            onToggleReviewMode={onToggleReviewMode}
+            reviewModeUnlocked={reviewModeUnlocked}
+            onRequestDiscard={onRequestDiscard}
+          />
+        </div>
+      </div>
     </div>
   );
 }
