@@ -453,12 +453,46 @@ export function StatusBar({
   const [boxNaturalHeight, setBoxNaturalHeight] = useState<number | null>(null);
   const actionsRowSettlingRef = useRef(false);
   const wasPausedForActionsRef = useRef(status === "paused");
+  const prevBoxCollapsedForActionsRef = useRef(boxCollapsed);
   useLayoutEffect(() => {
     const isPaused = status === "paused";
-    if (isPaused === wasPausedForActionsRef.current) return;
+    const isPausedChanged = isPaused !== wasPausedForActionsRef.current;
     wasPausedForActionsRef.current = isPaused;
-    actionsRowSettlingRef.current = true;
-  }, [status]);
+    // `boxCollapsed` itself only catches up to `status`/`collapsed` a commit
+    // later (it's mirrored via a plain `useEffect` in SessionContext, not
+    // computed directly during render), so "isPaused just flipped" and "the
+    // box just opened" are two SEPARATE commits for a pause, not one — this
+    // can't be a single combined check the way `openedFresh` used to assume
+    // (that version updated `wasPausedForActionsRef` on the isPaused-change
+    // commit, before `boxCollapsed` had caught up, then early-returned on
+    // the later, box-actually-opened commit before ever reading it — always
+    // missing the fast path below and silently falling back to suppression
+    // for the whole transition).
+    const boxJustOpened = !boxCollapsed && prevBoxCollapsedForActionsRef.current;
+    prevBoxCollapsedForActionsRef.current = boxCollapsed;
+    if (boxJustOpened && isPaused) {
+      // Pausing opens the box fresh — the actions row's own height wrapper
+      // skips its tween for exactly this case (see its own
+      // `key={expandGen}`/`initial={false}`, and `pausedActionsHeight`'s
+      // comment for why the target is already known), so there's no inner
+      // animation to chase here: the row is already at its final height in
+      // this same commit. Suppressing and waiting on
+      // `onActionsHeightSettled` instead would be waiting on a completion
+      // event for an animation that never actually ran — Motion doesn't
+      // reliably fire `onAnimationComplete` for a value that started (via
+      // `initial={false}`) already at its target, which left this
+      // suppressed forever.
+      actionsRowSettlingRef.current = false;
+      const el = boxWrapRef.current;
+      if (el) setBoxNaturalHeight(el.scrollHeight);
+      return;
+    }
+    // Every OTHER isPaused flip (the box staying open while its content
+    // swaps, e.g. paused -> idle without collapsing in between) still gets
+    // a real, gradual inner tween, so still needs the suppress-then-settle
+    // dance.
+    if (isPausedChanged) actionsRowSettlingRef.current = true;
+  }, [status, boxCollapsed]);
   const handleActionsHeightSettled = useCallback(() => {
     actionsRowSettlingRef.current = false;
     const el = boxWrapRef.current;
@@ -2027,10 +2061,26 @@ function ExpandedSessionBox({
   // `expandGen` itself. Since the paused button set's height never actually
   // varies, this consistently lands on the exact right number the real row
   // would have measured anyway, just without the lag.
+  //
+  // Only marks this generation "consumed" (advances the ref) once the seed
+  // actually happens — `pausedActionsHeight` is itself only known once ITS
+  // OWN ResizeObserver has fired at least once, which (being scheduled
+  // rather than synchronous) isn't guaranteed to have happened yet on the
+  // very first render where `expandGen` bumps. Consuming the ref
+  // unconditionally there left `actionsHeight` stuck at whatever it was
+  // before (0, from the real row's own last real-content measurement while
+  // running/empty) forever after — this render's mismatch never got a
+  // second look once the ref moved on. Leaving the ref alone instead means
+  // this same check just re-runs on every subsequent render (including the
+  // one `setPausedActionsHeight` itself triggers) until it can actually
+  // succeed. `freshlyOpened` itself (read below, in the height motion.div's
+  // own transition) doesn't need its own reset: once the ref DOES advance,
+  // this recomputes to `false` on every later render until the next open.
   const prevExpandGenForActionsRef = useRef(expandGen);
-  if (expandGen !== prevExpandGenForActionsRef.current) {
+  const freshlyOpened = expandGen !== prevExpandGenForActionsRef.current;
+  if (freshlyOpened && pausedActionsHeight !== null) {
     prevExpandGenForActionsRef.current = expandGen;
-    if (pausedActionsHeight !== null) setActionsHeight(pausedActionsHeight);
+    setActionsHeight(pausedActionsHeight);
   }
 
   // Re-render to refresh "x ago" string.
@@ -2190,10 +2240,30 @@ function ExpandedSessionBox({
           `suppressEntranceAnimation` is true, same reasoning as StatusBar's
           own box height — `actionsHeight`'s very first real measurement
           can't land until this screen is genuinely visible, which otherwise
-          animated this row into place during the welcome->main slide. */}
+          animated this row into place during the welcome->main slide.
+          `freshlyOpened` zeroes the duration too, for the same reason: on a
+          fresh open (pausing), `actionsHeight` is already seeded to its
+          correct, final value in that same commit (see
+          `pausedActionsHeight`'s own comment), so there's nothing to grow
+          INTO — it just appears at full height, with StatusBar's own outer
+          box height animating around it as the one visible motion, and the
+          opacity/scale wrapper below fading the buttons in. Deliberately a
+          transition-duration toggle rather than a `key`-forced remount of
+          this element: `actionsRef` sits on a child of this same div, and
+          its own ResizeObserver-setup effect only runs once (mount-only
+          deps, same reasoning as that ref's own comment below) — remounting
+          this ancestor on every open would leave it watching a detached
+          node after the first one, same "stale observer" bug that comment
+          already warns about for a different element. A later content swap
+          that keeps the box open (e.g. paused -> idle without collapsing)
+          doesn't bump `expandGen`, so `freshlyOpened` is false there and it
+          still gets the real, gradual tween. */}
       <motion.div
         animate={{ height: actionsHeight ?? "auto" }}
-        transition={{ duration: suppressEntranceAnimation ? 0 : ACTIONS_HEIGHT_MS / 1000, ease }}
+        transition={{
+          duration: freshlyOpened || suppressEntranceAnimation ? 0 : ACTIONS_HEIGHT_MS / 1000,
+          ease,
+        }}
         onAnimationComplete={onActionsHeightSettled}
         className="overflow-hidden"
       >
