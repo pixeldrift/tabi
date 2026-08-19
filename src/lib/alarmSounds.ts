@@ -61,24 +61,34 @@ export function playAlarmSound(style: AlarmSoundStyle) {
   audio.play().catch(() => {});
 }
 
-/** Unlocks every alarm style up front, the moment the user makes their
+/** Unlocks the given alarm styles up front, the moment the user makes their
  *  very first gesture anywhere on the page (see NotificationContext, which
- *  wires this to a one-time pointerdown listener). Without this, the first
- *  real alarm tick — fired from a timer, not a click — is silently blocked
- *  by the browser's autoplay policy until the user happens to press
- *  something, and on stricter browsers (mobile Safari in particular) even a
- *  successful play from inside a click handler doesn't reliably keep LATER
- *  timer-driven repeats unblocked. Priming each element directly inside a
- *  genuine gesture's own call stack — muted, then immediately paused and
- *  rewound — is what actually earns each one the browser's ongoing
- *  playback permission, before any alarm has a real reason to fire.
+ *  wires this to a one-time pointerdown listener, passing just "chime" —
+ *  every routine, non-configurable alert's own fixed style, see
+ *  NotificationContext's push()'s own comment — plus whatever the user has
+ *  actually configured as their alarm preference, deduped). Without this,
+ *  the first real alarm tick — fired from a timer, not a click — is
+ *  silently blocked by the browser's autoplay policy until the user happens
+ *  to press something, and on stricter browsers (mobile Safari in
+ *  particular) even a successful play from inside a click handler doesn't
+ *  reliably keep LATER timer-driven repeats unblocked. Priming each element
+ *  directly inside a genuine gesture's own call stack — muted, then
+ *  immediately paused and rewound — is what actually earns each one the
+ *  browser's ongoing playback permission, before any alarm has a real
+ *  reason to fire. Deliberately NOT every style unconditionally: each one
+ *  primed is a real, if muted/silenced, `.play()` call on a real audio
+ *  file, and priming happens to land on the very first gesture anywhere in
+ *  the app — usually the "Get Started" tap, before a technician has any
+ *  reason to expect sound — so this only primes what could actually be
+ *  needed, not all three every time, to keep that moment as quiet as
+ *  possible.
  *
  *  That same first gesture (e.g. tapping Start Session) can also be the
  *  thing that triggers a genuine alert — see playGeneration above — so this
  *  only tears down what it itself started, never a real chime that's since
  *  taken over the element. */
-export function primeAlarmAudio() {
-  for (const style of Object.keys(ALARM_SOUND_FILES) as AlarmSoundStyle[]) {
+export function primeAlarmAudio(styles: AlarmSoundStyle[]) {
+  for (const style of new Set(styles)) {
     const el = getAudioElement(style);
     const generationAtStart = playGeneration.get(style) ?? 0;
     // Belt-and-suspenders alongside `muted` — the exact "few ms of leak on

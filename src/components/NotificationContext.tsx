@@ -372,9 +372,16 @@ export function NotificationProvider({
   // anywhere in the app — long before a real alert has a reason to fire —
   // rather than leaving that first unlock to whatever button happens to get
   // pressed on the first alert itself (see primeAlarmAudio's own comment).
+  // Only "chime" (every routine push's own fixed style, see push()'s own
+  // comment) and the user's actually-configured alarmSound preference need
+  // priming — not every style that exists, which would just be more silent-
+  // but-real `.play()` calls than this moment (usually the very first tap
+  // in the whole app) needs.
+  const alarmSoundRef = useRef(prefs.alarmSound);
+  alarmSoundRef.current = prefs.alarmSound;
   useEffect(() => {
     const unlock = () => {
-      primeAlarmAudio();
+      primeAlarmAudio(["chime", alarmSoundRef.current]);
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
