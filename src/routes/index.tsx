@@ -797,6 +797,19 @@ function Index() {
   // directions (including the header's back button), so this also needs
   // the `screen === "main"` check, not `!transitioning` alone.
   const mainSettled = screen === "main" && !transitioning;
+  // True the instant `mainStyle` below stops being `display: none` — i.e.
+  // right as the slide-in itself starts, well before `mainSettled` (which
+  // only flips once that ~450ms slide has actually finished landing).
+  // IndexInner mounts immediately and stays mounted the whole time (see
+  // this component's own comment), including while still hidden behind the
+  // welcome screen — a ResizeObserver can't report anything meaningful for
+  // a `display: none` subtree, so several of StatusBar's own one-time
+  // "measure my real natural size" reads only land their first real number
+  // once THIS flips true, which — without StatusBar treating that first
+  // real number as a plain snap instead of a genuine animated change —
+  // read as the header visibly growing/settling into place DURING the
+  // slide instead of it sliding in already fully formed.
+  const mainVisible = transitioning || screen === "main";
 
   const welcomeStyle: React.CSSProperties =
     transitioning || screen === "welcome"
@@ -847,6 +860,7 @@ function Index() {
                   <IndexInner
                     onBack={goToWelcome}
                     mainSettled={mainSettled}
+                    mainVisible={mainVisible}
                     forceTourLaunch={forceTourLaunch}
                     onForceTourLaunchHandled={() => setForceTourLaunch(false)}
                     forceTipLaunch={forceTipLaunch}
@@ -1044,6 +1058,7 @@ const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
 function IndexInner({
   onBack,
   mainSettled,
+  mainVisible,
   forceTourLaunch,
   onForceTourLaunchHandled,
   forceTipLaunch,
@@ -1051,6 +1066,7 @@ function IndexInner({
 }: {
   onBack: () => void;
   mainSettled: boolean;
+  mainVisible: boolean;
   forceTourLaunch: boolean;
   onForceTourLaunchHandled: () => void;
   forceTipLaunch: boolean;
@@ -1723,6 +1739,7 @@ function IndexInner({
               onTabChange={handleTabChange}
               onBack={onBack}
               onNavigateToCard={handleNavigateToCard}
+              mainVisible={mainVisible}
               dataToolbar={
                 tab === "data" && (
                   <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
