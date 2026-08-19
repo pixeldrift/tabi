@@ -598,6 +598,13 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
+  // Stable references for the pill-travel overlay's "landing in mini"
+  // target — see their own render-site comments and the prediction effect
+  // below. Neither depends on the session box's own current height, unlike
+  // measuring the mini pill's own (not-yet-settled) rect directly did.
+  const titleRowRef = useRef<HTMLDivElement>(null);
+  const saveIndicatorWrapRef = useRef<HTMLDivElement>(null);
+
   // Only surfaced once you've actually joined (isMineAndRunning) — before
   // that, whoever's running it is already named front-and-center in the
   // big expanded box itself (see ExpandedSessionBox), so a second "who's
@@ -672,46 +679,54 @@ export function StatusBar({
   }, [pillTraveling, visualTravelActive, boxCollapseSettled]);
 
   // Once the destination element exists in the DOM (still invisible),
-  // measure its natural resting rect and keep the overlay heading toward
-  // it. Deliberately keeps RE-measuring and RE-setting `to` on every
-  // relevant change (no `pillTravelRect`-already-set early-return) rather
-  // than predicting it once, up front, and freezing that guess — landing
-  // in "mini" happens before the session box collapses (see boxCollapsed's
-  // own delay in SessionContext — deliberately, so the two read as
-  // sequential beats), and in that window the mini slot's own rect isn't
-  // just "off by boxNaturalHeight": the actions row settling to its new
-  // (usually smaller) content shrinks the box's own height on its own
-  // schedule, the mini slot itself is still growing in from 0 on ITS OWN
-  // schedule, and the two don't finish at the same instant — a single
-  // snapshot at travel-start can't account for changes that haven't
-  // happened yet. Re-measuring `rawTo` fresh (not just re-applying a fixed
-  // offset to a stale snapshot) and letting Motion's own `animate` prop
-  // retarget mid-flight toward whatever's currently the best estimate
-  // converges on the truth as it becomes knowable, instead of committing
-  // to a guess that can only be as good as the moment it was made.
+  // work out where it's actually headed and keep the overlay pointed
+  // there. Landing in "mini" is anchored to the title row's own bottom
+  // edge and the save indicator's own right edge (see their render-site
+  // comments) rather than to the mini pill's own current rect — neither
+  // of those depends on the session box's current (possibly mid-collapse)
+  // height, so the target is already correct from the first frame of
+  // travel instead of needing to be predicted and re-predicted as the
+  // box's own natural height settles on its own separate schedule. Landing
+  // in "big" (pausing) still just measures the big pill's own rect
+  // directly — the box has already fully expanded by the time that travel
+  // starts (see SessionContext's own `pausing` delay), so there's nothing
+  // left to predict there.
   useLayoutEffect(() => {
     if (!visualTravelActive) return;
-    const toEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
     const fromRect = pillTravelFromRef.current;
-    if (!toEl || !fromRect) return;
-    const rawTo = toEl.getBoundingClientRect();
-    // Collapsing the box frees exactly boxNaturalHeight of vertical space
-    // above the nav — predicting that shift now (rather than only once it's
-    // actually happened) is what skips the "land low in the content pane,
-    // then get dragged back up" detour without touching the "land, then
-    // collapse" sequencing itself.
-    const willCollapseAfterLanding =
-      pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
-    const to = willCollapseAfterLanding
-      ? new DOMRect(rawTo.left, rawTo.top - (boxNaturalHeight ?? 0), rawTo.width, rawTo.height)
-      : rawTo;
-    // Read by the closing effect above — this travel's real destination
-    // element won't actually BE at `to` until the box has genuinely
-    // finished collapsing, so the handoff has to wait for that too, not
-    // just for this travel's own PILL_TRAVEL_MS to run out.
-    pillTravelAwaitingCollapseRef.current = willCollapseAfterLanding;
-    setPillTravelRect({ from: fromRect, to });
-  }, [visualTravelActive, pillView, collapsed, boxCollapsed, boxNaturalHeight, miniSlotHeight]);
+    if (!fromRect) return;
+    if (pillView === "mini") {
+      const titleRowEl = titleRowRef.current;
+      const saveIndicatorWrapEl = saveIndicatorWrapRef.current;
+      const miniEl = miniPillRef.current;
+      if (!titleRowEl || !saveIndicatorWrapEl || !miniEl) return;
+      const titleRowRect = titleRowEl.getBoundingClientRect();
+      const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
+      // Width/height still come from the real element — those aren't
+      // affected by the box-height staleness bug, and do genuinely vary a
+      // little (the elapsed-time digits' own natural width).
+      const rawTo = miniEl.getBoundingClientRect();
+      // +4 matches the nav row's own `mt-1` — safe to hardcode rather than
+      // measure, since it's only ever `mt-1` (not the not-running `mt-1.5`)
+      // by the time anything is landing in "mini": that only happens once
+      // `isRunning` is already true.
+      const anchorTop = titleRowRect.bottom + 4;
+      const anchorRight = saveIndicatorWrapRect.right;
+      const to = new DOMRect(anchorRight - rawTo.width, anchorTop, rawTo.width, rawTo.height);
+      // Still true whenever the box hasn't actually finished collapsing
+      // yet — the ANCHOR itself is already correct regardless, but the
+      // real destination element's own rect isn't until the box's own
+      // height genuinely reaches 0, so the handoff (see the closing
+      // effect above) still needs to wait for that.
+      pillTravelAwaitingCollapseRef.current = collapsed && !boxCollapsed;
+      setPillTravelRect({ from: fromRect, to });
+      return;
+    }
+    const toEl = bigPillRef.current;
+    if (!toEl) return;
+    pillTravelAwaitingCollapseRef.current = false;
+    setPillTravelRect({ from: fromRect, to: toEl.getBoundingClientRect() });
+  }, [visualTravelActive, pillView, collapsed, boxCollapsed]);
 
   const renderBigPill = pillView === "big" || visualTravelActive;
   const renderMiniPill = pillView === "mini" || visualTravelActive;
@@ -781,8 +796,15 @@ export function StatusBar({
           className="relative overflow-hidden bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80"
         >
           <div className={cn("max-w-5xl mx-auto px-4", isRunning ? "pt-1" : "pt-2")}>
-            {/* Title row — static, never scales or layout-animates */}
-            <div className="flex items-start justify-between gap-3">
+            {/* Title row — static, never scales or layout-animates. Also
+                doubles as a stable anchor for the pill-travel overlay's
+                "landing in mini" target (see pillTravelAnchorTopRef/
+                pillTravelAnchorRightRef below) — its own height doesn't
+                depend on the session box's current (possibly mid-collapse)
+                height the way measuring the mini pill's own current rect
+                did, so it's not subject to the same staleness the box's
+                own natural-height prediction was. */}
+            <div ref={titleRowRef} className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0 pt-1">
                 <button
                   type="button"
@@ -802,8 +824,14 @@ export function StatusBar({
                   slot uses (see its comment below) to cancel this row's
                   px-4 edge padding and re-add a smaller one instead — keeps
                   the cloud icon's own right margin matching the mini pill's,
-                  rather than sitting noticeably further from the edge. */}
-              <div className="pt-1 pr-1.5 sm:pr-2 -mr-4">
+                  rather than sitting noticeably further from the edge. Also
+                  doubles as the pill-travel anchor's own right reference
+                  (see pillTravelAnchorRightRef below) — since this wrapper
+                  and the mini slot's own share the exact same right-side
+                  classes by design, its right edge already IS the mini
+                  pill's own eventual right edge, without needing to
+                  duplicate the sm: breakpoint math in JS. */}
+              <div ref={saveIndicatorWrapRef} className="pt-1 pr-1.5 sm:pr-2 -mr-4">
                 <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
               </div>
             </div>
@@ -826,15 +854,22 @@ export function StatusBar({
                 transition={
                   boxCollapsed
                     ? {
-                        // Quick, decisive snap once it finally starts — by this
-                        // point the pill has already landed in the mini slot and
-                        // the box's own content has long since faded (stage 1's
-                        // `dimmed`), so there's nothing left to see except the
-                        // space closing up. The travel overlay itself still holds
-                        // its position at the pill's predicted final rect through
-                        // this whole animation (see `boxCollapseSettled` above) —
-                        // this is genuinely just the box's own remaining chrome
-                        // closing up around a pill that already isn't moving.
+                        // Quick, decisive snap once it finally starts. For a
+                        // fresh start (still staged — see requestStartNew),
+                        // this doesn't begin until DIGIT_SETTLE_MS +
+                        // HEADER_MORPH_MS after commit, by which point the
+                        // pill has already landed and the box's own content
+                        // has long since faded (stage 1's `dimmed`) — so
+                        // there's nothing left to see except the space
+                        // closing up. For resume/join (no longer staged —
+                        // see requestResume's own comment), this starts on
+                        // the SAME instant as everything else instead: the
+                        // pill is still mid-travel toward its own fixed
+                        // anchor (unaffected by this box's own height, see
+                        // that travel's own comment) while this collapses
+                        // and its content fades right along with it via the
+                        // opacity transition below — one motion, not a
+                        // beat that waits for the pill to land first.
                         height: { duration: BOX_COLLAPSE_MS / 1000, ease: SESSION_MORPH_EASE },
                         opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
                       }
