@@ -1547,10 +1547,26 @@ function IndexInner({
     prevStatusRef.current = status;
     const justSubmitted = prev === "paused" && status === "idle" && transitionKind === null;
     if (!justSubmitted) return;
-    const id = window.setTimeout(
+    let exitTimeoutId: number | undefined;
+    const startId = window.setTimeout(
       () => {
-        setCardsAnimKind("submit");
-        setCardsGen((n) => n + 1);
+        // The still-running session's cards clear out first (their own
+        // existing single-unit exit — whatever `cardsAnimKind` was already
+        // playing, e.g. start-new's slide-right — since they were never
+        // rendered under the "submit" branch to begin with) before the
+        // fresh, just-submitted set fans in from the left — same "gone,
+        // then arrives" sequencing as discard (see its own comment) rather
+        // than start-new's deliberate overlapping relay. Previously this
+        // bumped cardsGen/cardsAnimKind in the same tick as hiding, which
+        // mounted the new staggered-entrance set on the exact same commit
+        // the old set started leaving, reading as an overlap instead of a
+        // clean handoff.
+        setCardsHidden(true);
+        exitTimeoutId = window.setTimeout(() => {
+          setCardsAnimKind("submit");
+          setCardsGen((n) => n + 1);
+          setCardsHidden(false);
+        }, CARD_SLIDE_EXIT_MS);
       },
       // Borrows NOTIFICATION_AREA_TRANSITION's duration (shared with
       // unrelated notification-area animations, so not itself scaled) but
@@ -1559,7 +1575,10 @@ function IndexInner({
       // rather than on the shared constant.
       NOTIFICATION_AREA_TRANSITION.duration * 1000 * SESSION_TRANSITION_SPEED,
     );
-    return () => window.clearTimeout(id);
+    return () => {
+      window.clearTimeout(startId);
+      if (exitTimeoutId !== undefined) window.clearTimeout(exitTimeoutId);
+    };
   }, [status, transitionKind]);
 
   // Switching tabs is handled by the tab bar itself; tapping the tab
