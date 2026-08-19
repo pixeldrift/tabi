@@ -629,14 +629,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // running", with no transitionKind — the only way that happens, since
     // pause() unlike resume/start-new/discard never goes through
     // runStagedTransition) and resuming/joining both start the pill's travel
-    // immediately, in lockstep with the box's own expand/collapse: the big
-    // pill is a descendant of the box, so `overflow: hidden` clipping during
-    // the box's animated height change affects paint only, not layout — its
-    // `getBoundingClientRect()` is geometrically accurate throughout, same
-    // as the anchor-based mini landing spot is for the other direction. No
-    // settle delay needed either way.
-    beginTravel();
+    // on the next animation frame, in lockstep with the box's own
+    // expand/collapse (that state flip happens this same tick too — see
+    // `boxCollapsed` above): the big pill is a descendant of the box, so
+    // `overflow: hidden` clipping during the box's animated height change
+    // affects paint only, not layout — its `getBoundingClientRect()` is
+    // geometrically accurate throughout, same as the anchor-based mini
+    // landing spot is for the other direction, so there's nothing left to
+    // predict or wait out. The one-frame defer is purely so the box's own
+    // height/opacity tween actually starts painting before this fixed-
+    // position overlay does — both are triggered from the same commit, but
+    // without this the pill (no React-driven paint of its own to wait on)
+    // could win the race and appear to depart before the box has visibly
+    // begun making room for it.
+    const rafId = requestAnimationFrame(beginTravel);
     return () => {
+      cancelAnimationFrame(rafId);
       if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
