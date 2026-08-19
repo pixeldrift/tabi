@@ -711,7 +711,17 @@ export function StatusBar({
       // by the time anything is landing in "mini": that only happens once
       // `isRunning` is already true.
       const anchorTop = titleRowRect.bottom + 4;
-      const anchorRight = saveIndicatorWrapRect.right;
+      // The wrapper's OWN border-box right edge sits at the viewport edge
+      // (its `-mr-4` cancels this row's own right padding entirely) — its
+      // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
+      // so the anchor needs to subtract that same padding back out to land
+      // where the save indicator itself (and, by design, the mini pill)
+      // actually sits, not where the wrapper's own box ends. Read via
+      // getComputedStyle (not a hardcoded 6px) so it stays correct across
+      // the sm: breakpoint too.
+      const saveIndicatorPaddingRight =
+        parseFloat(getComputedStyle(saveIndicatorWrapEl).paddingRight) || 0;
+      const anchorRight = saveIndicatorWrapRect.right - saveIndicatorPaddingRight;
       const to = new DOMRect(anchorRight - rawTo.width, anchorTop, rawTo.width, rawTo.height);
       // Still true whenever the box hasn't actually finished collapsing
       // yet — the ANCHOR itself is already correct regardless, but the
@@ -825,12 +835,16 @@ export function StatusBar({
                   px-4 edge padding and re-add a smaller one instead — keeps
                   the cloud icon's own right margin matching the mini pill's,
                   rather than sitting noticeably further from the edge. Also
-                  doubles as the pill-travel anchor's own right reference
-                  (see pillTravelAnchorRightRef below) — since this wrapper
-                  and the mini slot's own share the exact same right-side
-                  classes by design, its right edge already IS the mini
-                  pill's own eventual right edge, without needing to
-                  duplicate the sm: breakpoint math in JS. */}
+                  doubles as the pill-travel anchor's own right reference —
+                  since this wrapper and the mini slot's own share the exact
+                  same right-side classes by design, ITS OWN CHILD's right
+                  edge (not this div's own border-box, which the `-mr-4`
+                  already extends all the way to the viewport edge) already
+                  IS the mini pill's own eventual right edge, without
+                  needing to duplicate the sm: breakpoint math in JS — the
+                  prediction effect reads this wrapper's own computed
+                  padding-right to get from its border-box back to that
+                  child edge. */}
               <div ref={saveIndicatorWrapRef} className="pt-1 pr-1.5 sm:pr-2 -mr-4">
                 <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
               </div>
