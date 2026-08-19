@@ -157,6 +157,12 @@ const ACTIONS_DIM_SCALE = 0.94;
 // pace with by the time this starts.
 const ACTIONS_REVEAL_MS = 300 * SESSION_TRANSITION_SPEED;
 const ENTER_SCALE = 0.94;
+// How long to keep treating this screen as "just became visible" (see
+// `hasBeenVisible`/`suppressEntranceAnimation` below) after the
+// welcome->main slide starts — a plain technical settling buffer for
+// ResizeObserver measurements to land, not a pacing choice, so unlike the
+// constants above it isn't scaled by SESSION_TRANSITION_SPEED.
+const VISIBILITY_SETTLE_MS = 500;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
  *  Good Data / No Data) — a colored icon + label + count and its subtitle
@@ -291,19 +297,21 @@ export function StatusBar({
   // Data toolbar, in the shared LayoutGroup) shouldn't animate away from.
   const initialLayoutSettled = useInitialLayoutSettled();
 
-  // True once `mainVisible` has been true for at least one render — see
-  // that prop's own comment. Starts false even if `mainVisible` already IS
-  // true on this component's very first render (shouldn't normally happen,
-  // since this always mounts hidden first, but costs nothing to handle):
-  // either way, whichever render is the first one where `mainVisible` is
-  // true gets treated as the "just became visible, snap instead of
-  // animate" render, exactly mirroring `initialLayoutSettled`'s own
-  // duration-0-on-the-first-real-layout-pass trick above, just keyed on
-  // becoming visible instead of on mount (no longer the same moment now
-  // that this screen can sit hidden for an arbitrary stretch first).
+  // True once `mainVisible` has been true for at least VISIBILITY_SETTLE_MS
+  // — see that prop's own comment. A flat delay, not "the very next
+  // render": becoming visible after sitting hidden doesn't produce one
+  // clean measurement, it produces SEVERAL, as different pieces of content
+  // (the box's own natural height, the actions row inside it, digit
+  // layout, etc.) each get their first real ResizeObserver reading a frame
+  // or two apart from each other — suppressing for only the first of those
+  // still let the rest animate in as a visible, if smaller, series of
+  // jumps. The window just needs to comfortably outlast that settling
+  // burst, not match it exactly.
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
-  useLayoutEffect(() => {
-    if (mainVisible) setHasBeenVisible(true);
+  useEffect(() => {
+    if (!mainVisible) return;
+    const id = window.setTimeout(() => setHasBeenVisible(true), VISIBILITY_SETTLE_MS);
+    return () => window.clearTimeout(id);
   }, [mainVisible]);
   const suppressEntranceAnimation = !initialLayoutSettled || !hasBeenVisible;
 

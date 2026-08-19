@@ -735,6 +735,10 @@ type Screen = "welcome" | "main";
 // already uses elsewhere for area transitions.
 const SCREEN_SLIDE_MS = 450;
 const SCREEN_SLIDE_EASE = NOTIFICATION_AREA_TRANSITION.ease;
+// See StatusBar's own identical constant's comment — same technical
+// settling buffer, same value, kept in sync by hand since the two
+// components don't share a module for it.
+const VISIBILITY_SETTLE_MS = 500;
 
 function Index() {
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -1136,19 +1140,22 @@ function IndexInner({
   // unrelated layout shift on top of the box's own expand animation.
   const sessionActive = status !== "idle";
 
-  // True once `mainVisible` has been true for at least one render — see
-  // StatusBar's own `mainVisible`/`suppressEntranceAnimation` comments for
-  // the full reasoning (same mechanism, mirrored here since this "Start
-  // session to record data" banner below lives in this component instead).
-  // It mounts (possibly already showing, if the random initial state landed
-  // on "idle") while still hidden behind the welcome screen, and its
-  // `initial`->`animate` mount entrance doesn't actually get to play out
-  // until this screen becomes visible — which, without this, coincided
-  // with the welcome->main slide, animating the banner in during what
-  // should already be a static, fully-formed slide-in.
+  // True once `mainVisible` has been true for at least
+  // VISIBILITY_SETTLE_MS — see StatusBar's own `mainVisible`/
+  // `suppressEntranceAnimation`/`VISIBILITY_SETTLE_MS` comments for the
+  // full reasoning (same mechanism and buffer duration, mirrored here
+  // since this "Start session to record data" banner below lives in this
+  // component instead). It mounts (possibly already showing, if the random
+  // initial state landed on "idle") while still hidden behind the welcome
+  // screen, and its `initial`->`animate` mount entrance doesn't actually
+  // get to play out until this screen becomes visible — which, without
+  // this, coincided with the welcome->main slide, animating the banner in
+  // during what should already be a static, fully-formed slide-in.
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
-  useLayoutEffect(() => {
-    if (mainVisible) setHasBeenVisible(true);
+  useEffect(() => {
+    if (!mainVisible) return;
+    const id = window.setTimeout(() => setHasBeenVisible(true), VISIBILITY_SETTLE_MS);
+    return () => window.clearTimeout(id);
   }, [mainVisible]);
   const suppressEntranceAnimation = !hasBeenVisible;
 
