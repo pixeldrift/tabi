@@ -610,16 +610,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [pillTraveling, setPillTraveling] = useState(false);
   useEffect(() => {
     if (isMineAndRunning === prevIsMineAndRunningForPillRef.current) return;
-    const wasMineAndRunning = prevIsMineAndRunningForPillRef.current;
     prevIsMineAndRunningForPillRef.current = isMineAndRunning;
     pillTransitionKindRef.current = transitionKind;
     const startingFresh = isMineAndRunning && pillTransitionKindRef.current === "start-new";
-    // The one other flip this effect sees besides a fresh start: a running
-    // session that was mine just stopped being "mine and running" with no
-    // transitionKind at all — the only way that happens is pause(), which
-    // (unlike resume/start-new/discard) never goes through
-    // runStagedTransition, so nothing else already delays anything for it.
-    const pausing = wasMineAndRunning && !isMineAndRunning;
     let travelTimeoutId: number | undefined;
     const beginTravel = () => {
       setPillTraveling(true);
@@ -632,23 +625,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
       };
     }
-    if (pausing) {
-      // Mirrors `boxCollapsed`'s own delay on the closing direction (see its
-      // comment above: pill lands in its mini spot before the box collapses
-      // around it) for the opening direction instead: the box's own
-      // HEADER_MORPH_MS expand needs to actually finish landing the big
-      // pill's real, final on-screen spot before the travel overlay starts
-      // heading toward it. Without this, the pill — a `position: fixed`
-      // overlay, so it paints over everything regardless of z-index — starts
-      // traveling toward a still-collapsed box's cramped position and
-      // visibly crosses over the tab row/content pane below before the box
-      // has grown to make room for it.
-      const settleId = window.setTimeout(beginTravel, HEADER_MORPH_MS);
-      return () => {
-        window.clearTimeout(settleId);
-        if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
-      };
-    }
+    // Pausing (a running session that was mine just stopped being "mine and
+    // running", with no transitionKind — the only way that happens, since
+    // pause() unlike resume/start-new/discard never goes through
+    // runStagedTransition) and resuming/joining both start the pill's travel
+    // immediately, in lockstep with the box's own expand/collapse: the big
+    // pill is a descendant of the box, so `overflow: hidden` clipping during
+    // the box's animated height change affects paint only, not layout — its
+    // `getBoundingClientRect()` is geometrically accurate throughout, same
+    // as the anchor-based mini landing spot is for the other direction. No
+    // settle delay needed either way.
     beginTravel();
     return () => {
       if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
