@@ -735,6 +735,10 @@ type Screen = "welcome" | "main";
 // already uses elsewhere for area transitions.
 const SCREEN_SLIDE_MS = 450;
 const SCREEN_SLIDE_EASE = NOTIFICATION_AREA_TRANSITION.ease;
+// See StatusBar's own identical constant's comment — same technical
+// settling buffer, same value, kept in sync by hand since the two
+// components don't share a module for it.
+const VISIBILITY_SETTLE_MS = 500;
 
 function Index() {
   const [screen, setScreen] = useState<Screen>("welcome");
@@ -797,6 +801,19 @@ function Index() {
   // directions (including the header's back button), so this also needs
   // the `screen === "main"` check, not `!transitioning` alone.
   const mainSettled = screen === "main" && !transitioning;
+  // True the instant `mainStyle` below stops being `display: none` — i.e.
+  // right as the slide-in itself starts, well before `mainSettled` (which
+  // only flips once that ~450ms slide has actually finished landing).
+  // IndexInner mounts immediately and stays mounted the whole time (see
+  // this component's own comment), including while still hidden behind the
+  // welcome screen — a ResizeObserver can't report anything meaningful for
+  // a `display: none` subtree, so several of StatusBar's own one-time
+  // "measure my real natural size" reads only land their first real number
+  // once THIS flips true, which — without StatusBar treating that first
+  // real number as a plain snap instead of a genuine animated change —
+  // read as the header visibly growing/settling into place DURING the
+  // slide instead of it sliding in already fully formed.
+  const mainVisible = transitioning || screen === "main";
 
   const welcomeStyle: React.CSSProperties =
     transitioning || screen === "welcome"
@@ -847,6 +864,7 @@ function Index() {
                   <IndexInner
                     onBack={goToWelcome}
                     mainSettled={mainSettled}
+                    mainVisible={mainVisible}
                     forceTourLaunch={forceTourLaunch}
                     onForceTourLaunchHandled={() => setForceTourLaunch(false)}
                     forceTipLaunch={forceTipLaunch}
@@ -1044,6 +1062,7 @@ const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
 function IndexInner({
   onBack,
   mainSettled,
+  mainVisible,
   forceTourLaunch,
   onForceTourLaunchHandled,
   forceTipLaunch,
@@ -1051,6 +1070,7 @@ function IndexInner({
 }: {
   onBack: () => void;
   mainSettled: boolean;
+  mainVisible: boolean;
   forceTourLaunch: boolean;
   onForceTourLaunchHandled: () => void;
   forceTipLaunch: boolean;
@@ -1119,6 +1139,25 @@ function IndexInner({
   // sliding in and the cards dropping to half-opacity added an extra,
   // unrelated layout shift on top of the box's own expand animation.
   const sessionActive = status !== "idle";
+
+  // True once `mainVisible` has been true for at least
+  // VISIBILITY_SETTLE_MS — see StatusBar's own `mainVisible`/
+  // `suppressEntranceAnimation`/`VISIBILITY_SETTLE_MS` comments for the
+  // full reasoning (same mechanism and buffer duration, mirrored here
+  // since this "Start session to record data" banner below lives in this
+  // component instead). It mounts (possibly already showing, if the random
+  // initial state landed on "idle") while still hidden behind the welcome
+  // screen, and its `initial`->`animate` mount entrance doesn't actually
+  // get to play out until this screen becomes visible — which, without
+  // this, coincided with the welcome->main slide, animating the banner in
+  // during what should already be a static, fully-formed slide-in.
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  useEffect(() => {
+    if (!mainVisible) return;
+    const id = window.setTimeout(() => setHasBeenVisible(true), VISIBILITY_SETTLE_MS);
+    return () => window.clearTimeout(id);
+  }, [mainVisible]);
+  const suppressEntranceAnimation = !hasBeenVisible;
 
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
@@ -1723,6 +1762,7 @@ function IndexInner({
               onTabChange={handleTabChange}
               onBack={onBack}
               onNavigateToCard={handleNavigateToCard}
+              mainVisible={mainVisible}
               dataToolbar={
                 tab === "data" && (
                   <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
@@ -1730,24 +1770,24 @@ function IndexInner({
                       {!sessionActive && (
                         <motion.div
                           key="start-session-banner"
-                          initial={{ height: 0, opacity: 0 }}
+                          initial={suppressEntranceAnimation ? false : { height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{
                             height: {
-                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              duration: suppressEntranceAnimation ? 0 : DATA_BANNER_EXIT_MS / 1000,
                               ease: [0.4, 0, 0.2, 1],
                             },
-                            opacity: { duration: 0.25 },
+                            opacity: { duration: suppressEntranceAnimation ? 0 : 0.25 },
                           }}
                           className="overflow-hidden border-t border-stone-200/70"
                         >
                           <motion.div
-                            initial={{ y: -16 }}
+                            initial={suppressEntranceAnimation ? false : { y: -16 }}
                             animate={{ y: 0 }}
                             exit={{ y: -16 }}
                             transition={{
-                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              duration: suppressEntranceAnimation ? 0 : DATA_BANNER_EXIT_MS / 1000,
                               ease: [0.4, 0, 0.2, 1],
                             }}
                             className="py-1.5 px-8 text-center"

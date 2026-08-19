@@ -86,6 +86,15 @@ interface StatusBarProps {
    *  go back to in this single-client prototype; this is the app's only
    *  other screen. */
   onBack: () => void;
+  /** True once this screen is no longer `display: none` — i.e. the instant
+   *  the welcome->main slide starts, well before it's fully landed. See
+   *  routes/index.tsx's own comment: this component mounts (and takes its
+   *  one-time "measure my natural size" reads) immediately, while still
+   *  hidden behind the welcome screen — those reads only get a real number
+   *  once this flips true, and without treating that first real number as
+   *  a plain snap, it read as the header visibly growing into place during
+   *  the slide instead of already being static when it appears. */
+  mainVisible: boolean;
   /** The Data tab's sticky filter/view toolbar (DataToolbar), rendered as a
    *  plain sibling of this component's own header content inside the SAME
    *  sticky container — see that outer wrapper's own comment below for why.
@@ -148,6 +157,12 @@ const ACTIONS_DIM_SCALE = 0.94;
 // pace with by the time this starts.
 const ACTIONS_REVEAL_MS = 300 * SESSION_TRANSITION_SPEED;
 const ENTER_SCALE = 0.94;
+// How long to keep treating this screen as "just became visible" (see
+// `hasBeenVisible`/`suppressEntranceAnimation` below) after the
+// welcome->main slide starts — a plain technical settling buffer for
+// ResizeObserver measurements to land, not a pacing choice, so unlike the
+// constants above it isn't scaled by SESSION_TRANSITION_SPEED.
+const VISIBILITY_SETTLE_MS = 500;
 
 /** One collapsible group in the end-session review (Minimums Not Met /
  *  Good Data / No Data) — a colored icon + label + count and its subtitle
@@ -238,6 +253,7 @@ export function StatusBar({
   onTabChange,
   title = "Phineas Flynn's Data Sheet",
   onBack,
+  mainVisible,
   dataToolbar,
   onNavigateToCard,
 }: StatusBarProps) {
@@ -280,6 +296,24 @@ export function StatusBar({
   // one-time growth that the tabs/nav below (and the content pane and
   // Data toolbar, in the shared LayoutGroup) shouldn't animate away from.
   const initialLayoutSettled = useInitialLayoutSettled();
+
+  // True once `mainVisible` has been true for at least VISIBILITY_SETTLE_MS
+  // — see that prop's own comment. A flat delay, not "the very next
+  // render": becoming visible after sitting hidden doesn't produce one
+  // clean measurement, it produces SEVERAL, as different pieces of content
+  // (the box's own natural height, the actions row inside it, digit
+  // layout, etc.) each get their first real ResizeObserver reading a frame
+  // or two apart from each other — suppressing for only the first of those
+  // still let the rest animate in as a visible, if smaller, series of
+  // jumps. The window just needs to comfortably outlast that settling
+  // burst, not match it exactly.
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  useEffect(() => {
+    if (!mainVisible) return;
+    const id = window.setTimeout(() => setHasBeenVisible(true), VISIBILITY_SETTLE_MS);
+    return () => window.clearTimeout(id);
+  }, [mainVisible]);
+  const suppressEntranceAnimation = !initialLayoutSettled || !hasBeenVisible;
 
   // Duration only — a Rate card's own timer just clocks the observation
   // window behind a tally, not something the user manually started/stopped
@@ -795,18 +829,24 @@ export function StatusBar({
                         // box's own fade-in and the tabs/nav's layout push — which
                         // shares SESSION_MORPH_MS via NOTIFICATION_AREA_TRANSITION —
                         // move as one instead of the box appearing to lag behind.
-                        // Zeroed instead while `initialLayoutSettled` is still
-                        // false (see its own comment): `boxNaturalHeight`'s very
-                        // first real measurement lands a beat after mount, once
-                        // the demo-only "Previous Session" row appears — without
-                        // this, THIS box played its own real 350ms grow on every
-                        // page load, and every layout-tracked sibling below it
-                        // (correctly) tracked that real, continuous reflow live,
-                        // reading as the whole header/toolbar visibly settling
-                        // in a beat after everything else. Any LATER, genuine
-                        // height change (an actual session collapsing/expanding)
-                        // still gets the real transition.
-                        height: !initialLayoutSettled
+                        // Zeroed instead while `suppressEntranceAnimation` is
+                        // still true (see its own and `hasBeenVisible`'s
+                        // comments): `boxNaturalHeight`'s very first real
+                        // measurement lands a beat after mount, once the
+                        // demo-only "Previous Session" row appears, AND can't
+                        // land at all until this screen is genuinely visible
+                        // (not `display: none`) — without zeroing for both,
+                        // this box played its own real SESSION_MORPH_MS grow
+                        // on every page load, or during the welcome->main
+                        // slide, and every layout-tracked sibling below it
+                        // (correctly) tracked that real, continuous reflow
+                        // live, reading as the whole header/toolbar visibly
+                        // settling in a beat after everything else — or, for
+                        // the slide, animating into place during what should
+                        // have been a static, already-formed slide-in. Any
+                        // LATER, genuine height change (an actual session
+                        // collapsing/expanding) still gets the real transition.
+                        height: suppressEntranceAnimation
                           ? { duration: 0 }
                           : { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
                         opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
@@ -838,6 +878,7 @@ export function StatusBar({
                     dimmed={dimmed}
                     expandGen={expandGen}
                     awaitingPillLanding={awaitingPillLanding}
+                    suppressEntranceAnimation={suppressEntranceAnimation}
                     transitionKind={dimmed ? transitionKind : null}
                     onPlay={requestPlay}
                     onStartNew={requestStartNew}
@@ -924,13 +965,27 @@ export function StatusBar({
                     // that (not a `layout="position"` reposition) needs its
                     // own transition to not be felt downstream. Targets
                     // miniSlotHeight (a measured pixel number), never the
-                    // string "auto" — see its comment above.
+                    // string "auto" — see its comment above. `initial`/
+                    // `transition` skip the entrance entirely while
+                    // `suppressEntranceAnimation` is true — this slot can
+                    // mount for the first time while still hidden behind
+                    // the welcome screen (a random initial state that's
+                    // already "running, mine"), and since `initial` is only
+                    // ever read once, at mount, letting it request the real
+                    // grow-from-0 entrance there would either not progress
+                    // at all until this screen later became visible, or
+                    // (worse) still be captured as "mid-flight" once it did
+                    // — either way reading as this slot animating into
+                    // place during what should be a static slide-in.
                     <motion.div
                       key="mini-session-slot"
-                      initial={{ height: 0, opacity: 0 }}
+                      initial={suppressEntranceAnimation ? false : { height: 0, opacity: 0 }}
                       animate={{ height: miniSlotHeight ?? "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: PILL_TRAVEL_MS / 1000, ease: SESSION_MORPH_EASE }}
+                      transition={{
+                        duration: suppressEntranceAnimation ? 0 : PILL_TRAVEL_MS / 1000,
+                        ease: SESSION_MORPH_EASE,
+                      }}
                       // No overflow-hidden here: the mini pill's -mr-4 below
                       // needs to bleed past this box's right edge to cancel
                       // the header's own padding, and CSS won't allow "clip Y
@@ -1705,6 +1760,7 @@ function ExpandedSessionBox({
   dimmed = false,
   expandGen = 0,
   awaitingPillLanding = false,
+  suppressEntranceAnimation = false,
   transitionKind = null,
   onPlay,
   onStartNew,
@@ -1744,6 +1800,12 @@ function ExpandedSessionBox({
    *  don't appear before the pill they're arranged around actually gets
    *  there. */
   awaitingPillLanding?: boolean;
+  /** True while StatusBar's own `suppressEntranceAnimation` is — see that
+   *  flag's own comment. Forces the actions row's height tween to a plain
+   *  snap for its first real measurement, the same reasoning as StatusBar's
+   *  own box height, just threaded down since `actionsHeight` is measured
+   *  here rather than there. */
+  suppressEntranceAnimation?: boolean;
   /** Which staged transition is actively dimming the box right now (null
    *  once it's settled or if `dimmed` is false) — drives the in-progress
    *  helper message that crossfades in over the label below, see its own
@@ -1976,10 +2038,14 @@ function ExpandedSessionBox({
           whole (now-blank) box collapses as a single later beat instead of
           reshuffling mid-fade. Height only changes for genuine content
           swaps (isPaused's button set), via the measured actionsHeight
-          number — never "auto", see the comment above. */}
+          number — never "auto", see the comment above. Zeroed instead while
+          `suppressEntranceAnimation` is true, same reasoning as StatusBar's
+          own box height — `actionsHeight`'s very first real measurement
+          can't land until this screen is genuinely visible, which otherwise
+          animated this row into place during the welcome->main slide. */}
       <motion.div
         animate={{ height: actionsHeight ?? "auto" }}
-        transition={{ duration: ACTIONS_HEIGHT_MS / 1000, ease }}
+        transition={{ duration: suppressEntranceAnimation ? 0 : ACTIONS_HEIGHT_MS / 1000, ease }}
         onAnimationComplete={onActionsHeightSettled}
         className="overflow-hidden"
       >
