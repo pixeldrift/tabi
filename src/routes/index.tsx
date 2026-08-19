@@ -1136,6 +1136,22 @@ function IndexInner({
   // unrelated layout shift on top of the box's own expand animation.
   const sessionActive = status !== "idle";
 
+  // True once `mainVisible` has been true for at least one render — see
+  // StatusBar's own `mainVisible`/`suppressEntranceAnimation` comments for
+  // the full reasoning (same mechanism, mirrored here since this "Start
+  // session to record data" banner below lives in this component instead).
+  // It mounts (possibly already showing, if the random initial state landed
+  // on "idle") while still hidden behind the welcome screen, and its
+  // `initial`->`animate` mount entrance doesn't actually get to play out
+  // until this screen becomes visible — which, without this, coincided
+  // with the welcome->main slide, animating the banner in during what
+  // should already be a static, fully-formed slide-in.
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+  useLayoutEffect(() => {
+    if (mainVisible) setHasBeenVisible(true);
+  }, [mainVisible]);
+  const suppressEntranceAnimation = !hasBeenVisible;
+
   const stickyTop = useStickyTop();
   // The shared details drawer starts at stickyTop (the toolbar's own top)
   // so it slides out on top of the toolbar, not just the pane below it —
@@ -1747,24 +1763,24 @@ function IndexInner({
                       {!sessionActive && (
                         <motion.div
                           key="start-session-banner"
-                          initial={{ height: 0, opacity: 0 }}
+                          initial={suppressEntranceAnimation ? false : { height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{
                             height: {
-                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              duration: suppressEntranceAnimation ? 0 : DATA_BANNER_EXIT_MS / 1000,
                               ease: [0.4, 0, 0.2, 1],
                             },
-                            opacity: { duration: 0.25 },
+                            opacity: { duration: suppressEntranceAnimation ? 0 : 0.25 },
                           }}
                           className="overflow-hidden border-t border-stone-200/70"
                         >
                           <motion.div
-                            initial={{ y: -16 }}
+                            initial={suppressEntranceAnimation ? false : { y: -16 }}
                             animate={{ y: 0 }}
                             exit={{ y: -16 }}
                             transition={{
-                              duration: DATA_BANNER_EXIT_MS / 1000,
+                              duration: suppressEntranceAnimation ? 0 : DATA_BANNER_EXIT_MS / 1000,
                               ease: [0.4, 0, 0.2, 1],
                             }}
                             className="py-1.5 px-8 text-center"
