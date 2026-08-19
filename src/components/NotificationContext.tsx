@@ -12,6 +12,7 @@ import { useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound, primeAlarmAudio } from "@/lib/alarmSounds";
 import { useTour } from "./TourContext";
 import { useTip } from "./TipContext";
+import { useSession } from "./SessionContext";
 
 export type NotificationKind =
   | "alert-now"
@@ -314,6 +315,13 @@ const MAX_RETAINED = 50;
 // specify one.
 const DEFAULT_GENERAL_AUTOFADE_MS = 4000;
 
+// How long after a genuinely fresh session start (see `sessionJustStarted`
+// below) to hold every push to "archived" — long enough to clear the
+// handoff (the pill's own travel, the box's collapse, digits settling) a
+// technician's actually watching, short enough that anything queued right
+// behind it still shows up moments later rather than silently vanishing.
+const SESSION_START_QUIET_MS = 1000;
+
 export function NotificationProvider({
   children,
   onActivate,
@@ -326,15 +334,35 @@ export function NotificationProvider({
   const dedupeRef = useRef<Map<string, string>>(new Map()); // dedupeKey -> id
   // NotificationProvider sits inside both TourProvider and TipProvider (see
   // routes/index.tsx), so it can read this directly rather than routing a
-  // prop down. A push that lands while either overlay owns the screen is
-  // nobody's-there-to-act-on-it in exactly the same sense as an alert
-  // firing with no one in the running session (see push()'s own `live`
+  // prop down. A push that lands while either overlay owns the screen, or
+  // within SESSION_START_QUIET_MS of a fresh session start (see
+  // `sessionJustStarted` below), is nobody's-there-to-act-on-it in exactly
+  // the same sense as an alert firing with no one in the running session
+  // (see push()'s own `live`
   // resolution below) — same treatment: straight into "archived," no
   // banner popping the layout out from under the tour/tip spotlight, no
   // chime competing with it, still fully present in the Notifications tab.
   const { active: tourActive } = useTour();
   const { active: tipActive } = useTip();
-  const notificationsSuppressed = tourActive || tipActive;
+  // SessionContext sits above this provider (see routes/index.tsx's own
+  // nesting), so it's safe to read directly here rather than needing a
+  // bridging child component the way pushing FROM session events does (see
+  // GoalChangeDemoTrigger/SessionActivityTrigger's own comments on that
+  // one-way constraint). `resetSignal` — not `status` — is what actually
+  // means "a genuinely fresh session," same reasoning as those two
+  // triggers': it bumps once per real start-new, not on every pause/resume
+  // in between.
+  const { resetSignal } = useSession();
+  const [sessionJustStarted, setSessionJustStarted] = useState(false);
+  const prevResetSignalRef = useRef(resetSignal);
+  useEffect(() => {
+    if (resetSignal === prevResetSignalRef.current) return;
+    prevResetSignalRef.current = resetSignal;
+    setSessionJustStarted(true);
+    const id = window.setTimeout(() => setSessionJustStarted(false), SESSION_START_QUIET_MS);
+    return () => window.clearTimeout(id);
+  }, [resetSignal]);
+  const notificationsSuppressed = tourActive || tipActive || sessionJustStarted;
   const onActivateRef = useRef(onActivate);
   useEffect(() => {
     onActivateRef.current = onActivate;

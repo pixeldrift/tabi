@@ -50,6 +50,13 @@ export function playAlarmSound(style: AlarmSoundStyle) {
   playGeneration.set(style, (playGeneration.get(style) ?? 0) + 1);
   const audio = getAudioElement(style);
   audio.muted = false;
+  // Bumping the generation above makes primeAlarmAudio's own cleanup skip
+  // restoring `muted`/`volume` if this call wins a race against a still-in-
+  // flight priming play (see that function's own comment) — so a real play
+  // has to restore both itself, the same way it already did for `muted`
+  // before `volume` joined it there, or a real chime that happens to land
+  // mid-priming would play back silently forever after.
+  audio.volume = 1;
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }
@@ -74,17 +81,30 @@ export function primeAlarmAudio() {
   for (const style of Object.keys(ALARM_SOUND_FILES) as AlarmSoundStyle[]) {
     const el = getAudioElement(style);
     const generationAtStart = playGeneration.get(style) ?? 0;
+    // Belt-and-suspenders alongside `muted` — the exact "few ms of leak on
+    // first-ever play" quirk this whole priming dance already exists to
+    // work around (see this function's own doc comment) is specifically
+    // about `muted` not applying synchronously on some engines. `volume`
+    // has no such quirk and is silent regardless, so a real chime call
+    // landing mid-priming still can't produce an audible artifact from
+    // this element even in that window — this is what was actually left
+    // to cause a stray blip since the generation-tracking fix (which only
+    // ever protected a REAL chime from being cut short by a late priming
+    // cleanup, not priming itself from leaking).
     el.muted = true;
+    el.volume = 0;
     el.play()
       .then(() => {
         if ((playGeneration.get(style) ?? 0) !== generationAtStart) return;
         el.pause();
         el.currentTime = 0;
         el.muted = false;
+        el.volume = 1;
       })
       .catch(() => {
         if ((playGeneration.get(style) ?? 0) !== generationAtStart) return;
         el.muted = false;
+        el.volume = 1;
       });
   }
 }
