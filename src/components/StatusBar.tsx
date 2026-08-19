@@ -575,6 +575,29 @@ export function StatusBar({
   // laid-out element once it lands. See the overlay render below.
   const bigPillRef = useRef<HTMLDivElement>(null);
   const miniPillRef = useRef<HTMLDivElement>(null);
+
+  // Same "never animate to the literal string auto" fix as boxNaturalHeight/
+  // actionsHeight above — Motion's own "auto" resolution re-measures
+  // whenever this slot's content shifts (the pill's own crossfade, the
+  // digits rolling), and can settle at a value below its final height
+  // before correcting back up, which read as the nav bouncing. A
+  // ResizeObserver-measured pixel number never does that. Declared up here
+  // (rather than down by its own render, where it used to live) so the
+  // pill-travel rect-prediction effect below can depend on it too — the
+  // mini slot's own still-growing height was a THIRD moving part in that
+  // prediction's own math, not just boxNaturalHeight.
+  const miniSlotRef = useRef<HTMLDivElement>(null);
+  const [miniSlotHeight, setMiniSlotHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = miniSlotRef.current;
+    if (!el) return;
+    const measure = () => setMiniSlotHeight(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Only surfaced once you've actually joined (isMineAndRunning) — before
   // that, whoever's running it is already named front-and-center in the
   // big expanded box itself (see ExpandedSessionBox), so a second "who's
@@ -649,24 +672,34 @@ export function StatusBar({
   }, [pillTraveling, visualTravelActive, boxCollapseSettled]);
 
   // Once the destination element exists in the DOM (still invisible),
-  // measure its natural resting rect and let the overlay start traveling
-  // toward it.
+  // measure its natural resting rect and keep the overlay heading toward
+  // it. Deliberately keeps RE-measuring and RE-setting `to` on every
+  // relevant change (no `pillTravelRect`-already-set early-return) rather
+  // than predicting it once, up front, and freezing that guess — landing
+  // in "mini" happens before the session box collapses (see boxCollapsed's
+  // own delay in SessionContext — deliberately, so the two read as
+  // sequential beats), and in that window the mini slot's own rect isn't
+  // just "off by boxNaturalHeight": the actions row settling to its new
+  // (usually smaller) content shrinks the box's own height on its own
+  // schedule, the mini slot itself is still growing in from 0 on ITS OWN
+  // schedule, and the two don't finish at the same instant — a single
+  // snapshot at travel-start can't account for changes that haven't
+  // happened yet. Re-measuring `rawTo` fresh (not just re-applying a fixed
+  // offset to a stale snapshot) and letting Motion's own `animate` prop
+  // retarget mid-flight toward whatever's currently the best estimate
+  // converges on the truth as it becomes knowable, instead of committing
+  // to a guess that can only be as good as the moment it was made.
   useLayoutEffect(() => {
-    if (!visualTravelActive || pillTravelRect) return;
+    if (!visualTravelActive) return;
     const toEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
     const fromRect = pillTravelFromRef.current;
     if (!toEl || !fromRect) return;
     const rawTo = toEl.getBoundingClientRect();
-    // Landing in "mini" happens before the session box collapses (see
-    // boxCollapsed's own delay in SessionContext — deliberately, so the two
-    // read as sequential beats). But the mini slot's rect right now still
-    // reflects the box being open; travelling straight there lands the
-    // pill well below the tab bar, into the content pane, and only THEN
-    // does the box collapse and drag it back up to where it actually
-    // belongs — a visible dip past its own final resting spot. Collapsing
-    // the box frees exactly boxNaturalHeight of vertical space above the
-    // nav, so predicting that shift now and landing there directly skips
-    // the detour without touching the "land, then collapse" sequencing.
+    // Collapsing the box frees exactly boxNaturalHeight of vertical space
+    // above the nav — predicting that shift now (rather than only once it's
+    // actually happened) is what skips the "land low in the content pane,
+    // then get dragged back up" detour without touching the "land, then
+    // collapse" sequencing itself.
     const willCollapseAfterLanding =
       pillView === "mini" && collapsed && !boxCollapsed && (boxNaturalHeight ?? 0) > 0;
     const to = willCollapseAfterLanding
@@ -678,30 +711,12 @@ export function StatusBar({
     // just for this travel's own PILL_TRAVEL_MS to run out.
     pillTravelAwaitingCollapseRef.current = willCollapseAfterLanding;
     setPillTravelRect({ from: fromRect, to });
-  }, [visualTravelActive, pillTravelRect, pillView, collapsed, boxCollapsed, boxNaturalHeight]);
+  }, [visualTravelActive, pillView, collapsed, boxCollapsed, boxNaturalHeight, miniSlotHeight]);
 
   const renderBigPill = pillView === "big" || visualTravelActive;
   const renderMiniPill = pillView === "mini" || visualTravelActive;
   const bigPillVisible = pillView === "big" && !visualTravelActive;
   const miniPillVisible = pillView === "mini" && !visualTravelActive;
-
-  // Same "never animate to the literal string auto" fix as boxNaturalHeight/
-  // actionsHeight above — Motion's own "auto" resolution re-measures
-  // whenever this slot's content shifts (the pill's own crossfade, the
-  // digits rolling), and can settle at a value below its final height
-  // before correcting back up, which read as the nav bouncing. A
-  // ResizeObserver-measured pixel number never does that.
-  const miniSlotRef = useRef<HTMLDivElement>(null);
-  const [miniSlotHeight, setMiniSlotHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const el = miniSlotRef.current;
-    if (!el) return;
-    const measure = () => setMiniSlotHeight(el.scrollHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // The content pane below gets its own border-t (routes/index.tsx) so it
   // reads as a real seam under every OTHER tab and in the gaps between
@@ -1083,8 +1098,29 @@ export function StatusBar({
                   initial={{ width: buttonPx.from }}
                   animate={{ width: buttonPx.to }}
                   transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-                  className="shrink-0 bg-blue-500"
-                />
+                  className="shrink-0 bg-blue-500 grid place-items-center text-white"
+                >
+                  {/* Shows the DESTINATION icon from the very first frame of
+                      travel, not the departing one — toMini always means
+                      landing on the mini pill's own Pause affordance
+                      (resume/start-new/join all travel toward mini), and
+                      the only way travel ever heads the other direction is
+                      pause, always landing back on the big pill's own Play
+                      (resume) affordance. Without this the button-shaped
+                      end of the overlay was just a bare colored rectangle
+                      for the whole travel — e.g. resuming a session left
+                      the button looking blank instead of already reading
+                      as "now playing" the instant you tapped it. One fixed
+                      size for the whole travel (not animated alongside
+                      buttonPx) — legible at both the mini and big button's
+                      own width, so it doesn't need to itself pop between
+                      two sizes on top of the button's own resize. */}
+                  {toMini ? (
+                    <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
+                  ) : (
+                    <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
+                  )}
+                </motion.span>
               </motion.div>
             );
           })()}
