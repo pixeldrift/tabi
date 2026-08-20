@@ -12,7 +12,7 @@ import { useSettings, type AlarmSoundStyle } from "./SettingsContext";
 import { playAlarmSound, primeAlarmAudio } from "@/lib/alarmSounds";
 import { useTour } from "./TourContext";
 import { useTip } from "./TipContext";
-import { useSession } from "./SessionContext";
+import { useSession, CURRENT_STAFF_ID } from "./SessionContext";
 
 export type NotificationKind =
   | "alert-now"
@@ -315,11 +315,12 @@ const MAX_RETAINED = 50;
 // specify one.
 const DEFAULT_GENERAL_AUTOFADE_MS = 4000;
 
-// How long after a genuinely fresh session start (see `sessionJustStarted`
-// below) to hold every push to "archived" — long enough to clear the
-// handoff (the pill's own travel, the box's collapse, digits settling) a
-// technician's actually watching, short enough that anything queued right
-// behind it still shows up moments later rather than silently vanishing.
+// How long after a genuinely fresh session start or a join (see
+// `sessionJustStarted`/`justJoined` below) to hold every push to
+// "archived" — long enough to clear the handoff (the pill's own travel,
+// the box's collapse or expand, digits settling) a technician's actually
+// watching, short enough that anything queued right behind it still shows
+// up moments later rather than silently vanishing.
 const SESSION_START_QUIET_MS = 1000;
 
 export function NotificationProvider({
@@ -335,10 +336,10 @@ export function NotificationProvider({
   // NotificationProvider sits inside both TourProvider and TipProvider (see
   // routes/index.tsx), so it can read this directly rather than routing a
   // prop down. A push that lands while either overlay owns the screen, or
-  // within SESSION_START_QUIET_MS of a fresh session start (see
-  // `sessionJustStarted` below), is nobody's-there-to-act-on-it in exactly
-  // the same sense as an alert firing with no one in the running session
-  // (see push()'s own `live`
+  // within SESSION_START_QUIET_MS of a fresh session start or a join (see
+  // `sessionJustStarted`/`justJoined` below), is nobody's-there-to-act-on-it
+  // in exactly the same sense as an alert firing with no one in the running
+  // session (see push()'s own `live`
   // resolution below) — same treatment: straight into "archived," no
   // banner popping the layout out from under the tour/tip spotlight, no
   // chime competing with it, still fully present in the Notifications tab.
@@ -352,7 +353,7 @@ export function NotificationProvider({
   // means "a genuinely fresh session," same reasoning as those two
   // triggers': it bumps once per real start-new, not on every pause/resume
   // in between.
-  const { resetSignal } = useSession();
+  const { resetSignal, status, isSessionMine, startedById } = useSession();
   const [sessionJustStarted, setSessionJustStarted] = useState(false);
   const prevResetSignalRef = useRef(resetSignal);
   useEffect(() => {
@@ -362,7 +363,26 @@ export function NotificationProvider({
     const id = window.setTimeout(() => setSessionJustStarted(false), SESSION_START_QUIET_MS);
     return () => window.clearTimeout(id);
   }, [resetSignal]);
-  const notificationsSuppressed = tourActive || tipActive || sessionJustStarted;
+  // Same treatment for joining someone else's already-running session —
+  // same handoff-in-progress reasoning, just a different trigger than a
+  // fresh start (no resetSignal bump on a join, see its own comment in
+  // SessionContext). Same detection SessionActivityTrigger already uses for
+  // its own "You joined X's session" push (routes/index.tsx) — recomputed
+  // here rather than threaded through, since this only needs the boolean's
+  // own rising edge, not anything that component pushes.
+  const joinedSomeoneElse =
+    status === "running" && isSessionMine && !!startedById && startedById !== CURRENT_STAFF_ID;
+  const [justJoined, setJustJoined] = useState(false);
+  const prevJoinedRef = useRef(joinedSomeoneElse);
+  useEffect(() => {
+    if (joinedSomeoneElse === prevJoinedRef.current) return;
+    prevJoinedRef.current = joinedSomeoneElse;
+    if (!joinedSomeoneElse) return;
+    setJustJoined(true);
+    const id = window.setTimeout(() => setJustJoined(false), SESSION_START_QUIET_MS);
+    return () => window.clearTimeout(id);
+  }, [joinedSomeoneElse]);
+  const notificationsSuppressed = tourActive || tipActive || sessionJustStarted || justJoined;
   const onActivateRef = useRef(onActivate);
   useEffect(() => {
     onActivateRef.current = onActivate;

@@ -1461,10 +1461,11 @@ function IndexInner({
   // remount, which happens at a different moment per kind:
   //  - discard doesn't run the header's pill travel (the box stays open),
   //    so it remounts immediately once stage 2 commits.
-  //  - start-new does run the pill travel, and resets the odometer to zero
-  //    at that same instant — so its remount waits PILL_LAND_MS, until the
-  //    clock has actually landed in the mini slot, instead of the new cards
-  //    beating it there. See SessionContext's PILL_LAND_MS comment.
+  //  - start-new (and join, see SessionContext's own requestJoin comment —
+  //    same staged sequence, just without the odometer actually resetting)
+  //    both run the pill travel, so their remount waits PILL_LAND_MS, until
+  //    the clock has actually landed in the mini slot, instead of the new
+  //    cards beating it there. See SessionContext's PILL_LAND_MS comment.
   // Both cases use React's "adjust state during render" pattern (comparing
   // against a ref of the previous value) for the instant parts, so there's
   // no one-tick lag or intermediate stale-content flash.
@@ -1472,26 +1473,31 @@ function IndexInner({
   const prevKindForHideRef = useRef<TransitionKind>(null);
   if (transitionKind !== prevKindForHideRef.current) {
     prevKindForHideRef.current = transitionKind;
-    if (transitionKind === "start-new" || transitionKind === "discard") {
+    if (
+      transitionKind === "start-new" ||
+      transitionKind === "join" ||
+      transitionKind === "discard"
+    ) {
       setCardsHidden(true);
     }
   }
 
-  // A fresh session starting should read as "the pane was already at the
-  // top," not as a scroll happening — a real session is meant to open on
-  // its first card, not wherever the user happened to be scrolled to on
-  // the idle/"Start New Session" screen. Instant (not smooth) and in a
-  // layout effect (before paint) so nothing is visibly scrolling; this
-  // also preempts a real, separate glitch: stage 1 hides the outgoing
-  // cards immediately (see `cardsHidden` above) but the new ones don't
-  // remount until PILL_LAND_MS later, so for that whole window the Data
-  // tab's pane is briefly far shorter than the page the user was actually
-  // scrolled against — if they were scrolled down, the browser's own
-  // native scroll-clamping snaps them to whatever the new (shorter) max
-  // happens to be the instant that content gap opens, a jump this makes
-  // moot by already being at the top before it can occur.
+  // A fresh session starting (or a join — see requestJoin's own comment)
+  // should read as "the pane was already at the top," not as a scroll
+  // happening — entering a session is meant to open on its first card, not
+  // wherever the user happened to be scrolled to on the idle/"browsing
+  // before joining" screen. Instant (not smooth) and in a layout effect
+  // (before paint) so nothing is visibly scrolling; this also preempts a
+  // real, separate glitch: stage 1 hides the outgoing cards immediately
+  // (see `cardsHidden` above) but the new ones don't remount until
+  // PILL_LAND_MS later, so for that whole window the Data tab's pane is
+  // briefly far shorter than the page the user was actually scrolled
+  // against — if they were scrolled down, the browser's own native
+  // scroll-clamping snaps them to whatever the new (shorter) max happens to
+  // be the instant that content gap opens, a jump this makes moot by
+  // already being at the top before it can occur.
   useLayoutEffect(() => {
-    if (transitionKind === "start-new") {
+    if (transitionKind === "start-new" || transitionKind === "join") {
       dataContentRef.current?.scrollTo(0, 0);
     }
   }, [transitionKind]);
@@ -1519,7 +1525,10 @@ function IndexInner({
           setCardsHidden(false);
           cardEntranceTimeoutRef.current = null;
         }, CARD_SLIDE_EXIT_MS);
-      } else if (transitionKind === "start-new") {
+      } else if (transitionKind === "start-new" || transitionKind === "join") {
+        // Join reuses start-new's own single-unit slide variant — the
+        // card list's own visuals don't need a distinct "join" flavor, just
+        // the same choreography (see SessionContext's requestJoin comment).
         cardEntranceTimeoutRef.current = window.setTimeout(() => {
           setCardsAnimKind("start-new");
           setCardsGen((n) => n + 1);

@@ -14,7 +14,7 @@ import { playSoundEffect } from "@/lib/soundEffects";
 
 export type SessionStatus = "idle" | "running" | "paused";
 export type SaveStatus = "clean" | "dirty" | "saving";
-export type TransitionKind = "start-new" | "resume" | "discard" | null;
+export type TransitionKind = "start-new" | "join" | "resume" | "discard" | null;
 
 // The staff member "at this device" — there's no real auth in this
 // prototype, so this is hardcoded rather than picked at runtime. An id, not
@@ -157,11 +157,13 @@ interface SessionContextValue {
   // session box expanded (not auto-collapsed into the toolbar's mini pill)
   // and swaps the pill's Play icon for a Join one, see StatusBar.
   isSessionMine: boolean;
-  // Adds CURRENT_STAFF_ID to presentStaffIds without going through the
-  // staged start/resume machinery — joining doesn't touch the timer or
+  // Adds CURRENT_STAFF_ID to presentStaffIds — doesn't touch the timer or
   // hand off ownership, it just means another set of eyes (and hands) is
-  // now on the same session. Safe to call repeatedly.
-  joinSession: () => void;
+  // now on the same session. Runs through the same staged sequence as
+  // requestStartNew (see runStagedTransition) so joining an in-progress or
+  // abandoned session reads as the same deliberate handoff a fresh start
+  // does, rather than an instant snap. Safe to call repeatedly.
+  requestJoin: () => void;
   // An explicit, intentional unlock (see its own toggle in StatusBar) that
   // lets cards accept edits while genuinely paused, without starting the
   // timer or affecting rate data — off by default so a parked session
@@ -485,8 +487,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // bounce). This dwell has to stay in step with that or `dimmed`
         // resets — and stage-2 content reappears — before the box has
         // actually finished closing. Resume no longer runs through here at
-        // all (see requestResume's own comment) — start-new and discard are
-        // the only two kinds this function is ever actually called with now.
+        // all (see requestResume's own comment) — start-new, join, and
+        // discard are the only kinds this function is ever actually called
+        // with now.
         const dwellMs =
           kind === "discard" ? 0 : DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS;
         const t2 = window.setTimeout(() => {
@@ -504,6 +507,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const requestStartNew = useCallback(
     () => runStagedTransition("start-new", startFresh),
     [runStagedTransition, startFresh],
+  );
+  // Joining an in-progress or abandoned session now plays the same staged
+  // sequence as starting fresh — see `requestJoin`'s own interface comment.
+  // `runStagedTransition`'s dwell (see its own comment) already applies to
+  // any kind other than "discard", so "join" inherits the same
+  // DIGIT_SETTLE_MS + HEADER_MORPH_MS + BOX_COLLAPSE_MS pacing as
+  // "start-new" without needing its own case there.
+  const requestJoin = useCallback(
+    () => runStagedTransition("join", joinSession),
+    [runStagedTransition, joinSession],
   );
   // Unstaged, unlike start-new/discard above — same reasoning as `pause`
   // itself: the box's own collapse, the pill's travel, and the label/
@@ -550,17 +563,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const collapsed = isMineAndRunning || (transitionStage === 2 && transitionKind !== "discard");
 
   // Delays `collapsed`'s effect on the box's own real CSS height into a
-  // separate beat for a fresh start ONLY — "clock moves, then box closes"
-  // (see StatusBar's own render for the actual `animate={{height}}`) — a
-  // fresh start gets an extra DIGIT_SETTLE_MS + HEADER_MORPH_MS head start
-  // so the odometer's reset-to-zero spin is visibly readable before
-  // anything starts shrinking, and the pill's own travel has time to
-  // finish before the box closes in around it. Resume and join don't get
-  // that delay — their pill lands at a fixed anchor independent of the
-  // box's own current height (see StatusBar's own pill-travel comment), so
-  // there's no longer a "let the pill land first" ordering to protect:
-  // the box's own collapse, the pill's travel, and the label/actions row's
-  // own fade-out all start on the same instant and read as one motion.
+  // separate beat for a staged start (fresh or joined) — "clock moves, then
+  // box closes" (see StatusBar's own render for the actual
+  // `animate={{height}}`) — a staged start gets an extra DIGIT_SETTLE_MS +
+  // HEADER_MORPH_MS head start so the odometer's reset-to-zero spin (fresh)
+  // or the same beat's worth of dwell (joined, no actual reset but the same
+  // pacing — see `requestJoin`'s own comment) is visibly readable before
+  // anything starts shrinking, and the pill's own travel has time to finish
+  // before the box closes in around it. Resume doesn't get that delay —
+  // its pill lands at a fixed anchor independent of the box's own current
+  // height (see StatusBar's own pill-travel comment), so there's no longer
+  // a "let the pill land first" ordering to protect: the box's own
+  // collapse, the pill's travel, and the label/actions row's own fade-out
+  // all start on the same instant and read as one motion.
   // `collapseKindRef` captures `transitionKind` at the moment collapse
   // begins (not read directly from `transitionKind` in the timeout below)
   // so a later reset of `transitionKind` can't retroactively change an
@@ -577,7 +592,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setBoxCollapsed(false);
       return;
     }
-    if (collapseKindRef.current === "start-new") {
+    if (collapseKindRef.current === "start-new" || collapseKindRef.current === "join") {
       const id = window.setTimeout(() => setBoxCollapsed(true), DIGIT_SETTLE_MS + HEADER_MORPH_MS);
       return () => window.clearTimeout(id);
     }
@@ -613,11 +628,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const wasMineAndRunning = prevIsMineAndRunningForPillRef.current;
     prevIsMineAndRunningForPillRef.current = isMineAndRunning;
     pillTransitionKindRef.current = transitionKind;
-    const startingFresh = isMineAndRunning && pillTransitionKindRef.current === "start-new";
-    // The one other flip this effect sees besides a fresh start: a running
+    // Both staged "entering" kinds — a real fresh start and now a join too
+    // (see `requestJoin`'s own comment) — get the same DIGIT_SETTLE_MS head
+    // start before the pill travels, matching `collapseKindRef`'s own pair
+    // above: same pacing either way, even though a join has no actual
+    // digit-reset-to-zero to settle.
+    const enteringStaged =
+      isMineAndRunning &&
+      (pillTransitionKindRef.current === "start-new" || pillTransitionKindRef.current === "join");
+    // The one other flip this effect sees besides a staged entry: a running
     // session that was mine just stopped being "mine and running" with no
     // transitionKind at all — the only way that happens is pause(), which
-    // (unlike resume/start-new/discard) never goes through
+    // (unlike resume/start-new/discard/join) never goes through
     // runStagedTransition, so nothing else already delays anything for it.
     const pausing = wasMineAndRunning && !isMineAndRunning;
     let travelTimeoutId: number | undefined;
@@ -625,7 +647,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setPillTraveling(true);
       travelTimeoutId = window.setTimeout(() => setPillTraveling(false), PILL_TRAVEL_MS);
     };
-    if (startingFresh) {
+    if (enteringStaged) {
       const settleId = window.setTimeout(beginTravel, DIGIT_SETTLE_MS);
       return () => {
         window.clearTimeout(settleId);
@@ -633,7 +655,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       };
     }
     if (pausing) {
-      // Unlike resuming/joining — whose mini landing spot sits up in the
+      // Unlike resuming — whose mini landing spot sits up in the
       // nav row, clear of the tab bar/content pane below entirely, so
       // departing the instant the box starts collapsing never crosses
       // anything — pausing's big-pill landing spot is INSIDE the box,
@@ -654,11 +676,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
       };
     }
-    // Resuming/joining starts the pill's travel immediately, in lockstep
-    // with the box's own collapse: the mini landing spot is anchored
-    // relative to the title row/save indicator (see StatusBar's own
-    // prediction effect), never to the box's own current height, so there's
-    // nothing to wait out — and nothing below it to cross either.
+    // Resuming (the only kind left once enteringStaged/pausing are ruled
+    // out — see requestResume's own comment) starts the pill's travel
+    // immediately, in lockstep with the box's own collapse: the mini
+    // landing spot is anchored relative to the title row/save indicator
+    // (see StatusBar's own prediction effect), never to the box's own
+    // current height, so there's nothing to wait out — and nothing below
+    // it to cross either.
     beginTravel();
     return () => {
       if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
@@ -781,7 +805,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastEndedById,
       presentStaffIds,
       isSessionMine,
-      joinSession,
+      requestJoin,
       reviewModeUnlocked,
       setReviewModeUnlocked,
       isAbandoned,
@@ -817,7 +841,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastEndedById,
       presentStaffIds,
       isSessionMine,
-      joinSession,
+      requestJoin,
       reviewModeUnlocked,
       isAbandoned,
       previousSessionMs,
