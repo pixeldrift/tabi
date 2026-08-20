@@ -277,7 +277,7 @@ export function StatusBar({
     lastEndedById,
     presentStaffIds,
     isSessionMine,
-    joinSession,
+    requestJoin,
     reviewModeUnlocked,
     setReviewModeUnlocked,
     isAbandoned,
@@ -559,7 +559,7 @@ export function StatusBar({
   // own writeup of the 4 session states this reflects.
   const requestPlay = () => {
     if (status === "paused") requestResume();
-    else if (isRunning && !isSessionMine) joinSession();
+    else if (isRunning && !isSessionMine) requestJoin();
   };
 
   // What time to show inside the pill during the morph: keep continuity so
@@ -1837,6 +1837,7 @@ function formatRelativeFromNow(d: Date) {
 // itself, now covering its two siblings too.
 const TRANSITION_MESSAGES: Record<Exclude<TransitionKind, null>, string> = {
   "start-new": "Starting New Session",
+  join: "Joining Session",
   resume: "Resuming Session",
   discard: "Discarding Session",
 };
@@ -2201,7 +2202,10 @@ function ExpandedSessionBox({
               )}
               style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
             >
-              <OdometerDigits text={formatTime(elapsedMs)} slow={transitionKind === "start-new"} />
+              <OdometerDigits
+                text={formatTime(elapsedMs)}
+                slow={transitionKind === "start-new" || transitionKind === "join"}
+              />
             </span>
             {/* No button at all once truly idle — there's nothing to
                 resume/join, only "Start New Session" below, per the
