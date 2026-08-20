@@ -104,6 +104,11 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
   // regardless of this measurement).
   const [searchNarrow, setSearchNarrow] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  // Lets the explicit close button (see its own render-site comment) blur
+  // the input directly rather than needing its own copy of collapse logic —
+  // blurring alone already flips `searchFocused` back via the input's own
+  // onBlur below.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const el = searchBoxRef.current;
     if (!el) return;
@@ -439,54 +444,97 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
             </div>
           </div>
 
-          {/* Search — trimmed a bit short of the row's full width (mr-6) so
-            the details drawer's tab, now pinned to the top of the drawer
-            and overlapping this row, has clear space to sit in. min-w-8
-            (not min-w-0) keeps a sliver of usable tap target once the
-            fourth view-mode pill above claims its share of this shrink-0
-            row's space, rather than letting it collapse to nothing first.
-            Focusing it collapses the button group above (see its own
+          {/* Search + its own explicit close button share this row so the
+            row's real right-edge reservation (mr-6, see below) stays put
+            regardless of whether the close button is currently rendered —
+            trimmed a bit short of the row's full width so the details
+            drawer's tab, now pinned to the top of the drawer and
+            overlapping this row, has clear space to sit in. */}
+          <div className="flex items-center flex-1 min-w-8 mr-6">
+            {/* min-w-8 (not min-w-0) keeps a sliver of usable tap target once
+            the fourth view-mode pill above claims its share of this
+            shrink-0 row's space, rather than letting it collapse to nothing
+            first. Focusing it collapses the button group above (see its own
             comment) so this flex-1 box expands leftward to fill the space
             that reclaims — the search box itself needs no width rule of
-            its own for that, just to already be the row's only flex-1
+            its own for that, just to already be this row's only flex-1
             child. */}
-          <div ref={searchBoxRef} className="relative flex-1 min-w-8 mr-6">
-            <Search
-              className={cn(
-                "absolute top-1/2 size-3.5 -translate-y-1/2 text-stone-400 pointer-events-none transition-[left,transform] duration-300 ease-in-out",
-                showSearchIconOnly ? "left-1/2 -translate-x-1/2" : "left-2",
+            <div ref={searchBoxRef} className="relative flex-1 min-w-8">
+              <Search
+                className={cn(
+                  "absolute top-1/2 size-3.5 -translate-y-1/2 text-stone-400 pointer-events-none transition-[left,transform] duration-300 ease-in-out",
+                  showSearchIconOnly ? "left-1/2 -translate-x-1/2" : "left-2",
+                )}
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                // Empty (not "Search") once the box is too narrow to fit the
+                // word next to its icon at rest — an icon-only affordance
+                // instead of letting the placeholder clip. Bypassed while
+                // focused, since focusing always triggers the expand above,
+                // which gives it room regardless of this narrow measurement.
+                placeholder={showSearchIconOnly ? "" : "Search"}
+                aria-label="Search cards"
+                // 16px (text-base) on phones — iOS Safari auto-zooms the whole
+                // page on focus for any input whose computed font-size is under
+                // that, regardless of the viewport meta tag's own scale limits
+                // in current iOS versions. Desktop/tablet (sm+) doesn't have
+                // that behavior, so it reverts to the toolbar's own compact size.
+                className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center size-4 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                >
+                  <X className="size-3" />
+                </button>
               )}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              // Empty (not "Search") once the box is too narrow to fit the
-              // word next to its icon at rest — an icon-only affordance
-              // instead of letting the placeholder clip. Bypassed while
-              // focused, since focusing always triggers the expand above,
-              // which gives it room regardless of this narrow measurement.
-              placeholder={showSearchIconOnly ? "" : "Search"}
-              aria-label="Search cards"
-              // 16px (text-base) on phones — iOS Safari auto-zooms the whole
-              // page on focus for any input whose computed font-size is under
-              // that, regardless of the viewport meta tag's own scale limits
-              // in current iOS versions. Desktop/tablet (sm+) doesn't have
-              // that behavior, so it reverts to the toolbar's own compact size.
-              className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center size-4 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
-              >
-                <X className="size-3" />
-              </button>
-            )}
+            </div>
+            {/* Explicit close affordance for the focused/expanded search
+              box — collapsing it back previously relied entirely on the
+              implicit "tap outside triggers blur" gesture, easy to miss
+              since the expanded box can fill most of the row's width. A
+              distinct circular toolbar button (matching Filter/Edit/
+              Bookmark's own size-7 rounded-full style above) rather than
+              another plain inline X keeps it from reading as a second
+              "clear the text" control — that one lives inside the box and
+              only appears once there's text to clear; this one lives
+              outside it and cares about focus, not content. Same grid
+              0fr/1fr width trick as the button group's own collapse above,
+              mirrored: 0-width at rest, growing in only once focused,
+              rather than permanently reserving dead space beside a
+              collapsed search icon.
+              onMouseDown's preventDefault stops the button's own press
+              from blurring the input a beat before the click completes
+              (which would start this same wrapper collapsing back to 0fr
+              out from under a still-in-progress tap) — blurring is instead
+              driven explicitly, once, from onClick itself. */}
+            <div
+              className={cn(
+                "grid transition-[grid-template-columns] duration-300 ease-in-out",
+                searchFocused ? "grid-cols-[1fr] ml-1.5" : "grid-cols-[0fr]",
+              )}
+            >
+              <div className="overflow-hidden">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => searchInputRef.current?.blur()}
+                  aria-label="Close search"
+                  className="grid place-items-center size-7 shrink-0 rounded-full border border-stone-200 text-stone-500 transition-colors hover:text-stone-800 hover:bg-stone-100"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
