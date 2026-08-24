@@ -102,26 +102,30 @@ function ChecklistRow({
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={checked}
-      className="flex w-full items-start gap-2.5 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-stone-50 disabled:pointer-events-none disabled:opacity-50"
+      className="flex w-full flex-col rounded-lg px-1 py-1 text-left transition-colors hover:bg-stone-50 disabled:pointer-events-none disabled:opacity-50"
     >
-      <div className="pt-0.5">
+      {/* items-center (not items-start) so the box lands on the label's own
+       *  line — its own line box sits close enough to that single line's
+       *  x-height to read as centered on the text, not the whole row,
+       *  which matters once a description line is showing underneath. */}
+      <span className="flex w-full items-center gap-2.5">
         <ChecklistBox checked={checked} />
-      </div>
-      <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "block text-sm leading-snug",
+            "min-w-0 flex-1 text-sm leading-snug",
             checked ? "text-foreground" : "text-foreground/80",
           )}
         >
           {item.label}
         </span>
-        {showDescription && item.description && (
-          <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-            {item.description}
-          </span>
-        )}
       </span>
+      {showDescription && item.description && (
+        // Indented to align under the label, not the box — size-5 box
+        // (1.25rem) + the row's own gap-2.5 (0.625rem).
+        <span className="mt-0.5 block pl-[1.875rem] text-xs leading-snug text-muted-foreground">
+          {item.description}
+        </span>
+      )}
     </button>
   );
 }
