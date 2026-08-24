@@ -36,6 +36,7 @@ const KIND_ORDER: CardKind[] = [
   "task-analysis",
   "rating",
   "timestamp",
+  "checklist",
 ];
 
 // Same order PROMPT_LEVEL_ICONS declares them in (least to most intrusive) —
@@ -56,7 +57,15 @@ interface FieldSchema {
    *  straight fold over the schema instead of per-kind assembly code. */
   key: string;
   label: string;
-  type: "text" | "number" | "switch" | "promptLevels" | "steps" | "chainingDirection" | "ranking";
+  type:
+    | "text"
+    | "number"
+    | "switch"
+    | "promptLevels"
+    | "steps"
+    | "chainingDirection"
+    | "ranking"
+    | "checklistItems";
   required?: boolean;
   placeholder?: string;
   helpText?: string;
@@ -168,6 +177,15 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
     { key: "positiveLabel", label: "Positive label", type: "text", placeholder: "Correct" },
     { key: "negativeLabel", label: "Negative label", type: "text", placeholder: "Incorrect" },
   ],
+  checklist: [
+    {
+      key: "items",
+      label: "Items",
+      type: "checklistItems",
+      required: true,
+      helpText: "One entry per item, in order. Description is optional, shown in expanded view.",
+    },
+  ],
 };
 
 /** Slide+fade variants for the two-step wizard body. `direction` (passed in
@@ -215,6 +233,10 @@ function kindContentValid(kind: CardKind, content: Content): boolean {
       if (f.type === "steps" || f.type === "ranking") {
         const rows = (content[f.key] as string[] | undefined) ?? [];
         return rows.some((s) => !isBlank(s));
+      }
+      if (f.type === "checklistItems") {
+        const rows = (content[f.key] as { label: string; description: string }[] | undefined) ?? [];
+        return rows.some((r) => !isBlank(r.label));
       }
       return content[f.key] !== undefined && content[f.key] !== "";
     });
@@ -324,6 +346,24 @@ function buildCardConfig(
         positiveLabel: str("positiveLabel"),
         negativeLabel: str("negativeLabel"),
       };
+    case "checklist": {
+      const rawItems =
+        (content.items as { label: string; description: string }[] | undefined) ?? [];
+      const items = rawItems
+        .filter((r) => !isBlank(r.label))
+        .map((r) => ({
+          label: r.label.trim(),
+          description: isBlank(r.description) ? undefined : r.description.trim(),
+        }));
+      return {
+        id,
+        kind,
+        title,
+        phase,
+        description,
+        items,
+      };
+    }
   }
 }
 
@@ -435,6 +475,16 @@ function SchemaField({
         <RankingListField
           levels={(value as string[] | undefined) ?? [""]}
           onChange={(levels) => onChange(levels)}
+        />
+      )}
+      {field.type === "checklistItems" && (
+        <ChecklistItemsField
+          items={
+            (value as { label: string; description: string }[] | undefined) ?? [
+              { label: "", description: "" },
+            ]
+          }
+          onChange={(items) => onChange(items)}
         />
       )}
     </div>
@@ -597,6 +647,63 @@ function RankingListField({
       >
         <Plus className="size-3.5" />
         Add ranking
+      </Button>
+    </div>
+  );
+}
+
+function ChecklistItemsField({
+  items,
+  onChange,
+}: {
+  items: { label: string; description: string }[];
+  onChange: (items: { label: string; description: string }[]) => void;
+}) {
+  const empty = { label: "", description: "" };
+  return (
+    <div className="mt-1.5 flex flex-col gap-3">
+      {items.map((item, i) => (
+        <div key={i} className="flex items-start gap-1.5">
+          <span className="mt-2 grid place-items-center size-6 rounded-[5px] border-2 border-stone-300 bg-white shrink-0" />
+          <div className="min-w-0 flex-1 flex flex-col gap-1">
+            <Input
+              value={item.label}
+              placeholder={`Item ${i + 1} label`}
+              onChange={(e) => {
+                const next = [...items];
+                next[i] = { ...next[i], label: e.target.value };
+                onChange(next);
+              }}
+            />
+            <AutoGrowTextarea
+              value={item.description}
+              placeholder="Description shown in expanded view (optional)"
+              onChange={(v) => {
+                const next = [...items];
+                next[i] = { ...next[i], description: v };
+                onChange(next);
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [empty])}
+            aria-label={`Remove item ${i + 1}`}
+            className="shrink-0 mt-1 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => onChange([...items, empty])}
+        className="-ml-2 self-start text-muted-foreground"
+      >
+        <Plus className="size-3.5" />
+        Add item
       </Button>
     </div>
   );

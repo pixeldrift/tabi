@@ -24,6 +24,7 @@ import { RateIcon } from "@/components/icons/RateIcon";
 import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
+import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
 import { useSettings } from "./SettingsContext";
@@ -43,6 +44,7 @@ export const KIND_META: Record<
   "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
   timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
+  checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },
 };
 
 // Fades the collapsing button group's own trailing (right) edge — the one

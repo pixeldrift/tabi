@@ -75,6 +75,7 @@ const MEASUREMENT_LABELS: Record<CardKind, { positive: string; negative: string 
   duration: { positive: "Counts as the same instance if", negative: "Does not count if" },
   rating: { positive: "Mark Correct if", negative: "Mark Error if" },
   timestamp: { positive: "Mark Correct if", negative: "Mark Incorrect if" },
+  checklist: { positive: "Check off if", negative: "Leave unchecked if" },
 };
 
 // Procedure and Measurement are what staff actually reach for mid-session —

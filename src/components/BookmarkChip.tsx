@@ -9,6 +9,7 @@ import { useTrialChip, ListPromptLevelButton } from "./TrialCard";
 import { useFrequencyChip } from "./FrequencyCard";
 import { useRatingChip, ListRatingButton } from "./RatingCard";
 import { useTaskAnalysisChip, ListTaskAnalysisPromptLevelButton } from "./TaskAnalysisCard";
+import { useChecklistChip, ListChecklistButton } from "./ChecklistCard";
 import { cn } from "@/lib/utils";
 import type { CardConfig } from "@/routes/index";
 
@@ -88,6 +89,15 @@ export function BookmarkChip({ card, mounted, active, onSelect, onJumpToCard }: 
     case "timestamp":
       return (
         <TimestampChip
+          card={card}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
+    case "checklist":
+      return (
+        <ChecklistChip
           card={card}
           active={active}
           onSelect={onSelect}
@@ -416,6 +426,26 @@ function RatingChip({
         min={min}
         disabled={!canRecordData}
         onPick={pick}
+      />
+    </ChipShell>
+  );
+}
+
+function ChecklistChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "checklist" }> } & ChipSelectionProps) {
+  const { checked, toggle, checkedCount, canRecordData } = useChecklistChip(card.id, card.items);
+  return (
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
+      <ListChecklistButton
+        items={card.items}
+        checked={checked}
+        checkedCount={checkedCount}
+        disabled={!canRecordData}
+        onToggle={toggle}
       />
     </ChipShell>
   );

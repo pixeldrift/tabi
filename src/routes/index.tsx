@@ -18,6 +18,7 @@ import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
 import { TimestampCard } from "@/components/TimestampCard";
+import { ChecklistCard } from "@/components/ChecklistCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import {
   SessionProvider,
@@ -158,6 +159,17 @@ export type CardConfig = {
       /** TEMPORARY test hook — unlocks the elapsed-time pill for manual
        *  entry instead of following the session clock. Defaults to locked. */
       locked?: boolean;
+    }
+  | {
+      kind: "checklist";
+      title: string;
+      phase: string;
+      description: string;
+      /** One entry per checklist item, in display order — `description` is
+       *  the secondary line revealed under its item only in the card's own
+       *  expanded view (see ChecklistCard), omit it for an item with
+       *  nothing more to say than its own label. */
+      items: { label: string; description?: string }[];
     }
 );
 
@@ -634,6 +646,62 @@ const BUILT_IN_CARDS: CardConfig[] = [
         "Only the current interval (locked to session time) can be scored — if a check is missed, that interval is simply left blank rather than back-filled once the next one has already started.",
     },
   },
+  {
+    id: "pairing-indicators",
+    kind: "checklist",
+    title: "Pairing indicators",
+    phase: "Baseline",
+    description:
+      "Check off each indicator if you observed it at any point during the session — no count or duration to track, just whether it happened.",
+    items: [
+      {
+        label: "Anticipatory excitement at arrival",
+        description: "Client shows excitement when they see you arrive.",
+      },
+      {
+        label: "Proximity tolerance",
+        description: "Client seems comfortable with you nearby during all activities.",
+      },
+      {
+        label: "Positive affect in your presence",
+        description: "Client smiles, laughs, or shows clear enjoyment when interacting with you.",
+      },
+      {
+        label: "Seeking RBT proximity",
+        description:
+          "Client moves toward you, sits near you, or follows you without being prompted.",
+      },
+      {
+        label: "Social bids toward you",
+        description: "Client initiates communication with you about something that interests them.",
+      },
+      {
+        label: "Sharing preferred items",
+        description: "Client hands you something they enjoy or holds it up to you.",
+      },
+      {
+        label: "Accepting co-regulation",
+        description: "Client allows you to help them calm down when they are distressed.",
+      },
+      {
+        label: "Session end protest",
+        description: "Client shows reluctance to leave or shows distress when the session ends.",
+      },
+    ],
+    teachingProcedure: {
+      goal: "Track signs that Phineas is pairing well with his RBT across a session, to catch early rapport-building progress before formal teaching demands ramp up.",
+      rationale:
+        "Pairing — becoming associated with reinforcement rather than demands — is the foundation instruction is built on. Reviewing these indicators together each session gives a quick read on how rapport is developing, rather than tracking each one in isolation.",
+      procedure:
+        "Check off each indicator if you observed it at any point during the session, however briefly — there's no minimum count or duration, one clear instance is enough. Leave unchecked whatever you didn't observe.",
+      measurement: {
+        markCorrect: "Observed at any point during the session, however briefly.",
+        markError: "Not observed at any point during the session.",
+      },
+      instructionalNotes:
+        "Score based on what you actually observed, not what you expect to see as pairing develops — a low count early on is expected and useful information, not something to inflate.",
+    },
+  },
 ];
 
 // Data-submitted animation timing — TODO: surface in user settings.
@@ -888,6 +956,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
   "task-analysis",
   "rating",
   "timestamp",
+  "checklist",
 ];
 
 // Clinical progression order, not the cards' own declaration order — the
@@ -910,6 +979,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   "task-analysis": "Task Analysis",
   rating: "Score",
   timestamp: "Timestamp",
+  checklist: "Checklist",
 };
 
 const CUSTOM_CARDS_STORAGE_KEY = "aba-daba-custom-cards-v1";
@@ -976,10 +1046,12 @@ function getVisibleCards(
     // each individual step. Searching "soap" finds the "Washing hands"
     // card via its "Apply soap" step even though the title itself never
     // says soap — another way to reach the same card besides the kind/
-    // phase filter toggles above, not a replacement for them.
+    // phase filter toggles above, not a replacement for them. Checklist
+    // cards get the same treatment for their own item labels.
     if (q) {
       const haystack = [card.title, card.phase, SEARCH_KIND_LABELS[card.kind], card.description];
       if (card.kind === "task-analysis") haystack.push(...card.steps);
+      if (card.kind === "checklist") haystack.push(...card.items.map((item) => item.label));
       if (!haystack.some((s) => s.toLowerCase().includes(q))) return false;
     }
     return true;
@@ -2232,6 +2304,16 @@ function renderCard(
           positiveLabel={card.positiveLabel}
           negativeLabel={card.negativeLabel}
           locked={card.locked}
+          {...common}
+        />
+      );
+    case "checklist":
+      return (
+        <ChecklistCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          items={card.items}
           {...common}
         />
       );
