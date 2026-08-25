@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
@@ -160,6 +160,12 @@ export function ChecklistCard({
   const cardKey = id ?? title;
   const { checked, toggle, checkedCount, canRecordData, reset } = useChecklistChip(cardKey, items);
   const [expanded, setExpanded] = useState(false);
+  // Which item the grid tile's own one-at-a-time view is showing — only
+  // that density needs this (List/Card mode already show every item at
+  // once), same "current" idea as TaskAnalysisCard's own per-instance
+  // stepper, just without the instance dimension checklists don't have.
+  const [current, setCurrent] = useCardState(cardKey, "current", 0);
+  const goTo = (idx: number) => setCurrent(Math.max(0, Math.min(idx, items.length - 1)));
   const { resetSignal } = useCardSession();
   // Checking anything at all is the whole of "has this been touched" — same
   // "picked or not, nothing partial" reasoning RatingCard's own hasData/
@@ -176,8 +182,21 @@ export function ChecklistCard({
     if (!shouldReset) return;
     markResetHandled();
     reset();
+    setCurrent(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
+
+  // Tile-only: check the currently-viewed item, then — mirroring
+  // TaskAnalysisCard's own setStep(advance) — auto-advance to the next one
+  // shortly after, but only on a genuine check, not on toggling one back
+  // off (nothing to "move on" from there).
+  const checkCurrentAndAdvance = () => {
+    const wasChecked = Boolean(checked[current]);
+    toggle(current);
+    if (!wasChecked) {
+      window.setTimeout(() => goTo(current + 1), 260);
+    }
+  };
 
   const percent = items.length > 0 ? Math.round((checkedCount / items.length) * 100) : 0;
   const summary = `${checkedCount} of ${items.length} checked · ${percent}%`;
@@ -235,23 +254,90 @@ export function ChecklistCard({
             {teachingBlock}
           </>
         }
-      >
-        {/* No per-item checkboxes at this density — there's no room for up
-            to a handful of rows, and every other tile at this size is a
-            read-only glance anyway (tapping it opens the details drawer,
-            same as any other kind's tile). Just the fraction, large enough
-            to read at a glance like Frequency's own tally. */}
-        <div className="flex flex-col items-center gap-0.5">
-          <span
+        actions={
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              checkCurrentAndAdvance();
+            }}
+            disabled={!canRecordData}
+            aria-label={checked[current] ? "Uncheck item" : "Check item"}
             className={cn(
-              "font-display leading-none tabular-nums text-foreground",
-              large ? "text-[34px]" : "text-[26px]",
+              "shrink-0 rounded-[9px] grid place-items-center border-2 transition-colors disabled:opacity-40",
+              large ? "size-10" : "size-7",
+              checked[current]
+                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+                : "border-stone-300 bg-white hover:bg-stone-50",
             )}
           >
-            {checkedCount}
-            <span className="text-foreground/40">/{items.length}</span>
+            <Check className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+          </button>
+        }
+      >
+        {/* One item at a time, same idea as TaskAnalysisCard's own tile
+         *  stepper — the dot row gives the overview a static fraction
+         *  can't (which items, not just how many), the arrows page through
+         *  them, and the checkbox in `actions` above scores whichever one
+         *  is centered, auto-advancing on a genuine check. */}
+        <div className="w-full flex flex-col items-center gap-1">
+          <div className="flex items-center justify-center gap-1.5">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(i);
+                }}
+                aria-label={`Go to item ${i + 1}`}
+                className={cn(
+                  "rounded-full transition-all duration-300",
+                  i === current ? (large ? "size-2.5" : "size-2") : large ? "size-1.5" : "size-1",
+                  checked[i] ? "bg-blue-500" : "bg-stone-300",
+                )}
+                style={{ opacity: i === current ? 1 : 0.6 }}
+              />
+            ))}
+          </div>
+          <div className="flex w-full items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                goTo(current - 1);
+              }}
+              disabled={current === 0}
+              aria-label="Previous item"
+              className="shrink-0 grid place-items-center size-6 rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <p
+              className={cn(
+                "flex-1 min-w-0 text-center line-clamp-2 font-semibold leading-tight",
+                large ? "text-[13px]" : "text-[11px]",
+                checked[current] ? "text-foreground" : "text-foreground/80",
+              )}
+            >
+              {items[current]?.label}
+            </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                goTo(current + 1);
+              }}
+              disabled={current >= items.length - 1}
+              aria-label="Next item"
+              className="shrink-0 grid place-items-center size-6 rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            {checkedCount}/{items.length} checked
           </span>
-          <span className="text-[10px] text-muted-foreground">{percent}% checked</span>
         </div>
       </MiniTileShell>
     );
