@@ -658,6 +658,37 @@ const BUILT_IN_CARDS: CardConfig[] = [
     },
   },
   {
+    id: "accepts-medication",
+    kind: "timestamp",
+    title: "Accepts medication without resisting",
+    phase: "Intervention",
+    description:
+      "A single check right after meds are given at the start of session, not a repeating interval — scored once, then done for the day. intervalCount: 1 is what keeps this to one interval instead of Remains Dry's whole-session schedule.",
+    intervalMin: 15,
+    intervalCount: 1,
+    positiveLabel: "Accepted",
+    negativeLabel: "Resisted",
+    teachingProcedure: {
+      goal: "Phineas will accept his morning medication without resisting (crying, pushing away, spitting out, or needing a second attempt) across 4 consecutive administrations.",
+      rationale:
+        "Medication resistance can color the whole start of a session — scoring it as its own single check, separate from the broader behavior tally, makes it easy to see whether a rough start actually predicts a rough session.",
+      procedure:
+        "Score once, right after meds are given — Accepted if he took the dose calmly within one presentation, Resisted if there was crying, pushing away, spitting out, or a second attempt was needed.",
+      sd: "The medication being presented (cup or spoon offered) — score based on what actually happened whenever meds were given, not the interval boundary itself.",
+      measurement: {
+        markCorrect:
+          "Accepted: took the dose within one presentation, no more than mild vocal protest.",
+        markError:
+          "Resisted: crying, pushing away, spitting out, or a second presentation attempt needed.",
+      },
+      correction:
+        "For a resisted dose, follow the standard re-administration routine calmly — don't badger or bribe past the second attempt, just log what actually happened and move on.",
+      materials: "Medication cup, water, standard administration supplies.",
+      instructionalNotes:
+        "This is a single check, not a strict time-of-day requirement — if meds end up given a little late, score the same interval anyway rather than waiting for a specific clock time.",
+    },
+  },
+  {
     id: "pairing-indicators",
     kind: "checklist",
     title: "Pairing indicators",
