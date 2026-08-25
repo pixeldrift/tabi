@@ -3,6 +3,7 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
@@ -293,9 +294,12 @@ export function ChecklistCard({
       >
         {/* One item at a time, same idea as TaskAnalysisCard's own tile
          *  stepper — the dot row gives the overview a static fraction
-         *  can't (which items, not just how many), the arrows page through
-         *  them, and the checkbox in `actions` above scores whichever one
-         *  is centered, auto-advancing on a genuine check. */}
+         *  can't (which items, not just how many), and the checkbox in
+         *  `actions` above scores whichever one is centered, auto-advancing
+         *  on a genuine check. Small density drops the nav arrows and the
+         *  ratio line entirely (see below) — there's only room for the dots
+         *  and the label before it reads as crowded, and swiping still
+         *  covers navigation either way. */}
         <div className="w-full flex flex-col items-center gap-1">
           <div className="flex items-center justify-center gap-1.5">
             {items.map((_, i) => (
@@ -316,44 +320,69 @@ export function ChecklistCard({
               />
             ))}
           </div>
-          <div className="flex w-full items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                goTo(current - 1);
-              }}
-              disabled={current === 0}
-              aria-label="Previous item"
-              className="shrink-0 grid place-items-center size-6 rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+          <div className="relative w-full">
+            {/* Large density only — pushed out to the tile's own edges
+             *  (not hugging the label) since there's room to spare at that
+             *  size; small density relies on swiping/the dots alone. */}
+            {large && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(current - 1);
+                  }}
+                  disabled={current === 0}
+                  aria-label="Previous item"
+                  className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(current + 1);
+                  }}
+                  disabled={current >= items.length - 1}
+                  aria-label="Next item"
+                  className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </>
+            )}
+            {/* Real touch/drag swiping between items, same SwipeStrip every
+             *  other kind's tile already uses — synced to the same
+             *  current/goTo state the dots and (large-only) arrows drive,
+             *  so all three stay in agreement regardless of which one last
+             *  moved it. */}
+            <SwipeStrip
+              count={items.length}
+              current={current}
+              onCurrentChange={goTo}
+              variant="paged"
+              className="w-full"
+              itemWrapperClassName={cn("w-full flex items-center justify-center", large && "px-6")}
             >
-              <ChevronLeft className="size-4" />
-            </button>
-            <p
-              className={cn(
-                "flex-1 min-w-0 text-center line-clamp-2 font-semibold leading-tight",
-                large ? "text-[13px]" : "text-[11px]",
-                checked[current] ? "text-foreground" : "text-foreground/80",
+              {(i) => (
+                <p
+                  className={cn(
+                    "text-center line-clamp-2 font-semibold",
+                    large ? "text-[13px] leading-tight" : "text-[11px] leading-[1.05]",
+                    checked[i] ? "text-foreground" : "text-foreground/80",
+                  )}
+                >
+                  {items[i]?.label}
+                </p>
               )}
-            >
-              {items[current]?.label}
-            </p>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                goTo(current + 1);
-              }}
-              disabled={current >= items.length - 1}
-              aria-label="Next item"
-              className="shrink-0 grid place-items-center size-6 rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-            >
-              <ChevronRight className="size-4" />
-            </button>
+            </SwipeStrip>
           </div>
-          <span className="text-[10px] text-muted-foreground">
-            {checkedCount}/{items.length} checked
-          </span>
+          {large && (
+            <span className="text-[10px] text-muted-foreground">
+              {checkedCount}/{items.length} checked
+            </span>
+          )}
         </div>
       </MiniTileShell>
     );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Check, X, CircleSlash2 } from "lucide-react";
+import { Check, X, CircleSlash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/PercentCorrectIcon";
 import { DetailsIcon } from "./icons/DetailsIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
@@ -549,44 +549,80 @@ export function TrialCard({
           </div>
         }
       >
-        <SwipeStrip
-          count={trials.length}
-          current={current}
-          onCurrentChange={goTo}
-          variant="centered"
-          className="w-full"
-          gapClassName={large ? "gap-2" : "gap-1.5"}
-          itemWrapperClassName="flex items-center justify-center"
-        >
-          {(i, isCenter) => {
-            const t = trials[i];
-            const color =
-              t === "correct"
-                ? "text-green-700"
-                : t === "incorrect"
-                  ? "text-red-700"
-                  : t === "no-response"
-                    ? "text-amber-700"
-                    : isCenter
-                      ? "text-foreground"
-                      : "text-foreground/30";
-            return (
-              <div
+        <div className="relative w-full">
+          {/* Large density only — same "pushed to the tile's own edges"
+           *  nav-arrow convention as Checklist's tile; small density relies
+           *  on swiping/tapping a bubble alone. */}
+          {large && (
+            <>
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  goTo(i);
+                  goTo(current - 1);
                 }}
-                className={cn(
-                  "font-display font-bold tabular-nums transition-[font-size] leading-none",
-                  color,
-                )}
-                style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
+                disabled={current === 0}
+                aria-label="Previous trial"
+                className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
               >
-                {i + 1}
-              </div>
-            );
-          }}
-        </SwipeStrip>
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(current + 1);
+                }}
+                disabled={
+                  (trials[current] === null && current >= completedCount) ||
+                  (maxTrials ? current >= maxTrials - 1 : false)
+                }
+                aria-label="Next trial"
+                className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </>
+          )}
+          <SwipeStrip
+            count={trials.length}
+            current={current}
+            onCurrentChange={goTo}
+            variant="centered"
+            className="w-full"
+            gapClassName={large ? "gap-2" : "gap-1.5"}
+            itemWrapperClassName="flex items-center justify-center"
+          >
+            {(i, isCenter) => {
+              const t = trials[i];
+              const color =
+                t === "correct"
+                  ? "text-green-700"
+                  : t === "incorrect"
+                    ? "text-red-700"
+                    : t === "no-response"
+                      ? "text-amber-700"
+                      : isCenter
+                        ? "text-foreground"
+                        : "text-foreground/30";
+              return (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(i);
+                  }}
+                  className={cn(
+                    "font-display font-bold tabular-nums transition-[font-size] leading-none",
+                    color,
+                  )}
+                  style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
+                >
+                  {i + 1}
+                </div>
+              );
+            }}
+          </SwipeStrip>
+        </div>
       </MiniTileShell>
     );
   }

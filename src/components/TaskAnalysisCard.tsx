@@ -1,6 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { ArrowLeft, ArrowRight, Check, HandHelping, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  HandHelping,
+  X,
+} from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
@@ -682,8 +690,52 @@ export function TaskAnalysisCard({
             above) — plain w-full here, no scroll-snap padding trick, so the
             percentage resolves against genuine available space. Wraps both
             strips below purely so ResizeObserver has a stable element to
-            watch; it isn't otherwise part of either strip's own layout. */}
-        <div ref={tileContentRef} className="w-full flex flex-col items-center gap-0.5">
+            watch; it isn't otherwise part of either strip's own layout.
+            `relative` additionally anchors the large-density-only nav
+            arrows (position: absolute doesn't affect the measured width
+            above, so this is safe to add without disturbing that). */}
+        <div
+          ref={tileContentRef}
+          className={cn(
+            "relative w-full flex flex-col items-center gap-0.5",
+            // Shrinks the measured content width (tileContentWidth reads
+            // this div's own content-box rect, which already excludes
+            // padding) so the step text's own width leaves the arrows'
+            // gutter clear instead of running underneath them.
+            large && "px-6",
+          )}
+        >
+          {/* Large density only — same "pushed to the tile's own edges"
+           *  nav-arrow convention as Checklist's/Percent Correct's tiles;
+           *  small density relies on swiping/tapping a dot alone. */}
+          {large && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(activeCurrent - 1);
+                }}
+                disabled={activeCurrent === 0}
+                aria-label="Previous step"
+                className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(activeCurrent + 1);
+                }}
+                disabled={activeCurrent >= steps.length - 1}
+                aria-label="Next step"
+                className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </>
+          )}
           {/* Every step's own dot, not just prev/current/next — a second
             SwipeStrip bound to the same current/goTo state as the step text
             below, so dragging either one moves both in lockstep and the
