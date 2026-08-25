@@ -226,7 +226,7 @@ export function TimestampCard({
   // a user can navigate ahead of or pause independently.
   const [elapsed, setElapsed] = useCardState(cardKey, "elapsed", 0); // ms
   const [expanded, setExpanded] = useState(false);
-  const { sessionRunning, isSessionMine, subscribeTick } = useSession();
+  const { sessionRunning, isSessionMine, subscribeTick, getElapsedMsNow } = useSession();
   const { markDirty, resetSignal, canRecordData } = useCardSession();
 
   const intervalMs = intervalMin * 60 * 1000;
@@ -309,9 +309,24 @@ export function TimestampCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
+  // Synced to the session's own ground-truth elapsed (getElapsedMsNow), not
+  // accumulated from tick deltas — subscribeTick only delivers ticks that
+  // happen AFTER a subscription starts, so a card that was unmounted for a
+  // while (hidden via Edit mode, a display-mode switch, scrolled out of a
+  // virtualized list, etc.) would otherwise silently stall at whatever
+  // elapsed was when it last unmounted instead of catching up. Synced
+  // immediately on (re)mount/resume, then again on every subsequent tick —
+  // self-correcting each time rather than compounding any gap.
   useEffect(() => {
     if (!sessionRunning) return;
-    return subscribeTick((d) => setElapsed((e) => e + d));
+    setElapsed(getElapsedMsNow());
+    return subscribeTick(() => setElapsed(getElapsedMsNow()));
+    // getElapsedMsNow is intentionally omitted — while sessionRunning is
+    // true it always computes live off refs (performance.now()), so even a
+    // closure captured before its own last identity change stays accurate;
+    // re-subscribing on every one of its (~4x/sec) identity changes would
+    // just churn the tick-listener set for no behavioral difference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionRunning, subscribeTick]);
 
   const viewStatus = statuses[viewIdx];
