@@ -352,15 +352,23 @@ export function RateCard({
                 </button>
               )}
             </NumberKeypad>
-            <RateIcon
+            {/* "/ [stopwatch]" reads as "count per timed period" — faded
+             *  gray so it stays a quiet unit hint next to the real number,
+             *  not competing with it, and static regardless of `ticking`
+             *  (the number's own bump animation already carries the "this
+             *  is live" signal). */}
+            <span
               className={cn(
-                "pointer-events-none absolute top-1/2 -translate-y-1/2 text-blue-500",
-                large ? "-right-4" : "-right-3.5",
-                ticking && "animate-pulse-scale",
-                large ? "size-3.5" : "size-3",
+                "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center text-muted-foreground/40",
+                large ? "-right-7 gap-0.5" : "-right-6 gap-px",
               )}
               aria-hidden
-            />
+            >
+              <span className={cn("font-display leading-none", large ? "text-xl" : "text-base")}>
+                /
+              </span>
+              <RateIcon className={large ? "size-3.5" : "size-3"} />
+            </span>
           </div>
         </MiniTileShell>
       </div>
@@ -548,6 +556,16 @@ export function RateCard({
                       )}
                       aria-hidden
                     />
+                    {/* Same "/ [stopwatch]" convention as the grid tile —
+                     *  faded gray, no animation, purely a unit hint next to
+                     *  the real number. */}
+                    <span
+                      className="pointer-events-none absolute -right-8 top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-muted-foreground/40"
+                      aria-hidden
+                    >
+                      <span className="font-display text-2xl leading-none">/</span>
+                      <RateIcon className="size-4" />
+                    </span>
                     <div className="relative overflow-hidden rounded-lg px-2 py-0.5">
                       <AnimatePresence mode="popLayout" initial={false}>
                         <motion.span
