@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, Compass, Lightbulb } from "lucide-react";
 import tabiLogo from "@/assets/images/tabi-logo.png";
 
-/** The app's opening splash screen with logo, tagkine, and the single "Get
+/** The app's opening splash screen with logo, tagline, and the single "Get
  *  Started" action that hands off to the main interface (see routes/index.tsx's
  *  screen-slide wiring). Version/build info and the credit line live here
  *  now instead of in StatusBar's title row, since they're app-identity
@@ -114,7 +114,7 @@ export function WelcomeScreen({
           href="mailto:nathan@pizar.net"
           className="text-xs italic font-light text-stone-400 transition-colors hover:text-stone-500"
         >
-          &copy; 2005 - Nathan D. B. Pizar
+          &copy; 2026 - Nathan D. B. Pizar
         </a>
       </div>
     </div>
