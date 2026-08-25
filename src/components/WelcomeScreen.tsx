@@ -47,7 +47,7 @@ export function WelcomeScreen({
           Our goal is to make Tabi easy, intuitive, and fast. The tools you need are right where you
           need them, when you need them.
         </p>
-        <p>Have a suggestion? We'd love your <a
+        <p>Have a suggestion? We would love your <a
           href="mailto:nathan@pizar.net">feedback!</a></p>
       </div>
 
