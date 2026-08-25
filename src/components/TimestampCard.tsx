@@ -14,6 +14,7 @@ import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
+import { parseTimeOfDayLabel } from "./TimeOfDayKeypad";
 import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
@@ -43,6 +44,16 @@ export interface TimestampCardProps extends CardEditAndDrawerProps {
    *  exposed so elapsed time can be typed in directly for testing;
    *  defaults to locked. */
   locked?: boolean;
+  /** "timeOfDay" switches the card entirely into checkpoint mode below —
+   *  `intervalMin`/`intervalCount`/`defaultWindowHours` above are ignored
+   *  in that case. Omitted or "interval" runs the normal elapsed-interval
+   *  card as always. */
+  checkpointMode?: "interval" | "timeOfDay";
+  /** Only consumed when `checkpointMode` is "timeOfDay" — each checkpoint
+   *  fires its own real wall-clock alert (with a scoreable popup, same as
+   *  the interval mode's own "time to check" alert) once its `time` has
+   *  arrived, and is scored independently of the others. */
+  checkpoints?: { time: string; label: string; alertText?: string }[];
   isActive?: boolean;
   onActivate?: () => void;
 }
@@ -198,6 +209,8 @@ export function TimestampCard({
   positiveLabel = "Correct",
   negativeLabel = "Incorrect",
   locked = true,
+  checkpointMode,
+  checkpoints,
   isActive = true,
   onActivate,
   reorderEditing,
@@ -220,6 +233,14 @@ export function TimestampCard({
   onWidthModeChange,
 }: TimestampCardProps) {
   const cardKey = id ?? title;
+  // Splits the whole card into two mutually-exclusive modes further down —
+  // checkpoint mode replaces the elapsed-interval timeline/alert entirely
+  // with a fixed list of named, wall-clock-anchored checks (see the
+  // checkpoint-mode block below, after `scoreFromCard`). Both branches'
+  // hooks still run unconditionally either way (Rules of Hooks) — this
+  // flag just decides which branch's alert fires and which branch's UI
+  // actually renders.
+  const isCheckpointMode = checkpointMode === "timeOfDay" && !!checkpoints?.length;
   // Session-linked elapsed time — always ticking with the session (no local
   // play/pause of its own, unlike Rate/Duration's unlocked mode) so "which
   // interval is current" is a pure function of session time, not something
@@ -332,12 +353,6 @@ export function TimestampCard({
   const viewStatus = statuses[viewIdx];
   const scoredCount = statuses.filter((s) => s !== null).length;
   const isComplete = scoredCount === displayIntervalCount;
-  useReportCardStatus(cardKey, scoredCount > 0, isComplete, {
-    title,
-    kind: "timestamp",
-    value: `${scoredCount}/${displayIntervalCount}`,
-    unit: "Intervals Marked",
-  });
 
   const goTo = (idx: number) => {
     setViewIdx(Math.max(0, Math.min(idx, displayIntervalCount - 1)));
@@ -387,6 +402,7 @@ export function TimestampCard({
   // routine, repeating check, not the kind of alert that warrants the
   // louder "alarm" style some users may have chosen as their default.
   useEffect(() => {
+    if (isCheckpointMode) return;
     if (rawIndex === 0) return;
     if (rawIndex === prevAlertRawIndexRef.current) return;
     prevAlertRawIndexRef.current = rawIndex;
@@ -428,6 +444,156 @@ export function TimestampCard({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawIndex]);
+
+  // ---- Checkpoint mode (checkpointMode === "timeOfDay") ----
+  // A wholly separate scoring track from the elapsed-interval one above —
+  // one status per named checkpoint, driven by the real wall clock instead
+  // of session elapsed time, so it keeps ticking (and can still alert)
+  // whether or not a session is even running. Hooks below still run
+  // unconditionally for a non-checkpoint card (Rules of Hooks); they're
+  // just inert in that case (checkpoints is empty, so nothing here ever
+  // fires or renders).
+  const [checkpointStatuses, setCheckpointStatuses] = useCardState<IntervalStatus[]>(
+    cardKey,
+    "checkpointStatuses",
+    () => Array(checkpoints?.length ?? 0).fill(null),
+  );
+  // Grows/shrinks the persisted array to match the authored checkpoint
+  // list, same idea as the interval track's own "grow the window" effect —
+  // but this one can also shrink (a checkpoint removed in the admin dialog
+  // shouldn't leave a dangling status behind).
+  useEffect(() => {
+    const n = checkpoints?.length ?? 0;
+    setCheckpointStatuses((prev) => {
+      if (prev.length === n) return prev;
+      if (prev.length > n) return prev.slice(0, n);
+      return [...prev, ...Array(n - prev.length).fill(null)];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoints?.length]);
+  useEffect(() => {
+    if (!shouldReset || !isCheckpointMode) return;
+    setCheckpointStatuses(Array(checkpoints?.length ?? 0).fill(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReset]);
+
+  // The real wall clock, ticked independently of the session clock — a
+  // checkpoint's alert has to fire at 10am whether or not a session happens
+  // to be running (or even started) right then, unlike the interval track's
+  // own elapsed-time alert. Only ticks while actually in checkpoint mode;
+  // 30s is plenty of precision for a "did we cross this minute" check.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!isCheckpointMode) return;
+    const id = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(id);
+  }, [isCheckpointMode]);
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  // Parsed once per render rather than baked into the authored data itself —
+  // `checkpoints[].time` stays the same already-formatted "10:00a" string
+  // the admin dialog shows back, and this is the one place that actually
+  // needs it as a comparable number of minutes since midnight.
+  const checkpointMinutes = (checkpoints ?? []).map((cp) => {
+    const parsed = parseTimeOfDayLabel(cp.time);
+    return parsed ? parsed.hour24 * 60 + parsed.minute : null;
+  });
+  // The latest checkpoint whose time has already arrived today, so there's
+  // always a sensible "current" one to land on — same convention as the
+  // interval track's own gracedIndex — falling back to the first checkpoint
+  // before any of today's have arrived yet.
+  const currentCheckpointIndex = checkpointMinutes.reduce<number>(
+    (best, min, i) => (min !== null && min <= nowMin ? i : best),
+    0,
+  );
+  const [checkpointViewIdx, setCheckpointViewIdx] = useCardState(
+    cardKey,
+    "checkpointViewIdx",
+    currentCheckpointIndex,
+  );
+  const prevCurrentCheckpointIndexRef = useRef(currentCheckpointIndex);
+  useEffect(() => {
+    if (!isCheckpointMode) return;
+    if (currentCheckpointIndex !== prevCurrentCheckpointIndexRef.current) {
+      prevCurrentCheckpointIndexRef.current = currentCheckpointIndex;
+      setCheckpointViewIdx(currentCheckpointIndex);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCheckpointIndex, isCheckpointMode]);
+
+  const scoreCheckpoint = (index: number, value: Exclude<IntervalStatus, null>) => {
+    markDirty();
+    setCheckpointStatuses((prev) => {
+      const next = [...prev];
+      next[index] = next[index] === value ? null : value;
+      return next;
+    });
+  };
+  const scoreCheckpointFromCard = (index: number, value: Exclude<IntervalStatus, null>) => {
+    scoreCheckpoint(index, value);
+    clearByDedupeKey(`timestamp-checkpoint:${cardKey}:${index}:${now.toDateString()}`);
+  };
+  // Fires each checkpoint's own alert once its time has actually arrived —
+  // deliberately level-triggered (checked fresh on every tick) rather than
+  // edge-triggered like the interval alert above: a checkpoint whose time
+  // already passed before this card ever mounted (a fresh page load at
+  // 10:15 for a 10:00 checkpoint, say) still needs to alert, not just one
+  // crossed live while watching. `pushNotification`'s own per-day dedupeKey
+  // is what keeps this from re-firing on every subsequent 30s tick.
+  useEffect(() => {
+    if (!isCheckpointMode || !alertsEnabled) return;
+    const dayKey = now.toDateString();
+    (checkpoints ?? []).forEach((cp, i) => {
+      const min = checkpointMinutes[i];
+      if (min === null || nowMin < min) return;
+      if (checkpointStatuses[i] != null) return;
+      pushNotification({
+        dedupeKey: `timestamp-checkpoint:${cardKey}:${i}:${dayKey}`,
+        kind: "alert-now",
+        title: cp.alertText?.trim() || `Check ${cp.label}`,
+        body: `${cp.label} — ${cp.time}`,
+        icon: "bell-chime",
+        allowSnooze: true,
+        soundOverride: "chime",
+        live: sessionRunning && isSessionMine,
+        timestampCheck: {
+          positiveLabel,
+          negativeLabel,
+          initialStatus: checkpointStatuses[i] ?? null,
+          onScore: (value) => scoreCheckpoint(i, value),
+          onScrollToCard: () =>
+            cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        },
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowMin, isCheckpointMode]);
+
+  const checkpointScoredCount = checkpointStatuses.filter((s) => s !== null).length;
+  const checkpointCount = checkpoints?.length ?? 0;
+  const checkpointIsComplete = checkpointCount > 0 && checkpointScoredCount === checkpointCount;
+  const goToCheckpoint = (idx: number) => {
+    setCheckpointViewIdx(Math.max(0, Math.min(idx, checkpointCount - 1)));
+  };
+
+  // One status report per card regardless of mode — whichever track is
+  // actually active (see isCheckpointMode) is the one whose progress
+  // actually matters to the Data toolbar's "needs attention" list; the
+  // other track's numbers are meaningless while inactive (interval mode's
+  // own scoredCount/isComplete still exist, computed above, but checkpoint
+  // mode's replace them entirely rather than the two being merged/summed).
+  useReportCardStatus(
+    cardKey,
+    isCheckpointMode ? checkpointScoredCount > 0 : scoredCount > 0,
+    isCheckpointMode ? checkpointIsComplete : isComplete,
+    {
+      title,
+      kind: "timestamp",
+      value: isCheckpointMode
+        ? `${checkpointScoredCount}/${checkpointCount}`
+        : `${scoredCount}/${displayIntervalCount}`,
+      unit: isCheckpointMode ? "Checkpoints Marked" : "Intervals Marked",
+    },
+  );
 
   const measurementLabelOverride = {
     positive: `Mark ${positiveLabel} if`,
@@ -481,18 +647,27 @@ export function TimestampCard({
         kind="timestamp"
         dataTypeLabel="Interval"
         phase={phase}
-        stats={[
-          { label: "Interval", value: `${intervalMin}m` },
-          { label: "Scored", value: `${scoredCount} / ${displayIntervalCount}` },
-        ]}
+        stats={
+          isCheckpointMode
+            ? [
+                { label: "Checkpoints", value: `${checkpointCount}` },
+                { label: "Scored", value: `${checkpointScoredCount} / ${checkpointCount}` },
+              ]
+            : [
+                { label: "Interval", value: `${intervalMin}m` },
+                { label: "Scored", value: `${scoredCount} / ${displayIntervalCount}` },
+              ]
+        }
       />
       <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/40 px-3 py-2.5">
         <div className="min-w-0">
           <label htmlFor={`${cardKey}-alerts-enabled`} className="text-sm font-medium">
-            Alert at intervals
+            {isCheckpointMode ? "Alert at each checkpoint" : "Alert at intervals"}
           </label>
           <p className="text-xs text-muted-foreground/80 mt-0.5">
-            Notify when each interval ends, prompting a check.
+            {isCheckpointMode
+              ? "Notify when each checkpoint's time arrives, prompting a check."
+              : "Notify when each interval ends, prompting a check."}
           </p>
         </div>
         <Switch
@@ -514,6 +689,26 @@ export function TimestampCard({
       )}
     </>
   );
+
+  // Shared between the tile/list/standard renders below so each one only
+  // has to branch once (here) instead of repeating the isCheckpointMode
+  // ternary at every single usage site.
+  const activeViewIdx = isCheckpointMode ? checkpointViewIdx : viewIdx;
+  const activeCount = isCheckpointMode ? checkpointCount : displayIntervalCount;
+  const activeStatuses = isCheckpointMode ? checkpointStatuses : statuses;
+  const activeViewStatus = activeStatuses[activeViewIdx] ?? null;
+  const activeScoreFromCard = isCheckpointMode ? scoreCheckpointFromCard : scoreFromCard;
+  const activeGoTo = isCheckpointMode ? goToCheckpoint : goTo;
+  const activeScoredCount = isCheckpointMode ? checkpointScoredCount : scoredCount;
+  const activeIsComplete = isCheckpointMode ? checkpointIsComplete : isComplete;
+  // Tile/list's own compact sub-label — the interval range ("1: 0-30m") or,
+  // for a checkpoint, its clock time and name together, since the time
+  // alone wouldn't say what it's actually checking.
+  const activeSubLabel = isCheckpointMode
+    ? checkpoints && checkpoints[activeViewIdx]
+      ? `${checkpoints[activeViewIdx].time} · ${checkpoints[activeViewIdx].label}`
+      : ""
+    : intervalLabel(activeViewIdx, intervalMin);
 
   if (tileDensity) {
     const large = tileDensity === "large";
@@ -539,22 +734,22 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
-        progress={(scoredCount / displayIntervalCount) * 100}
-        isComplete={isComplete}
+        progress={(activeScoredCount / activeCount) * 100}
+        isComplete={activeIsComplete}
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                scoreFromCard(viewIdx, "incorrect");
+                activeScoreFromCard(activeViewIdx, "incorrect");
               }}
               disabled={!canRecordData}
               aria-label={negativeLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
-                viewStatus === "incorrect"
+                activeViewStatus === "incorrect"
                   ? "bg-red-500 border-red-600 text-white"
                   : "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
               )}
@@ -565,14 +760,14 @@ export function TimestampCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                scoreFromCard(viewIdx, "correct");
+                activeScoreFromCard(activeViewIdx, "correct");
               }}
               disabled={!canRecordData}
               aria-label={positiveLabel}
               className={cn(
                 "btn-bevel shrink-0 rounded-full grid place-items-center border-[1.5px] transition-colors disabled:opacity-40",
                 large ? "size-[42px]" : "size-7",
-                viewStatus === "correct"
+                activeViewStatus === "correct"
                   ? "bg-green-500 border-green-600 text-white"
                   : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
               )}
@@ -590,7 +785,7 @@ export function TimestampCard({
                 large ? "text-[32px]" : "text-[24px]",
               )}
             >
-              {viewIdx + 1}
+              {activeViewIdx + 1}
             </span>
             <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>
               /
@@ -601,16 +796,16 @@ export function TimestampCard({
                 large ? "text-lg" : "text-sm",
               )}
             >
-              {displayIntervalCount}
+              {activeCount}
             </span>
           </div>
           <span
             className={cn(
-              "text-muted-foreground tabular-nums",
+              "text-muted-foreground tabular-nums truncate max-w-full",
               large ? "text-[11px]" : "text-[9px]",
             )}
           >
-            {intervalLabel(viewIdx, intervalMin)}
+            {activeSubLabel}
           </span>
         </div>
       </MiniTileShell>
@@ -641,26 +836,26 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
-        progress={(scoredCount / displayIntervalCount) * 100}
-        isComplete={isComplete}
+        progress={(activeScoredCount / activeCount) * 100}
+        isComplete={activeIsComplete}
         actions={
           <div className="flex items-center gap-1">
-            <ListActionBadge value={viewIdx + 1} weight="regular" />
+            <ListActionBadge value={activeViewIdx + 1} weight="regular" />
             <ListActionButton
               icon={X}
               variant="red"
-              selected={viewStatus === "incorrect"}
+              selected={activeViewStatus === "incorrect"}
               disabled={!canRecordData}
               ariaLabel={negativeLabel}
-              onClick={() => scoreFromCard(viewIdx, "incorrect")}
+              onClick={() => activeScoreFromCard(activeViewIdx, "incorrect")}
             />
             <ListActionButton
               icon={Check}
               variant="green"
-              selected={viewStatus === "correct"}
+              selected={activeViewStatus === "correct"}
               disabled={!canRecordData}
               ariaLabel={positiveLabel}
-              onClick={() => scoreFromCard(viewIdx, "correct")}
+              onClick={() => activeScoreFromCard(activeViewIdx, "correct")}
             />
           </div>
         }
@@ -698,75 +893,132 @@ export function TimestampCard({
         onToggleExpanded={() => {
           if (expanded) {
             // Same idea as TrialCard/TaskAnalysisCard's own twirl-down:
-            // collapsing should land back on whichever interval hasn't been
-            // marked yet, not wherever the stepper happened to be pointed
-            // before expanding. Temporary — the next real interval boundary
-            // snaps viewIdx back to live regardless (see viewIdx's own
-            // comment above).
-            const firstUnscored = statuses.indexOf(null);
-            if (firstUnscored !== -1) goTo(firstUnscored);
+            // collapsing should land back on whichever interval/checkpoint
+            // hasn't been marked yet, not wherever the stepper happened to
+            // be pointed before expanding. Temporary for interval mode — the
+            // next real interval boundary snaps viewIdx back to live
+            // regardless (see viewIdx's own comment above); checkpoint mode
+            // has no such auto-follow once a checkpoint's had its own alert.
+            const firstUnscored = activeStatuses.indexOf(null);
+            if (firstUnscored !== -1) activeGoTo(firstUnscored);
           }
           setExpanded((v) => !v);
         }}
         expandedView={
-          <TimestampExpandedView
-            intervalCount={displayIntervalCount}
-            intervalMin={intervalMin}
-            intervalMs={intervalMs}
-            statuses={statuses}
-            viewIdx={viewIdx}
-            elapsedMs={elapsed}
-            canRecordData={canRecordData}
-            positiveLabel={positiveLabel}
-            negativeLabel={negativeLabel}
-            onScore={scoreFromCard}
-            timerPill={timerPill}
-          />
-        }
-      >
-        <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
-          <div className="text-center text-sm font-semibold tabular-nums">
-            {intervalEndLabel(viewIdx, intervalMin)}
-          </div>
-
-          <div className="relative px-10">
-            <TriangleNav
-              direction="left"
-              onClick={() => goTo(viewIdx - 1)}
-              disabled={viewIdx <= 0}
+          isCheckpointMode ? (
+            <CheckpointExpandedView
+              checkpoints={checkpoints ?? []}
+              statuses={checkpointStatuses}
+              viewIdx={checkpointViewIdx}
+              canRecordData={canRecordData}
+              positiveLabel={positiveLabel}
+              negativeLabel={negativeLabel}
+              onScore={scoreCheckpointFromCard}
             />
-            <TriangleNav
-              direction="right"
-              onClick={() => goTo(viewIdx + 1)}
-              disabled={viewIdx >= displayIntervalCount - 1}
-            />
-            <IntervalTimeline
+          ) : (
+            <TimestampExpandedView
               intervalCount={displayIntervalCount}
-              elapsedMs={elapsed}
+              intervalMin={intervalMin}
               intervalMs={intervalMs}
-              viewIdx={viewIdx}
               statuses={statuses}
+              viewIdx={viewIdx}
+              elapsedMs={elapsed}
+              canRecordData={canRecordData}
+              positiveLabel={positiveLabel}
+              negativeLabel={negativeLabel}
+              onScore={scoreFromCard}
               timerPill={timerPill}
             />
-          </div>
+          )
+        }
+      >
+        {isCheckpointMode ? (
+          <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
+            <div className="text-center text-sm font-semibold">
+              {checkpoints?.[activeViewIdx]?.time}
+              {checkpoints?.[activeViewIdx]?.label ? ` — ${checkpoints[activeViewIdx].label}` : ""}
+            </div>
 
-          <div className="mt-2 flex items-center gap-3">
-            <ScoreButton
-              variant="negative"
-              label={negativeLabel}
-              selected={viewStatus === "incorrect"}
-              disabled={!canRecordData}
-              onClick={() => scoreFromCard(viewIdx, "incorrect")}
-            />
-            <ScoreButton
-              variant="positive"
-              label={positiveLabel}
-              selected={viewStatus === "correct"}
-              disabled={!canRecordData}
-              onClick={() => scoreFromCard(viewIdx, "correct")}
-            />
+            <div className="relative px-10 pt-3 pb-1">
+              <TriangleNav
+                direction="left"
+                onClick={() => activeGoTo(activeViewIdx - 1)}
+                disabled={activeViewIdx <= 0}
+              />
+              <TriangleNav
+                direction="right"
+                onClick={() => activeGoTo(activeViewIdx + 1)}
+                disabled={activeViewIdx >= activeCount - 1}
+              />
+              <CheckpointDots
+                count={activeCount}
+                viewIdx={activeViewIdx}
+                statuses={activeStatuses}
+              />
+            </div>
+
+            <div className="mt-2 flex items-center gap-3">
+              <ScoreButton
+                variant="negative"
+                label={negativeLabel}
+                selected={activeViewStatus === "incorrect"}
+                disabled={!canRecordData}
+                onClick={() => activeScoreFromCard(activeViewIdx, "incorrect")}
+              />
+              <ScoreButton
+                variant="positive"
+                label={positiveLabel}
+                selected={activeViewStatus === "correct"}
+                disabled={!canRecordData}
+                onClick={() => activeScoreFromCard(activeViewIdx, "correct")}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
+            <div className="text-center text-sm font-semibold tabular-nums">
+              {intervalEndLabel(viewIdx, intervalMin)}
+            </div>
+
+            <div className="relative px-10">
+              <TriangleNav
+                direction="left"
+                onClick={() => goTo(viewIdx - 1)}
+                disabled={viewIdx <= 0}
+              />
+              <TriangleNav
+                direction="right"
+                onClick={() => goTo(viewIdx + 1)}
+                disabled={viewIdx >= displayIntervalCount - 1}
+              />
+              <IntervalTimeline
+                intervalCount={displayIntervalCount}
+                elapsedMs={elapsed}
+                intervalMs={intervalMs}
+                viewIdx={viewIdx}
+                statuses={statuses}
+                timerPill={timerPill}
+              />
+            </div>
+
+            <div className="mt-2 flex items-center gap-3">
+              <ScoreButton
+                variant="negative"
+                label={negativeLabel}
+                selected={viewStatus === "incorrect"}
+                disabled={!canRecordData}
+                onClick={() => scoreFromCard(viewIdx, "incorrect")}
+              />
+              <ScoreButton
+                variant="positive"
+                label={positiveLabel}
+                selected={viewStatus === "correct"}
+                disabled={!canRecordData}
+                onClick={() => scoreFromCard(viewIdx, "correct")}
+              />
+            </div>
+          </div>
+        )}
       </CardShell>
     </div>
   );
@@ -1228,6 +1480,117 @@ function TimestampExpandedView({
           </div>
         </motion.div>
       </div>
+    </div>
+  );
+}
+
+/** Checkpoint mode's own standard-view stepper — a plain static row of
+ *  numbered badges, one per checkpoint, colored the same way the elapsed
+ *  timeline's own bubbles are (see statusColors/recencyOf). No spring-
+ *  animated scrolling track like IntervalTimeline's: with only a handful of
+ *  named checkpoints (not an open-ended, possibly-long interval count),
+ *  they all just fit on one row. */
+function CheckpointDots({
+  count,
+  viewIdx,
+  statuses,
+}: {
+  count: number;
+  viewIdx: number;
+  statuses: IntervalStatus[];
+}) {
+  return (
+    <div className="flex items-center justify-center gap-2 flex-wrap">
+      {Array.from({ length: count }, (_, i) => {
+        const recency = recencyOf(i, viewIdx);
+        const { bg, text, fade } = statusColors(statuses[i], recency);
+        const isCurrent = recency === "current";
+        return (
+          <div
+            key={i}
+            className={cn(
+              "shrink-0 rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
+              isCurrent ? "border-2 text-sm" : "border text-[11px]",
+              bg,
+              text,
+              fade,
+            )}
+            style={{
+              width: isCurrent ? BUBBLE_CURRENT : BUBBLE,
+              height: isCurrent ? BUBBLE_CURRENT : BUBBLE,
+            }}
+          >
+            {i + 1}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Checkpoint mode's own expanded view — every checkpoint as its own row
+ *  (time badge, label, score buttons), always all visible at once rather
+ *  than TimestampExpandedView's auto-scrolled viewport, for the same "only
+ *  a handful of named checkpoints" reason CheckpointDots skips the
+ *  animated track above. */
+function CheckpointExpandedView({
+  checkpoints,
+  statuses,
+  viewIdx,
+  canRecordData,
+  positiveLabel,
+  negativeLabel,
+  onScore,
+}: {
+  checkpoints: { time: string; label: string; alertText?: string }[];
+  statuses: IntervalStatus[];
+  viewIdx: number;
+  canRecordData: boolean;
+  positiveLabel: string;
+  negativeLabel: string;
+  onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
+}) {
+  return (
+    <div className="px-5 pt-1 pb-4 flex flex-col gap-3">
+      {checkpoints.map((cp, i) => {
+        const status = statuses[i];
+        const recency = recencyOf(i, viewIdx);
+        const { bg, text, fade } = statusColors(status, recency);
+        return (
+          <div key={i} className="flex items-center gap-2">
+            <span
+              className={cn(
+                "shrink-0 grid place-items-center rounded-full font-display font-bold text-[11px] tabular-nums px-2 h-6 min-w-[2.75rem]",
+                recency === "current" ? "border-2" : "border",
+                bg,
+                text,
+                fade,
+              )}
+            >
+              {cp.time}
+            </span>
+            <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
+              {cp.label}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <RowScoreButton
+                variant="negative"
+                label={negativeLabel}
+                selected={status === "incorrect"}
+                disabled={!canRecordData}
+                onClick={() => onScore(i, "incorrect")}
+              />
+              <RowScoreButton
+                variant="positive"
+                label={positiveLabel}
+                selected={status === "correct"}
+                disabled={!canRecordData}
+                onClick={() => onScore(i, "correct")}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

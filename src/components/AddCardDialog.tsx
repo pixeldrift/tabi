@@ -186,14 +186,14 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       label: "Checkpoint scheduling",
       type: "checkpointMode",
       helpText:
-        "Whether checkpoints below are pinned to a specific clock time or to elapsed time since the session started.",
+        "Time of Day checkpoints below fire a real alert (with a scoreable popup) at that clock time. Interval checkpoints are authored but not yet wired up — the card still runs on the fixed interval above in that case.",
     },
     {
       key: "checkpoints",
       label: "Checkpoints",
       type: "checkpoints",
       helpText:
-        "Optional named checkpoints, each on its own schedule — a preview of the upcoming custom-schedule mode. Today's card still runs on the fixed interval above regardless of what's entered here.",
+        "Optional named checkpoints. In Time of Day mode, each one alerts independently when its time arrives — use Alert text below to set what the notification says.",
     },
   ],
   checklist: [
@@ -354,12 +354,13 @@ function buildCardConfig(
     case "timestamp": {
       const checkpointMode = content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval";
       const rawCheckpoints =
-        (content.checkpoints as { time: number | string; label: string }[] | undefined) ?? [];
+        (content.checkpoints as
+          { time: number | string; label: string; alertText?: string }[] | undefined) ?? [];
       const checkpoints = rawCheckpoints
         .filter((c) => !isBlank(c.label))
         .map((c) => ({
           // Normalized to a plain display string regardless of mode (H:MM:SS
-          // elapsed, or "h:mma" clock time) — today's card doesn't consume
+          // elapsed, or "h:mma" clock time) — Interval mode doesn't consume
           // this yet (see the field's own helpText), so there's no reason to
           // carry two different raw shapes (ms vs "HH:MM") past this point.
           time:
@@ -367,6 +368,7 @@ function buildCardConfig(
               ? formatTimeOfDay(typeof c.time === "string" ? c.time : "")
               : formatCompactTime(typeof c.time === "number" ? c.time : 0),
           label: c.label.trim(),
+          alertText: isBlank(c.alertText) ? undefined : c.alertText!.trim(),
         }));
       return {
         id,
@@ -561,7 +563,8 @@ function SchemaField({
         <CheckpointItemsField
           mode={content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval"}
           items={
-            (value as { time: number | string; label: string }[] | undefined) ?? [
+            (value as
+              { time: number | string; label: string; alertText?: string }[] | undefined) ?? [
               { time: "", label: "" },
             ]
           }
@@ -845,40 +848,61 @@ function CheckpointItemsField({
   onChange,
 }: {
   mode: "interval" | "timeOfDay";
-  items: { time: number | string; label: string }[];
-  onChange: (items: { time: number | string; label: string }[]) => void;
+  items: { time: number | string; label: string; alertText?: string }[];
+  onChange: (items: { time: number | string; label: string; alertText?: string }[]) => void;
 }) {
-  const empty = { time: mode === "timeOfDay" ? "" : 0, label: "" };
+  const empty = { time: mode === "timeOfDay" ? "" : 0, label: "", alertText: "" };
   return (
-    <div className="mt-1.5 flex flex-col gap-1.5">
+    <div className="mt-1.5 flex flex-col gap-2">
       {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <TimeBoxButton
-            mode={mode}
-            value={item.time}
-            onChange={(time) => {
-              const next = [...items];
-              next[i] = { ...next[i], time };
-              onChange(next);
-            }}
-          />
-          <Input
-            value={item.label}
-            placeholder={`Checkpoint ${i + 1} label`}
-            onChange={(e) => {
-              const next = [...items];
-              next[i] = { ...next[i], label: e.target.value };
-              onChange(next);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [empty])}
-            aria-label={`Remove checkpoint ${i + 1}`}
-            className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
+        // Bordered per-checkpoint, not just a bare row — once Time of Day
+        // mode adds a second (Alert text) line below the time/label row,
+        // nothing else visually ties that second line back to the
+        // checkpoint it belongs to.
+        <div key={i} className="flex flex-col gap-1.5 rounded-lg border border-border/60 p-2">
+          <div className="flex items-center gap-1.5">
+            <TimeBoxButton
+              mode={mode}
+              value={item.time}
+              onChange={(time) => {
+                const next = [...items];
+                next[i] = { ...next[i], time };
+                onChange(next);
+              }}
+            />
+            <Input
+              value={item.label}
+              placeholder={`Checkpoint ${i + 1} label`}
+              onChange={(e) => {
+                const next = [...items];
+                next[i] = { ...next[i], label: e.target.value };
+                onChange(next);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [empty])}
+              aria-label={`Remove checkpoint ${i + 1}`}
+              className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+          {/* Only meaningful once this checkpoint actually fires a real
+              alert (Time of Day mode) — Interval mode's checkpoints aren't
+              wired up to anything yet, so a text field with no visible
+              effect would just read as broken. */}
+          {mode === "timeOfDay" && (
+            <Input
+              value={item.alertText ?? ""}
+              placeholder="Alert text (defaults to “Check {label}”)"
+              onChange={(e) => {
+                const next = [...items];
+                next[i] = { ...next[i], alertText: e.target.value };
+                onChange(next);
+              }}
+            />
+          )}
         </div>
       ))}
       <Button

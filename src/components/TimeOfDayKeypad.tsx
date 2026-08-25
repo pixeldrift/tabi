@@ -373,3 +373,19 @@ export function formatTimeOfDay(value: string): string {
   const { hour12, minute, isPM } = from24h(value);
   return `${hour12}:${String(minute).padStart(2, "0")}${isPM ? "p" : "a"}`;
 }
+
+/** Reverses formatTimeOfDay's own "10:00a" / "12:00p" display format back
+ *  into a 24h hour + minute — e.g. for comparing a saved checkpoint time
+ *  against the real wall clock. Returns null for anything that doesn't
+ *  match that exact shape (blank/unset checkpoints, corrupted data, etc.)
+ *  rather than guessing. */
+export function parseTimeOfDayLabel(formatted: string): { hour24: number; minute: number } | null {
+  const m = /^(\d{1,2}):(\d{2})([ap])$/i.exec(formatted.trim());
+  if (!m) return null;
+  const hour12 = parseInt(m[1], 10);
+  const minute = parseInt(m[2], 10);
+  const isPM = m[3].toLowerCase() === "p";
+  if (hour12 < 1 || hour12 > 12 || minute < 0 || minute > 59) return null;
+  const hour24 = isPM ? (hour12 === 12 ? 12 : hour12 + 12) : hour12 === 12 ? 0 : hour12;
+  return { hour24, minute };
+}
