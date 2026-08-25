@@ -61,7 +61,7 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
       "Captures a subjective rating on a fixed scale for something that isn't a simple count. Good for things like how engaged or ready to learn a client seemed during a session.",
   },
   timestamp: {
-    label: "Timestamp",
+    label: "Interval",
     icon: createElement(TimestampIcon),
     description:
       "Logs the specific time a behavior occurred, without measuring how long it lasted or how many times it happened. Useful for spotting patterns tied to time of day.",

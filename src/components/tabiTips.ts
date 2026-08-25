@@ -290,7 +290,7 @@ export const TABI_TIPS: TabiTip[] = [
     tab: "data",
     viewMode: "card",
     selector: '[data-tour="timestamp-interval-progress"]',
-    title: "Keep track of timestamps",
-    body: "Timestamp cards show a live progress bar comparing the current elapsed time to the logging intervals, so you always know to mark your next data point.",
+    title: "Keep track of intervals",
+    body: "Interval cards show a live progress bar comparing the current elapsed time to the logging intervals, so you always know to mark your next data point.",
   },
 ];

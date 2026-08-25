@@ -141,7 +141,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Duration", "Duration card kind", DurationIcon),
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
-      custom("Timestamp", "Timestamp card kind", TimestampIcon),
+      custom("Interval", "Interval card kind", TimestampIcon),
       lucide("Star", "Score card kind + score selector", Star),
     ],
   },
