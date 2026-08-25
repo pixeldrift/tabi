@@ -17,7 +17,14 @@ import { playSoundEffect } from "@/lib/soundEffects";
 import { useElementRight } from "@/hooks/use-element-height";
 
 export type CardKind =
-  "trial" | "frequency" | "rate" | "duration" | "task-analysis" | "rating" | "timestamp";
+  | "trial"
+  | "frequency"
+  | "rate"
+  | "duration"
+  | "task-analysis"
+  | "rating"
+  | "timestamp"
+  | "checklist";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 

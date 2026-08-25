@@ -7,6 +7,7 @@ import { RateIcon } from "@/components/icons/RateIcon";
 import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { TimestampIcon } from "@/components/icons/TimestampIcon";
+import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
 import type { CardKind } from "@/components/DataToolbarContext";
 
 export interface DataTypeInfo {
@@ -64,6 +65,12 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     icon: createElement(TimestampIcon),
     description:
       "Logs the specific time a behavior occurred, without measuring how long it lasted or how many times it happened. Useful for spotting patterns tied to time of day.",
+  },
+  checklist: {
+    label: "Checklist",
+    icon: createElement(ChecklistIcon),
+    description:
+      "A fixed list of items to check off as applicable, rather than tallied or timed. Best for a set of indicators observed over the course of a session, like signs of rapport, where each one either applies or doesn't and there's no count or duration to track.",
   },
 };
 

@@ -238,6 +238,16 @@ checked off. See git history for what's already shipped.
       recording data vs. who's submitting it, and let a tech see their
       appointment ending with another tech taking over. Needs a clear
       distinction between "appointment" and "session"
+- [ ] 🟡 "Named trials" — a Percent Correct variant (or a mode on the
+      existing Trial kind) for a fixed, named list of items — each one must
+      be explicitly scored correct/incorrect, and unscored items are simply
+      excluded from the percentage rather than silently counting as
+      incorrect. Distinct from Checklist, whose whole point is the opposite:
+      a fixed list where leaving an item untouched just means it didn't come
+      up, not that it failed — Named Trials is for cases where the BCBA
+      wants every item explicitly accounted for each session (e.g. a fixed
+      assessment battery), which is real added RBT burden Checklist
+      deliberately avoids by design
 
 
 ### 🗄️ Long-term Roadmap - Potential Future Features
@@ -327,4 +337,4 @@ and scheduling items below all need to respect that split.
       on the RBT side. Deprioritized to the bottom of this list — this demo
       isn't focused on supervisor/BCBA-side functions
 
-_Roadmap last updated: 2026-08-16_
+_Roadmap last updated: 2026-08-25_
