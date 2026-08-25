@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, Compass, Lightbulb } from "lucide-react";
 import tabiLogo from "@/assets/images/tabi-logo.png";
 
-/** The app's opening splash — logo, one-line pitch, and the single "Get
+/** The app's opening splash screen with logo, tagkine, and the single "Get
  *  Started" action that hands off to the main interface (see routes/index.tsx's
  *  screen-slide wiring). Version/build info and the credit line live here
  *  now instead of in StatusBar's title row, since they're app-identity
@@ -39,15 +39,16 @@ export function WelcomeScreen({
 
       <div className="max-w-xs space-y-3 text-left text-sm leading-relaxed text-muted-foreground sm:max-w-sm sm:text-base">
         <p>
-          Tabi is your friendly companion app for ABA therapy, data collection, and session
-          management. This prototype is a proof of concept for a front-end experience designed with
+          Tabi is your friendly companion for ABA therapy, data collection, and session
+          management. This prototype app is a proof of concept for a front-end experience designed with
           RBTs in mind.
         </p>
         <p>
           Our goal is to make Tabi easy, intuitive, and fast. The tools you need are right where you
           need them, when you need them.
         </p>
-        <p>Have a suggestion? We&rsquo;d love your feedback!</p>
+        <p>Have a suggestion? We'd love your <a
+          href="mailto:nathan@pizar.net">feedback!</a></p>
       </div>
 
       {/* blue-700/800 (this app's "Slate" pine-teal reskin of Tailwind's
@@ -110,7 +111,7 @@ export function WelcomeScreen({
           href="mailto:nathan@pizar.net"
           className="text-xs italic font-light text-stone-400 transition-colors hover:text-stone-500"
         >
-          Nathan D. B. Pizar
+          &copy; 2005 - Nathan D. B. Pizar
         </a>
       </div>
     </div>
