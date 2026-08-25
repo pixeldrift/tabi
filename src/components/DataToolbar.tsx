@@ -43,7 +43,7 @@ export const KIND_META: Record<
   duration: { label: "Duration", icon: (p) => <DurationIcon {...p} /> },
   "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
-  timestamp: { label: "Timestamp", icon: (p) => <TimestampIcon {...p} /> },
+  timestamp: { label: "Interval", icon: (p) => <TimestampIcon {...p} /> },
   checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },
 };
 

@@ -479,7 +479,7 @@ export function TimestampCard({
       <DrawerQuickFacts
         icon={<TimestampIcon />}
         kind="timestamp"
-        dataTypeLabel="Timestamp"
+        dataTypeLabel="Interval"
         phase={phase}
         stats={[
           { label: "Interval", value: `${intervalMin}m` },
@@ -623,7 +623,7 @@ export function TimestampCard({
         title={title}
         dataTypeIcon={<TimestampIcon />}
         kind="timestamp"
-        dataTypeLabel="Timestamp"
+        dataTypeLabel="Interval"
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -673,7 +673,7 @@ export function TimestampCard({
       <CardShell
         title={title}
         phase={phase}
-        dataType="Timestamp"
+        dataType="Interval"
         dataTypeIcon={<TimestampIcon />}
         kind="timestamp"
         isActive={isActive}

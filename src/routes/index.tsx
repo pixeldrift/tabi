@@ -1020,7 +1020,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   duration: "Duration",
   "task-analysis": "Task Analysis",
   rating: "Score",
-  timestamp: "Timestamp",
+  timestamp: "Interval",
   checklist: "Checklist",
 };
 
