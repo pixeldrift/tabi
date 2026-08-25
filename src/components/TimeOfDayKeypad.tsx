@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Delete, Check, X } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 
 export interface TimeOfDayKeypadProps {
   /** Current committed value as 24h "HH:MM" (or "" if unset). */
@@ -58,6 +59,9 @@ export function TimeOfDayKeypad({
   const [isPM, setIsPM] = useState(false);
   const [userPeriodOverride, setUserPeriodOverride] = useState(false);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
 
   useEffect(() => onEditingChange?.(open), [open, onEditingChange]);
 
@@ -174,7 +178,7 @@ export function TimeOfDayKeypad({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
-        <span>{children({ isEditing: open, open: () => setOpen(true) })}</span>
+        <span ref={anchorRef}>{children({ isEditing: open, open: () => setOpen(true) })}</span>
       </PopoverAnchor>
       <PopoverContent
         side="top"
@@ -190,7 +194,10 @@ export function TimeOfDayKeypad({
         className="group z-[110] w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="relative w-[210px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
+        <div
+          ref={contentRef}
+          className="relative w-[210px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        >
           <input
             ref={hiddenInputRef}
             type="text"
@@ -308,9 +315,12 @@ export function TimeOfDayKeypad({
             </motion.button>
           </div>
 
+          {/* Arrow's left offset tracks the trigger's real position (see
+              useSlidingArrowOffset) rather than staying hard-centered — see
+              NumberKeypad's identical comment for why. */}
           <div
             className={cn(
-              "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-card",
+              "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400/80 bg-card",
               // Default (side="top"): popup is above the trigger, so the arrow
               // sits on the bottom edge and points down at it.
               "-bottom-[7px] border-r-2 border-b-2",
@@ -321,6 +331,7 @@ export function TimeOfDayKeypad({
               "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
               "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
             )}
+            style={{ left: arrowLeft ?? "50%" }}
           />
         </div>
       </PopoverContent>
