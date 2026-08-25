@@ -79,7 +79,10 @@ function ChecklistBox({ checked, size = "size-5" }: { checked: boolean; size?: s
             "border-stone-200 bg-stone-100",
       )}
     >
-      {checked && <Check className="size-3.5" strokeWidth={3} />}
+      {/* Always rendered, not just once checked — a faint checkmark on an
+       *  otherwise-empty box is what tells you it's a real checkbox to tap,
+       *  rather than a plain decorative square. */}
+      <Check className={cn("size-3.5", !checked && "text-stone-300")} strokeWidth={3} />
     </span>
   );
 }
@@ -272,14 +275,19 @@ export function ChecklistCard({
               large ? "size-10" : "size-7",
               checked[current]
                 ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : // Same dimmed "not yet scored" treatment as ChecklistBox —
-                  // no checkmark glyph until it's actually checked.
+                : // Same dimmed "not yet scored" treatment as ChecklistBox.
                   "border-stone-200 bg-stone-100 hover:bg-stone-200/70",
             )}
           >
-            {checked[current] && (
-              <Check className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
-            )}
+            {/* Same faint always-on checkmark as ChecklistBox — a hint this
+             *  is a real checkbox, not a decorative square. */}
+            <Check
+              className={cn(
+                large ? "size-[19px]" : "size-3.5",
+                !checked[current] && "text-stone-300",
+              )}
+              strokeWidth={3}
+            />
           </button>
         }
       >
