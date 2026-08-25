@@ -25,6 +25,9 @@ import { PROMPT_LEVEL_ICONS } from "@/lib/promptLevels";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
 import { ROUNDED_STAR_PATH } from "./RatingCard";
+import { TimeKeypad } from "./TimeKeypad";
+import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
+import { formatCompactTime } from "./DurationCard";
 import type { CardKind } from "./DataToolbarContext";
 import type { CardConfig } from "@/routes/index";
 
@@ -65,7 +68,9 @@ interface FieldSchema {
     | "steps"
     | "chainingDirection"
     | "ranking"
-    | "checklistItems";
+    | "checklistItems"
+    | "checkpointMode"
+    | "checkpoints";
   required?: boolean;
   placeholder?: string;
   helpText?: string;
@@ -176,6 +181,20 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
     },
     { key: "positiveLabel", label: "Positive label", type: "text", placeholder: "Correct" },
     { key: "negativeLabel", label: "Negative label", type: "text", placeholder: "Incorrect" },
+    {
+      key: "checkpointMode",
+      label: "Checkpoint scheduling",
+      type: "checkpointMode",
+      helpText:
+        "Whether checkpoints below are pinned to a specific clock time or to elapsed time since the session started.",
+    },
+    {
+      key: "checkpoints",
+      label: "Checkpoints",
+      type: "checkpoints",
+      helpText:
+        "Optional named checkpoints, each on its own schedule — a preview of the upcoming custom-schedule mode. Today's card still runs on the fixed interval above regardless of what's entered here.",
+    },
   ],
   checklist: [
     {
@@ -332,7 +351,23 @@ function buildCardConfig(
         levelDescriptions,
       };
     }
-    case "timestamp":
+    case "timestamp": {
+      const checkpointMode = content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval";
+      const rawCheckpoints =
+        (content.checkpoints as { time: number | string; label: string }[] | undefined) ?? [];
+      const checkpoints = rawCheckpoints
+        .filter((c) => !isBlank(c.label))
+        .map((c) => ({
+          // Normalized to a plain display string regardless of mode (H:MM:SS
+          // elapsed, or "h:mma" clock time) — today's card doesn't consume
+          // this yet (see the field's own helpText), so there's no reason to
+          // carry two different raw shapes (ms vs "HH:MM") past this point.
+          time:
+            checkpointMode === "timeOfDay"
+              ? formatTimeOfDay(typeof c.time === "string" ? c.time : "")
+              : formatCompactTime(typeof c.time === "number" ? c.time : 0),
+          label: c.label.trim(),
+        }));
       return {
         id,
         kind,
@@ -345,7 +380,10 @@ function buildCardConfig(
         defaultWindowHours: num("defaultWindowHours"),
         positiveLabel: str("positiveLabel"),
         negativeLabel: str("negativeLabel"),
+        checkpointMode: checkpoints.length ? checkpointMode : undefined,
+        checkpoints: checkpoints.length ? checkpoints : undefined,
       };
+    }
     case "checklist": {
       const rawItems =
         (content.items as { label: string; description: string }[] | undefined) ?? [];
@@ -374,10 +412,17 @@ function SchemaField({
   field,
   value,
   onChange,
+  content,
 }: {
   field: FieldSchema;
   value: unknown;
   onChange: (value: unknown) => void;
+  /** The kind's whole live form-content bag, not just this field's own
+   *  value — only "checkpoints" actually reads it (it needs its sibling
+   *  "checkpointMode" field to know which keypad each row's time box
+   *  should open), but every field type takes it uniformly rather than
+   *  special-casing that one field's own call site. */
+  content: Content;
 }) {
   if (field.type === "switch") {
     return (
@@ -482,6 +527,42 @@ function SchemaField({
           items={
             (value as { label: string; description: string }[] | undefined) ?? [
               { label: "", description: "" },
+            ]
+          }
+          onChange={(items) => onChange(items)}
+        />
+      )}
+      {field.type === "checkpointMode" && (
+        <div className="mt-1.5 flex items-center gap-1 rounded-full border border-border bg-stone-100/60 p-1 w-fit">
+          {(
+            [
+              { key: "interval", label: "Interval" },
+              { key: "timeOfDay", label: "Time of Day" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange(opt.key)}
+              aria-pressed={(value ?? "interval") === opt.key}
+              className={cn(
+                "h-8 rounded-full px-4 text-sm font-medium transition-colors",
+                (value ?? "interval") === opt.key
+                  ? "btn-bevel bg-blue-500 text-white"
+                  : "text-stone-500 hover:text-stone-800",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {field.type === "checkpoints" && (
+        <CheckpointItemsField
+          mode={content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval"}
+          items={
+            (value as { time: number | string; label: string }[] | undefined) ?? [
+              { time: "", label: "" },
             ]
           }
           onChange={(items) => onChange(items)}
@@ -704,6 +785,111 @@ function ChecklistItemsField({
       >
         <Plus className="size-3.5" />
         Add item
+      </Button>
+    </div>
+  );
+}
+
+/** A checkpoint's own time box — opens TimeKeypad (elapsed h:mm:ss) in
+ *  "interval" mode or TimeOfDayKeypad (12h, a.m./p.m.) in "timeOfDay" mode,
+ *  same render-prop trigger pattern both keypads already share. Each mode
+ *  keeps its own native value shape (ms for interval, 24h "HH:MM" string for
+ *  time of day) rather than a shared representation — the row only ever
+ *  reads/writes whichever shape matches the currently selected mode, and
+ *  switching modes doesn't attempt to convert a row's already-entered value
+ *  from one shape to the other. */
+function TimeBoxButton({
+  mode,
+  value,
+  onChange,
+}: {
+  mode: "interval" | "timeOfDay";
+  value: number | string | undefined;
+  onChange: (value: number | string) => void;
+}) {
+  if (mode === "timeOfDay") {
+    const hhmm = typeof value === "string" ? value : "";
+    return (
+      <TimeOfDayKeypad value={hhmm} onChange={onChange}>
+        {({ open }) => (
+          <button
+            type="button"
+            onClick={open}
+            className="h-10 w-[4.5rem] shrink-0 rounded-lg border border-input bg-white text-sm font-medium tabular-nums text-foreground shadow-[inset_0_2px_5px_rgba(0,0,0,0.12)] transition-colors hover:bg-stone-50"
+          >
+            {hhmm ? formatTimeOfDay(hhmm) : "--:--"}
+          </button>
+        )}
+      </TimeOfDayKeypad>
+    );
+  }
+  const ms = typeof value === "number" ? value : 0;
+  return (
+    <TimeKeypad valueMs={ms} onReplace={onChange} onAdd={onChange}>
+      {({ open }) => (
+        <button
+          type="button"
+          onClick={open}
+          className="h-10 w-[4.5rem] shrink-0 rounded-lg border border-input bg-white text-sm font-medium tabular-nums text-foreground shadow-[inset_0_2px_5px_rgba(0,0,0,0.12)] transition-colors hover:bg-stone-50"
+        >
+          {formatCompactTime(ms)}
+        </button>
+      )}
+    </TimeKeypad>
+  );
+}
+
+function CheckpointItemsField({
+  mode,
+  items,
+  onChange,
+}: {
+  mode: "interval" | "timeOfDay";
+  items: { time: number | string; label: string }[];
+  onChange: (items: { time: number | string; label: string }[]) => void;
+}) {
+  const empty = { time: mode === "timeOfDay" ? "" : 0, label: "" };
+  return (
+    <div className="mt-1.5 flex flex-col gap-1.5">
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <TimeBoxButton
+            mode={mode}
+            value={item.time}
+            onChange={(time) => {
+              const next = [...items];
+              next[i] = { ...next[i], time };
+              onChange(next);
+            }}
+          />
+          <Input
+            value={item.label}
+            placeholder={`Checkpoint ${i + 1} label`}
+            onChange={(e) => {
+              const next = [...items];
+              next[i] = { ...next[i], label: e.target.value };
+              onChange(next);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => onChange(items.length > 1 ? items.filter((_, j) => j !== i) : [empty])}
+            aria-label={`Remove checkpoint ${i + 1}`}
+            className="shrink-0 grid place-items-center size-7 rounded-full text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => onChange([...items, empty])}
+        className="-ml-2 self-start text-muted-foreground"
+      >
+        <Plus className="size-3.5" />
+        Add checkpoint
       </Button>
     </div>
   );
@@ -990,6 +1176,7 @@ export function AddCardDialog({
                             field={field}
                             value={content[field.key]}
                             onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
+                            content={content}
                           />
                         ))}
                       </div>

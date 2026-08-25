@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -11,6 +11,7 @@ import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { ChecklistIcon } from "./icons/ChecklistIcon";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { cn } from "@/lib/utils";
 
 export interface ChecklistItem {
@@ -519,10 +520,19 @@ export function ListChecklistButton({
   onToggle: (index: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  // margin=34, not the default 16: this popover's `align="end"` trigger
+  // sits right at the box's own top-right corner — see StatusBar's
+  // SaveIndicator popover for the identical fix and full reasoning
+  // (16 isn't enough clearance for this rounded-2xl box's real 24px
+  // radius plus the rotated arrow square's own ~8.5px half-width).
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <button
+          ref={anchorRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -545,6 +555,7 @@ export function ListChecklistButton({
         </button>
       </PopoverAnchor>
       <PopoverContent
+        ref={contentRef}
         side="top"
         align="end"
         collisionPadding={8}
@@ -567,14 +578,18 @@ export function ListChecklistButton({
             />
           ))}
         </div>
+        {/* Arrow's left offset tracks the trigger's real position (see
+            useSlidingArrowOffset) rather than staying hard-centered — see
+            NumberKeypad's identical comment for why. */}
         <div
           className={cn(
-            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
             "-bottom-[7px] border-r-2 border-b-2",
             "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
             "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
             "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
           )}
+          style={{ left: arrowLeft ?? "50%" }}
         />
       </PopoverContent>
     </Popover>

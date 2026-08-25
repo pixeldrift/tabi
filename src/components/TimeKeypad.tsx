@@ -145,8 +145,11 @@ export function TimeKeypad({ valueMs, onReplace, onAdd, onOpenChange, children }
         side="top"
         sideOffset={8}
         align="center"
-        // z-[70]: same reasoning as NumberKeypad's identical comment.
-        className="group z-[70] w-auto border-none bg-transparent p-0 shadow-none"
+        // z-[110]: same reasoning as TimeOfDayKeypad's identical comment —
+        // this popover is now also opened from inside AddCardDialog
+        // (ui/dialog.tsx's DialogContent sits at z-[100]), which would
+        // otherwise render it completely hidden behind the dialog.
+        className="group z-[110] w-auto border-none bg-transparent p-0 shadow-none"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div

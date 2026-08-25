@@ -159,6 +159,17 @@ export type CardConfig = {
       /** TEMPORARY test hook — unlocks the elapsed-time pill for manual
        *  entry instead of following the session clock. Defaults to locked. */
       locked?: boolean;
+      /** Whether `checkpoints` below (when present) are pinned to a clock
+       *  time or to elapsed time since the session started. Not yet
+       *  consumed by the running card itself — authored today only via the
+       *  Add New Card dialog's own preview of the upcoming custom-schedule
+       *  mode; the card still runs on the fixed `intervalMin` interval
+       *  above regardless of what's set here. */
+      checkpointMode?: "interval" | "timeOfDay";
+      /** Named checkpoints, each with its own already-formatted display
+       *  time (e.g. "1:23:45" elapsed, or "2:30p" clock time) — same
+       *  "not yet consumed by the running card" caveat as checkpointMode. */
+      checkpoints?: { time: string; label: string }[];
     }
   | {
       kind: "checklist";
