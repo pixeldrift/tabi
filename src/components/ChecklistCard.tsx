@@ -72,7 +72,11 @@ function ChecklistBox({ checked, size = "size-5" }: { checked: boolean; size?: s
       className={cn(
         "grid shrink-0 place-items-center rounded-[5px] border-2 transition-colors",
         size,
-        checked ? "btn-bevel bg-blue-500 border-blue-600 text-white" : "border-stone-300 bg-white",
+        checked
+          ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+          : // Dimmed, not a crisp white outline — an unchecked box should
+            // read as "not yet scored," not as a firm "no."
+            "border-stone-200 bg-stone-100",
       )}
     >
       {checked && <Check className="size-3.5" strokeWidth={3} />}
@@ -268,10 +272,14 @@ export function ChecklistCard({
               large ? "size-10" : "size-7",
               checked[current]
                 ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : "border-stone-300 bg-white hover:bg-stone-50",
+                : // Same dimmed "not yet scored" treatment as ChecklistBox —
+                  // no checkmark glyph until it's actually checked.
+                  "border-stone-200 bg-stone-100 hover:bg-stone-200/70",
             )}
           >
-            <Check className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+            {checked[current] && (
+              <Check className={large ? "size-[19px]" : "size-3.5"} strokeWidth={3} />
+            )}
           </button>
         }
       >
