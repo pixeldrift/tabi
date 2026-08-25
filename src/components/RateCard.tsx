@@ -300,77 +300,87 @@ export function RateCard({
             </div>
           }
         >
-          {/* Number stays the one thing this row is actually centered on —
+          <div className="flex flex-col items-center gap-1">
+            {/* Number stays the one thing this row is actually centered on —
               the tap-to-edit hint and the stopwatch unit icon both hang off
               it via absolute positioning (same technique as the full-card
               view's own version of this) rather than sitting in normal flex
               flow, so neither one's width shifts the number off-center. */}
-          <div className="relative inline-flex items-center">
-            <NumberKeypad
-              value={count}
-              onReplace={(v) => commit(v)}
-              onAdd={(delta) => commit(count + delta)}
-              onOpenChange={setEditing}
-            >
-              {({ isEditing, open }) => (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    open();
-                  }}
-                  disabled={!canRecordData}
-                  className="relative cursor-text disabled:cursor-not-allowed"
-                  aria-label={`Current tally is ${count}. Tap to edit.`}
-                >
-                  <NumberPadIcon
-                    className={cn(
-                      "pointer-events-none absolute top-1/2 -translate-y-1/2 transition-colors",
-                      large ? "-left-4" : "-left-3.5",
-                      isEditing ? "text-muted-foreground/40" : "text-blue-400",
-                      large ? "size-3" : "size-2.5",
-                    )}
-                    aria-hidden
-                  />
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.span
-                      key={bumpKey}
-                      initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
-                      style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+            <div className="relative inline-flex items-center">
+              <NumberKeypad
+                value={count}
+                onReplace={(v) => commit(v)}
+                onAdd={(delta) => commit(count + delta)}
+                onOpenChange={setEditing}
+              >
+                {({ isEditing, open }) => (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    disabled={!canRecordData}
+                    className="relative cursor-text disabled:cursor-not-allowed"
+                    aria-label={`Current tally is ${count}. Tap to edit.`}
+                  >
+                    <NumberPadIcon
                       className={cn(
-                        "block font-display leading-none tabular-nums",
-                        large ? "text-[38px]" : "text-[28px]",
-                        flash ? "text-blue-600" : "text-foreground",
+                        "pointer-events-none absolute top-1/2 -translate-y-1/2 transition-colors",
+                        large ? "-left-4" : "-left-3.5",
+                        isEditing ? "text-muted-foreground/40" : "text-blue-400",
+                        large ? "size-3" : "size-2.5",
                       )}
-                    >
-                      {count}
-                    </motion.span>
-                  </AnimatePresence>
-                </button>
-              )}
-            </NumberKeypad>
-            {/* "/ [clock]" reads as "count per timed period" — faded gray so
-             *  it stays a quiet unit hint next to the real number, not
-             *  competing with it, and static regardless of `ticking` (the
-             *  number's own bump animation already carries the "this is
-             *  live" signal). Lucide's plain Clock, not RateIcon (its
-             *  dashed-quarter styling is the kind icon used elsewhere for
-             *  Rate — too busy for a small inline unit hint here). */}
-            <span
-              className={cn(
-                "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center text-muted-foreground/40",
-                large ? "-right-7 gap-0.5" : "-right-6 gap-px",
-              )}
-              aria-hidden
-            >
-              <span className={cn("font-display leading-none", large ? "text-xl" : "text-base")}>
-                /
+                      aria-hidden
+                    />
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={bumpKey}
+                        initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                        style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                        className={cn(
+                          "block font-display leading-none tabular-nums",
+                          large ? "text-[38px]" : "text-[28px]",
+                          flash ? "text-blue-600" : "text-foreground",
+                        )}
+                      >
+                        {count}
+                      </motion.span>
+                    </AnimatePresence>
+                  </button>
+                )}
+              </NumberKeypad>
+              {/* "/ [clock]" reads as "count per timed period" — faded gray so
+               *  it stays a quiet unit hint next to the real number, not
+               *  competing with it, and static regardless of `ticking` (the
+               *  number's own bump animation already carries the "this is
+               *  live" signal). Lucide's plain Clock, not RateIcon (its
+               *  dashed-quarter styling is the kind icon used elsewhere for
+               *  Rate — too busy for a small inline unit hint here). */}
+              <span
+                className={cn(
+                  "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center text-muted-foreground/40",
+                  large ? "-right-7 gap-0.5" : "-right-6 gap-px",
+                )}
+                aria-hidden
+              >
+                <span className={cn("font-display leading-none", large ? "text-xl" : "text-base")}>
+                  /
+                </span>
+                <Clock className={large ? "size-3.5" : "size-3"} strokeWidth={2} />
               </span>
-              <Clock className={large ? "size-3.5" : "size-3"} strokeWidth={2} />
-            </span>
+            </div>
+            {/* Only the large tile has room for this without crowding the
+             *  actions row below — same wording as the standard view's own
+             *  readout. */}
+            {large && (
+              <span className="text-[10px] text-muted-foreground">
+                {ratePerMin.toFixed(1)} instances per minute
+              </span>
+            )}
           </div>
         </MiniTileShell>
       </div>
@@ -663,6 +673,13 @@ export function RateCard({
                     )}
                   </span>
                 </div>
+                {/* Plain-language readout of the same ratePerMin already
+                 *  reported to the status bar (see useReportCardStatus
+                 *  below) — spelled out here since "count / [icon]" up by
+                 *  the number is a unit hint, not an actual rate. */}
+                <span className="mt-1 text-[11px] text-muted-foreground">
+                  {ratePerMin.toFixed(1)} instances per minute
+                </span>
               </div>
             )}
           </NumberKeypad>
