@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Star } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
@@ -10,6 +10,7 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { cn } from "@/lib/utils";
 
 export interface RatingCardProps extends CardEditAndDrawerProps {
@@ -539,10 +540,14 @@ export function ListRatingButton({
   onPick: (value: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <button
+          ref={anchorRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
@@ -586,6 +591,7 @@ export function ListRatingButton({
         </button>
       </PopoverAnchor>
       <PopoverContent
+        ref={contentRef}
         side="top"
         align="center"
         collisionPadding={8}
@@ -628,16 +634,19 @@ export function ListRatingButton({
             );
           })}
         </div>
-        {/* Arrow — points back at the star button that opened this popup,
-            same idiom as NumberKeypad's own popover arrow. */}
+        {/* Arrow — points back at the star button that opened this popup.
+            Left offset tracks the trigger's real position (see
+            useSlidingArrowOffset) rather than staying hard-centered, same
+            idiom as NumberKeypad's own popover arrow. */}
         <div
           className={cn(
-            "absolute left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-300 bg-card",
             "-bottom-[7px] border-r-2 border-b-2",
             "group-data-[side=bottom]:bottom-auto group-data-[side=bottom]:-top-[7px]",
             "group-data-[side=bottom]:border-r-0 group-data-[side=bottom]:border-b-0",
             "group-data-[side=bottom]:border-l-2 group-data-[side=bottom]:border-t-2",
           )}
+          style={{ left: arrowLeft ?? "50%" }}
         />
       </PopoverContent>
     </Popover>

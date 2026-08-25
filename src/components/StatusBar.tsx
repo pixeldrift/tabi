@@ -1637,11 +1637,13 @@ function SaveIndicator({
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   // margin=34, not the default 16: this popover's `align="end"` trigger
-  // sits right at the box's own top-right corner, which routinely clamps
-  // the slider to its minimum — and 16 isn't enough clearance for this
-  // rounded-2xl box's real 24px radius plus the rotated h-3 w-3 arrow
-  // square's own ~8.5px half-width (24 + 8.5 ≈ 32.5), so the corner's
-  // curve was showing through the arrow's white fill.
+  // sits right at the box's own top-right corner, which used to clamp the
+  // slider to its minimum on every open — and 16 isn't enough clearance
+  // for this rounded-2xl box's real 24px radius plus the rotated h-3 w-3
+  // arrow square's own ~8.5px half-width (24 + 8.5 ≈ 32.5), so the
+  // corner's curve was showing through the arrow's white fill. Kept as a
+  // safety net now that `alignOffset` below does the real work of keeping
+  // the trigger off the corner in the first place.
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
 
   return (
@@ -1665,6 +1667,16 @@ function SaveIndicator({
           ref={contentRef}
           side="bottom"
           align="end"
+          // alignOffset=-20: without this, the box's right edge sits flush
+          // with the trigger's own right edge, putting the trigger's true
+          // horizontal center only ~17px from that edge — inside the ~32.5px
+          // the rounded corner + arrow need (see arrowLeft's margin=34
+          // comment above), so useSlidingArrowOffset had to clamp the arrow
+          // well short of the trigger's actual center every time. Nudging
+          // the whole box 20px further left (past flush) gives the true
+          // center enough room without the clamp ever kicking in, while
+          // still leaving a comfortable margin from the viewport's edge.
+          alignOffset={-20}
           sideOffset={6}
           collisionPadding={16}
           // z-[70]: same reasoning as DataToolbar's own filter popover — the
