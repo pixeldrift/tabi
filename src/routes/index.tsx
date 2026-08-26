@@ -1612,14 +1612,31 @@ function IndexInner({
   //    comment above; nothing about the cards actually changes.
   // Both cases use React's "adjust state during render" pattern (comparing
   // against a ref of the previous value) for the instant parts, so there's
-  // no one-tick lag or intermediate stale-content flash.
+  // no one-tick lag or intermediate stale-content flash. Discard is the one
+  // exception, deliberately: see discardHideRafRef's own comment below.
   const [cardsHidden, setCardsHidden] = useState(false);
   const prevKindForHideRef = useRef<TransitionKind>(null);
+  // Setting cardsHidden and endActionOverlay in the very same render (the
+  // way join still does above) doesn't work for discard: cardsHidden
+  // gates the outgoing cards' own presence in the JSX
+  // (`{!transitionHidden && (...)}` below), so AnimatePresence captures
+  // whatever that subtree looked like on the LAST render before it
+  // disappears — one render before endActionOverlay could ever apply to
+  // it. The overlay needs to actually paint onto the still-visible cards
+  // for at least one frame before they're allowed to start exiting, or
+  // every card that ever gets stamped would already be gone before the
+  // stamp could show up on it.
+  const discardHideRafRef = useRef<number | null>(null);
   if (transitionKind !== prevKindForHideRef.current) {
     prevKindForHideRef.current = transitionKind;
-    if (transitionKind === "join" || transitionKind === "discard") {
+    if (transitionKind === "join") {
       setCardsHidden(true);
-      if (transitionKind === "discard") setEndActionOverlay("discard");
+    } else if (transitionKind === "discard") {
+      setEndActionOverlay("discard");
+      discardHideRafRef.current = window.requestAnimationFrame(() => {
+        setCardsHidden(true);
+        discardHideRafRef.current = null;
+      });
     }
   }
 
@@ -1701,6 +1718,7 @@ function IndexInner({
   useEffect(() => {
     return () => {
       if (cardEntranceTimeoutRef.current) window.clearTimeout(cardEntranceTimeoutRef.current);
+      if (discardHideRafRef.current) window.cancelAnimationFrame(discardHideRafRef.current);
     };
   }, []);
 
@@ -1723,6 +1741,7 @@ function IndexInner({
     const justSubmitted = prev !== "idle" && status === "idle" && lastEndAction === "submit";
     if (!justSubmitted) return;
     let exitTimeoutId: number | undefined;
+    let hideRafId: number | undefined;
     const startId = window.setTimeout(
       () => {
         // The still-running session's cards clear out first (their own
@@ -1736,14 +1755,23 @@ function IndexInner({
         // mounted the new staggered-entrance set on the exact same commit
         // the old set started leaving, reading as an overlap instead of a
         // clean handoff.
-        setCardsHidden(true);
+        //
+        // endActionOverlay is set a frame BEFORE cardsHidden, not
+        // alongside it — see discardHideRafRef's own comment above for why:
+        // cardsHidden gates these cards' own presence in the JSX, so
+        // AnimatePresence freezes whatever they looked like as of the last
+        // render before it flips true, which would never include the
+        // overlay if both changed in the same tick.
         setEndActionOverlay("submit");
-        exitTimeoutId = window.setTimeout(() => {
-          setCardsAnimKind("submit");
-          setCardsGen((n) => n + 1);
-          setCardsHidden(false);
-          setEndActionOverlay(null);
-        }, CARD_SLIDE_EXIT_MS);
+        hideRafId = window.requestAnimationFrame(() => {
+          setCardsHidden(true);
+          exitTimeoutId = window.setTimeout(() => {
+            setCardsAnimKind("submit");
+            setCardsGen((n) => n + 1);
+            setCardsHidden(false);
+            setEndActionOverlay(null);
+          }, CARD_SLIDE_EXIT_MS);
+        });
       },
       // Borrows NOTIFICATION_AREA_TRANSITION's duration (shared with
       // unrelated notification-area animations, so not itself scaled) but
@@ -1754,6 +1782,7 @@ function IndexInner({
     );
     return () => {
       window.clearTimeout(startId);
+      if (hideRafId !== undefined) window.cancelAnimationFrame(hideRafId);
       if (exitTimeoutId !== undefined) window.clearTimeout(exitTimeoutId);
     };
   }, [status, lastEndAction]);
@@ -2176,6 +2205,7 @@ function IndexInner({
                     cardsGen={cardsGen}
                     cardsAnimKind={cardsAnimKind}
                     transitionHidden={cardsHidden}
+                    endActionOverlay={endActionOverlay}
                     visibleCards={visibleCards}
                     activeId={activeId}
                     setActiveId={setActiveId}
@@ -2273,14 +2303,6 @@ function IndexInner({
         <TourOverlay />
       </TourProvider>
       <TipOverlay />
-      {/* Top-level, alongside TipOverlay — position:fixed only measures
-          against the true viewport when nothing between here and the root
-          has an active transform, and nesting this any deeper (e.g. beside
-          DataCardList itself) risks landing inside one of Motion's own
-          transformed wrappers mid-transition. */}
-      <AnimatePresence>
-        {endActionOverlay && <TransitionIconOverlay kind={endActionOverlay} />}
-      </AnimatePresence>
     </TipProvider>
   );
 }
@@ -2642,34 +2664,38 @@ const SINGLE_UNIT_VARIANTS = {
   },
 } as const;
 
-/** Brief "confirmed" stamp shown while the old cards are animating out on
+/** Per-card "confirmed" stamp shown on each card while it's animating out on
  *  submit/discard — the exact same icon each action's own button already
- *  uses (Upload for End & Submit, Trash2 for End & Discard), just enlarged,
- *  so it reads as "the thing you just pressed" rather than a new, unrelated
- *  glyph. Fixed to the viewport (not the scrollable card-list container) so
- *  it stays centered on screen regardless of scroll position, and its own
- *  AnimatePresence lifecycle is driven entirely by whether it's mounted —
- *  no hardcoded duration to keep in sync with either exit animation's own
- *  timing (join never mounts this at all; see DataCardList's own check). */
-function TransitionIconOverlay({ kind }: { kind: "submit" | "discard" }) {
+ *  uses (Upload for End & Submit, Trash2 for End & Discard), a tinted wash,
+ *  and a matching colored ring around the card itself, so every card
+ *  leaving reads as individually accounted for rather than the list just
+ *  vanishing. Sized to `absolute inset-0` over whichever wrapper renders
+ *  it — see its call sites, both of which give that wrapper `relative` and
+ *  no other sizing of its own, so this lines up with the actual card
+ *  underneath instead of some larger flex slot around it. No AnimatePresence
+ *  here: it only ever needs to fade in (the card itself is already what's
+ *  animating away by the time this unmounts, so an instant disappearance
+ *  alongside that reads fine without its own exit tween). */
+function CardEndActionOverlay({ kind }: { kind: "submit" | "discard" }) {
   const Icon = kind === "submit" ? Upload : Trash2;
   return (
     <motion.div
-      key="transition-icon-overlay"
-      initial={{ opacity: 0, scale: 0.6 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.6 }}
-      transition={{ duration: 0.22, ease: [0, 0, 0.2, 1] }}
-      className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      className={cn(
+        "pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-xl ring-4 ring-inset",
+        kind === "submit" ? "ring-green-500 bg-green-500/10" : "ring-red-500 bg-red-500/10",
+      )}
       aria-hidden="true"
     >
       <div
         className={cn(
-          "btn-bevel grid place-items-center size-24 rounded-full shadow-lg",
+          "btn-bevel grid place-items-center size-12 rounded-full shadow-lg",
           kind === "submit" ? "bg-green-500" : "bg-red-500",
         )}
       >
-        <Icon className="size-10 text-white" strokeWidth={2.5} />
+        <Icon className="size-6 text-white" strokeWidth={2.5} />
       </div>
     </motion.div>
   );
@@ -2684,6 +2710,7 @@ const DataCardList = memo(function DataCardList({
   cardsGen,
   cardsAnimKind,
   transitionHidden = false,
+  endActionOverlay,
   visibleCards,
   activeId,
   setActiveId,
@@ -2713,6 +2740,13 @@ const DataCardList = memo(function DataCardList({
    * until the fresh list mounts for stage 3. Starting a fresh session never
    * sets this — see cardsAnimKind's own comment in IndexInner. */
   transitionHidden?: boolean;
+  /** Non-null exactly while whatever's currently rendered here is the OLD,
+   *  about-to-be-replaced set (see IndexInner's own endActionOverlay
+   *  comment — it's already back to null by the time a fresh set mounts
+   *  under a new cardsGen, regardless of which branch below is doing the
+   *  rendering), so gating each card's own CardEndActionOverlay on this
+   *  alone is enough to only ever stamp the cards on their way out. */
+  endActionOverlay: "submit" | "discard" | null;
   visibleCards: CardConfig[];
   activeId: string;
   setActiveId: (id: string) => void;
@@ -2930,7 +2964,10 @@ const DataCardList = memo(function DataCardList({
               }}
               transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
             >
-              <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
+              <div className="relative">
+                <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
+                {endActionOverlay && <CardEndActionOverlay kind={endActionOverlay} />}
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -2959,7 +2996,10 @@ const DataCardList = memo(function DataCardList({
               className="w-full flex justify-center"
               style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
             >
-              <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
+              <div className="relative">
+                <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
+                {endActionOverlay && <CardEndActionOverlay kind={endActionOverlay} />}
+              </div>
             </motion.div>
           ))}
         </motion.div>
