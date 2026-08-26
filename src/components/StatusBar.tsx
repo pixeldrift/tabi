@@ -1063,7 +1063,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,0 L30,10 L70,10 L100,0 L100,100"
+                                d="M0,100 L0,0 L30,16 L70,16 L100,0 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={2}
                                 strokeLinejoin="round"
