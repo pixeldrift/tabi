@@ -160,16 +160,19 @@ export type CardConfig = {
        *  entry instead of following the session clock. Defaults to locked. */
       locked?: boolean;
       /** Whether `checkpoints` below (when present) are pinned to a clock
-       *  time or to elapsed time since the session started. Not yet
-       *  consumed by the running card itself — authored today only via the
-       *  Add New Card dialog's own preview of the upcoming custom-schedule
-       *  mode; the card still runs on the fixed `intervalMin` interval
-       *  above regardless of what's set here. */
+       *  time or to elapsed time since the session started. Only
+       *  "timeOfDay" is actually consumed by the running card today — each
+       *  of its checkpoints fires a real wall-clock alert with its own
+       *  scoreable popup. "interval" checkpoints are still just authored,
+       *  not run — the card runs on the fixed `intervalMin` interval above
+       *  in that case instead. */
       checkpointMode?: "interval" | "timeOfDay";
       /** Named checkpoints, each with its own already-formatted display
-       *  time (e.g. "1:23:45" elapsed, or "2:30p" clock time) — same
-       *  "not yet consumed by the running card" caveat as checkpointMode. */
-      checkpoints?: { time: string; label: string }[];
+       *  time (e.g. "1:23:45" elapsed, or "2:30p" clock time — see
+       *  checkpointMode's own caveat on which of those two actually runs).
+       *  `alertText` is the notification's title when its time arrives —
+       *  falls back to a generic "Check {label}" when omitted. */
+      checkpoints?: { time: string; label: string; alertText?: string }[];
     }
   | {
       kind: "checklist";
@@ -663,18 +666,29 @@ const BUILT_IN_CARDS: CardConfig[] = [
     title: "Accepts medication without resisting",
     phase: "Intervention",
     description:
-      "A single check right after meds are given at the start of session, not a repeating interval — scored once, then done for the day. intervalCount: 1 is what keeps this to one interval instead of Remains Dry's whole-session schedule.",
+      "Checked four times a day — 10am, noon, 2pm, and 4pm — each firing its own real-time alert with a scoreable popup right when it's due, the same as Remains Dry's own 'time to check' alerts. Accepted/Resisted is scored independently per dose, not a single overall check.",
     intervalMin: 15,
     intervalCount: 1,
     positiveLabel: "Accepted",
     negativeLabel: "Resisted",
+    checkpointMode: "timeOfDay",
+    checkpoints: [
+      { time: "10:00a", label: "Morning dose", alertText: "Morning medication" },
+      { time: "12:00p", label: "Midday dose", alertText: "Midday medication" },
+      { time: "2:00p", label: "Afternoon dose", alertText: "Afternoon medication" },
+      {
+        time: "4:00p",
+        label: "Late afternoon dose",
+        alertText: "Late afternoon medication",
+      },
+    ],
     teachingProcedure: {
-      goal: "Phineas will accept his morning medication without resisting (crying, pushing away, spitting out, or needing a second attempt) across 4 consecutive administrations.",
+      goal: "Phineas will accept each of his 4 scheduled daily medications without resisting (crying, pushing away, spitting out, or needing a second attempt) across 3 consecutive full days.",
       rationale:
-        "Medication resistance can color the whole start of a session — scoring it as its own single check, separate from the broader behavior tally, makes it easy to see whether a rough start actually predicts a rough session.",
+        "Medication resistance can color the whole stretch of session around a dose — scoring each one as its own check, separate from the broader behavior tally, makes it easy to see whether a rough dose actually predicts a rough stretch.",
       procedure:
-        "Score once, right after meds are given — Accepted if he took the dose calmly within one presentation, Resisted if there was crying, pushing away, spitting out, or a second attempt was needed.",
-      sd: "The medication being presented (cup or spoon offered) — score based on what actually happened whenever meds were given, not the interval boundary itself.",
+        "Score each dose as its own alert fires (10am, noon, 2pm, 4pm) — Accepted if he took it calmly within one presentation, Resisted if there was crying, pushing away, spitting out, or a second attempt was needed.",
+      sd: "The medication being presented at each scheduled time (cup or spoon offered) — score based on what actually happened, not the alert itself.",
       measurement: {
         markCorrect:
           "Accepted: took the dose within one presentation, no more than mild vocal protest.",
@@ -685,7 +699,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
         "For a resisted dose, follow the standard re-administration routine calmly — don't badger or bribe past the second attempt, just log what actually happened and move on.",
       materials: "Medication cup, water, standard administration supplies.",
       instructionalNotes:
-        "This is a single check, not a strict time-of-day requirement — if meds end up given a little late, score the same interval anyway rather than waiting for a specific clock time.",
+        "Each dose is its own alert and its own score — a late or missed one doesn't block or shift the others. If a dose was given before its alert fired, score it directly from the card rather than waiting for the popup.",
     },
   },
   {
@@ -2346,6 +2360,8 @@ function renderCard(
           positiveLabel={card.positiveLabel}
           negativeLabel={card.negativeLabel}
           locked={card.locked}
+          checkpointMode={card.checkpointMode}
+          checkpoints={card.checkpoints}
           {...common}
         />
       );
