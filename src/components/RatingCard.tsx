@@ -13,6 +13,19 @@ import { useReportCardStatus } from "./DataToolbarContext";
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { cn } from "@/lib/utils";
 
+// lucide's Star path fills its 24x24 viewBox unevenly — its single top
+// point plus wide two-point base concentrate its actual pixel mass well
+// below the viewBox's own half-height. Measured by rendering the path
+// standalone and computing its mass centroid: the centroid sits ~6.9% of
+// the icon's own height above true center. A shape's rendered box gets
+// centered against its NEIGHBORS by its box's half-height (correct for a
+// symmetric glyph like a circle or the Check/X icons, which measure
+// well under 1% off), but that leaves a star looking too high relative to
+// them — nudging it down by that same 6.9% (a percentage, not a fixed
+// px value, so it scales with whatever size the star renders at) aligns
+// its actual visual weight instead of its arbitrary bounding box.
+const STAR_CENTROID_OFFSET = "translate-y-[6.9%]";
+
 export interface RatingCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
@@ -200,6 +213,7 @@ export function RatingCard({
                 <Star
                   className={cn(
                     large ? "size-[26px]" : "size-[19px]",
+                    STAR_CENTROID_OFFSET,
                     filled
                       ? "fill-blue-500 stroke-blue-600"
                       : "fill-foreground/10 stroke-foreground/25",
@@ -502,6 +516,7 @@ function ListRatingRow({
             <Star
               className={cn(
                 "size-5",
+                STAR_CENTROID_OFFSET,
                 filled
                   ? "fill-blue-500 stroke-blue-600"
                   : "fill-foreground/10 stroke-foreground/25",
@@ -624,6 +639,7 @@ export function ListRatingButton({
                 <Star
                   className={cn(
                     "size-7",
+                    STAR_CENTROID_OFFSET,
                     filled
                       ? "fill-blue-500 stroke-blue-600"
                       : "fill-foreground/10 stroke-foreground/25",

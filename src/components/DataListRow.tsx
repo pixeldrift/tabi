@@ -152,16 +152,22 @@ export function DataListRow({
           cluster exactly where a one-line row would put it instead of
           sliding down to stay centered in a now-taller two-line row. Only
           the row's bottom edge should move when the title wraps.
-          top-2/h-4 (not a hand-measured top-[17px]) mirror the header row's
-          own py-2 and the data-type icon's own size-4 exactly, so this box
-          spans precisely the icon's own footprint — a real, derived
-          anchor rather than a guessed pixel that could quietly drift out of
-          sync if that padding or icon size ever changed. items-center then
-          self-centers whichever kind's own actions height (a 28px button
-          row vs. a 20px star row) inside that footprint, same as
-          -translate-y-1/2 did against a single guessed point before. */}
+          top-1.5/h-4 mirror the header row's own py-2 and the data-type
+          icon's own size-4, shifted up 2px from an exact match (top-2)
+          because .btn-bevel's own box-shadow (see styles.css) only ever
+          casts downward — a drop shadow below plus a subtle inset
+          highlight that stays within the button's own edge above — so
+          every bevelled button's actual visual footprint extends further
+          below its true box than above it. At this row's compact button
+          sizes that reads as "sitting low" even though the box itself is
+          mathematically centered; nudging the anchor up compensates for
+          the shadow's own asymmetry instead of the button's real geometry.
+          items-center self-centers whichever kind's own actions height (a
+          28px button row vs. a 20px star row) inside that shifted
+          footprint, same as -translate-y-1/2 did against a single guessed
+          point before this was made a derived value. */}
         {showActions && (
-          <div className="absolute z-10 top-2 right-0.5 h-4 flex items-center">{actions}</div>
+          <div className="absolute z-10 top-1.5 right-0.5 h-4 flex items-center">{actions}</div>
         )}
 
         {/* A background wash tucked under the title only — stops well short
