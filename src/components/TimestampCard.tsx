@@ -14,7 +14,7 @@ import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
-import { parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import { formatTimeOfDay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
 import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
@@ -639,6 +639,21 @@ export function TimestampCard({
       )}
     </TimeKeypad>
   );
+  // Checkpoint mode's own equivalent of the pill above — the real wall
+  // clock instead of session elapsed, since that's what its own chevron is
+  // actually tracking (see checkpointFillFrac). Always "locked": there's no
+  // session-time-editing test hook equivalent for a checkpoint schedule.
+  const checkpointTimerPill = (
+    <span
+      aria-label="Current time"
+      title="Current time"
+      className="inline-flex items-center shrink-0 rounded-full border border-border bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
+    >
+      {formatTimeOfDay(
+        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+      )}
+    </span>
+  );
 
   const details = (
     <>
@@ -709,6 +724,37 @@ export function TimestampCard({
       ? `${checkpoints[activeViewIdx].time} · ${checkpoints[activeViewIdx].label}`
       : ""
     : intervalLabel(activeViewIdx, intervalMin);
+
+  // The shared timeline's own "now" fill position, in the same SEG_W (and
+  // ROW_SLOT, for the expanded view's vertical bar) per-segment units its
+  // bubbles/dividers already use — computed here rather than inside the
+  // timeline components themselves, so both modes can hand it a plain pixel
+  // number without either needing to know how the OTHER mode derives it
+  // (equal-length elapsed intervals vs. wherever "now" falls between two
+  // arbitrarily-spaced wall-clock checkpoints).
+  const intervalSegFillFrac = Math.min(
+    1,
+    Math.max(0, (elapsed - rawIndex * intervalMs) / intervalMs),
+  );
+  const intervalFillFrac = rawIndex + intervalSegFillFrac;
+  // Before the first checkpoint, nothing's filled yet; past the last one,
+  // it's pinned fully filled (there's no next checkpoint to fill toward) —
+  // otherwise it's the fraction of the way from checkpoint i to i+1 that
+  // "now" currently sits at, same idea as interval mode's own segFillFrac
+  // but between two arbitrary times rather than a fixed-length interval.
+  const checkpointFillFrac = (() => {
+    const mins = checkpointMinutes;
+    const n = mins.length;
+    if (n === 0 || mins[0] === null || nowMin < mins[0]) return 0;
+    for (let i = 0; i < n - 1; i++) {
+      const a = mins[i];
+      const b = mins[i + 1];
+      if (a === null || b === null) continue;
+      if (nowMin < b) return i + 1 + Math.min(1, Math.max(0, (nowMin - a) / (b - a)));
+    }
+    return n;
+  })();
+  const activeFillFrac = isCheckpointMode ? checkpointFillFrac : intervalFillFrac;
 
   if (tileDensity) {
     const large = tileDensity === "large";
@@ -905,120 +951,77 @@ export function TimestampCard({
           setExpanded((v) => !v);
         }}
         expandedView={
-          isCheckpointMode ? (
-            <CheckpointExpandedView
-              checkpoints={checkpoints ?? []}
-              statuses={checkpointStatuses}
-              viewIdx={checkpointViewIdx}
-              canRecordData={canRecordData}
-              positiveLabel={positiveLabel}
-              negativeLabel={negativeLabel}
-              onScore={scoreCheckpointFromCard}
-            />
-          ) : (
-            <TimestampExpandedView
-              intervalCount={displayIntervalCount}
-              intervalMin={intervalMin}
-              intervalMs={intervalMs}
-              statuses={statuses}
-              viewIdx={viewIdx}
-              elapsedMs={elapsed}
-              canRecordData={canRecordData}
-              positiveLabel={positiveLabel}
-              negativeLabel={negativeLabel}
-              onScore={scoreFromCard}
-              timerPill={timerPill}
-            />
-          )
+          <TimestampExpandedView
+            intervalCount={activeCount}
+            rowLabel={
+              isCheckpointMode
+                ? (i) => {
+                    const cp = checkpoints?.[i];
+                    return cp ? `${cp.time} · ${cp.label}` : "";
+                  }
+                : (i) => intervalRange(i, intervalMin)
+            }
+            statuses={activeStatuses}
+            viewIdx={activeViewIdx}
+            fillFrac={activeFillFrac}
+            canRecordData={canRecordData}
+            positiveLabel={positiveLabel}
+            negativeLabel={negativeLabel}
+            onScore={activeScoreFromCard}
+            timerPill={isCheckpointMode ? checkpointTimerPill : timerPill}
+          />
         }
       >
-        {isCheckpointMode ? (
-          <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
-            <div className="text-center text-sm font-semibold">
-              {checkpoints?.[activeViewIdx]?.time}
-              {checkpoints?.[activeViewIdx]?.label ? ` — ${checkpoints[activeViewIdx].label}` : ""}
-            </div>
-
-            <div className="relative px-10 pt-3 pb-1">
-              <TriangleNav
-                direction="left"
-                onClick={() => activeGoTo(activeViewIdx - 1)}
-                disabled={activeViewIdx <= 0}
-              />
-              <TriangleNav
-                direction="right"
-                onClick={() => activeGoTo(activeViewIdx + 1)}
-                disabled={activeViewIdx >= activeCount - 1}
-              />
-              <CheckpointDots
-                count={activeCount}
-                viewIdx={activeViewIdx}
-                statuses={activeStatuses}
-              />
-            </div>
-
-            <div className="mt-2 flex items-center gap-3">
-              <ScoreButton
-                variant="negative"
-                label={negativeLabel}
-                selected={activeViewStatus === "incorrect"}
-                disabled={!canRecordData}
-                onClick={() => activeScoreFromCard(activeViewIdx, "incorrect")}
-              />
-              <ScoreButton
-                variant="positive"
-                label={positiveLabel}
-                selected={activeViewStatus === "correct"}
-                disabled={!canRecordData}
-                onClick={() => activeScoreFromCard(activeViewIdx, "correct")}
-              />
-            </div>
+        <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
+          <div
+            className={cn("text-center text-sm font-semibold", !isCheckpointMode && "tabular-nums")}
+          >
+            {isCheckpointMode
+              ? `${checkpoints?.[activeViewIdx]?.time ?? ""}${
+                  checkpoints?.[activeViewIdx]?.label
+                    ? ` — ${checkpoints[activeViewIdx].label}`
+                    : ""
+                }`
+              : intervalEndLabel(viewIdx, intervalMin)}
           </div>
-        ) : (
-          <div className="px-5 pt-2 pb-4 flex flex-col gap-0">
-            <div className="text-center text-sm font-semibold tabular-nums">
-              {intervalEndLabel(viewIdx, intervalMin)}
-            </div>
 
-            <div className="relative px-10">
-              <TriangleNav
-                direction="left"
-                onClick={() => goTo(viewIdx - 1)}
-                disabled={viewIdx <= 0}
-              />
-              <TriangleNav
-                direction="right"
-                onClick={() => goTo(viewIdx + 1)}
-                disabled={viewIdx >= displayIntervalCount - 1}
-              />
-              <IntervalTimeline
-                intervalCount={displayIntervalCount}
-                elapsedMs={elapsed}
-                intervalMs={intervalMs}
-                viewIdx={viewIdx}
-                statuses={statuses}
-                timerPill={timerPill}
-              />
-            </div>
-
-            <div className="mt-2 flex items-center gap-3">
-              <ScoreButton
-                variant="negative"
-                label={negativeLabel}
-                selected={viewStatus === "incorrect"}
-                disabled={!canRecordData}
-                onClick={() => scoreFromCard(viewIdx, "incorrect")}
-              />
-              <ScoreButton
-                variant="positive"
-                label={positiveLabel}
-                selected={viewStatus === "correct"}
-                disabled={!canRecordData}
-                onClick={() => scoreFromCard(viewIdx, "correct")}
-              />
-            </div>
+          <div className="relative px-10">
+            <TriangleNav
+              direction="left"
+              onClick={() => activeGoTo(activeViewIdx - 1)}
+              disabled={activeViewIdx <= 0}
+            />
+            <TriangleNav
+              direction="right"
+              onClick={() => activeGoTo(activeViewIdx + 1)}
+              disabled={activeViewIdx >= activeCount - 1}
+            />
+            <IntervalTimeline
+              intervalCount={activeCount}
+              fillFrac={activeFillFrac}
+              viewIdx={activeViewIdx}
+              statuses={activeStatuses}
+              timerPill={isCheckpointMode ? checkpointTimerPill : timerPill}
+            />
           </div>
-        )}
+
+          <div className="mt-2 flex items-center gap-3">
+            <ScoreButton
+              variant="negative"
+              label={negativeLabel}
+              selected={activeViewStatus === "incorrect"}
+              disabled={!canRecordData}
+              onClick={() => activeScoreFromCard(activeViewIdx, "incorrect")}
+            />
+            <ScoreButton
+              variant="positive"
+              label={positiveLabel}
+              selected={activeViewStatus === "correct"}
+              disabled={!canRecordData}
+              onClick={() => activeScoreFromCard(activeViewIdx, "correct")}
+            />
+          </div>
+        </div>
       </CardShell>
     </div>
   );
@@ -1086,19 +1089,25 @@ export const HORIZONTAL_FADE_MASK = {
 
 function IntervalTimeline({
   intervalCount,
-  elapsedMs,
-  intervalMs,
+  fillFrac,
   viewIdx,
   statuses,
   timerPill,
 }: {
   intervalCount: number;
-  elapsedMs: number;
-  intervalMs: number;
+  // Precomputed by the caller as a fractional segment position (2.35 =
+  // 35% of the way through segment 3) rather than a raw pixel offset, so
+  // this component is the only place that has to know SEG_W — interval
+  // mode derives it from elapsedMs/intervalMs (continuous, equal-length
+  // segments), checkpoint mode from where "now" falls between two
+  // wall-clock checkpoint times (not necessarily equal-length gaps); this
+  // component doesn't need to know which.
+  fillFrac: number;
   viewIdx: number;
   statuses: IntervalStatus[];
   timerPill: ReactNode;
 }) {
+  const fillPx = fillFrac * SEG_W;
   // Every period is an equal length of time, so its bubble is the same size
   // as every other's — only the border weight and the solid/faded/gray
   // recency treatment set one apart from another, not a bigger diameter.
@@ -1112,9 +1121,6 @@ function IntervalTimeline({
   // being browsed OR of `currentIndex`'s own half-interval scoring grace
   // (see its own comment above) — that grace only delays which interval
   // is highlighted/scored, not where "now" actually, physically is.
-  const rawIndex = Math.floor(elapsedMs / intervalMs);
-  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - rawIndex * intervalMs) / intervalMs));
-  const fillPx = rawIndex * SEG_W + segFillFrac * SEG_W;
   // Continuous centering, the same idiom as Percent Correct's own
   // trial-bubble strip: the viewed interval's own bubble — which now marks
   // the interval's END (see below), matching the bar's own divider ticks —
@@ -1295,11 +1301,10 @@ const CHEVRON_PAD_Y = 10;
  *  they're clipping content, and this view has no nav arrows of its own. */
 function TimestampExpandedView({
   intervalCount,
-  intervalMin,
-  intervalMs,
+  rowLabel,
   statuses,
   viewIdx,
-  elapsedMs,
+  fillFrac,
   canRecordData,
   positiveLabel,
   negativeLabel,
@@ -1307,25 +1312,25 @@ function TimestampExpandedView({
   timerPill,
 }: {
   intervalCount: number;
-  intervalMin: number;
-  intervalMs: number;
+  /** Each row's own descriptive text — the interval's own time range
+   *  ("0-30m") for interval mode, or a checkpoint's clock time + name for
+   *  checkpoint mode. Indexed rather than a precomputed array so the caller
+   *  doesn't have to build a whole array just to hand this component what
+   *  is, either way, a pure function of the row index. */
+  rowLabel: (index: number) => string;
   statuses: IntervalStatus[];
   viewIdx: number;
-  elapsedMs: number;
+  // Same fractional-segment position IntervalTimeline's own `fillFrac`
+  // prop takes — see its doc comment for why this is a plain fraction
+  // rather than a raw pixel/row offset.
+  fillFrac: number;
   canRecordData: boolean;
   positiveLabel: string;
   negativeLabel: string;
   onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
   timerPill: ReactNode;
 }) {
-  // Tracks the real, continuous session clock — not `currentIndex`'s own
-  // half-interval scoring grace (see its own comment above the parent's
-  // `gracedIndex`) — and scales the fractional remainder by ROW_SLOT (the
-  // row's own full pitch, gap included) rather than just ROW_H, since the
-  // divider lines below are drawn at ROW_SLOT multiples too.
-  const rawIndex = Math.floor(elapsedMs / intervalMs);
-  const segFillFrac = Math.min(1, Math.max(0, (elapsedMs - rawIndex * intervalMs) / intervalMs));
-  const fillPx = rawIndex * ROW_SLOT + segFillFrac * ROW_SLOT;
+  const fillPx = fillFrac * ROW_SLOT;
   const trackOffsetPx = -Math.max(0, viewIdx - (VISIBLE_ROWS - 1)) * ROW_SLOT;
   // The extra CHEVRON_PAD_Y headroom top/bottom (see its own comment) rides
   // along as a constant part of the same offset — the auto-scroll math
@@ -1456,7 +1461,7 @@ function TimestampExpandedView({
                     {i + 1}
                   </span>
                   <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground tabular-nums">
-                    {intervalRange(i, intervalMin)}
+                    {rowLabel(i)}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">
                     <RowScoreButton
@@ -1480,117 +1485,6 @@ function TimestampExpandedView({
           </div>
         </motion.div>
       </div>
-    </div>
-  );
-}
-
-/** Checkpoint mode's own standard-view stepper — a plain static row of
- *  numbered badges, one per checkpoint, colored the same way the elapsed
- *  timeline's own bubbles are (see statusColors/recencyOf). No spring-
- *  animated scrolling track like IntervalTimeline's: with only a handful of
- *  named checkpoints (not an open-ended, possibly-long interval count),
- *  they all just fit on one row. */
-function CheckpointDots({
-  count,
-  viewIdx,
-  statuses,
-}: {
-  count: number;
-  viewIdx: number;
-  statuses: IntervalStatus[];
-}) {
-  return (
-    <div className="flex items-center justify-center gap-2 flex-wrap">
-      {Array.from({ length: count }, (_, i) => {
-        const recency = recencyOf(i, viewIdx);
-        const { bg, text, fade } = statusColors(statuses[i], recency);
-        const isCurrent = recency === "current";
-        return (
-          <div
-            key={i}
-            className={cn(
-              "shrink-0 rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
-              isCurrent ? "border-2 text-sm" : "border text-[11px]",
-              bg,
-              text,
-              fade,
-            )}
-            style={{
-              width: isCurrent ? BUBBLE_CURRENT : BUBBLE,
-              height: isCurrent ? BUBBLE_CURRENT : BUBBLE,
-            }}
-          >
-            {i + 1}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Checkpoint mode's own expanded view — every checkpoint as its own row
- *  (time badge, label, score buttons), always all visible at once rather
- *  than TimestampExpandedView's auto-scrolled viewport, for the same "only
- *  a handful of named checkpoints" reason CheckpointDots skips the
- *  animated track above. */
-function CheckpointExpandedView({
-  checkpoints,
-  statuses,
-  viewIdx,
-  canRecordData,
-  positiveLabel,
-  negativeLabel,
-  onScore,
-}: {
-  checkpoints: { time: string; label: string; alertText?: string }[];
-  statuses: IntervalStatus[];
-  viewIdx: number;
-  canRecordData: boolean;
-  positiveLabel: string;
-  negativeLabel: string;
-  onScore: (index: number, value: Exclude<IntervalStatus, null>) => void;
-}) {
-  return (
-    <div className="px-5 pt-1 pb-4 flex flex-col gap-3">
-      {checkpoints.map((cp, i) => {
-        const status = statuses[i];
-        const recency = recencyOf(i, viewIdx);
-        const { bg, text, fade } = statusColors(status, recency);
-        return (
-          <div key={i} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "shrink-0 grid place-items-center rounded-full font-display font-bold text-[11px] tabular-nums px-2 h-6 min-w-[2.75rem]",
-                recency === "current" ? "border-2" : "border",
-                bg,
-                text,
-                fade,
-              )}
-            >
-              {cp.time}
-            </span>
-            <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
-              {cp.label}
-            </span>
-            <div className="flex items-center gap-1 shrink-0">
-              <RowScoreButton
-                variant="negative"
-                label={negativeLabel}
-                selected={status === "incorrect"}
-                disabled={!canRecordData}
-                onClick={() => onScore(i, "incorrect")}
-              />
-              <RowScoreButton
-                variant="positive"
-                label={positiveLabel}
-                selected={status === "correct"}
-                disabled={!canRecordData}
-                onClick={() => onScore(i, "correct")}
-              />
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
