@@ -1273,7 +1273,7 @@ function IndexInner({
   // VISIBILITY_SETTLE_MS — see StatusBar's own `mainVisible`/
   // `suppressEntranceAnimation`/`VISIBILITY_SETTLE_MS` comments for the
   // full reasoning (same mechanism and buffer duration, mirrored here
-  // since this "Start session to record data" banner below lives in this
+  // since this "Start new session to add data" banner below lives in this
   // component instead). It mounts (possibly already showing, if the random
   // initial state landed on "idle") while still hidden behind the welcome
   // screen, and its `initial`->`animate` mount entrance doesn't actually
@@ -2018,7 +2018,7 @@ function IndexInner({
                             className="py-1.5 px-8 text-center"
                           >
                             <span className="text-sm text-muted-foreground">
-                              Start session to record data.
+                              Start new session to add data.
                             </span>
                           </motion.div>
                         </motion.div>
