@@ -1571,15 +1571,18 @@ function IndexInner({
   useEffect(() => () => cancelAnimationFrame(anchorRafRef.current), []);
 
   // Which single-unit animation the card list should play, and a remount
-  // key. Only start-new (fresh session) and discard (abandon in-progress
-  // data) actually swap the list's content — resume/continue-previous just
-  // un-fades the same cards (the `opacity-50` wrapper below, untouched by
-  // any of this), and submit keeps its own separate, more elaborate
-  // per-card staggered animation for now.
+  // key. Only join (someone else's already-in-progress session) and discard
+  // (abandon in-progress data) actually swap the list's content. Starting a
+  // fresh session deliberately does NOT — End & Submit/End & Discard (see
+  // SessionContext's own resetSignal comment on each) already left the idle
+  // screen showing genuinely fresh, disabled cards, so by the time Start
+  // New Session is pressed there's nothing left to animate: it's the exact
+  // same cards, just switching from disabled to enabled via the
+  // `opacity-50` wrapper below — the same un-fade resume/continue-previous
+  // already used, not a new set arriving. Submit keeps its own separate,
+  // more elaborate per-card staggered animation for now.
   const [cardsGen, setCardsGen] = useState(0);
-  const [cardsAnimKind, setCardsAnimKind] = useState<"start-new" | "discard" | "submit">(
-    "start-new",
-  );
+  const [cardsAnimKind, setCardsAnimKind] = useState<"join" | "discard" | "submit">("join");
 
   // Stage 1 (old stuff exits) needs the card list to unmount the INSTANT
   // transitionKind is set (not one effect-tick later), so the exit and the
@@ -1589,11 +1592,12 @@ function IndexInner({
   // remount, which happens at a different moment per kind:
   //  - discard doesn't run the header's pill travel (the box stays open),
   //    so it remounts immediately once stage 2 commits.
-  //  - start-new (and join, see SessionContext's own requestJoin comment —
-  //    same staged sequence, just without the odometer actually resetting)
-  //    both run the pill travel, so their remount waits PILL_LAND_MS, until
-  //    the clock has actually landed in the mini slot, instead of the new
-  //    cards beating it there. See SessionContext's PILL_LAND_MS comment.
+  //  - join runs the pill travel (see SessionContext's own requestJoin
+  //    comment), so its remount waits PILL_LAND_MS, until the clock has
+  //    actually landed in the mini slot, instead of the new cards beating
+  //    it there. See SessionContext's PILL_LAND_MS comment.
+  //  - start-new never hides anything at all — see the cardsAnimKind
+  //    comment above; nothing about the cards actually changes.
   // Both cases use React's "adjust state during render" pattern (comparing
   // against a ref of the previous value) for the instant parts, so there's
   // no one-tick lag or intermediate stale-content flash.
@@ -1601,11 +1605,7 @@ function IndexInner({
   const prevKindForHideRef = useRef<TransitionKind>(null);
   if (transitionKind !== prevKindForHideRef.current) {
     prevKindForHideRef.current = transitionKind;
-    if (
-      transitionKind === "start-new" ||
-      transitionKind === "join" ||
-      transitionKind === "discard"
-    ) {
+    if (transitionKind === "join" || transitionKind === "discard") {
       setCardsHidden(true);
     }
   }
@@ -1646,24 +1646,23 @@ function IndexInner({
         // Wait for the old cards' own shrink-and-dissolve exit to actually
         // finish (CARD_SLIDE_EXIT_MS) instead of remounting the instant
         // stage 2 commits — discard reads as one set fully leaving before
-        // the next arrives, not an overlapping relay like start-new's.
+        // the next arrives, not an overlapping relay like join's.
         cardEntranceTimeoutRef.current = window.setTimeout(() => {
           setCardsAnimKind("discard");
           setCardsGen((n) => n + 1);
           setCardsHidden(false);
           cardEntranceTimeoutRef.current = null;
         }, CARD_SLIDE_EXIT_MS);
-      } else if (transitionKind === "start-new" || transitionKind === "join") {
-        // Join reuses start-new's own single-unit slide variant — the
-        // card list's own visuals don't need a distinct "join" flavor, just
-        // the same choreography (see SessionContext's requestJoin comment).
+      } else if (transitionKind === "join") {
         cardEntranceTimeoutRef.current = window.setTimeout(() => {
-          setCardsAnimKind("start-new");
+          setCardsAnimKind("join");
           setCardsGen((n) => n + 1);
           setCardsHidden(false);
           cardEntranceTimeoutRef.current = null;
         }, PILL_LAND_MS);
       }
+      // transitionKind === "start-new" deliberately falls through here
+      // doing nothing — see the cardsAnimKind comment above.
     } else if (transitionStage !== 2) {
       stage2HandledRef.current = false;
     }
@@ -1689,11 +1688,11 @@ function IndexInner({
       () => {
         // The still-running session's cards clear out first (their own
         // existing single-unit exit — whatever `cardsAnimKind` was already
-        // playing, e.g. start-new's slide-right — since they were never
+        // playing, e.g. join's slide-right — since they were never
         // rendered under the "submit" branch to begin with) before the
         // fresh, just-submitted set fans in from the left — same "gone,
         // then arrives" sequencing as discard (see its own comment) rather
-        // than start-new's deliberate overlapping relay. Previously this
+        // than join's deliberate overlapping relay. Previously this
         // bumped cardsGen/cardsAnimKind in the same tick as hiding, which
         // mounted the new staggered-entrance set on the exact same commit
         // the old set started leaving, reading as an overlap instead of a
@@ -2557,12 +2556,14 @@ function MorphContent({
   );
 }
 
-// Single-unit variants for start-new/discard — the WHOLE list moves as one
+// Single-unit variants for join/discard — the WHOLE list moves as one
 // element (not per-card), which is both simpler and much cheaper than
 // animating each card individually: only one Motion component is tracked
-// during the transition instead of seven.
+// during the transition instead of seven. Starting a fresh session has no
+// entry here at all — see cardsAnimKind's own comment in IndexInner for
+// why it deliberately doesn't animate the card list.
 const SINGLE_UNIT_VARIANTS = {
-  "start-new": {
+  join: {
     initial: { x: "-100%" },
     animate: { x: 0, transition: { duration: CARD_SLIDE_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] } },
     exit: { x: "100%", transition: { duration: CARD_SLIDE_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] } },
@@ -2574,8 +2575,8 @@ const SINGLE_UNIT_VARIANTS = {
       opacity: 1,
       transition: { duration: CARD_SLIDE_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] },
     },
-    // Shrinks, drops, and tips over on its way out — unlike start-new's
-    // level slide or submit's own graceful per-card stagger (see
+    // Shrinks, drops, and tips over on its way out — unlike join's level
+    // slide or submit's own graceful per-card stagger (see
     // DataCardList's "submit" branch), this reads as discarded, not just
     // dismissed, which is the whole point of giving it its own shape rather
     // than reusing either of theirs. Still finishes fully (see
@@ -2623,11 +2624,12 @@ const DataCardList = memo(function DataCardList({
   tab,
 }: {
   cardsGen: number;
-  cardsAnimKind: "start-new" | "discard" | "submit";
-  /** True during stages 1-2 of a start-new/discard transition — the old
+  cardsAnimKind: "join" | "discard" | "submit";
+  /** True during stages 1-2 of a join/discard transition — the old
    * list plays its exit (this flipping true is what triggers it, since
    * AnimatePresence here tracks its child's presence) and nothing renders
-   * until the fresh list mounts for stage 3. */
+   * until the fresh list mounts for stage 3. Starting a fresh session never
+   * sets this — see cardsAnimKind's own comment in IndexInner. */
   transitionHidden?: boolean;
   visibleCards: CardConfig[];
   activeId: string;
