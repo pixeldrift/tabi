@@ -673,13 +673,13 @@ const BUILT_IN_CARDS: CardConfig[] = [
     negativeLabel: "Resisted",
     checkpointMode: "timeOfDay",
     checkpoints: [
-      { time: "10:00a", label: "Morning dose", alertText: "Check morning medication" },
-      { time: "12:00p", label: "Midday dose", alertText: "Check midday medication" },
-      { time: "2:00p", label: "Afternoon dose", alertText: "Check afternoon medication" },
+      { time: "10:00a", label: "Morning dose", alertText: "Morning medication" },
+      { time: "12:00p", label: "Midday dose", alertText: "Midday medication" },
+      { time: "2:00p", label: "Afternoon dose", alertText: "Afternoon medication" },
       {
         time: "4:00p",
         label: "Late afternoon dose",
-        alertText: "Check late afternoon medication",
+        alertText: "Late afternoon medication",
       },
     ],
     teachingProcedure: {
