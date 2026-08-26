@@ -1615,6 +1615,20 @@ function IndexInner({
   // this back to `false` for the 3 scenarios that seed straight into a
   // running/paused state without it.
   const [cardsHidden, setCardsHidden] = useState(true);
+  // Whether the outgoing cards' own exit animation has actually finished
+  // playing, not just whether `cardsHidden` (above) has flipped true —
+  // AnimatePresence keeps an exiting element mounted and animating for its
+  // FULL exit duration after that flip, so `cardsHidden` alone fires way
+  // too early for anything that needs to wait for the cards to be visibly
+  // gone (the "no session running" banner below, most notably — showing it
+  // the instant an End & Submit/Discard is pressed used to overlap it with
+  // cards still very visibly sliding/shrinking away). Starts true since
+  // cards start hidden with nothing to exit; flipped false at each real
+  // exit trigger below and back to true by DataCardList's own
+  // onCardsExitComplete, Motion's real callback for this rather than a
+  // guessed timeout.
+  const [cardsFullyCleared, setCardsFullyCleared] = useState(true);
+  const handleCardsExitComplete = useCallback(() => setCardsFullyCleared(true), []);
   const prevKindForHideRef = useRef<TransitionKind>(null);
   // Setting cardsHidden and endActionOverlay in the very same render (the
   // way join still does above) doesn't work for discard: cardsHidden
@@ -1631,10 +1645,23 @@ function IndexInner({
     prevKindForHideRef.current = transitionKind;
     if (transitionKind === "join") {
       setCardsHidden(true);
+      setCardsFullyCleared(false);
     } else if (transitionKind === "discard") {
+      // Switches the outgoing cards over to discard's own shrink/drop/
+      // rotate exit (see SINGLE_UNIT_VARIANTS' own comment) before they're
+      // hidden — safe to change while they're still mounted and settled at
+      // "animate" (join's and discard's own `animate` targets are the same
+      // resting x:0/opacity:1, so this doesn't itself trigger a visible
+      // jump), and it has to happen here rather than in the reveal-less
+      // resetSignal effect below: nothing calls setCardsAnimKind("discard")
+      // there any more (there's no fresh set left to reveal with it), so
+      // without this, cardsAnimKind would just permanently stay "join" and
+      // every discard would silently exit with join's plain slide instead.
+      setCardsAnimKind("discard");
       setEndActionOverlay("discard");
       discardHideRafRef.current = window.requestAnimationFrame(() => {
         setCardsHidden(true);
+        setCardsFullyCleared(false);
         discardHideRafRef.current = null;
       });
     }
@@ -1658,6 +1685,20 @@ function IndexInner({
     prevSessionActiveForHideRef.current = sessionActive;
     if (sessionActive && !wasActive && transitionKind === null) {
       setCardsHidden(false);
+    } else if (!sessionActive && wasActive) {
+      // Submit/discard both flip `sessionActive` false in the same
+      // synchronous commit as the button click (see endAndSubmit/
+      // clearAndDiscard) — well before their own delayed hide sequence
+      // actually gets around to calling setCardsFullyCleared(false) itself
+      // (submit waits out NOTIFICATION_AREA_TRANSITION's own delay first;
+      // discard waits a render for its rAF). Without this, cardsFullyCleared
+      // sat on its previous cycle's stale `true` for that whole gap, so the
+      // banner below (gated on it) showed immediately on click instead of
+      // waiting for the cards to actually be gone — the same bug this
+      // flag exists to prevent, just relocated earlier. There are always
+      // real cards to wait for here: sessionActive can only go true->false
+      // via submit/discard, both only reachable while cards are showing.
+      setCardsFullyCleared(false);
     }
   }
 
@@ -1789,6 +1830,10 @@ function IndexInner({
         // render before it flips true, which would never include the
         // overlay if both changed in the same tick.
         setEndActionOverlay("submit");
+        // cardsFullyCleared already went false the instant `status` itself
+        // flipped idle (see the sessionActive-diff block above) — well
+        // before this whole delayed sequence even starts — so it doesn't
+        // need setting again here.
         hideRafId = window.requestAnimationFrame(() => {
           setCardsHidden(true);
           exitTimeoutId = window.setTimeout(() => {
@@ -2015,7 +2060,17 @@ function IndexInner({
                 tab === "data" && (
                   <DataToolbar availableKinds={availableKinds} availablePhases={availablePhases}>
                     <AnimatePresence initial={false}>
-                      {!sessionActive && (
+                      {/* Waits for cardsFullyCleared too, not just
+                          sessionActive — sessionActive already flips false
+                          the instant submit/discard is clicked, and
+                          cardsHidden itself flips true the instant their
+                          exit STARTS, both well before the outgoing cards'
+                          own stamped exit animation actually finishes
+                          playing on screen (see cardsFullyCleared's own
+                          comment above). Showing this the moment the button
+                          is pressed used to overlap it with cards that were
+                          still very visibly there, sliding/shrinking away. */}
+                      {!sessionActive && cardsFullyCleared && (
                         <motion.div
                           key="start-session-banner"
                           initial={suppressEntranceAnimation ? false : { height: 0, opacity: 0 }}
@@ -2041,7 +2096,7 @@ function IndexInner({
                             className="py-1.5 px-8 text-center"
                           >
                             <span className="text-sm text-muted-foreground">
-                              No session running — start a new one to add data.
+                              No active session. Start a new session to add data.
                             </span>
                           </motion.div>
                         </motion.div>
@@ -2230,6 +2285,8 @@ function IndexInner({
                     cardsGen={cardsGen}
                     cardsAnimKind={cardsAnimKind}
                     transitionHidden={cardsHidden}
+                    suppressEntranceAnimation={suppressEntranceAnimation}
+                    onCardsExitComplete={handleCardsExitComplete}
                     endActionOverlay={endActionOverlay}
                     visibleCards={visibleCards}
                     activeId={activeId}
@@ -2735,6 +2792,8 @@ const DataCardList = memo(function DataCardList({
   cardsGen,
   cardsAnimKind,
   transitionHidden = false,
+  suppressEntranceAnimation = false,
+  onCardsExitComplete,
   endActionOverlay,
   visibleCards,
   activeId,
@@ -2766,6 +2825,31 @@ const DataCardList = memo(function DataCardList({
    * child's presence) and nothing renders until the fresh list mounts.
    * Flipped back to false by start-new too now, alongside join/discard. */
   transitionHidden?: boolean;
+  /** Suppresses the entrance transition the FIRST time cards go from
+   *  hidden to shown for reasons that aren't a real join/discard/start-new
+   *  (see IndexInner's own comment on `suppressEntranceAnimation`) — most
+   *  importantly, SessionContext's scenario-seeding layout effect landing
+   *  straight on running/paused: hydration's own first commit always
+   *  matches the server's idle/no-cards HTML, so that reveal is a genuine
+   *  new mount as far as AnimatePresence is concerned (its `initial={false}`
+   *  only covers content present at ITS OWN first commit, which had no
+   *  cards to begin with) and would otherwise slide/fade in like a real
+   *  join. A real join/discard/start-new always happens well after the app
+   *  has settled, so this only ever actually suppresses that one case. */
+  suppressEntranceAnimation?: boolean;
+  /** Fires once the outgoing cards' own exit animation has actually
+   *  finished playing on screen — Motion's real `onExitComplete`, not a
+   *  guess based on `transitionHidden` flipping true. That flip happens the
+   *  INSTANT the exit starts, well before AnimatePresence lets the exiting
+   *  element actually leave the DOM (it stays mounted, mid-animation, for
+   *  the full exit duration first) — the "no session running" banner needs
+   *  this later, truer signal instead, or it shows up while the old cards
+   *  are still very visibly on screen. Not called for editMode's own render
+   *  path (a separate `Reorder.Group`, no AnimatePresence at all) or for
+   *  the very first page load if cards start out already hidden (nothing
+   *  ever exits, so nothing to call this for) — IndexInner's own default
+   *  for whatever this drives already accounts for both. */
+  onCardsExitComplete?: () => void;
   /** Non-null exactly while whatever's currently rendered here is the OLD,
    *  about-to-be-replaced set (see IndexInner's own endActionOverlay
    *  comment — it's already back to null by the time a fresh set mounts
@@ -2951,12 +3035,12 @@ const DataCardList = memo(function DataCardList({
   }
 
   return (
-    <AnimatePresence mode="popLayout" initial={false}>
+    <AnimatePresence mode="popLayout" initial={false} onExitComplete={onCardsExitComplete}>
       {!transitionHidden && (
         <motion.div
           key={cardsGen}
           className={cn("grid w-full", gridClasses)}
-          initial="initial"
+          initial={suppressEntranceAnimation ? false : "initial"}
           animate="animate"
           exit="exit"
           variants={SINGLE_UNIT_VARIANTS[cardsAnimKind]}
