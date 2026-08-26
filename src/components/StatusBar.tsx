@@ -1033,15 +1033,18 @@ export function StatusBar({
                           // corner rotated up into a point, not a curved hook — with every
                           // vertex (both tips and the two valley corners) getting the same
                           // soft rounding from stroke-linejoin="round" rather than the path
-                          // data itself. A short flat run between the two ears' inner edges
-                          // (not one shared valley point) keeps them as two distinct ears
-                          // instead of a single center-pointed "M". Ears rise straight from
-                          // x=0/x=100 — flush with the tab's own left/right edges, continuing
-                          // that edge upward rather than sitting inset from it. Open path (no
-                          // segment back across the bottom) mirrors this tab's own border-b-0.
+                          // data itself (a slightly thicker stroke here is what makes that
+                          // rounding read as more than a hairline nick). A wide flat run
+                          // between the two ears' inner edges — wider than the ears
+                          // themselves are — keeps the tips small and the two ears reading
+                          // as a minor detail on top of the tab, not the dominant shape.
+                          // Ears rise straight from x=0/x=100 — flush with the tab's own
+                          // left/right edges, continuing that edge upward rather than
+                          // sitting inset from it. Open path (no segment back across the
+                          // bottom) mirrors this tab's own border-b-0.
                           <div
-                            // -top-2 (8px, down from an earlier 16px try that stuck up too
-                            // far for this tab's ~40px size).
+                            // -top-1 (4px, down from an earlier 8px try) — kept low so the
+                            // ears read as a small flourish rather than a tall spike.
                             //
                             // The absolute positioning lives on this plain div, not the
                             // svg directly — an <svg> is a replaced element, and a replaced
@@ -1051,7 +1054,7 @@ export function StatusBar({
                             // gap the way a normal block does. That silently produced a
                             // fixed square box unrelated to this tab's real size. A plain
                             // div stretches correctly, and the svg then just fills it.
-                            className="pointer-events-none absolute inset-x-0 -top-2 bottom-0 sm:hidden"
+                            className="pointer-events-none absolute inset-x-0 -top-1 bottom-0 sm:hidden"
                             aria-hidden="true"
                           >
                             <svg
@@ -1060,9 +1063,9 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,0 L38,16 L62,16 L100,0 L100,100"
+                                d="M0,100 L0,0 L30,10 L70,10 L100,0 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
-                                strokeWidth={1.5}
+                                strokeWidth={2}
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
                                 vectorEffect="non-scaling-stroke"
