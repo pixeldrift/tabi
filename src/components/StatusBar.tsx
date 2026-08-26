@@ -1031,12 +1031,14 @@ export function StatusBar({
                           // the border a constant width regardless of this tab's own size.
                           // Each ear is a plain straight-sided triangle — like the tab's own
                           // corner rotated up into a point, not a curved hook — with every
-                          // vertex (both tips and the valley) getting the same soft rounding
-                          // from stroke-linejoin="round" rather than the path data itself.
-                          // Ears rise straight from x=0/x=100 — flush with the tab's own
-                          // left/right edges, continuing that edge upward rather than sitting
-                          // inset from it. Open path (no segment back across the bottom)
-                          // mirrors this tab's own border-b-0.
+                          // vertex (both tips and the two valley corners) getting the same
+                          // soft rounding from stroke-linejoin="round" rather than the path
+                          // data itself. A short flat run between the two ears' inner edges
+                          // (not one shared valley point) keeps them as two distinct ears
+                          // instead of a single center-pointed "M". Ears rise straight from
+                          // x=0/x=100 — flush with the tab's own left/right edges, continuing
+                          // that edge upward rather than sitting inset from it. Open path (no
+                          // segment back across the bottom) mirrors this tab's own border-b-0.
                           <div
                             // -top-2 (8px, down from an earlier 16px try that stuck up too
                             // far for this tab's ~40px size).
@@ -1058,7 +1060,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,0 L50,16 L100,0 L100,100"
+                                d="M0,100 L0,0 L38,16 L62,16 L100,0 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={1.5}
                                 strokeLinejoin="round"
