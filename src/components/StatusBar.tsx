@@ -1025,22 +1025,21 @@ export function StatusBar({
                         {isMobileCatEars && (
                           // One continuous stroked path for the tab body AND the ears —
                           // a CSS border can only ever trace this button's own rectangle,
-                          // so it can't follow the ear curves or the valley between them;
+                          // so it can't follow the ear points or the valley between them;
                           // an SVG path is the only way to get a single outline around the
                           // whole silhouette. Percentage viewBox + non-scaling-stroke keeps
                           // the border a constant width regardless of this tab's own size.
+                          // Each ear is a plain straight-sided triangle — like the tab's own
+                          // corner rotated up into a point, not a curved hook — with every
+                          // vertex (both tips and the valley) getting the same soft rounding
+                          // from stroke-linejoin="round" rather than the path data itself.
                           // Ears rise straight from x=0/x=100 — flush with the tab's own
-                          // left/right edges, continuing that edge upward rather than
-                          // sitting inset from it — then bend into rounded, outward-leaning
-                          // hooks (cubic beziers, not straight polyline segments) echoing
-                          // the logo's own clip-corner ears, with a near-flat valley between
-                          // them rather than a sharp point. Open path (no segment back
-                          // across the bottom) mirrors this tab's own border-b-0.
+                          // left/right edges, continuing that edge upward rather than sitting
+                          // inset from it. Open path (no segment back across the bottom)
+                          // mirrors this tab's own border-b-0.
                           <div
-                            // -top-4 (16px, up from an earlier 10px try) — at this tab's
-                            // ~40px size a shallower rise left too little room between the
-                            // tips and the valley, so anti-aliasing on the short segments
-                            // read as one smooth curve instead of two distinct points.
+                            // -top-2 (8px, down from an earlier 16px try that stuck up too
+                            // far for this tab's ~40px size).
                             //
                             // The absolute positioning lives on this plain div, not the
                             // svg directly — an <svg> is a replaced element, and a replaced
@@ -1050,7 +1049,7 @@ export function StatusBar({
                             // gap the way a normal block does. That silently produced a
                             // fixed square box unrelated to this tab's real size. A plain
                             // div stretches correctly, and the svg then just fills it.
-                            className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 sm:hidden"
+                            className="pointer-events-none absolute inset-x-0 -top-2 bottom-0 sm:hidden"
                             aria-hidden="true"
                           >
                             <svg
@@ -1059,7 +1058,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,55 C0,30 2,10 14,3 C25,8 28,25 35,38 L65,38 C72,25 75,8 86,3 C98,10 100,30 100,55 L100,100"
+                                d="M0,100 L0,0 L50,16 L100,0 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={1.5}
                                 strokeLinejoin="round"
