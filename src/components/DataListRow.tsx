@@ -146,18 +146,28 @@ export function DataListRow({
 
         {/* Floated (not part of the header's flex flow) so it stays put at
           the row's right edge regardless of whether the title above it
-          wraps to one line or two. top-[17px] (not top-1/2) is a fixed
-          anchor matched to the data-type icon's own vertical center — the
-          icon sits at a constant offset from the row's top regardless of
-          wrapping (items-start, never re-centers), so anchoring here the
-          same way keeps the actions cluster exactly where a one-line row
-          would put it instead of sliding down to stay centered in a now-
-          taller two-line row. Only the row's bottom edge should move when
-          the title wraps; -translate-y-1/2 still self-centers against
-          whichever kind's own actions height (a 28px button row vs. a
-          20px star row) around that fixed point. */}
+          wraps to one line or two — the icon sits at a constant offset from
+          the row's top regardless of wrapping (items-start, never
+          re-centers), so anchoring here the same way keeps the actions
+          cluster exactly where a one-line row would put it instead of
+          sliding down to stay centered in a now-taller two-line row. Only
+          the row's bottom edge should move when the title wraps.
+          top-1.5/h-4 mirror the header row's own py-2 and the data-type
+          icon's own size-4, shifted up 2px from an exact match (top-2)
+          because .btn-bevel's own box-shadow (see styles.css) only ever
+          casts downward — a drop shadow below plus a subtle inset
+          highlight that stays within the button's own edge above — so
+          every bevelled button's actual visual footprint extends further
+          below its true box than above it. At this row's compact button
+          sizes that reads as "sitting low" even though the box itself is
+          mathematically centered; nudging the anchor up compensates for
+          the shadow's own asymmetry instead of the button's real geometry.
+          items-center self-centers whichever kind's own actions height (a
+          28px button row vs. a 20px star row) inside that shifted
+          footprint, same as -translate-y-1/2 did against a single guessed
+          point before this was made a derived value. */}
         {showActions && (
-          <div className="absolute z-10 top-[17px] -translate-y-1/2 right-0.5">{actions}</div>
+          <div className="absolute z-10 top-1.5 right-0.5 h-4 flex items-center">{actions}</div>
         )}
 
         {/* A background wash tucked under the title only — stops well short
