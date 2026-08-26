@@ -985,6 +985,10 @@ export function StatusBar({
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
+                    // Actual mobile-vs-desktop switch happens in CSS (sm:hidden on the
+                    // svg itself, so it survives a resize without a JS breakpoint check)
+                    // — this just gates whether the ear markup renders at all.
+                    const isMobileCatEars = isActive && catEarsEnabled;
                     return (
                       <button
                         key={t.id}
@@ -997,26 +1001,83 @@ export function StatusBar({
                         data-tour={`tab-${t.id}`}
                         onClick={() => onTabChange(t.id)}
                         className={cn(
-                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
+                          // rounded-t-md (down from -lg) so the ear-less corner rounding
+                          // reads consistently with the SVG ear shape's own much smaller
+                          // corner-join radius below, rather than clashing between tabs.
+                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-md border border-b-0 transition-[color,background-color,opacity] duration-300",
                           isActive
-                            ? "bg-background text-foreground border-border font-medium"
+                            ? cn(
+                                "text-foreground font-medium",
+                                // The ear-bearing SVG below paints its own fill+stroke
+                                // for the whole tab+ears silhouette (a plain CSS border
+                                // can't trace the ear points, only the button's own
+                                // rectangle — see the ears' own comment) — so at mobile
+                                // widths this box's own background/border step aside
+                                // and let the SVG be the only thing visible. sm: and up,
+                                // where ears never show, the ordinary box paints as before.
+                                isMobileCatEars
+                                  ? "bg-transparent border-transparent sm:bg-background sm:border-border"
+                                  : "bg-background border-border",
+                              )
                             : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
                         )}
                       >
-                        {isActive && catEarsEnabled && (
-                          // sm:hidden mirrors the label's own hidden sm:inline, just
-                          // inverted — a fun Easter egg sized for the icon-only mobile
-                          // tab, not the wider labeled tabs tablet/desktop switches to.
+                        {isMobileCatEars && (
+                          // One continuous stroked path for the tab body AND the ears —
+                          // a CSS border can only ever trace this button's own rectangle,
+                          // so it can't follow the ear slopes or the valley between them;
+                          // an SVG path is the only way to get a single outline around the
+                          // whole silhouette. Percentage viewBox + non-scaling-stroke keeps
+                          // the border a constant width regardless of this tab's own size;
+                          // stroke-linejoin="round" is what gives every vertex (both ear
+                          // tips and the valley notch) its soft rounded corner, so the path
+                          // data itself can stay plain straight-line segments. Ears rise
+                          // straight from x=0/x=100 — flush with the tab's own left/right
+                          // edges, continuing that edge upward rather than sitting inset
+                          // from it. Open path (no segment back across the bottom) mirrors
+                          // this tab's own border-b-0.
                           <div
-                            className="pointer-events-none absolute -top-1 inset-x-1.5 flex justify-between sm:hidden"
+                            // -top-4 (16px, up from an earlier 10px try) — at this tab's
+                            // ~40px size a shallower rise left too little room between the
+                            // tips and the valley, so anti-aliasing on the short segments
+                            // read as one smooth curve instead of two distinct points.
+                            //
+                            // The absolute positioning lives on this plain div, not the
+                            // svg directly — an <svg> is a replaced element, and a replaced
+                            // element's auto height/width under top+bottom / left+right
+                            // insets is resolved from its own intrinsic aspect ratio (here
+                            // a square 100x100 viewBox), not by stretching to fill the
+                            // gap the way a normal block does. That silently produced a
+                            // fixed square box unrelated to this tab's real size. A plain
+                            // div stretches correctly, and the svg then just fills it.
+                            className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 sm:hidden"
                             aria-hidden="true"
                           >
-                            <span className="block size-2.5 -rotate-[25deg] border border-b-0 border-border bg-background [clip-path:polygon(50%_0%,0%_100%,100%_100%)]" />
-                            <span className="block size-2.5 rotate-[25deg] border border-b-0 border-border bg-background [clip-path:polygon(50%_0%,0%_100%,100%_100%)]" />
+                            {/* Valley sits well above the actual tab-body edge (not
+                              partway down into it), keeping the notch inside the ear
+                              protrusion itself rather than cutting into the body. */}
+                            <svg
+                              className="block w-full h-full"
+                              viewBox="0 0 100 100"
+                              preserveAspectRatio="none"
+                            >
+                              <path
+                                d="M0,100 L0,0 L50,26 L100,0 L100,100"
+                                style={{ fill: "var(--background)", stroke: "var(--border)" }}
+                                strokeWidth={1.5}
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            </svg>
                           </div>
                         )}
-                        <Icon className={cn("size-4", !isActive && "opacity-60")} />
-                        <span className="hidden sm:inline">{t.label}</span>
+                        <Icon className={cn("size-4 relative", !isActive && "opacity-60")} />
+                        {/* relative (not just static) so this joins the "positioned"
+                          paint layer after the ears' own absolutely-positioned svg — a
+                          plain static sibling would otherwise paint underneath any
+                          absolutely-positioned element regardless of DOM order. */}
+                        <span className="relative hidden sm:inline">{t.label}</span>
                         {t.id === "notifications" && notifCount > 0 && (
                           <span
                             key={notifHopGen}
