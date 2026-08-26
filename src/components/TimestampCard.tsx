@@ -532,19 +532,28 @@ export function TimestampCard({
     scoreCheckpoint(index, value);
     clearByDedupeKey(`timestamp-checkpoint:${cardKey}:${index}:${now.toDateString()}`);
   };
-  // Fires each checkpoint's own alert once its time has actually arrived —
-  // deliberately level-triggered (checked fresh on every tick) rather than
-  // edge-triggered like the interval alert above: a checkpoint whose time
-  // already passed before this card ever mounted (a fresh page load at
-  // 10:15 for a 10:00 checkpoint, say) still needs to alert, not just one
-  // crossed live while watching. `pushNotification`'s own per-day dedupeKey
-  // is what keeps this from re-firing on every subsequent 30s tick.
+  // Fires each checkpoint's own alert the instant its time is actually
+  // crossed while this card is mounted and watching — edge-triggered, same
+  // idea as the interval alert above (and ScheduleView's own alert-firing
+  // effect): only a checkpoint whose time falls between the last observed
+  // "now" and this one counts as crossed. `prevNowMinRef` starts at null and
+  // gets seeded to the CURRENT nowMin on this effect's first run rather than
+  // some earlier default, so a checkpoint that already passed before this
+  // card ever mounted (or before it got remounted after being hidden) is
+  // simply missed, never backfilled — starting a session at 4pm does not
+  // retroactively alert for 10am/noon/2pm.
+  const prevNowMinRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!isCheckpointMode || !alertsEnabled) return;
+    if (!isCheckpointMode) return;
+    const prevMin = prevNowMinRef.current;
+    prevNowMinRef.current = nowMin;
+    if (prevMin === null) return;
+    if (nowMin <= prevMin) return; // guards against the real clock going backward (DST, etc.)
+    if (!alertsEnabled) return;
     const dayKey = now.toDateString();
     (checkpoints ?? []).forEach((cp, i) => {
       const min = checkpointMinutes[i];
-      if (min === null || nowMin < min) return;
+      if (min === null || !(prevMin < min && nowMin >= min)) return;
       if (checkpointStatuses[i] != null) return;
       pushNotification({
         dedupeKey: `timestamp-checkpoint:${cardKey}:${i}:${dayKey}`,
