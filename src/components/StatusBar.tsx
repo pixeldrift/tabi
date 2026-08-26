@@ -287,7 +287,7 @@ export function StatusBar({
   // The pill travel overlay's digit/border colors are theme-aware (see
   // actionColors.ts's own comment) — need the current theme to pick the
   // right pair, not just the "mini" ones, which stay stone in every theme.
-  const { colorTheme } = useSettings();
+  const { colorTheme, catEarsEnabled } = useSettings();
 
   // See use-initial-layout-settle's own comment — this box's demo-only
   // "Previous Session" row growing the box shortly after mount is real,
@@ -985,6 +985,10 @@ export function StatusBar({
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
+                    // Actual mobile-vs-desktop switch happens in CSS (sm:hidden on the
+                    // svg itself, so it survives a resize without a JS breakpoint check)
+                    // — this just gates whether the ear markup renders at all.
+                    const isMobileCatEars = isActive && catEarsEnabled;
                     return (
                       <button
                         key={t.id}
@@ -997,14 +1001,84 @@ export function StatusBar({
                         data-tour={`tab-${t.id}`}
                         onClick={() => onTabChange(t.id)}
                         className={cn(
-                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-lg border border-b-0 transition-[color,background-color,opacity] duration-300",
+                          // rounded-t-md (down from -lg) so the ear-less corner rounding
+                          // reads consistently with the SVG ear shape's own much smaller
+                          // corner-join radius below, rather than clashing between tabs.
+                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-md border border-b-0 transition-[color,background-color,opacity] duration-300",
                           isActive
-                            ? "bg-background text-foreground border-border font-medium"
+                            ? cn(
+                                "text-foreground font-medium",
+                                // The ear-bearing SVG below paints its own fill+stroke
+                                // for the whole tab+ears silhouette (a plain CSS border
+                                // can't trace the ear points, only the button's own
+                                // rectangle — see the ears' own comment) — so at mobile
+                                // widths this box's own background/border step aside
+                                // and let the SVG be the only thing visible. sm: and up,
+                                // where ears never show, the ordinary box paints as before.
+                                isMobileCatEars
+                                  ? "bg-transparent border-transparent sm:bg-background sm:border-border"
+                                  : "bg-background border-border",
+                              )
                             : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
                         )}
                       >
-                        <Icon className={cn("size-4", !isActive && "opacity-60")} />
-                        <span className="hidden sm:inline">{t.label}</span>
+                        {isMobileCatEars && (
+                          // One continuous stroked path for the tab body AND the ears —
+                          // a CSS border can only ever trace this button's own rectangle,
+                          // so it can't follow the ear points or the valley between them;
+                          // an SVG path is the only way to get a single outline around the
+                          // whole silhouette. Percentage viewBox + non-scaling-stroke keeps
+                          // the border a constant width regardless of this tab's own size.
+                          // Each ear is a plain straight-sided triangle — like the tab's own
+                          // corner rotated up into a point, not a curved hook — with every
+                          // vertex (both tips and the two valley corners) getting the same
+                          // soft rounding from stroke-linejoin="round" rather than the path
+                          // data itself (a slightly thicker stroke here is what makes that
+                          // rounding read as more than a hairline nick). A wide flat run
+                          // between the two ears' inner edges — wider than the ears
+                          // themselves are — keeps the tips small and the two ears reading
+                          // as a minor detail on top of the tab, not the dominant shape.
+                          // Ears rise straight from x=0/x=100 — flush with the tab's own
+                          // left/right edges, continuing that edge upward rather than
+                          // sitting inset from it. Open path (no segment back across the
+                          // bottom) mirrors this tab's own border-b-0.
+                          <div
+                            // -top-1 (4px, down from an earlier 8px try) — kept low so the
+                            // ears read as a small flourish rather than a tall spike.
+                            //
+                            // The absolute positioning lives on this plain div, not the
+                            // svg directly — an <svg> is a replaced element, and a replaced
+                            // element's auto height/width under top+bottom / left+right
+                            // insets is resolved from its own intrinsic aspect ratio (here
+                            // a square 100x100 viewBox), not by stretching to fill the
+                            // gap the way a normal block does. That silently produced a
+                            // fixed square box unrelated to this tab's real size. A plain
+                            // div stretches correctly, and the svg then just fills it.
+                            className="pointer-events-none absolute inset-x-0 -top-1 bottom-0 sm:hidden"
+                            aria-hidden="true"
+                          >
+                            <svg
+                              className="block w-full h-full"
+                              viewBox="0 0 100 100"
+                              preserveAspectRatio="none"
+                            >
+                              <path
+                                d="M0,100 L0,0 L30,16 L70,16 L100,0 L100,100"
+                                style={{ fill: "var(--background)", stroke: "var(--border)" }}
+                                strokeWidth={2}
+                                strokeLinejoin="round"
+                                strokeLinecap="round"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        <Icon className={cn("size-4 relative", !isActive && "opacity-60")} />
+                        {/* relative (not just static) so this joins the "positioned"
+                          paint layer after the ears' own absolutely-positioned svg — a
+                          plain static sibling would otherwise paint underneath any
+                          absolutely-positioned element regardless of DOM order. */}
+                        <span className="relative hidden sm:inline">{t.label}</span>
                         {t.id === "notifications" && notifCount > 0 && (
                           <span
                             key={notifHopGen}
