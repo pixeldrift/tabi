@@ -115,6 +115,19 @@ interface SessionContextValue {
   lastUpdated: Date | null;
   pause: () => void;
   endAndSubmit: () => void;
+  // Which of the two ways a session most recently ended — set directly by
+  // endAndSubmit/clearAndDiscard themselves, not inferred from status/
+  // transitionKind timing. Consumers used to derive "was this a submit"
+  // from `prev==="paused" && status==="idle" && transitionKind===null`,
+  // which silently broke for discard specifically: its own dwellMs is 0
+  // (see runStagedTransition), so its status-flips-to-idle commit and its
+  // transitionKind-resets-to-null commit land close enough together that
+  // React coalesces them into one render, and the intermediate "idle,
+  // still transitionKind='discard'" state a consumer's own prevStatusRef
+  // was counting on to tell the two apart never actually gets observed —
+  // so a discard could get misread as a submit. An explicit field sidesteps
+  // that class of bug entirely.
+  lastEndAction: "submit" | "discard" | null;
   // Shared 3-stage transition orchestration — see CARD_EXIT_MS et al above.
   // `transitionStage` is 0 outside of a transition, 1 while old stuff is
   // exiting, 2 while the timer/header is morphing (this is also when the
@@ -374,8 +387,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Bumped whenever a brand-new (empty) session is started, so every card
   // can subscribe and reset its local state.
   const [resetSignal, setResetSignal] = useState(0);
+  // See the SessionContextValue interface's own comment on why this is an
+  // explicit field rather than something consumers infer from status/
+  // transitionKind timing.
+  const [lastEndAction, setLastEndAction] = useState<"submit" | "discard" | null>(null);
   const startFresh = useCallback(() => {
     setResetSignal((n) => n + 1);
+    // "How did we get to idle" stops being meaningful the moment a new
+    // session actually begins — cleared here (not left to whichever
+    // consumer read it last) so a later Start New Session can't be
+    // misread as a repeat of whatever ended the PREVIOUS session, since
+    // this also bumps resetSignal and nothing else about this field would
+    // otherwise change in between.
+    setLastEndAction(null);
     baseRef.current = 0;
     setElapsedMs(0);
     setStatus("running");
@@ -432,6 +456,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // underneath it had actually changed). Bumping it here is what each
     // card's own useResetGuard reacts to, clearing back to zero.
     setResetSignal((n) => n + 1);
+    setLastEndAction("submit");
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
@@ -453,6 +478,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // discarding is the other path that ends a session, and the point of
     // discarding is that none of what was recorded sticks around.
     setResetSignal((n) => n + 1);
+    setLastEndAction("discard");
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
@@ -804,6 +830,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastUpdated,
       pause,
       endAndSubmit,
+      lastEndAction,
       transitionStage,
       transitionKind,
       collapsed,
@@ -840,6 +867,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       lastUpdated,
       pause,
       endAndSubmit,
+      lastEndAction,
       transitionStage,
       transitionKind,
       collapsed,
