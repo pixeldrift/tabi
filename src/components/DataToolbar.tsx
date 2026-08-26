@@ -69,7 +69,7 @@ export interface DataToolbarProps {
   availableKinds: CardKind[];
   availablePhases: string[];
   /** Rendered below the main bar row, inside the same container — e.g. the
-   *  Data tab's "Start session to record data" banner. */
+   *  Data tab's "no session running" banner. */
   children?: React.ReactNode;
 }
 

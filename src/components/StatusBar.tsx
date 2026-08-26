@@ -2062,7 +2062,7 @@ function ExpandedSessionBox({
   // running, but started/joined by someone else.
   const isRunningNotMine = status === "running" && !isSessionMine;
   const label = isIdle
-    ? "Previous Session:"
+    ? "Previous Session Ended:"
     : isPaused
       ? "Session Paused:"
       : isAbandoned
