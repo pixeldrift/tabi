@@ -2574,14 +2574,20 @@ const SINGLE_UNIT_VARIANTS = {
       opacity: 1,
       transition: { duration: CARD_SLIDE_ENTER_MS / 1000, ease: [0, 0, 0.2, 1] },
     },
-    // Shrinks and dissolves in place — unlike start-new's slide, this exit
-    // has fully finished (see CARD_SLIDE_EXIT_MS delay in IndexInner) before
-    // the fresh set enters, so discard reads as "gone, then a new one
-    // arrives" rather than an overlapping relay.
+    // Shrinks, drops, and tips over on its way out — unlike start-new's
+    // level slide or submit's own graceful per-card stagger (see
+    // DataCardList's "submit" branch), this reads as discarded, not just
+    // dismissed, which is the whole point of giving it its own shape rather
+    // than reusing either of theirs. Still finishes fully (see
+    // CARD_SLIDE_EXIT_MS delay in IndexInner) before the fresh set enters,
+    // so discard reads as "gone, then a new one arrives" rather than an
+    // overlapping relay.
     exit: {
       opacity: 0,
       scale: 0.7,
-      transition: { duration: CARD_SLIDE_EXIT_MS / 1000, ease: [0.4, 0, 1, 1] },
+      y: 60,
+      rotate: -8,
+      transition: { duration: CARD_SLIDE_EXIT_MS / 1000, ease: [0.55, 0, 1, 1] },
     },
   },
 } as const;
