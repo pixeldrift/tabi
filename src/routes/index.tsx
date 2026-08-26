@@ -10,6 +10,7 @@ import {
   type RefObject,
 } from "react";
 import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from "motion/react";
+import { Upload, Trash2 } from "lucide-react";
 import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
 import { FrequencyCard } from "@/components/FrequencyCard";
@@ -1258,7 +1259,7 @@ function IndexInner({
   // then paging to the next card would snap the drawer back down to normal
   // width on every step.
   const [drawerWidthMode, setDrawerWidthMode] = useState<"normal" | "full">("normal");
-  const { status, transitionStage, transitionKind } = useSession();
+  const { status, transitionStage, transitionKind, lastEndAction, resetSignal } = useSession();
   // Paused counts as "active" too — a session still exists, it's just not
   // ticking. Gating this on "running" alone flashed the "Start session to
   // record data" banner and dimmed every card each time a session was
@@ -1584,6 +1585,17 @@ function IndexInner({
   const [cardsGen, setCardsGen] = useState(0);
   const [cardsAnimKind, setCardsAnimKind] = useState<"join" | "discard" | "submit">("join");
 
+  // The icon "stamp" shown over the empty gap while the old cards are gone
+  // and the fresh set hasn't arrived yet — a separate flag from
+  // cardsAnimKind (which doesn't actually flip to "submit" until the fresh
+  // set is already mounting, well after that gap has started; see its
+  // setters below) so the icon's own on/off window can track the same
+  // "old cards gone, new cards not yet here" span `cardsHidden` spans,
+  // without being tied to cardsAnimKind's different timing. Only
+  // submit/discard get a stamp — join is "someone else's session, now
+  // yours to see," not a confirmed action of your own, so it stays null.
+  const [endActionOverlay, setEndActionOverlay] = useState<"submit" | "discard" | null>(null);
+
   // Stage 1 (old stuff exits) needs the card list to unmount the INSTANT
   // transitionKind is set (not one effect-tick later), so the exit and the
   // header dimming start together. `cardsHidden` stays true — keeping the
@@ -1607,6 +1619,7 @@ function IndexInner({
     prevKindForHideRef.current = transitionKind;
     if (transitionKind === "join" || transitionKind === "discard") {
       setCardsHidden(true);
+      if (transitionKind === "discard") setEndActionOverlay("discard");
     }
   }
 
@@ -1642,18 +1655,7 @@ function IndexInner({
   useEffect(() => {
     if (transitionStage === 2 && !stage2HandledRef.current) {
       stage2HandledRef.current = true;
-      if (transitionKind === "discard") {
-        // Wait for the old cards' own shrink-and-dissolve exit to actually
-        // finish (CARD_SLIDE_EXIT_MS) instead of remounting the instant
-        // stage 2 commits — discard reads as one set fully leaving before
-        // the next arrives, not an overlapping relay like join's.
-        cardEntranceTimeoutRef.current = window.setTimeout(() => {
-          setCardsAnimKind("discard");
-          setCardsGen((n) => n + 1);
-          setCardsHidden(false);
-          cardEntranceTimeoutRef.current = null;
-        }, CARD_SLIDE_EXIT_MS);
-      } else if (transitionKind === "join") {
+      if (transitionKind === "join") {
         cardEntranceTimeoutRef.current = window.setTimeout(() => {
           setCardsAnimKind("join");
           setCardsGen((n) => n + 1);
@@ -1662,11 +1664,39 @@ function IndexInner({
         }, PILL_LAND_MS);
       }
       // transitionKind === "start-new" deliberately falls through here
-      // doing nothing — see the cardsAnimKind comment above.
+      // doing nothing — see the cardsAnimKind comment above. discard used
+      // to have its own branch here too; see the dedicated resetSignal-
+      // driven effect below for why it was moved out.
     } else if (transitionStage !== 2) {
       stage2HandledRef.current = false;
     }
   }, [transitionStage, transitionKind]);
+
+  // Discard's own entrance can't reuse the transitionStage-based effect
+  // above — discard's dwellMs is 0 (see runStagedTransition), so its
+  // stage-2-commits update and its very next stage-reverts-to-0 update fire
+  // close enough together that React coalesces them into a single render,
+  // and `transitionStage === 2` is never actually observed by any effect at
+  // all (confirmed: logging every render of the effect above during a
+  // fresh discard showed stage go 0 -> 1 -> 0, never touching 2). resetSignal
+  // doesn't have that problem — clearAndDiscard bumps it synchronously as
+  // part of the same commit that sets status/lastEndAction, so watching for
+  // it to change is a reliable stand-in for "discard's commit just landed."
+  const prevResetSignalForDiscardRef = useRef(resetSignal);
+  useEffect(() => {
+    const prevReset = prevResetSignalForDiscardRef.current;
+    prevResetSignalForDiscardRef.current = resetSignal;
+    if (resetSignal === prevReset || lastEndAction !== "discard") return;
+    // Same "wait for the old cards' own shrink-and-dissolve exit to finish
+    // before the next arrives" pacing the old stage-2 branch used.
+    const timeoutId = window.setTimeout(() => {
+      setCardsAnimKind("discard");
+      setCardsGen((n) => n + 1);
+      setCardsHidden(false);
+      setEndActionOverlay(null);
+    }, CARD_SLIDE_EXIT_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [resetSignal, lastEndAction]);
 
   useEffect(() => {
     return () => {
@@ -1675,13 +1705,22 @@ function IndexInner({
   }, []);
 
   // Submit doesn't go through the shared transition stages above (it's a
-  // direct, unstaged action) — detected the same way as before, just guarded
-  // against also matching discard's paused->idle transition.
+  // direct, unstaged action) — detected via lastEndAction (see its own
+  // comment in SessionContext), not by inferring "was this a submit" from
+  // status/transitionKind timing. That inference used to be
+  // `prev === "paused" && status === "idle" && transitionKind === null`,
+  // which broke specifically for discard: its own dwellMs is 0, so its
+  // status-flips-to-idle commit and its transitionKind-resets-to-null
+  // commit land close enough together that React coalesces them into one
+  // render, skipping right past the intermediate "idle, still
+  // transitionKind='discard'" state this was counting on to tell the two
+  // apart — so a discard could get misread as a submit here, complete with
+  // the wrong (green, Upload) end-action overlay.
   const prevStatusRef = useRef(status);
   useEffect(() => {
     const prev = prevStatusRef.current;
     prevStatusRef.current = status;
-    const justSubmitted = prev === "paused" && status === "idle" && transitionKind === null;
+    const justSubmitted = prev !== "idle" && status === "idle" && lastEndAction === "submit";
     if (!justSubmitted) return;
     let exitTimeoutId: number | undefined;
     const startId = window.setTimeout(
@@ -1698,10 +1737,12 @@ function IndexInner({
         // the old set started leaving, reading as an overlap instead of a
         // clean handoff.
         setCardsHidden(true);
+        setEndActionOverlay("submit");
         exitTimeoutId = window.setTimeout(() => {
           setCardsAnimKind("submit");
           setCardsGen((n) => n + 1);
           setCardsHidden(false);
+          setEndActionOverlay(null);
         }, CARD_SLIDE_EXIT_MS);
       },
       // Borrows NOTIFICATION_AREA_TRANSITION's duration (shared with
@@ -1715,7 +1756,7 @@ function IndexInner({
       window.clearTimeout(startId);
       if (exitTimeoutId !== undefined) window.clearTimeout(exitTimeoutId);
     };
-  }, [status, transitionKind]);
+  }, [status, lastEndAction]);
 
   // Switching tabs is handled by the tab bar itself; tapping the tab
   // that's *already* active doesn't switch anything, so without this it
@@ -2232,6 +2273,14 @@ function IndexInner({
         <TourOverlay />
       </TourProvider>
       <TipOverlay />
+      {/* Top-level, alongside TipOverlay — position:fixed only measures
+          against the true viewport when nothing between here and the root
+          has an active transform, and nesting this any deeper (e.g. beside
+          DataCardList itself) risks landing inside one of Motion's own
+          transformed wrappers mid-transition. */}
+      <AnimatePresence>
+        {endActionOverlay && <TransitionIconOverlay kind={endActionOverlay} />}
+      </AnimatePresence>
     </TipProvider>
   );
 }
@@ -2592,6 +2641,39 @@ const SINGLE_UNIT_VARIANTS = {
     },
   },
 } as const;
+
+/** Brief "confirmed" stamp shown while the old cards are animating out on
+ *  submit/discard — the exact same icon each action's own button already
+ *  uses (Upload for End & Submit, Trash2 for End & Discard), just enlarged,
+ *  so it reads as "the thing you just pressed" rather than a new, unrelated
+ *  glyph. Fixed to the viewport (not the scrollable card-list container) so
+ *  it stays centered on screen regardless of scroll position, and its own
+ *  AnimatePresence lifecycle is driven entirely by whether it's mounted —
+ *  no hardcoded duration to keep in sync with either exit animation's own
+ *  timing (join never mounts this at all; see DataCardList's own check). */
+function TransitionIconOverlay({ kind }: { kind: "submit" | "discard" }) {
+  const Icon = kind === "submit" ? Upload : Trash2;
+  return (
+    <motion.div
+      key="transition-icon-overlay"
+      initial={{ opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.6 }}
+      transition={{ duration: 0.22, ease: [0, 0, 0.2, 1] }}
+      className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none"
+      aria-hidden="true"
+    >
+      <div
+        className={cn(
+          "btn-bevel grid place-items-center size-24 rounded-full shadow-lg",
+          kind === "submit" ? "bg-green-500" : "bg-red-500",
+        )}
+      >
+        <Icon className="size-10 text-white" strokeWidth={2.5} />
+      </div>
+    </motion.div>
+  );
+}
 
 // Memoized so a resume/pause transition — which re-renders IndexInner via
 // `status`/`transitionKind` but leaves every prop below unchanged — doesn't
