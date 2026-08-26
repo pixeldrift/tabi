@@ -57,6 +57,20 @@ import {
   AlignLeft,
   Video,
   Lightbulb,
+  Ban,
+  LockKeyholeOpen,
+  Clock,
+  BookOpen,
+  UserCog,
+  Compass,
+  Eye,
+  Group,
+  ArrowDownToLine,
+  CircleDashed,
+  ClipboardCheck,
+  ClipboardX,
+  PanelBottomClose,
+  PanelBottomOpen,
 } from "lucide-react";
 import { PercentCorrectIcon } from "./PercentCorrectIcon";
 import { FrequencyIcon } from "./FrequencyIcon";
@@ -76,6 +90,7 @@ import { MaintenanceIcon } from "./MaintenanceIcon";
 import { FadingIcon } from "./FadingIcon";
 import { PairingIcon } from "./PairingIcon";
 import { AntecedentIcon } from "./AntecedentIcon";
+import { FunctionIcon } from "./FunctionIcon";
 import { ListViewIcon } from "./ListViewIcon";
 import { CardViewIcon } from "./CardViewIcon";
 import { GridViewIcon } from "./GridViewIcon";
@@ -92,6 +107,11 @@ import { ChatIcon } from "./ChatIcon";
 import { EmailIcon } from "./EmailIcon";
 import { PhoneIcon } from "./PhoneIcon";
 import { RequestEditIcon } from "./RequestEditIcon";
+import { ChecklistIcon } from "./ChecklistIcon";
+import { HandshakeIcon } from "./HandshakeIcon";
+import { ApproveEditIcon } from "./ApproveEditIcon";
+import { ForwardChainingIcon } from "./ForwardChainingIcon";
+import { BackwardChainingIcon } from "./BackwardChainingIcon";
 
 export interface IconEntry {
   name: string;
@@ -142,6 +162,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
       custom("Interval", "Interval card kind", TimestampIcon),
+      custom("Checklist", "Checklist card kind", ChecklistIcon),
       lucide("Star", "Score card kind + score selector", Star),
     ],
   },
@@ -155,6 +176,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Fading", "Not yet wired up — added for future use", FadingIcon),
       custom("Pairing", "Not yet wired up — added for future use", PairingIcon),
       custom("Antecedent", "Not yet wired up — added for future use", AntecedentIcon),
+      custom("Function", "Not yet wired up — added for future use", FunctionIcon),
     ],
   },
   {
@@ -182,6 +204,8 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("ChevronUp", "Details drawer / dropdowns", ChevronUp),
       lucide("ChevronDown", "Details drawer / dropdowns", ChevronDown),
       lucide("Rows3", "Schedule proportional rows view", Rows3),
+      lucide("PanelBottomClose", "Hide bookmark bar toggle", PanelBottomClose),
+      lucide("PanelBottomOpen", "Show bookmark bar toggle", PanelBottomOpen),
     ],
   },
   {
@@ -193,6 +217,9 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("Target", '"Target goal" filter / notification', Target),
       lucide("Bookmark", "Favorite toggle", Bookmark),
       lucide("EyeOff", 'Hidden toggle / "Hidden" filter chip', EyeOff),
+      lucide("ClipboardCheck", '"With Data" filter chip', ClipboardCheck),
+      lucide("ClipboardX", '"No Data" filter chip', ClipboardX),
+      lucide("CircleDashed", '"Incomplete" completion filter chip', CircleDashed),
     ],
   },
   {
@@ -207,6 +234,13 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("RefreshCw", "Resume session", RefreshCw),
       custom("Number Pad", '"Tap to edit" hint beside numeric values', NumberPadIcon),
       custom("Details", "Open card details drawer", DetailsIcon),
+      custom("Handshake", "Co-treat appointment indicator (Schedule)", HandshakeIcon),
+      custom("Forward Chaining", "Task Analysis chaining-direction indicator", ForwardChainingIcon),
+      custom(
+        "Backward Chaining",
+        "Task Analysis chaining-direction indicator",
+        BackwardChainingIcon,
+      ),
     ],
   },
   {
@@ -231,6 +265,9 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("ArrowRight", "Notification / step forward", ArrowRight),
       lucide("Upload", "Submit session data", Upload),
       lucide("Settings", "Settings tab", SettingsIcon),
+      lucide("Ban", '"Minimums Not Met" section — End Session review', Ban),
+      lucide("LockKeyholeOpen", "Unlock Review Mode button", LockKeyholeOpen),
+      lucide("Clock", "Per-timed-period unit hint (Rate card)", Clock),
     ],
   },
   {
@@ -246,6 +283,9 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("TriangleAlert", "Schedule conflict warning", TriangleAlert),
       lucide("ArrowLeftToLine", "Collapse appointment to edge", ArrowLeftToLine),
       lucide("ArrowRightToLine", "Collapse appointment to edge", ArrowRightToLine),
+      lucide("Group", "Group-by-type toggle — notifications panel", Group),
+      lucide("ArrowDownToLine", '"Tap to jump" badge on a checkpoint-alert row', ArrowDownToLine),
+      custom("Approve Edit", "'edit-approved' notification icon", ApproveEditIcon),
     ],
   },
   {
@@ -258,6 +298,10 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Smiley", "Show/hide icons toggle", SmileyIcon),
       lucide("Sparkles", "Card shell decoration", Sparkles),
       lucide("RotateCcw", "Reset a setting to its default", RotateCcw),
+      lucide("BookOpen", "Card-type field reference link — Settings", BookOpen),
+      lucide("UserCog", "BCBA Tools section — Settings", UserCog),
+      lucide("Compass", "Preview guided tour — Welcome screen", Compass),
+      lucide("Eye", "Tap-to-zoom hint on a staff/client photo", Eye),
     ],
   },
   {
@@ -265,7 +309,11 @@ export const ICON_GROUPS: IconGroup[] = [
     icons: [
       custom("Chat", "Message a staff member — mini bio popup (StaffDirectory)", ChatIcon),
       custom("Email", "Email a staff member — mini bio popup (StaffDirectory)", EmailIcon),
-      custom("Phone", "Call a staff member — mini bio popup, also guardian rows on Info tab", PhoneIcon),
+      custom(
+        "Phone",
+        "Call a staff member — mini bio popup, also guardian rows on Info tab",
+        PhoneIcon,
+      ),
     ],
   },
   {
@@ -285,7 +333,11 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("Brain", "Rationale row", Brain),
       lucide("Ruler", "Measurement row", Ruler),
       lucide("Package", "Materials row", Package),
-      lucide("Lightbulb", "Instructional Notes row; also the Phase/Data-type info popup", Lightbulb),
+      lucide(
+        "Lightbulb",
+        "Instructional Notes row; also the Phase/Data-type info popup",
+        Lightbulb,
+      ),
       lucide("ChevronLeft", "Previous card, within the drawer", ChevronLeft),
       lucide("ChevronRight", "Next card, within the drawer", ChevronRight),
     ],

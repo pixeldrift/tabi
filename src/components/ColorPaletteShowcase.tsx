@@ -30,7 +30,7 @@ const FAMILY_HEX: Record<string, Record<number, string>> = {
     700: "#1d4ed8",
     800: "#1e40af",
     900: "#1e3a8a",
-  },
+  }, // "classic" Tailwind reference — see RECOLORED_FAMILIES note below
   red: {
     50: "#fef2f2",
     100: "#fee2e2",
@@ -69,26 +69,50 @@ const FAMILY_HEX: Record<string, Record<number, string>> = {
   emerald: { 50: "#ecfdf5", 300: "#6ee7b7", 500: "#10b981", 600: "#059669", 700: "#047857" },
 };
 
-// Counted from every `bg-`/`text-`/`border-`/`ring-`/etc. Tailwind color
-// utility in src/ (a plain grep census, not exact to the pixel) — grouped
-// into the app's two real neutral/accent palettes: the everyday one used
-// throughout cards and controls, and the six notification-category hues
-// that share one deliberate 50/300/500/600/700 pattern (see
-// NotificationBar.tsx's own NOTIFICATION_STYLES).
+// Counted from every `bg-`/`text-`/`border-`/`ring-`/`fill-`/`stroke-`/etc.
+// Tailwind color utility in src/ (a plain grep census, not exact to the
+// pixel) — grouped into the app's two real neutral/accent palettes: the
+// everyday one used throughout cards and controls, and the six
+// notification-category hues that share one deliberate 50/300/500/600/700
+// pattern (see NotificationBar.tsx's own NOTIFICATION_STYLES).
 const CORE_PALETTE: { family: string; counts: Record<number, number> }[] = [
   {
     family: "stone",
-    counts: { 50: 6, 100: 33, 200: 27, 300: 18, 400: 33, 500: 15, 600: 22, 700: 5, 800: 8, 900: 2 },
+    counts: {
+      50: 15,
+      100: 49,
+      200: 37,
+      300: 24,
+      400: 42,
+      500: 28,
+      600: 29,
+      700: 7,
+      800: 14,
+      900: 5,
+    },
   },
   {
     family: "blue",
-    counts: { 50: 38, 100: 13, 200: 4, 300: 21, 400: 51, 500: 90, 600: 110, 700: 39 },
+    counts: { 50: 41, 100: 15, 200: 5, 300: 25, 400: 58, 500: 118, 600: 138, 700: 43, 800: 3 },
   },
-  { family: "red", counts: { 50: 25, 100: 11, 300: 23, 400: 3, 500: 24, 600: 24, 700: 27 } },
-  { family: "green", counts: { 50: 17, 100: 10, 300: 14, 400: 3, 500: 20, 600: 18, 700: 22 } },
-  { family: "amber", counts: { 50: 14, 100: 8, 300: 17, 400: 1, 500: 13, 600: 13, 700: 16 } },
+  { family: "red", counts: { 50: 27, 100: 10, 300: 21, 400: 7, 500: 27, 600: 26, 700: 25 } },
+  { family: "green", counts: { 50: 15, 100: 8, 300: 12, 400: 3, 500: 17, 600: 15, 700: 21 } },
+  { family: "amber", counts: { 50: 11, 100: 5, 300: 12, 400: 1, 500: 10, 600: 9, 700: 13 } },
   { family: "yellow", counts: { 300: 1, 400: 5 } },
 ];
+
+// blue/amber/red/green are no longer literally themselves — styles.css's
+// `:root` (see the "default" Sand & Sage theme) redefines each family's
+// entire --color-{family}-{shade} scale to a hue-shifted substitute (blue
+// -> Slate, amber -> Ochre/Mustard, red -> Rust, green -> Sage), and
+// `[data-theme="alt"]` redefines them again back to something close to
+// stock Tailwind. Every `bg-blue-500` etc. in the codebase still says
+// "blue" — only the CSS variable backing that utility class actually
+// changed — which is exactly the kind of change this census can't see
+// without checking styles.css directly, unlike a brand new component
+// import. stone/yellow (and the notification accents below) were never
+// touched and stay literally stock in both themes.
+const RECOLORED_FAMILIES = new Set(["blue", "amber", "red", "green"]);
 
 const NOTIFICATION_ACCENTS: { family: string; category: string }[] = [
   { family: "blue", category: "default" },
@@ -138,36 +162,70 @@ function TokenPair({
   );
 }
 
-function TokenSolo({ name, cssVar }: { name: string; cssVar: string }) {
+function TokenSolo({ name, cssVar, note }: { name: string; cssVar: string; note?: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 w-16" title={`--${name}`}>
+    <div
+      className="flex flex-col items-center gap-1 w-16"
+      title={`--${name}${note ? `  —  ${note}` : ""}`}
+    >
       <div
         className="size-9 rounded-md border border-black/10 shadow-sm"
         style={{ backgroundColor: `var(${cssVar})` }}
       />
       <span className="text-[10px] font-medium leading-none text-center">{name}</span>
+      {note && <span className="text-[8px] leading-none text-amber-600 font-medium">{note}</span>}
+    </div>
+  );
+}
+
+/** Same idea as TokenSolo, for the two `--gradient-*` tokens — a flat
+ *  backgroundColor can't render a linear-gradient() value, so this swaps
+ *  in backgroundImage instead. */
+function TokenGradient({ name, cssVar, note }: { name: string; cssVar: string; note?: string }) {
+  return (
+    <div
+      className="flex flex-col items-center gap-1 w-16"
+      title={`--${name}${note ? `  —  ${note}` : ""}`}
+    >
+      <div
+        className="size-9 rounded-md border border-black/10 shadow-sm"
+        style={{ backgroundImage: `var(${cssVar})` }}
+      />
+      <span className="text-[10px] font-medium leading-none text-center">{name}</span>
+      {note && <span className="text-[8px] leading-none text-amber-600 font-medium">{note}</span>}
     </div>
   );
 }
 
 function Swatch({ family, shade, count }: { family: string; shade: number; count: number }) {
   const hex = FAMILY_HEX[family]?.[shade];
+  const recolored = RECOLORED_FAMILIES.has(family);
   return (
     <div
       className="relative flex flex-col items-center gap-0.5 w-14"
-      title={`${family}-${shade}  ${hex}  ×${count}`}
+      title={`${family}-${shade}  ${
+        recolored ? "live theme color" : hex
+      }  ×${count}${recolored ? "  (classic Tailwind hex: " + hex + ")" : ""}`}
     >
       <div className="relative">
+        {/* Reads the actual CSS variable the bg-{family}-{shade} utility
+            resolves to, not a hardcoded hex — for stone/yellow (and the
+            notification accents below) that's the same stock Tailwind
+            value the hex label shows; for the recolored families it's
+            whatever the active theme substitutes (see RECOLORED_FAMILIES),
+            so the swatch itself always matches what's actually on screen. */}
         <div
           className="size-8 rounded-md border border-black/10 shadow-sm"
-          style={{ backgroundColor: hex }}
+          style={{ backgroundColor: `var(--color-${family}-${shade})` }}
         />
         <span className="absolute -top-1.5 -right-1.5 rounded-full bg-white border border-stone-200 text-[8px] leading-none px-1 py-0.5 text-stone-500">
           {count}
         </span>
       </div>
       <span className="text-[10px] font-medium leading-none mt-0.5">{shade}</span>
-      <span className="text-[8px] font-mono leading-none text-muted-foreground">{hex}</span>
+      <span className="text-[8px] font-mono leading-none text-muted-foreground">
+        {recolored ? `${hex}*` : hex}
+      </span>
     </div>
   );
 }
@@ -246,6 +304,16 @@ export function ColorPaletteShowcase() {
                   <TokenSolo name="border" cssVar="--border" />
                   <TokenSolo name="input" cssVar="--input" />
                   <TokenSolo name="ring" cssVar="--ring" />
+                  <TokenGradient
+                    name="gradient-warm"
+                    cssVar="--gradient-warm"
+                    note="not used yet"
+                  />
+                  <TokenGradient
+                    name="gradient-primary"
+                    cssVar="--gradient-primary"
+                    note="not used yet"
+                  />
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-2">
                   Most cards/alerts reach for a literal Tailwind shade (below) instead of these.
@@ -253,6 +321,10 @@ export function ColorPaletteShowcase() {
                   value — the two were never actually differentiated. The formerly-unused
                   "success"/"surface"/"surface-elevated" tokens have been removed outright: nothing
                   referenced them and there was no near-term plan that needed them kept as a spare.
+                  The two gradient tokens above are the newest addition — defined (and their
+                  matching <span className="font-mono">bg-gradient-warm</span>/
+                  <span className="font-mono">bg-gradient-primary</span> utility classes already
+                  wired up) but not yet reached for by any component.
                 </p>
               </div>
 
@@ -279,7 +351,14 @@ export function ColorPaletteShowcase() {
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-3">
                   Neutral family is consistently "stone" — no stray gray/zinc/slate/neutral shades
-                  found.
+                  found. Swatches render the live CSS variable each utility class actually resolves
+                  to in the current theme; the hex below it is the classic Tailwind reference value
+                  for that family/shade. <span className="font-mono">*</span> marks
+                  blue/amber/red/green — the "Sand & Sage" default theme substitutes its own
+                  Slate/Ochre/Rust/Sage scale for these (see styles.css's{" "}
+                  <span className="font-mono">:root</span>/
+                  <span className="font-mono">[data-theme=&quot;alt&quot;]</span> overrides), so the
+                  swatch color and that reference hex intentionally diverge there.
                 </p>
               </div>
 
@@ -321,13 +400,15 @@ export function ColorPaletteShowcase() {
                 <div className="flex flex-wrap gap-2">
                   {[
                     { hex: "#2563eb", matches: "blue-600" },
-                    { hex: "#3b82f6", matches: "blue-500" },
-                    { hex: "#1d4ed8", matches: "blue-700" },
+                    { hex: "#3b82f6", matches: "blue-500 (alt theme)" },
+                    { hex: "#1d4ed8", matches: "blue-700 (alt theme)" },
                     { hex: "#a8a29e", matches: "stone-400" },
                     { hex: "#d6d3d1", matches: "stone-300" },
                     { hex: "#292524", matches: "stone-800" },
                     { hex: "#f0fdf4", matches: "green-50" },
                     { hex: "#eff6ff", matches: "blue-50" },
+                    { hex: "#0a5351", matches: "no match — Sand & Sage's own blue-700" },
+                    { hex: "#358987", matches: "no match — Sand & Sage's own blue-500" },
                   ].map(({ hex, matches }) => (
                     <div
                       key={hex}
@@ -346,10 +427,15 @@ export function ColorPaletteShowcase() {
                   ))}
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-2">
-                  All match an existing shade above (chevrons in TimestampCard/ScheduleView, the
-                  synced-timer digit/border color morph in StatusBar). The static error-page
-                  fallback (error-page.ts) has its own separate hardcoded gray/white/black —
-                  intentionally standalone since it must render without the app's own CSS.
+                  Most match an existing shade above (chevrons in TimestampCard/ScheduleView, the
+                  synced-timer digit/border color morph in StatusBar) — the two "no match" entries
+                  are the default theme's own recolored blue-700/blue-500 (actionColors.ts's
+                  TIMER_MORPH_*_FULL), needed as literal hex because Framer Motion's color
+                  interpolation can't resolve a theme-dependent{" "}
+                  <span className="font-mono">var(--color-blue-700)</span> mid-tween the way static
+                  CSS can. The static error-page fallback (error-page.ts) has its own separate
+                  hardcoded gray/white/black — intentionally standalone since it must render without
+                  the app's own CSS.
                 </p>
               </div>
             </div>
