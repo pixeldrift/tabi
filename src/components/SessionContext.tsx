@@ -94,7 +94,7 @@ export const PILL_TRAVEL_MS = HEADER_MORPH_MS;
 export const PILL_CROSSFADE_MS = 150 * SESSION_TRANSITION_SPEED;
 export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS;
 
-// Duration for the "Start new session to add data" banner's own exit/enter
+// Duration for the "no session running" banner's own exit/enter
 // (routes/index.tsx's dataToolbar) — lives here, not there, so any other
 // session-timing logic that needs to reason about the banner's own motion
 // has one shared constant instead of a duplicated guess.

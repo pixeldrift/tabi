@@ -761,11 +761,6 @@ const BUILT_IN_CARDS: CardConfig[] = [
   },
 ];
 
-// Data-submitted animation timing — TODO: surface in user settings.
-const DATA_SUBMIT_STAGGER_MS = 90 * SESSION_TRANSITION_SPEED;
-const DATA_SUBMIT_ENTER_DURATION_MS = 550 * SESSION_TRANSITION_SPEED;
-const DATA_SUBMIT_EXIT_DURATION_MS = 550 * SESSION_TRANSITION_SPEED;
-
 // How long into a session before the demo fires its one illustrative
 // "goal changed" notification — long enough that it reads as something
 // that happened DURING the session rather than an artifact of starting it,
@@ -1273,7 +1268,7 @@ function IndexInner({
   // VISIBILITY_SETTLE_MS — see StatusBar's own `mainVisible`/
   // `suppressEntranceAnimation`/`VISIBILITY_SETTLE_MS` comments for the
   // full reasoning (same mechanism and buffer duration, mirrored here
-  // since this "Start new session to add data" banner below lives in this
+  // since this "no session running" banner below lives in this
   // component instead). It mounts (possibly already showing, if the random
   // initial state landed on "idle") while still hidden behind the welcome
   // screen, and its `initial`->`animate` mount entrance doesn't actually
@@ -1572,28 +1567,24 @@ function IndexInner({
   useEffect(() => () => cancelAnimationFrame(anchorRafRef.current), []);
 
   // Which single-unit animation the card list should play, and a remount
-  // key. Only join (someone else's already-in-progress session) and discard
-  // (abandon in-progress data) actually swap the list's content. Starting a
-  // fresh session deliberately does NOT — End & Submit/End & Discard (see
-  // SessionContext's own resetSignal comment on each) already left the idle
-  // screen showing genuinely fresh, disabled cards, so by the time Start
-  // New Session is pressed there's nothing left to animate: it's the exact
-  // same cards, just switching from disabled to enabled via the
-  // `opacity-50` wrapper below — the same un-fade resume/continue-previous
-  // already used, not a new set arriving. Submit keeps its own separate,
-  // more elaborate per-card staggered animation for now.
+  // key. Idle never shows cards at all any more (see cardsHidden's own
+  // default-value comment below), so every route back INTO a running
+  // session — start-new included, now — is a real entrance that needs one
+  // of these: start-new reuses join's whole-list slide-in rather than
+  // getting its own variant (see the transitionStage-2 effect below).
+  // Submit and discard don't reveal anything at their own end any more
+  // either (idle has nothing to show), so this only ever actually changes
+  // for join and start-new now.
   const [cardsGen, setCardsGen] = useState(0);
-  const [cardsAnimKind, setCardsAnimKind] = useState<"join" | "discard" | "submit">("join");
+  const [cardsAnimKind, setCardsAnimKind] = useState<"join" | "discard">("join");
 
-  // The icon "stamp" shown over the empty gap while the old cards are gone
-  // and the fresh set hasn't arrived yet — a separate flag from
-  // cardsAnimKind (which doesn't actually flip to "submit" until the fresh
-  // set is already mounting, well after that gap has started; see its
-  // setters below) so the icon's own on/off window can track the same
-  // "old cards gone, new cards not yet here" span `cardsHidden` spans,
-  // without being tied to cardsAnimKind's different timing. Only
-  // submit/discard get a stamp — join is "someone else's session, now
-  // yours to see," not a confirmed action of your own, so it stays null.
+  // The icon "stamp" shown on each card while it's animating out on
+  // submit/discard — a separate flag from cardsAnimKind (which never
+  // reacts to submit/discard at all any more, see its own comment above)
+  // so the icon's own on/off window can track the "cards visibly
+  // exiting" span independently. Only submit/discard get a stamp — join is
+  // "someone else's session, now yours to see," not a confirmed action of
+  // your own, so it stays null.
   const [endActionOverlay, setEndActionOverlay] = useState<"submit" | "discard" | null>(null);
 
   // Stage 1 (old stuff exits) needs the card list to unmount the INSTANT
@@ -1614,7 +1605,16 @@ function IndexInner({
   // against a ref of the previous value) for the instant parts, so there's
   // no one-tick lag or intermediate stale-content flash. Discard is the one
   // exception, deliberately: see discardHideRafRef's own comment below.
-  const [cardsHidden, setCardsHidden] = useState(false);
+  //
+  // Defaults to hidden, not visible: idle never shows cards at all now (see
+  // the sticky bar's own comment on the Data tab banner) — the very first
+  // render of this component always sees `status === "idle"` regardless of
+  // which of the 4 demo scenarios will actually land (SessionContext's own
+  // scenario-seeding effect hasn't run yet at that point), so `true` is the
+  // only value that's ever correct here at mount. The fallback below brings
+  // this back to `false` for the 3 scenarios that seed straight into a
+  // running/paused state without it.
+  const [cardsHidden, setCardsHidden] = useState(true);
   const prevKindForHideRef = useRef<TransitionKind>(null);
   // Setting cardsHidden and endActionOverlay in the very same render (the
   // way join still does above) doesn't work for discard: cardsHidden
@@ -1637,6 +1637,27 @@ function IndexInner({
         setCardsHidden(true);
         discardHideRafRef.current = null;
       });
+    }
+  }
+  // Reveals cards, with no entrance animation, for the one route into a
+  // running/paused session that never touches `transitionKind` at all:
+  // SessionContext's own scenario-seeding `useLayoutEffect`, which lands
+  // straight on "running"/"paused" for 3 of its 4 demo scenarios before
+  // this component ever gets to paint idle's hidden cards — that effect's
+  // own comment explains why it's a layout effect in the first place (no
+  // visible snap from idle into a mid-session view), which this matches by
+  // reacting during render rather than in an effect of its own. Every OTHER
+  // route into a running session (start-new, join) carries a non-null
+  // `transitionKind` at the exact render where `sessionActive` flips, and
+  // already has its own animated reveal (join above, start-new below) —
+  // the `transitionKind === null` guard is what keeps this from stepping on
+  // those.
+  const prevSessionActiveForHideRef = useRef(sessionActive);
+  if (sessionActive !== prevSessionActiveForHideRef.current) {
+    const wasActive = prevSessionActiveForHideRef.current;
+    prevSessionActiveForHideRef.current = sessionActive;
+    if (sessionActive && !wasActive && transitionKind === null) {
+      setCardsHidden(false);
     }
   }
 
@@ -1679,11 +1700,21 @@ function IndexInner({
           setCardsHidden(false);
           cardEntranceTimeoutRef.current = null;
         }, PILL_LAND_MS);
+      } else if (transitionKind === "start-new") {
+        // Cards are never left sitting there while idle any more (see
+        // cardsHidden's own default-value comment above), so start-new
+        // needs a real entrance now — there's no longer an already-visible,
+        // just-dimmed set to un-dim in place. Reuses join's whole-list
+        // slide-in rather than inventing a new variant: no PILL_LAND_MS
+        // wait, though — that delay is specific to join's header pill
+        // travel, which start-new's header never does (it keeps the box
+        // open and just resets the digits in place).
+        setCardsAnimKind("join");
+        setCardsGen((n) => n + 1);
+        setCardsHidden(false);
       }
-      // transitionKind === "start-new" deliberately falls through here
-      // doing nothing — see the cardsAnimKind comment above. discard used
-      // to have its own branch here too; see the dedicated resetSignal-
-      // driven effect below for why it was moved out.
+      // discard used to have its own branch here too; see the dedicated
+      // resetSignal-driven effect below for why it was moved out.
     } else if (transitionStage !== 2) {
       stage2HandledRef.current = false;
     }
@@ -1704,12 +1735,11 @@ function IndexInner({
     const prevReset = prevResetSignalForDiscardRef.current;
     prevResetSignalForDiscardRef.current = resetSignal;
     if (resetSignal === prevReset || lastEndAction !== "discard") return;
-    // Same "wait for the old cards' own shrink-and-dissolve exit to finish
-    // before the next arrives" pacing the old stage-2 branch used.
+    // No fresh blank set to reveal any more (see cardsHidden's own
+    // default-value comment) — discard just needs to let the outgoing
+    // cards' own shrink-and-dissolve exit finish before clearing the now-
+    // pointless overlay flag, same pacing as before.
     const timeoutId = window.setTimeout(() => {
-      setCardsAnimKind("discard");
-      setCardsGen((n) => n + 1);
-      setCardsHidden(false);
       setEndActionOverlay(null);
     }, CARD_SLIDE_EXIT_MS);
     return () => window.clearTimeout(timeoutId);
@@ -1744,17 +1774,13 @@ function IndexInner({
     let hideRafId: number | undefined;
     const startId = window.setTimeout(
       () => {
-        // The still-running session's cards clear out first (their own
-        // existing single-unit exit — whatever `cardsAnimKind` was already
-        // playing, e.g. join's slide-right — since they were never
-        // rendered under the "submit" branch to begin with) before the
-        // fresh, just-submitted set fans in from the left — same "gone,
-        // then arrives" sequencing as discard (see its own comment) rather
-        // than join's deliberate overlapping relay. Previously this
-        // bumped cardsGen/cardsAnimKind in the same tick as hiding, which
-        // mounted the new staggered-entrance set on the exact same commit
-        // the old set started leaving, reading as an overlap instead of a
-        // clean handoff.
+        // The still-running session's cards clear out (their own existing
+        // single-unit exit — whatever `cardsAnimKind` was already playing,
+        // e.g. join's slide-right — since they were never rendered under
+        // the "submit" branch to begin with) and stay gone: no fresh blank
+        // set fans back in any more (see cardsHidden's own default-value
+        // comment) — idle no longer shows cards at all, so there's nothing
+        // left to reveal here once they're out.
         //
         // endActionOverlay is set a frame BEFORE cardsHidden, not
         // alongside it — see discardHideRafRef's own comment above for why:
@@ -1766,9 +1792,6 @@ function IndexInner({
         hideRafId = window.requestAnimationFrame(() => {
           setCardsHidden(true);
           exitTimeoutId = window.setTimeout(() => {
-            setCardsAnimKind("submit");
-            setCardsGen((n) => n + 1);
-            setCardsHidden(false);
             setEndActionOverlay(null);
           }, CARD_SLIDE_EXIT_MS);
         });
@@ -2018,7 +2041,7 @@ function IndexInner({
                             className="py-1.5 px-8 text-center"
                           >
                             <span className="text-sm text-muted-foreground">
-                              Start new session to add data.
+                              No session running — start a new one to add data.
                             </span>
                           </motion.div>
                         </motion.div>
@@ -2169,9 +2192,11 @@ function IndexInner({
                   className={cn(
                     // 300ms * SESSION_TRANSITION_SPEED (2) — a plain CSS
                     // transition class, not a JS constant, so the multiply
-                    // is done by hand here rather than by reference.
-                    "px-3 transition-[opacity,width] duration-[600ms]",
-                    !sessionActive && "opacity-50",
+                    // is done by hand here rather than by reference. No
+                    // longer dims to opacity-50 while idle — idle shows no
+                    // cards at all now (see cardsHidden's own default-value
+                    // comment), so there's nothing left here to dim.
+                    "px-3 transition-[width] duration-[600ms]",
                     // Card mode's own cards are dense enough (button labels,
                     // wrapped text) that squeezing them into a narrower column
                     // reads badly at phone widths, so that mode compresses the
@@ -2630,9 +2655,9 @@ function MorphContent({
 // Single-unit variants for join/discard — the WHOLE list moves as one
 // element (not per-card), which is both simpler and much cheaper than
 // animating each card individually: only one Motion component is tracked
-// during the transition instead of seven. Starting a fresh session has no
-// entry here at all — see cardsAnimKind's own comment in IndexInner for
-// why it deliberately doesn't animate the card list.
+// during the transition instead of seven. Start-new reuses `join` itself
+// (see cardsAnimKind's own comment in IndexInner) rather than getting its
+// own entry.
 const SINGLE_UNIT_VARIANTS = {
   join: {
     initial: { x: "-100%" },
@@ -2733,12 +2758,13 @@ const DataCardList = memo(function DataCardList({
   tab,
 }: {
   cardsGen: number;
-  cardsAnimKind: "join" | "discard" | "submit";
-  /** True during stages 1-2 of a join/discard transition — the old
-   * list plays its exit (this flipping true is what triggers it, since
-   * AnimatePresence here tracks its child's presence) and nothing renders
-   * until the fresh list mounts for stage 3. Starting a fresh session never
-   * sets this — see cardsAnimKind's own comment in IndexInner. */
+  cardsAnimKind: "join" | "discard";
+  /** True during stages 1-2 of a join/discard transition (and, now, for
+   * the entire idle/no-session span — see cardsHidden's own default-value
+   * comment in IndexInner) — the old list plays its exit (this flipping
+   * true is what triggers it, since AnimatePresence here tracks its
+   * child's presence) and nothing renders until the fresh list mounts.
+   * Flipped back to false by start-new too now, alongside join/discard. */
   transitionHidden?: boolean;
   /** Non-null exactly while whatever's currently rendered here is the OLD,
    *  about-to-be-replaced set (see IndexInner's own endActionOverlay
@@ -2921,57 +2947,6 @@ const DataCardList = memo(function DataCardList({
           />
         ))}
       </Reorder.Group>
-    );
-  }
-
-  if (cardsAnimKind === "submit") {
-    // Submit keeps its own separate, more elaborate per-card staggered
-    // animation — untouched, and deliberately allowed to cost more.
-    return (
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.div
-          key={cardsGen}
-          className={cn("grid w-full", gridClasses)}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          variants={{
-            enter: {},
-            center: { transition: { staggerChildren: 0 } },
-            exit: { transition: { staggerChildren: DATA_SUBMIT_STAGGER_MS / 1000 } },
-          }}
-        >
-          {visibleCards.map((card) => (
-            <motion.div
-              key={card.id}
-              layout="position"
-              ref={setCardRef(card.id)}
-              data-tour={card.id === visibleCards[0]?.id ? "first-card" : undefined}
-              className="w-full flex justify-center"
-              style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
-              variants={{
-                enter: { opacity: 0, x: -40 },
-                center: {
-                  opacity: 1,
-                  x: 0,
-                  transition: { duration: DATA_SUBMIT_ENTER_DURATION_MS / 1000 },
-                },
-                exit: {
-                  opacity: 0,
-                  x: 80,
-                  transition: { duration: DATA_SUBMIT_EXIT_DURATION_MS / 1000 },
-                },
-              }}
-              transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
-            >
-              <div className="relative">
-                <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
-                {endActionOverlay && <CardEndActionOverlay kind={endActionOverlay} />}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </AnimatePresence>
     );
   }
 
