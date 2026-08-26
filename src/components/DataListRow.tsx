@@ -146,18 +146,22 @@ export function DataListRow({
 
         {/* Floated (not part of the header's flex flow) so it stays put at
           the row's right edge regardless of whether the title above it
-          wraps to one line or two. top-[17px] (not top-1/2) is a fixed
-          anchor matched to the data-type icon's own vertical center — the
-          icon sits at a constant offset from the row's top regardless of
-          wrapping (items-start, never re-centers), so anchoring here the
-          same way keeps the actions cluster exactly where a one-line row
-          would put it instead of sliding down to stay centered in a now-
-          taller two-line row. Only the row's bottom edge should move when
-          the title wraps; -translate-y-1/2 still self-centers against
-          whichever kind's own actions height (a 28px button row vs. a
-          20px star row) around that fixed point. */}
+          wraps to one line or two — the icon sits at a constant offset from
+          the row's top regardless of wrapping (items-start, never
+          re-centers), so anchoring here the same way keeps the actions
+          cluster exactly where a one-line row would put it instead of
+          sliding down to stay centered in a now-taller two-line row. Only
+          the row's bottom edge should move when the title wraps.
+          top-2/h-4 (not a hand-measured top-[17px]) mirror the header row's
+          own py-2 and the data-type icon's own size-4 exactly, so this box
+          spans precisely the icon's own footprint — a real, derived
+          anchor rather than a guessed pixel that could quietly drift out of
+          sync if that padding or icon size ever changed. items-center then
+          self-centers whichever kind's own actions height (a 28px button
+          row vs. a 20px star row) inside that footprint, same as
+          -translate-y-1/2 did against a single guessed point before. */}
         {showActions && (
-          <div className="absolute z-10 top-[17px] -translate-y-1/2 right-0.5">{actions}</div>
+          <div className="absolute z-10 top-2 right-0.5 h-4 flex items-center">{actions}</div>
         )}
 
         {/* A background wash tucked under the title only — stops well short
