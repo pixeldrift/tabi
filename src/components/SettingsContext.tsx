@@ -64,6 +64,11 @@ const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
 const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
 
+// A fun Easter egg, off by default like the tour/tip auto-shows above —
+// this is a "discover it in Settings" flourish, not something that should
+// just appear unasked on a fresh load.
+const DEFAULT_CAT_EARS_ENABLED = false;
+
 // The guided welcome tour (TourContext.tsx). `tourHintsEnabled` defaults
 // off — auto-launching on a fresh load isn't needed when both WelcomeScreen's
 // "Preview guided tour" button and Settings' own "Replay welcome tour" button
@@ -149,6 +154,11 @@ interface SettingsContextValue {
    *  one value. */
   bookmarkBarVisible: boolean;
   setBookmarkBarVisible: (v: boolean) => void;
+  /** Little pointed cat ears on the active tab, mobile-only Easter egg (the
+   *  wider tablet/desktop tabs have room for text labels and aren't a good
+   *  fit for the same treatment — see StatusBar's own tab bar). */
+  catEarsEnabled: boolean;
+  setCatEarsEnabled: (v: boolean) => void;
   /** Clinic hours (24h "HH:MM") the Schedule tab's grid is bounded to. */
   dayStart: string;
   setDayStart: (v: string) => void;
@@ -213,6 +223,7 @@ interface StoredShape {
   alarmSound: AlarmSoundStyle;
   keepActiveCardCentered: boolean;
   bookmarkBarVisible: boolean;
+  catEarsEnabled: boolean;
   dayStart: string;
   dayEnd: string;
   defaultTab: StatusTab;
@@ -238,6 +249,7 @@ function loadStored(): StoredShape {
     alarmSound: DEFAULT_ALARM_SOUND,
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
     bookmarkBarVisible: DEFAULT_BOOKMARK_BAR_VISIBLE,
+    catEarsEnabled: DEFAULT_CAT_EARS_ENABLED,
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
     defaultTab: DEFAULT_TAB,
@@ -259,6 +271,7 @@ function loadStored(): StoredShape {
       alarmSound: parsed.alarmSound ?? DEFAULT_ALARM_SOUND,
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
       bookmarkBarVisible: parsed.bookmarkBarVisible ?? DEFAULT_BOOKMARK_BAR_VISIBLE,
+      catEarsEnabled: parsed.catEarsEnabled ?? DEFAULT_CAT_EARS_ENABLED,
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
       defaultTab: parsed.defaultTab ?? DEFAULT_TAB,
@@ -295,6 +308,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
   );
   const [bookmarkBarVisible, setBookmarkBarVisible] = useState(DEFAULT_BOOKMARK_BAR_VISIBLE);
+  const [catEarsEnabled, setCatEarsEnabled] = useState(DEFAULT_CAT_EARS_ENABLED);
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultTab, setDefaultTab] = useState<StatusTab>(DEFAULT_TAB);
@@ -312,6 +326,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setAlarmSound(stored.alarmSound);
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
     setBookmarkBarVisible(stored.bookmarkBarVisible);
+    setCatEarsEnabled(stored.catEarsEnabled);
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
     setDefaultTab(stored.defaultTab);
@@ -334,6 +349,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       alarmSound,
       keepActiveCardCentered,
       bookmarkBarVisible,
+      catEarsEnabled,
       dayStart,
       dayEnd,
       defaultTab,
@@ -351,6 +367,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     alarmSound,
     keepActiveCardCentered,
     bookmarkBarVisible,
+    catEarsEnabled,
     dayStart,
     dayEnd,
     defaultTab,
@@ -377,6 +394,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setAlarmSound(DEFAULT_ALARM_SOUND);
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
     setBookmarkBarVisible(DEFAULT_BOOKMARK_BAR_VISIBLE);
+    setCatEarsEnabled(DEFAULT_CAT_EARS_ENABLED);
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
     setDefaultTab(DEFAULT_TAB);
@@ -408,6 +426,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setKeepActiveCardCentered,
       bookmarkBarVisible,
       setBookmarkBarVisible,
+      catEarsEnabled,
+      setCatEarsEnabled,
       dayStart,
       setDayStart,
       dayEnd,
@@ -436,6 +456,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       alarmSound,
       keepActiveCardCentered,
       bookmarkBarVisible,
+      catEarsEnabled,
       dayStart,
       dayEnd,
       defaultTab,

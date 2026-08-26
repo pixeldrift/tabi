@@ -85,6 +85,8 @@ export function SettingsPane({
     setAlarmSound,
     keepActiveCardCentered,
     setKeepActiveCardCentered,
+    catEarsEnabled,
+    setCatEarsEnabled,
     dayStart,
     setDayStart,
     dayEnd,
@@ -207,6 +209,24 @@ export function SettingsPane({
                 {opt.label}
               </button>
             ))}
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="catEarsEnabled" className="text-sm font-medium">
+                Show Tabi ears
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                A little cat-ear flourish on the active tab, styled after the Tabi logo. Mobile only
+                — on wider screens the tabs already have room for text labels.
+              </p>
+            </div>
+            <Switch
+              id="catEarsEnabled"
+              checked={catEarsEnabled}
+              onCheckedChange={setCatEarsEnabled}
+              className="shrink-0"
+            />
           </div>
         </section>
 

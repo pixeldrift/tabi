@@ -287,7 +287,7 @@ export function StatusBar({
   // The pill travel overlay's digit/border colors are theme-aware (see
   // actionColors.ts's own comment) — need the current theme to pick the
   // right pair, not just the "mini" ones, which stay stone in every theme.
-  const { colorTheme } = useSettings();
+  const { colorTheme, catEarsEnabled } = useSettings();
 
   // See use-initial-layout-settle's own comment — this box's demo-only
   // "Previous Session" row growing the box shortly after mount is real,
@@ -1003,6 +1003,18 @@ export function StatusBar({
                             : "bg-stone-200/70 text-muted-foreground border-transparent hover:text-foreground hover:bg-stone-200",
                         )}
                       >
+                        {isActive && catEarsEnabled && (
+                          // sm:hidden mirrors the label's own hidden sm:inline, just
+                          // inverted — a fun Easter egg sized for the icon-only mobile
+                          // tab, not the wider labeled tabs tablet/desktop switches to.
+                          <div
+                            className="pointer-events-none absolute -top-1 inset-x-1.5 flex justify-between sm:hidden"
+                            aria-hidden="true"
+                          >
+                            <span className="block size-2.5 -rotate-[25deg] border border-b-0 border-border bg-background [clip-path:polygon(50%_0%,0%_100%,100%_100%)]" />
+                            <span className="block size-2.5 rotate-[25deg] border border-b-0 border-border bg-background [clip-path:polygon(50%_0%,0%_100%,100%_100%)]" />
+                          </div>
+                        )}
                         <Icon className={cn("size-4", !isActive && "opacity-60")} />
                         <span className="hidden sm:inline">{t.label}</span>
                         {t.id === "notifications" && notifCount > 0 && (
