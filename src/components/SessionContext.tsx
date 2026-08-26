@@ -424,6 +424,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // also how a joined/reclaimed abandoned session's data ends up correctly
   // attributed to whoever actually finished it, not whoever walked away.
   const endAndSubmit = useCallback(() => {
+    // Graphing the data is what actually closes this dataset out — the
+    // Data tab's own cards should read as done, not still sitting there
+    // live and editable with the same numbers a moment after they were
+    // submitted (that used to be exactly what happened: this used to leave
+    // resetSignal untouched, so the submit animation played but nothing
+    // underneath it had actually changed). Bumping it here is what each
+    // card's own useResetGuard reacts to, clearing back to zero.
+    setResetSignal((n) => n + 1);
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
@@ -441,6 +449,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     playSoundEffect("submit");
   }, []);
   const clearAndDiscard = useCallback(() => {
+    // Same reasoning as endAndSubmit's own resetSignal bump above —
+    // discarding is the other path that ends a session, and the point of
+    // discarding is that none of what was recorded sticks around.
+    setResetSignal((n) => n + 1);
     setStatus("idle");
     setElapsedMs(0);
     baseRef.current = 0;
