@@ -134,6 +134,21 @@ const MINI_PILL_HEIGHT_PX = 28;
 // button doesn't take), so unlike the mini pill above this needs no
 // separate "digit padding" constant.
 const BIG_BUTTON_PX = 56;
+// bigPillRect/miniPillRect's settle-poll (below) can't accept "stable" on
+// frame count alone during this many frames after mount — routes/index.tsx
+// mounts IndexInner (and everything in it, including StatusBar) immediately
+// on the welcome screen, well before the ~450ms welcome->main slide
+// (SCREEN_SLIDE_MS there) even starts moving, let alone finishes. Motion's
+// own animate-from-initial interpolation doesn't begin until a frame or two
+// after mount, so a poll that starts counting identical reads from frame 0
+// can rack up several genuinely-identical "hasn't started sliding yet"
+// frames — at the slide's OWN starting position, one full viewport-width
+// off-screen — and call that settled well before the slide even begins,
+// let alone finishes. Floor the poll at a frame count safely past that
+// slide's real duration so it can't mistake "not moving yet" for "done
+// moving." Not imported from routes/index.tsx to avoid a cross-module
+// coupling for one constant — kept generously above the real 450ms value.
+const MIN_SETTLE_POLL_FRAMES = 90; // ~1.5s at 60fps
 // ExpandedSessionBox's own action-button row (Start New Session <-> End &
 // Submit/Discard) animates its height over this long whenever `isPaused`
 // flips — see that component's own comment on why it's a measured pixel
@@ -644,7 +659,9 @@ export function StatusBar({
       const changed = measure();
       settledStreak = changed ? 0 : settledStreak + 1;
       framesElapsed += 1;
-      if (settledStreak < SETTLED_STREAK_TARGET && framesElapsed < MAX_POLL_FRAMES) {
+      const settled =
+        settledStreak >= SETTLED_STREAK_TARGET && framesElapsed >= MIN_SETTLE_POLL_FRAMES;
+      if (!settled && framesElapsed < MAX_POLL_FRAMES) {
         raf = requestAnimationFrame(tick);
       }
     });
@@ -741,7 +758,9 @@ export function StatusBar({
       const changed = measure();
       settledStreak = changed ? 0 : settledStreak + 1;
       framesElapsed += 1;
-      if (settledStreak < SETTLED_STREAK_TARGET && framesElapsed < MAX_POLL_FRAMES) {
+      const settled =
+        settledStreak >= SETTLED_STREAK_TARGET && framesElapsed >= MIN_SETTLE_POLL_FRAMES;
+      if (!settled && framesElapsed < MAX_POLL_FRAMES) {
         raf = requestAnimationFrame(tick);
       }
     });
