@@ -718,12 +718,13 @@ export function StatusBar({
       const titleRowRect = titleRowEl.getBoundingClientRect();
       const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
       const digitWidth = digitEl.getBoundingClientRect().width;
-      // Lands a couple px above the nav row's own `mt-1` (rather than
-      // matching it exactly) so the pill's own bottom edge clears the
-      // content pane below with a visible gap instead of sitting flush
-      // against it — the reserved mini slot (see miniSlotRef) is a few px
-      // taller than the pill itself specifically to leave room for this.
-      const top = titleRowRect.bottom + 2;
+      // Lands flush with the nav row's own bottom edge (rather than the
+      // nav row's own `mt-1` further down) so the pill's own bottom edge
+      // clears the content pane below with a visible gap instead of
+      // sitting flush against it — the reserved mini slot (see
+      // miniSlotRef) is a few px taller than the pill itself specifically
+      // to leave room for this.
+      const top = titleRowRect.bottom;
       // The wrapper's OWN border-box right edge sits at the viewport edge
       // (its `-mr-4` cancels this row's own right padding entirely) — its
       // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
@@ -982,11 +983,8 @@ export function StatusBar({
                         opacity: { duration: (BOX_COLLAPSE_MS / 1000) * 0.6 },
                       }
                     : {
-                        // Mirrors the collapsed branch (same ease, opacity starting
-                        // together with height rather than after a delay) so the
-                        // box's own fade-in and the tabs/nav's layout push — which
-                        // shares SESSION_MORPH_MS via NOTIFICATION_AREA_TRANSITION —
-                        // move as one instead of the box appearing to lag behind.
+                        // Opacity starts together with height rather than
+                        // after a delay, same as the collapsed branch.
                         // Zeroed instead while `suppressEntranceAnimation` is
                         // still true (see its own and `hasBeenVisible`'s
                         // comments): `boxNaturalHeight`'s very first real
@@ -1004,9 +1002,23 @@ export function StatusBar({
                         // have been a static, already-formed slide-in. Any
                         // LATER, genuine height change (an actual session
                         // collapsing/expanding) still gets the real transition.
+                        //
+                        // Ease is PILL_TRAVEL_EASE here, not SESSION_MORPH_EASE
+                        // (unlike the collapsed branch above) — this expand
+                        // runs concurrently with the pill's own big<->mini
+                        // travel on pause (same duration, since SESSION_MORPH_MS
+                        // === PILL_TRAVEL_MS), and the two curves need to match
+                        // stride for stride, not just finish together. Pausing's
+                        // landing spot sits below wherever the tab bar ends up
+                        // once this box has grown to fit it: SESSION_MORPH_EASE's
+                        // more even curve had this box still mostly closed while
+                        // PILL_TRAVEL_EASE's front-loaded curve had the pill
+                        // already most of the way to a target the tab bar hadn't
+                        // vacated yet, so the pill visibly crossed over it
+                        // mid-flight despite both finishing at the same instant.
                         height: suppressEntranceAnimation
                           ? { duration: 0 }
-                          : { duration: SESSION_MORPH_MS / 1000, ease: SESSION_MORPH_EASE },
+                          : { duration: SESSION_MORPH_MS / 1000, ease: PILL_TRAVEL_EASE },
                         opacity: { duration: (SESSION_MORPH_MS / 1000) * 0.6 },
                       }
                 }
