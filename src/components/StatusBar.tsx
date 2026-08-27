@@ -544,17 +544,33 @@ export function StatusBar({
   // label/context and actions-row's own entrance animation below (see
   // ENTER_SCALE's own comment), forcing a fresh initial->animate replay
   // each time rather than the static "instantly revealed by the growing
-  // box" look those pieces had before. Same same-render "adjust during
-  // render" pattern as `wasPausedForActionsRef` above (and
-  // `prevCollapsedRef` in SessionContext) — set the instant `boxCollapsed`
-  // flips, not a tick later in an effect, so the very same commit that
-  // unhides this content also mounts it in its pre-entrance state.
+  // box" look those pieces had before.
+  //
+  // A `useLayoutEffect`, not the same-render "adjust during render" pattern
+  // `wasPausedForActionsRef` above uses — this one used to mutate
+  // `prevBoxCollapsedForEntranceRef` directly in the render body too, but
+  // this component ALSO has `prevBoxCollapsedForSettleRef` right above
+  // doing the identical dance off the same `boxCollapsed` transition. Two
+  // separate render-phase `setState` calls firing off the same prop change
+  // in the same render, each restarting the render themselves, measurably
+  // corrupted this one in practice: `expandGen` was confirmed (via direct
+  // instrumentation) to sometimes commit back at its PRE-bump value instead
+  // of the bumped one, later in the same transition, with no explanation
+  // under React's documented single-restart model for this pattern — not
+  // provably root-caused beyond that, but reliably reproducible. A
+  // dependency-scoped effect sidesteps the whole class of restart
+  // interactions: it can't run mid-render, so nothing about a sibling
+  // render-phase update can touch it. The cost is a one-commit lag before
+  // this fires relative to `boxCollapsed` itself flipping — imperceptible
+  // next to the box's own SESSION_MORPH_MS reveal, which hasn't even
+  // started painting a visible height yet at that point.
   const prevBoxCollapsedForEntranceRef = useRef(boxCollapsed);
   const [expandGen, setExpandGen] = useState(0);
-  if (boxCollapsed !== prevBoxCollapsedForEntranceRef.current) {
+  useLayoutEffect(() => {
+    if (boxCollapsed === prevBoxCollapsedForEntranceRef.current) return;
     prevBoxCollapsedForEntranceRef.current = boxCollapsed;
     if (!boxCollapsed) setExpandGen((g) => g + 1);
-  }
+  }, [boxCollapsed]);
 
   // The big pill's own inline button is 3 different actions depending on
   // why the pill is even showing (see ExpandedSessionBox's own isPaused/
@@ -2177,10 +2193,44 @@ function ExpandedSessionBox({
   // this recomputes to `false` on every later render until the next open.
   const prevExpandGenForActionsRef = useRef(expandGen);
   const freshlyOpened = expandGen !== prevExpandGenForActionsRef.current;
-  if (freshlyOpened && pausedActionsHeight !== null) {
-    prevExpandGenForActionsRef.current = expandGen;
+  // The `actionsHeight !== pausedActionsHeight` guard isn't just a micro-
+  // optimization — it's load-bearing. The ref below only advances once a
+  // COMMIT actually happens (a `useLayoutEffect`, not a render-body
+  // mutation — see its own comment), which means `freshlyOpened` stays
+  // `true` across every render that occurs before that commit, e.g. once
+  // per every other unrelated re-render (elapsedMs ticking, etc.)
+  // happening to land in the same window. Without this guard, EVERY one of
+  // those renders re-issues `setActionsHeight(pausedActionsHeight)` — and
+  // confirmed empirically (direct instrumentation, not just reasoning from
+  // React's docs): React does NOT reliably treat a same-value render-phase
+  // dispatch as a no-op here, and repeated calls across enough renders hit
+  // the render-phase-update cap for real, throwing "Too many re-renders"
+  // and tearing down this whole component via its error boundary. Skipping
+  // the call once the value already matches avoids re-dispatching at all.
+  if (freshlyOpened && pausedActionsHeight !== null && actionsHeight !== pausedActionsHeight) {
     setActionsHeight(pausedActionsHeight);
   }
+  // Consuming the ref here, not in the render body above — mutating it
+  // synchronously during render (the way this used to work) landed on the
+  // COMMITTED render itself, not just the one that triggered it: React
+  // "adjust state during render" reruns this component's function
+  // synchronously (same pass, no extra paint) after `setActionsHeight`
+  // above, and since the ref had ALREADY been bumped inside that same
+  // render call, the re-run recomputed `freshlyOpened` as false before
+  // React ever committed anything — the height motion.div's own
+  // `transition` (which reads `freshlyOpened` fresh every render) always
+  // saw `false` on the render that actually painted, so it played its
+  // real, gradual ACTIONS_HEIGHT_MS tween from empty every time instead of
+  // the zero-duration snap this whole mechanism exists to provide. A
+  // `useLayoutEffect` only fires once per actual commit (not once per
+  // synchronous re-render-during-render call), so the ref advances a beat
+  // later than before — after the correctly-`true` render has already
+  // painted — instead of racing ahead of it.
+  useLayoutEffect(() => {
+    if (freshlyOpened && pausedActionsHeight !== null) {
+      prevExpandGenForActionsRef.current = expandGen;
+    }
+  }, [freshlyOpened, pausedActionsHeight, expandGen]);
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
@@ -2322,9 +2372,18 @@ function ExpandedSessionBox({
               <button
                 onClick={onPlay}
                 aria-label={isPaused ? "Resume session" : "Join session"}
-                className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
+                className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:brightness-90"
               >
-                <span className="grid place-items-center">
+                {/* Scale lives on this inner span, not the button itself —
+                    the button is a plain rectangle whose right edge only
+                    LOOKS like a rounded pill-cap because the parent pill
+                    clips it with `overflow-hidden rounded-full`. Scaling the
+                    button itself shrinks that rectangle away from the clip
+                    boundary on press, revealing the pill's white background
+                    around it — a small square floating where the rounded
+                    cap used to be. Scaling just the icon's own wrapper keeps
+                    the button's fill flush against the clip at all times. */}
+                <span className="grid place-items-center active:scale-95 transition-transform">
                   {isPaused ? (
                     <Play className="size-5" fill="currentColor" strokeWidth={0} />
                   ) : (
@@ -2615,9 +2674,12 @@ function MiniSession({
         onClick={disabled ? undefined : onPause}
         aria-label="Pause session"
         title="Pause session"
-        className="btn-bevel grid place-items-center w-7 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
+        className="btn-bevel grid place-items-center w-7 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:brightness-90"
       >
-        <span className="grid place-items-center">
+        {/* Scale lives on this inner span, not the button — see the big
+            pill's own Play/Join button comment for why (this same shape
+            distorts into a floating square on press otherwise). */}
+        <span className="grid place-items-center active:scale-95 transition-transform">
           <Pause className="size-3 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
         </span>
       </button>
