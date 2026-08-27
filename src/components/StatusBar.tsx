@@ -2209,7 +2209,17 @@ function ExpandedSessionBox({
             }}
             className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
           >
-            {label}
+            {/* A plain CSS animation on its own nested span, not on this
+                motion.span itself — Motion already drives THIS element's own
+                opacity (the dimmed/entrance fade above), and layering a
+                second, independent opacity animation on the very same
+                element would have the two fight over the same property.
+                Nesting keeps them on separate elements, where their opacity
+                values simply multiply together instead of conflicting. Only
+                while paused: reads as "on hold, waiting for you," not
+                something to show for every label here (an actively running
+                or idle session isn't "waiting" on anything). */}
+            {isPaused ? <span className="animate-pulse-gentle">{label}</span> : label}
           </motion.span>
         </div>
 
