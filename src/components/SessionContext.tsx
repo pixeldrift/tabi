@@ -16,6 +16,24 @@ export type SessionStatus = "idle" | "running" | "paused";
 export type SaveStatus = "clean" | "dirty" | "saving";
 export type TransitionKind = "start-new" | "join" | "resume" | "discard" | null;
 
+// Every kind of session transition StatusBar's pill/box choreography cares
+// about — a strict superset of TransitionKind above (adds "pause" and
+// "submit", which never went through the staged start-new/join/discard
+// machinery TransitionKind was built for, but still animate a pill/box).
+export type SessionTransitionKind = Exclude<TransitionKind, null> | "pause" | "submit";
+
+// The single source of truth StatusBar's pill/box rendering derives its
+// entire visual sequence from: what's happening, and exactly when it
+// started. Every other piece of that choreography (box height delay, pill
+// travel delay/duration, digit hold, action-row reveal) is a pure function
+// of `kind` and `performance.now() - startedAt`, computed where it's
+// rendered (StatusBar) rather than staged through a chain of setTimeout-
+// driven setState calls here — see `beginTransition` below.
+export interface SessionTransition {
+  kind: SessionTransitionKind;
+  startedAt: number;
+}
+
 // The staff member "at this device" — there's no real auth in this
 // prototype, so this is hardcoded rather than picked at runtime. An id, not
 // a display name: this is the actual identity primitive (what a real
@@ -98,6 +116,22 @@ export const PILL_LAND_MS = DIGIT_SETTLE_MS + PILL_TRAVEL_MS + PILL_CROSSFADE_MS
 // has one shared constant instead of a duplicated guess.
 export const DATA_BANNER_EXIT_MS = 400 * SESSION_TRANSITION_SPEED;
 
+// How long each transition's visual sequence takes to actually land (pill
+// travel finishes, box/actions are at rest) — the only thing this table is
+// used for is knowing when SessionProvider should clear `transition` back
+// to null. Every OTHER detail of the choreography (box height delay, pill
+// travel delay, digit hold, action-row reveal) is a pure function of `kind`
+// and elapsed time, computed where it's rendered (StatusBar) — not staged
+// through a chain of setState calls here.
+export const TRANSITION_LANDED_MS: Record<SessionTransitionKind, number> = {
+  "start-new": DIGIT_SETTLE_MS + PILL_TRAVEL_MS,
+  join: PILL_TRAVEL_MS,
+  resume: PILL_TRAVEL_MS,
+  pause: HEADER_MORPH_MS + PILL_TRAVEL_MS,
+  submit: HEADER_MORPH_MS,
+  discard: HEADER_MORPH_MS,
+};
+
 export interface ActiveTimer {
   id: string;
   label: string;
@@ -142,6 +176,13 @@ interface SessionContextValue {
   // and mini positions (see its own comment below) — StatusBar's visual
   // travel overlay is driven directly off this shared clock.
   pillTraveling: boolean;
+  // The pill/box choreography's own single source of truth — see
+  // `SessionTransition`'s own comment. Null outside of a transition.
+  // Deliberately separate from transitionStage/transitionKind/boxCollapsed/
+  // pillTraveling above: those exist for the card list's own staged exit/
+  // enter (routes/index.tsx) and are untouched by this — StatusBar's
+  // pill/box rendering reads only this field now.
+  transition: SessionTransition | null;
   requestStartNew: () => void;
   requestResume: () => void;
   requestDiscard: () => void;
@@ -331,8 +372,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // StatusBar's pill/box choreography's single source of truth — see
+  // `SessionTransition`'s own comment. Declared here (ahead of pause/
+  // resume/endAndSubmit/runStagedTransition below, which all set it) so the
+  // tick effect just below can gate on it directly.
+  const [transition, setTransition] = useState<SessionTransition | null>(null);
+  // A fresh start's/resume's clock genuinely doesn't start running until
+  // the pill has actually landed — not just held back on screen and then
+  // jumped forward to "catch up" once it does. Gating the real interval
+  // (not merely its displayed value) means there's no discontinuity to
+  // paper over: the digits sit at their settled starting value (0, or the
+  // frozen pre-pause elapsed) for the whole flight, then tick normally
+  // the instant it's actually true. Join is deliberately NOT gated — its
+  // session is already running for whoever else is in it, so holding its
+  // display would mean inventing a freeze-then-jump of its own; letting it
+  // keep reading the live value the whole time needs no special handling
+  // at all, unlike start-new/resume, which are stopping their own clock
+  // from 0 or a dead stop and have a real "hasn't started yet" moment to
+  // protect.
+  const tickGated =
+    transition !== null && (transition.kind === "start-new" || transition.kind === "resume");
   useEffect(() => {
-    if (status !== "running") return;
+    if (status !== "running" || tickGated) return;
     startRef.current = performance.now();
     let last = performance.now();
     const id = window.setInterval(() => {
@@ -346,12 +407,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       tickListenersRef.current.forEach((cb) => cb(delta));
     }, 250);
     return () => window.clearInterval(id);
-  }, [status]);
+  }, [status, tickGated]);
 
   const getElapsedMsNow = useCallback(() => {
-    if (status !== "running" || startRef.current === null) return elapsedMs;
+    if (status !== "running" || tickGated || startRef.current === null) return elapsedMs;
     return baseRef.current + (performance.now() - startRef.current);
-  }, [status, elapsedMs]);
+  }, [status, tickGated, elapsedMs]);
+
+  const transitionClearTimeoutRef = useRef<number | null>(null);
+  const beginTransition = useCallback((kind: SessionTransitionKind) => {
+    if (transitionClearTimeoutRef.current !== null) {
+      window.clearTimeout(transitionClearTimeoutRef.current);
+    }
+    setTransition({ kind, startedAt: performance.now() });
+    transitionClearTimeoutRef.current = window.setTimeout(() => {
+      setTransition(null);
+      transitionClearTimeoutRef.current = null;
+    }, TRANSITION_LANDED_MS[kind]);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (transitionClearTimeoutRef.current !== null) {
+        window.clearTimeout(transitionClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("clean");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -421,8 +501,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // it — e.g. joining someone else's running session and then pausing it
     // should read as "Paused by You," not still name the original starter.
     setStartedById(CURRENT_STAFF_ID);
+    beginTransition("pause");
     playSoundEffect("sessionPause");
-  }, [elapsedMs]);
+  }, [elapsedMs, beginTransition]);
   const resume = useCallback(() => {
     setStatus("running");
     setLastUpdated(new Date());
@@ -438,8 +519,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setPresentStaffIds((ids) =>
       ids.includes(CURRENT_STAFF_ID) ? ids : [...ids, CURRENT_STAFF_ID],
     );
+    beginTransition("resume");
     playSoundEffect("sessionResume");
-  }, []);
+  }, [beginTransition]);
   // Whoever actually performs End & Submit gets credited as having ended
   // the session, regardless of who started it (state 4's "submitting the
   // data would show it as being collected by that individual") — this is
@@ -469,8 +551,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // time.
     setPreviousSessionMs(randomPreviousSessionMs());
     setPreviousSessionEndedAt(new Date());
+    beginTransition("submit");
     playSoundEffect("submit");
-  }, []);
+  }, [beginTransition]);
   const clearAndDiscard = useCallback(() => {
     // Same reasoning as endAndSubmit's own resetSignal bump above —
     // discarding is the other path that ends a session, and the point of
@@ -515,6 +598,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const t1 = window.setTimeout(() => {
         setTransitionStage(2);
         commit();
+        beginTransition(kind);
         // start-new's own pill travel doesn't begin until DIGIT_SETTLE_MS
         // after this commits (the odometer settles to zero first — see
         // DIGIT_SETTLE_MS's own comment), and StatusBar's box-collapse now
@@ -537,7 +621,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }, CARD_EXIT_MS);
       transitionTimeoutsRef.current.push(t1);
     },
-    [],
+    [beginTransition],
   );
 
   const requestStartNew = useCallback(
@@ -834,6 +918,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       collapsed,
       boxCollapsed,
       pillTraveling,
+      transition,
       requestStartNew,
       requestResume,
       requestDiscard,
@@ -871,6 +956,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       collapsed,
       boxCollapsed,
       pillTraveling,
+      transition,
       requestStartNew,
       requestResume,
       requestDiscard,
