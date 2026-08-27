@@ -466,15 +466,6 @@ export function StatusBar({
   // Motion itself reports that tween complete (via onActionsHeightSettled,
   // passed down to the actions row's own onAnimationComplete) — no guessing.
   const boxWrapRef = useRef<HTMLDivElement>(null);
-  // The session box's own OUTER animated element (the motion.div whose real
-  // `height` style Motion drives between 0 and boxNaturalHeight) — distinct
-  // from boxWrapRef above, which sizes to its unconstrained natural content
-  // and so never itself reports the collapsed/collapsing height. Observed
-  // by miniPillRect below: NotificationBar renders AFTER this box in
-  // document flow, so its own position — and therefore where the mini pill
-  // should land — genuinely moves while this box is still mid-collapse, not
-  // just once it's settled.
-  const sessionBoxAnimatedRef = useRef<HTMLDivElement>(null);
   const [boxNaturalHeight, setBoxNaturalHeight] = useState<number | null>(null);
   const actionsRowSettlingRef = useRef(false);
   const wasPausedForActionsRef = useRef(status === "paused");
@@ -714,15 +705,7 @@ export function StatusBar({
     const digitEl = miniDigitAnchorRef.current;
     const notificationBarWrapEl = notificationBarWrapRef.current;
     const containerEl = pillAnchorContainerRef.current;
-    const sessionBoxEl = sessionBoxAnimatedRef.current;
-    if (
-      !titleRowEl ||
-      !saveIndicatorWrapEl ||
-      !digitEl ||
-      !notificationBarWrapEl ||
-      !containerEl ||
-      !sessionBoxEl
-    ) {
+    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl || !notificationBarWrapEl || !containerEl) {
       return;
     }
     const measure = () => {
@@ -735,15 +718,27 @@ export function StatusBar({
       // clears the content pane below with a visible gap instead of
       // sitting flush against it — the reserved mini slot (see
       // miniSlotRef) is a few px taller than the pill itself specifically
-      // to leave room for this. Takes whichever of the title row or the
-      // notification bar currently ends lower — the notification bar's
-      // wrapper always renders (even with zero height when there's
-      // nothing to show), so its own bottom edge naturally already sits
-      // below the title row's when there's genuinely nothing there.
-      // Relative to pillAnchorContainerRef, not raw viewport pixels — see
-      // that ref's own comment for why.
+      // to leave room for this.
+      //
+      // Uses the notification wrapper's own HEIGHT, not its live BOTTOM
+      // position — the wrapper renders AFTER the session box in document
+      // flow, so its bottom edge is only where it "should" be once the box
+      // has actually settled at its target height. Mini is only ever the
+      // active pillView while that target is 0 (collapsed) — start-new/
+      // join/resume all land there — but the box's own collapse takes real
+      // time to visually finish, and mid-flight its current height can
+      // still be most of the way to its expanded size. Reading the
+      // notification wrapper's live bottom during that window measured
+      // "title row + box's still-mostly-expanded height + banner", sending
+      // the pill target diving toward the content pane before correcting
+      // back up as the box actually finished collapsing — a real dip that
+      // showed up as an unwanted bounce on resume in particular. Adding
+      // the wrapper's own height to the title row's bottom instead assumes
+      // the box is already at its target (0) unconditionally, which is
+      // exactly the assumption that's always true whenever mini matters.
       const top =
-        Math.max(titleRowRect.bottom, notificationBarWrapEl.getBoundingClientRect().bottom) -
+        titleRowRect.bottom +
+        notificationBarWrapEl.getBoundingClientRect().height -
         containerRect.top;
       // The wrapper's OWN border-box right edge sits at the viewport edge
       // (its `-mr-4` cancels this row's own right padding entirely) — its
@@ -774,12 +769,6 @@ export function StatusBar({
     ro.observe(saveIndicatorWrapEl);
     ro.observe(digitEl);
     ro.observe(notificationBarWrapEl);
-    // Fires on every real frame of the box's own Motion-driven collapse/
-    // expand — a live height change is exactly what ResizeObserver already
-    // reports natively — so the notification bar's dependent position (and
-    // this pill's target) tracks that collapse in real time instead of
-    // landing wherever the box happened to be at one synchronous read.
-    ro.observe(sessionBoxEl);
     window.addEventListener("resize", measure);
     document.fonts?.ready.then(measure);
     return () => {
@@ -960,7 +949,6 @@ export function StatusBar({
                 The pill inside is hidden when running so only the mini pill carries the
                 shared layoutId, letting motion morph cleanly between the two positions. */}
               <motion.div
-                ref={sessionBoxAnimatedRef}
                 initial={false}
                 animate={{
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
@@ -1359,6 +1347,10 @@ export function StatusBar({
                     "flex-1 flex items-center justify-center leading-none font-medium transition-colors",
                     toMini ? "px-2 text-blue-700" : "px-3",
                     !toMini && (digitsGray ? "text-stone-400" : "text-stone-800"),
+                    // Same pulse as the "Session Paused" label above it —
+                    // one shared visual cue for "this is paused", not two
+                    // different ones.
+                    isPaused && "animate-pulse-gentle",
                   )}
                   style={{ transitionDuration: `${pillCssDurationMs}ms` }}
                   initial={false}
@@ -1367,7 +1359,7 @@ export function StatusBar({
                 >
                   <OdometerDigits
                     text={formatTime(pillElapsed)}
-                    slow={transitionKind === "start-new" || transitionKind === "join"}
+                    slow={transitionKind === "start-new"}
                   />
                 </motion.span>
                 {/* No button at all once truly idle — there's nothing to

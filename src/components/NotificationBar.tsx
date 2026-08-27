@@ -240,14 +240,16 @@ export function NotificationBar() {
   return (
     // Full viewport width (not the centered max-w column) so a row has room
     // to actually slide off the edge of the screen when dragged/committed,
-    // instead of getting clipped by a narrow centered container. The top
-    // padding only applies when there's actually a notification to show —
-    // otherwise this wrapper still rendered an unconditional 8px gap
+    // instead of getting clipped by a narrow centered container. The top/
+    // bottom padding only applies when there's actually a notification to
+    // show — otherwise this wrapper still rendered an unconditional gap
     // between the header above and the tabs row below with nothing in it.
+    // Bottom padding specifically keeps an alert's own bottom edge from
+    // touching the mini session pill that lands directly below this.
     <div
       className={cn(
         "px-3 overflow-x-hidden pointer-events-none ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen",
-        visible.length > 0 && "pt-2",
+        visible.length > 0 && "pt-2 pb-2",
       )}
     >
       <motion.div
