@@ -43,7 +43,6 @@ import {
   BOX_COLLAPSE_MS,
   DIGIT_SETTLE_MS,
   PILL_TRAVEL_MS,
-  PILL_CROSSFADE_MS,
   SESSION_TRANSITION_SPEED,
   type SaveStatus,
   type SessionStatus,
@@ -68,12 +67,6 @@ import { DATA_TYPE_INFO } from "@/lib/dataTypeInfo";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
 import { useSettings } from "@/components/SettingsContext";
-import {
-  TIMER_MORPH_DIGIT_MINI,
-  TIMER_MORPH_DIGIT_FULL,
-  TIMER_MORPH_BORDER_MINI,
-  TIMER_MORPH_BORDER_FULL,
-} from "@/lib/actionColors";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
@@ -129,6 +122,18 @@ const SESSION_MORPH_EASE = NOTIFICATION_AREA_TRANSITION.ease;
 // physical (something arriving somewhere), so it gets a more pronounced
 // ease-out than the rest of the header's snappier, mechanical transitions.
 const PILL_TRAVEL_EASE = [0.22, 1, 0.36, 1] as const;
+// The mini pill's fixed shape — everything about it EXCEPT its digits' own
+// natural (variable) width. `MINI_DIGIT_PADDING_PX` is the digit span's
+// `px-2` (8px each side); `MINI_BUTTON_PX`/`MINI_PILL_HEIGHT_PX` match its
+// button's `w-7`/the pill's own `h-7`.
+const MINI_DIGIT_PADDING_PX = 16;
+const MINI_BUTTON_PX = 28;
+const MINI_PILL_HEIGHT_PX = 28;
+// The big pill's fixed button width (`w-14`) and height (`h-12`) — its
+// digit span has no fixed width of its own (`flex-1`, fills whatever the
+// button doesn't take), so unlike the mini pill above this needs no
+// separate "digit padding" constant.
+const BIG_BUTTON_PX = 56;
 // ExpandedSessionBox's own action-button row (Start New Session <-> End &
 // Submit/Discard) animates its height over this long whenever `isPaused`
 // flips — see that component's own comment on why it's a measured pixel
@@ -292,10 +297,7 @@ export function StatusBar({
     previousSessionMs,
     previousSessionEndedAt,
   } = useSession();
-  // The pill travel overlay's digit/border colors are theme-aware (see
-  // actionColors.ts's own comment) — need the current theme to pick the
-  // right pair, not just the "mini" ones, which stay stone in every theme.
-  const { colorTheme, catEarsEnabled } = useSettings();
+  const { catEarsEnabled } = useSettings();
 
   // See use-initial-layout-settle's own comment — this box's demo-only
   // "Previous Session" row growing the box shortly after mount is real,
@@ -377,6 +379,8 @@ export function StatusBar({
   // the box is currently showing needs to agree with that same condition,
   // not just whether the timer happens to be running.
   const isMineAndRunning = isRunning && isSessionMine;
+  const isIdle = status === "idle";
+  const isPaused = status === "paused";
 
   // Which staff member and timestamp the box attributes its content to,
   // depending on why it's showing at all: idle shows the previous,
@@ -431,6 +435,10 @@ export function StatusBar({
   // when the box collapses — except for discard, where the box was already
   // expanded (paused) and stays that way; only its displayed value swaps.
   const dimmed = transitionStage > 0;
+  // Gray only while genuinely idle and showing a leftover previous-session
+  // value — once paused (this session's own time) or once a start/resume has
+  // been pressed (about to become live), it reads as black.
+  const digitsGray = isIdle && !dimmed;
   // Same "never animate to the literal string auto" fix as actionsHeight
   // below: without it, whenever the pill itself enters/leaves this box (its
   // biggest content change), Motion's cached "auto" resolution snaps the
@@ -519,42 +527,39 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
-  // True once the box's own collapse (the height/opacity tween just below,
-  // in the boxCollapsed-true branch) has actually finished — not just
-  // started. Reset back to false the instant the box starts opening again.
-  // The travel overlay's own closing effect (see `visualTravelActive`)
-  // needs this real completion, not the bare `boxCollapsed` boolean: that
-  // flips true the moment the collapse is merely SCHEDULED to start, which
-  // is also roughly when the pill's own travel window ends — using it
-  // directly would hand off to the real destination pill element well
-  // before the box has visually finished shrinking to make room for it.
-  const [boxCollapseSettled, setBoxCollapseSettled] = useState(false);
-  const prevBoxCollapsedForSettleRef = useRef(boxCollapsed);
-  if (boxCollapsed !== prevBoxCollapsedForSettleRef.current) {
-    prevBoxCollapsedForSettleRef.current = boxCollapsed;
-    if (!boxCollapsed) setBoxCollapseSettled(false);
-  }
-  const handleBoxCollapseAnimationComplete = useCallback(() => {
-    if (boxCollapsed) setBoxCollapseSettled(true);
-  }, [boxCollapsed]);
-
   // Bumped once every time the box transitions from collapsed back to
   // expanded (pausing — the only route back into the big box that skips
   // `dimmed` entirely, since it's a plain, unstaged action) — keys the
   // label/context and actions-row's own entrance animation below (see
   // ENTER_SCALE's own comment), forcing a fresh initial->animate replay
   // each time rather than the static "instantly revealed by the growing
-  // box" look those pieces had before. Same same-render "adjust during
-  // render" pattern as `wasPausedForActionsRef` above (and
-  // `prevCollapsedRef` in SessionContext) — set the instant `boxCollapsed`
-  // flips, not a tick later in an effect, so the very same commit that
-  // unhides this content also mounts it in its pre-entrance state.
+  // box" look those pieces had before.
+  //
+  // A `useLayoutEffect`, not the same-render "adjust during render" pattern
+  // `wasPausedForActionsRef` above uses — this one used to mutate
+  // `prevBoxCollapsedForEntranceRef` directly in the render body too, but
+  // this component ALSO has `prevBoxCollapsedForSettleRef` right above
+  // doing the identical dance off the same `boxCollapsed` transition. Two
+  // separate render-phase `setState` calls firing off the same prop change
+  // in the same render, each restarting the render themselves, measurably
+  // corrupted this one in practice: `expandGen` was confirmed (via direct
+  // instrumentation) to sometimes commit back at its PRE-bump value instead
+  // of the bumped one, later in the same transition, with no explanation
+  // under React's documented single-restart model for this pattern — not
+  // provably root-caused beyond that, but reliably reproducible. A
+  // dependency-scoped effect sidesteps the whole class of restart
+  // interactions: it can't run mid-render, so nothing about a sibling
+  // render-phase update can touch it. The cost is a one-commit lag before
+  // this fires relative to `boxCollapsed` itself flipping — imperceptible
+  // next to the box's own SESSION_MORPH_MS reveal, which hasn't even
+  // started painting a visible height yet at that point.
   const prevBoxCollapsedForEntranceRef = useRef(boxCollapsed);
   const [expandGen, setExpandGen] = useState(0);
-  if (boxCollapsed !== prevBoxCollapsedForEntranceRef.current) {
+  useLayoutEffect(() => {
+    if (boxCollapsed === prevBoxCollapsedForEntranceRef.current) return;
     prevBoxCollapsedForEntranceRef.current = boxCollapsed;
     if (!boxCollapsed) setExpandGen((g) => g + 1);
-  }
+  }, [boxCollapsed]);
 
   // The big pill's own inline button is 3 different actions depending on
   // why the pill is even showing (see ExpandedSessionBox's own isPaused/
@@ -580,25 +585,188 @@ export function StatusBar({
         ? 0
         : previousSessionMs;
 
-  // Manual FLIP for the pill's big<->mini morph. Motion's layoutId FLIP
-  // turned out to ignore the configured duration entirely for a size delta
-  // this large (verified by setting it to 2s and seeing no change in pace)
-  // — this replaces it with a shape we animate ourselves (so timing is
-  // actually ours to control), then crossfade into the real, correctly
-  // laid-out element once it lands. See the overlay render below.
-  const bigPillRef = useRef<HTMLDivElement>(null);
-  const miniPillRef = useRef<HTMLDivElement>(null);
+  // The pill is now a SINGLE, permanently-mounted element (see
+  // SessionPill's own comment below) instead of three (a resting big pill,
+  // a resting mini pill, and a manually-animated travel clone crossfading
+  // between whichever two of those were relevant) — there's no "from" to
+  // snapshot and no handoff to time, since the one real element simply
+  // keeps existing and Motion animates its own current rendered state
+  // toward whatever the new target is. All that's left to compute here is
+  // WHERE the two resting targets currently are.
+  //
+  // `bigPillAnchorRef` is an invisible, permanently-mounted spacer inside
+  // ExpandedSessionBox, sized exactly like the big pill (`h-12 w-full`) —
+  // it's a DESCENDANT of the box, so the box's own `overflow-hidden` clip
+  // during its height tween only affects paint, never layout: its
+  // `getBoundingClientRect()` already reflects its real, fully-expanded
+  // final position from the very first frame, regardless of how far the
+  // box's own height tween has actually gotten.
+  const bigPillAnchorRef = useRef<HTMLDivElement>(null);
+  const [bigPillRect, setBigPillRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const el = bigPillAnchorRef.current;
+    if (!el) return;
+    // A single synchronous measure() at mount isn't safe here despite the
+    // anchor comment above about the box's own height tween — the anchor's
+    // HORIZONTAL position can still be transiently wrong on the very first
+    // layout pass (fonts not yet applied, an ancestor not yet at its final
+    // width during hydration), and since nothing about the anchor's own box
+    // SIZE changes afterward, a ResizeObserver never fires again to correct
+    // it — the wrong value sits there permanently. Same failure mode (and
+    // same fix) as useElementRight's own settle-polling: keep measuring
+    // every frame until a few consecutive reads agree, instead of trusting
+    // the first one.
+    let last: { top: number; left: number; width: number; height: number } | null = null;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      const next = { top: r.top, left: r.left, width: r.width, height: r.height };
+      const changed =
+        !last ||
+        last.top !== next.top ||
+        last.left !== next.left ||
+        last.width !== next.width ||
+        last.height !== next.height;
+      last = next;
+      setBigPillRect(next);
+      return changed;
+    };
+    let raf = 0;
+    let settledStreak = 0;
+    let framesElapsed = 0;
+    const MAX_POLL_FRAMES = 120; // ~2s at 60fps — generous safety cap
+    const SETTLED_STREAK_TARGET = 4;
+    raf = requestAnimationFrame(function tick() {
+      const changed = measure();
+      settledStreak = changed ? 0 : settledStreak + 1;
+      framesElapsed += 1;
+      if (settledStreak < SETTLED_STREAK_TARGET && framesElapsed < MAX_POLL_FRAMES) {
+        raf = requestAnimationFrame(tick);
+      }
+    });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+    // Re-arms the settle-poll on every pillTraveling edge (travel starting
+    // AND landing), not just at mount — a ResizeObserver on this anchor
+    // alone can go quiet for the whole DIGIT_SETTLE_MS dwell before travel
+    // even starts (nothing about its own size changes during that wait),
+    // so the one poll from mount can genuinely finish, call itself
+    // "settled", and stop — permanently missing a real shift that shows up
+    // only once the transition actually gets moving.
+  }, [pillTraveling]);
+
+  // Mini pill's resting target isn't anchored to a real mini-pill element
+  // at all — it's derived from two OTHER, always-present layout facts (the
+  // title row's own bottom edge, the save indicator's own right edge) plus
+  // one small measured anchor purely for the digits' own natural width
+  // (`miniDigitAnchorRef`, an invisible copy of just the digit text — the
+  // rest of the mini pill's shape, height and button width, are fixed
+  // constants). Neither of the two position facts depends on the session
+  // box's current (possibly mid-collapse) height, so the target is
+  // correct immediately, not something that needs to be predicted and
+  // re-predicted as some OTHER element's own natural height settles on
+  // its own separate schedule.
+  const titleRowRef = useRef<HTMLDivElement>(null);
+  const saveIndicatorWrapRef = useRef<HTMLDivElement>(null);
+  const miniDigitAnchorRef = useRef<HTMLSpanElement>(null);
+  const [miniPillRect, setMiniPillRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const titleRowEl = titleRowRef.current;
+    const saveIndicatorWrapEl = saveIndicatorWrapRef.current;
+    const digitEl = miniDigitAnchorRef.current;
+    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl) return;
+    // Same settle-polling fix as bigPillRect above, for the same reason:
+    // none of these three elements' own SIZE changes once the page has
+    // settled, so a ResizeObserver alone never re-fires to correct a
+    // measurement taken on a transiently-wrong first layout pass (seen
+    // empirically landing 50-300px off on some mounts) — poll every frame
+    // until a few consecutive reads agree.
+    let last: { top: number; left: number; width: number; height: number } | null = null;
+    const measure = () => {
+      const titleRowRect = titleRowEl.getBoundingClientRect();
+      const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
+      const digitWidth = digitEl.getBoundingClientRect().width;
+      // +4 matches the nav row's own `mt-1` — safe to hardcode rather than
+      // measure, since it's only ever `mt-1` (not the not-running `mt-1.5`)
+      // by the time anything is landing in "mini": that only happens once
+      // `isRunning` is already true.
+      const top = titleRowRect.bottom + 4;
+      // The wrapper's OWN border-box right edge sits at the viewport edge
+      // (its `-mr-4` cancels this row's own right padding entirely) — its
+      // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
+      // so the anchor needs to subtract that same padding back out to
+      // land where the mini pill actually sits, not where the wrapper's
+      // own box ends. Read via getComputedStyle (not a hardcoded 6px) so
+      // it stays correct across the sm: breakpoint too.
+      const saveIndicatorPaddingRight =
+        parseFloat(getComputedStyle(saveIndicatorWrapEl).paddingRight) || 0;
+      const right = saveIndicatorWrapRect.right - saveIndicatorPaddingRight;
+      // MINI_DIGIT_PX/MINI_BUTTON_PX below — the digit span's own px-2
+      // horizontal padding (matching MINI_DIGIT_PADDING_PX) plus the fixed
+      // button width is the mini pill's total width; MINI_PILL_HEIGHT_PX
+      // is its fixed h-7.
+      const width = digitWidth + MINI_DIGIT_PADDING_PX + MINI_BUTTON_PX;
+      const next = { top, left: right - width, width, height: MINI_PILL_HEIGHT_PX };
+      const changed =
+        !last ||
+        last.top !== next.top ||
+        last.left !== next.left ||
+        last.width !== next.width ||
+        last.height !== next.height;
+      last = next;
+      setMiniPillRect(next);
+      return changed;
+    };
+    let raf = 0;
+    let settledStreak = 0;
+    let framesElapsed = 0;
+    const MAX_POLL_FRAMES = 120; // ~2s at 60fps — generous safety cap
+    const SETTLED_STREAK_TARGET = 4;
+    raf = requestAnimationFrame(function tick() {
+      const changed = measure();
+      settledStreak = changed ? 0 : settledStreak + 1;
+      framesElapsed += 1;
+      if (settledStreak < SETTLED_STREAK_TARGET && framesElapsed < MAX_POLL_FRAMES) {
+        raf = requestAnimationFrame(tick);
+      }
+    });
+    const ro = new ResizeObserver(measure);
+    ro.observe(titleRowEl);
+    ro.observe(saveIndicatorWrapEl);
+    ro.observe(digitEl);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+    // Same pillTraveling re-arm as bigPillRect above, and for the same
+    // reason: these three elements' own geometry can sit rock-stable for
+    // the whole DIGIT_SETTLE_MS dwell before travel starts, letting the
+    // mount-time poll call itself settled and quit well before whatever
+    // actually shifts once the transition gets moving.
+  }, [pillTraveling]);
 
   // Same "never animate to the literal string auto" fix as boxNaturalHeight/
   // actionsHeight above — Motion's own "auto" resolution re-measures
-  // whenever this slot's content shifts (the pill's own crossfade, the
-  // digits rolling), and can settle at a value below its final height
-  // before correcting back up, which read as the nav bouncing. A
-  // ResizeObserver-measured pixel number never does that. Declared up here
-  // (rather than down by its own render, where it used to live) so the
-  // pill-travel rect-prediction effect below can depend on it too — the
-  // mini slot's own still-growing height was a THIRD moving part in that
-  // prediction's own math, not just boxNaturalHeight.
+  // whenever this slot's content shifts, and can settle at a value below
+  // its final height before correcting back up, which read as the nav
+  // bouncing. A ResizeObserver-measured pixel number never does that.
   const miniSlotRef = useRef<HTMLDivElement>(null);
   const [miniSlotHeight, setMiniSlotHeight] = useState<number | null>(null);
   useLayoutEffect(() => {
@@ -611,13 +779,6 @@ export function StatusBar({
     return () => ro.disconnect();
   }, []);
 
-  // Stable references for the pill-travel overlay's "landing in mini"
-  // target — see their own render-site comments and the prediction effect
-  // below. Neither depends on the session box's own current height, unlike
-  // measuring the mini pill's own (not-yet-settled) rect directly did.
-  const titleRowRef = useRef<HTMLDivElement>(null);
-  const saveIndicatorWrapRef = useRef<HTMLDivElement>(null);
-
   // Only surfaced once you've actually joined (isMineAndRunning) — before
   // that, whoever's running it is already named front-and-center in the
   // big expanded box itself (see ExpandedSessionBox), so a second "who's
@@ -625,143 +786,20 @@ export function StatusBar({
   const otherPresentStaffIds = isMineAndRunning
     ? presentStaffIds.filter((id) => id !== CURRENT_STAFF_ID)
     : [];
+  // Which resting target the pill is currently headed for — flips the
+  // instant `pillTraveling` (SessionContext's shared, purely-timed window)
+  // opens, same as before. `pillTraveling`'s own timing already encodes
+  // the one real ordering constraint (pause waits for the box to grow
+  // before its landing spot exists) — StatusBar doesn't need its own copy
+  // of that delay logic, just to react to the shared clock.
   const [pillView, setPillView] = useState<"big" | "mini">(isMineAndRunning ? "mini" : "big");
-  // `pillTraveling` (from SessionContext) is the shared, purely-timed
-  // window — StatusBar's own visual travel (capturing rects, mounting the
-  // overlay below) is driven directly off it turning true/false rather
-  // than keeping its own separate copy, so the two can't drift apart the
-  // way a locally-mirrored flag could (see that field's own comment).
-  // `visualTravelActive` is local: on the rare mount where there's no
-  // outgoing pill element to travel FROM (no prior render to measure), the
-  // shared window still opens/closes on schedule, but there's nothing to
-  // actually animate — this stays false for that one case so the overlay
-  // and the temporarily-doubled big+mini pills don't render for nothing.
-  const [visualTravelActive, setVisualTravelActive] = useState(false);
-  const [pillTravelRect, setPillTravelRect] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
-  const pillTravelFromRef = useRef<DOMRect | null>(null);
   const prevPillTravelingRef = useRef(pillTraveling);
-  // Set alongside `pillTravelRect` below whenever this travel's `to` rect
-  // was predicted against a box collapse that hasn't actually happened yet
-  // (see that effect's own comment) — read by the closing effect further
-  // down to know whether it can hand off the instant travel ends, or needs
-  // to hold the overlay in place until the box genuinely catches up.
-  const pillTravelAwaitingCollapseRef = useRef(false);
-
-  // Reacts to the shared travel window OPENING: capture the outgoing
-  // element's rect fresh (before `pillView` flips and the DOM changes under
-  // it), then flip the view. Closing is handled by a separate effect below
-  // — it isn't simply "the instant pillTraveling ends" (see that effect's
-  // own comment), so it can't share this one's [pillTraveling] dependency.
   useLayoutEffect(() => {
     if (pillTraveling === prevPillTravelingRef.current) return;
     prevPillTravelingRef.current = pillTraveling;
     if (!pillTraveling) return;
-    // Reads the OLD `pillView` (this render's, before the setPillView below
-    // updates it) rather than deriving "which pill was showing" from
-    // isRunning/isMineAndRunning — joining a not-mine running session
-    // travels FROM the big pill even though isRunning was already true
-    // throughout, so isRunning alone can't tell the two apart.
-    const fromEl = pillView === "mini" ? miniPillRef.current : bigPillRef.current;
-    if (!fromEl) {
-      setPillView(isMineAndRunning ? "mini" : "big");
-      return;
-    }
-    pillTravelFromRef.current = fromEl.getBoundingClientRect();
-    setPillTravelRect(null);
-    setVisualTravelActive(true);
     setPillView(isMineAndRunning ? "mini" : "big");
-  }, [pillTraveling, isMineAndRunning, pillView]);
-
-  // Closes the travel overlay out — normally the instant `pillTraveling`
-  // ends, EXCEPT when this travel's `to` rect was predicted against a box
-  // collapse that hasn't actually finished yet (landing in "mini" ahead of
-  // the box closing around it — see the prediction effect below and
-  // `boxCollapseSettled`'s own comment). Handing off to the real
-  // destination pill element before the box has genuinely finished
-  // shrinking would reveal it sitting at its still-uncollapsed (lower)
-  // position — a second, seemingly independent copy — which then visibly
-  // jumps up once the box's own collapse actually catches up moments
-  // later. Waiting here instead means the overlay (already motionless at
-  // the correct predicted spot) simply stays put until that's genuinely
-  // true, so the handoff is invisible.
-  useEffect(() => {
-    if (pillTraveling || !visualTravelActive) return;
-    if (pillTravelAwaitingCollapseRef.current && !boxCollapseSettled) return;
-    setVisualTravelActive(false);
-    setPillTravelRect(null);
-  }, [pillTraveling, visualTravelActive, boxCollapseSettled]);
-
-  // Once the destination element exists in the DOM (still invisible),
-  // work out where it's actually headed and keep the overlay pointed
-  // there. Landing in "mini" is anchored to the title row's own bottom
-  // edge and the save indicator's own right edge (see their render-site
-  // comments) rather than to the mini pill's own current rect — neither
-  // of those depends on the session box's current (possibly mid-collapse)
-  // height, so the target is already correct from the first frame of
-  // travel instead of needing to be predicted and re-predicted as the
-  // box's own natural height settles on its own separate schedule. Landing
-  // in "big" (pausing) just measures the big pill's own rect directly — the
-  // big pill is a DESCENDANT of the box, unlike the mini pill's sibling
-  // relationship to it, so the box's own `overflow-hidden` clip during its
-  // height tween only affects paint, never layout: `bigPillRef`'s
-  // `getBoundingClientRect()` already reflects its real, fully-expanded
-  // final position from the very first frame, regardless of how far the
-  // box's own height tween has actually gotten — there's nothing to anchor
-  // around POSITION-wise. (SessionContext's `pillTraveling` effect still
-  // waits out the box's own expand before this travel starts at all, but
-  // that's for a different reason — the tab bar/content pane below, not
-  // this rect's own accuracy — see that effect's own comment.)
-  useLayoutEffect(() => {
-    if (!visualTravelActive) return;
-    const fromRect = pillTravelFromRef.current;
-    if (!fromRect) return;
-    if (pillView === "mini") {
-      const titleRowEl = titleRowRef.current;
-      const saveIndicatorWrapEl = saveIndicatorWrapRef.current;
-      const miniEl = miniPillRef.current;
-      if (!titleRowEl || !saveIndicatorWrapEl || !miniEl) return;
-      const titleRowRect = titleRowEl.getBoundingClientRect();
-      const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
-      // Width/height still come from the real element — those aren't
-      // affected by the box-height staleness bug, and do genuinely vary a
-      // little (the elapsed-time digits' own natural width).
-      const rawTo = miniEl.getBoundingClientRect();
-      // +4 matches the nav row's own `mt-1` — safe to hardcode rather than
-      // measure, since it's only ever `mt-1` (not the not-running `mt-1.5`)
-      // by the time anything is landing in "mini": that only happens once
-      // `isRunning` is already true.
-      const anchorTop = titleRowRect.bottom + 4;
-      // The wrapper's OWN border-box right edge sits at the viewport edge
-      // (its `-mr-4` cancels this row's own right padding entirely) — its
-      // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
-      // so the anchor needs to subtract that same padding back out to land
-      // where the save indicator itself (and, by design, the mini pill)
-      // actually sits, not where the wrapper's own box ends. Read via
-      // getComputedStyle (not a hardcoded 6px) so it stays correct across
-      // the sm: breakpoint too.
-      const saveIndicatorPaddingRight =
-        parseFloat(getComputedStyle(saveIndicatorWrapEl).paddingRight) || 0;
-      const anchorRight = saveIndicatorWrapRect.right - saveIndicatorPaddingRight;
-      const to = new DOMRect(anchorRight - rawTo.width, anchorTop, rawTo.width, rawTo.height);
-      // Still true whenever the box hasn't actually finished collapsing
-      // yet — the ANCHOR itself is already correct regardless, but the
-      // real destination element's own rect isn't until the box's own
-      // height genuinely reaches 0, so the handoff (see the closing
-      // effect above) still needs to wait for that.
-      pillTravelAwaitingCollapseRef.current = collapsed && !boxCollapsed;
-      setPillTravelRect({ from: fromRect, to });
-      return;
-    }
-    const toEl = bigPillRef.current;
-    if (!toEl) return;
-    pillTravelAwaitingCollapseRef.current = false;
-    setPillTravelRect({ from: fromRect, to: toEl.getBoundingClientRect() });
-  }, [visualTravelActive, pillView, collapsed, boxCollapsed]);
-
-  const renderBigPill = pillView === "big" || visualTravelActive;
-  const renderMiniPill = pillView === "mini" || visualTravelActive;
-  const bigPillVisible = pillView === "big" && !visualTravelActive;
-  const miniPillVisible = pillView === "mini" && !visualTravelActive;
+  }, [pillTraveling, isMineAndRunning]);
 
   // The content pane below gets its own border-t (routes/index.tsx) so it
   // reads as a real seam under every OTHER tab and in the gaps between
@@ -870,6 +908,23 @@ export function StatusBar({
               </div>
             </div>
 
+            {/* Invisible, permanently-mounted (unlike the real mini-session
+                slot below, which only mounts once `pillView` is "mini") —
+                exists purely so the mini target's own rect (see
+                miniPillRect's own comment) is measurable from the very
+                first render, before the pill has ever traveled anywhere.
+                Zero footprint: `h-0 overflow-hidden` clips its own layout
+                contribution to nothing, `pointer-events-none` keeps it out
+                of the way. */}
+            <div className="h-0 overflow-hidden pointer-events-none" aria-hidden>
+              <span
+                ref={miniDigitAnchorRef}
+                className="inline-block text-sm leading-none font-medium"
+              >
+                <OdometerDigits text={formatTime(pillElapsed)} />
+              </span>
+            </div>
+
             {/* LayoutGroup for this box/notification-bar/nav trio now lives in
               routes/index.tsx, wrapping this whole StatusBar plus the panel
               section below it, so the tabs and the panel FLIP in the same
@@ -884,7 +939,6 @@ export function StatusBar({
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
                   opacity: boxCollapsed ? 0 : 1,
                 }}
-                onAnimationComplete={handleBoxCollapseAnimationComplete}
                 transition={
                   boxCollapsed
                     ? {
@@ -956,14 +1010,11 @@ export function StatusBar({
                     isAbandoned={isAbandoned}
                     reviewModeUnlocked={reviewModeUnlocked}
                     onToggleReviewMode={() => setReviewModeUnlocked(!reviewModeUnlocked)}
-                    renderPill={renderBigPill}
-                    pillVisible={bigPillVisible}
-                    pillRef={bigPillRef}
+                    bigPillAnchorRef={bigPillAnchorRef}
                     dimmed={dimmed}
                     expandGen={expandGen}
                     suppressEntranceAnimation={suppressEntranceAnimation}
                     transitionKind={dimmed ? transitionKind : null}
-                    onPlay={requestPlay}
                     onStartNew={requestStartNew}
                     onEnd={() => {
                       playSoundEffect("question");
@@ -1107,33 +1158,35 @@ export function StatusBar({
                 </div>
 
                 <AnimatePresence initial={false}>
-                  {renderMiniPill && (
+                  {pillView === "mini" && (
                     // -mr-4 cancels the header's own px-4 edge padding, then
                     // pr-1.5/pr-2 re-adds it to match pb-1.5/pb-2 exactly — same
                     // clearance on the right as there is below the pill. Reserves
-                    // its slot in the tabs row whenever it's the resting view OR
-                    // mid-travel (so the destination has somewhere to measure/
-                    // crossfade into); visibility itself is separate, see
-                    // pillVisible below. Animating this slot's OWN height (it
-                    // used to just pop in) means the nav's real height grows
-                    // in smoothly instead of jumping in one frame — that
-                    // instant jump was what made the tabs/panel below visibly
-                    // detach from it, since only a discrete size change like
-                    // that (not a `layout="position"` reposition) needs its
-                    // own transition to not be felt downstream. Targets
-                    // miniSlotHeight (a measured pixel number), never the
-                    // string "auto" — see its comment above. `initial`/
-                    // `transition` skip the entrance entirely while
-                    // `suppressEntranceAnimation` is true — this slot can
-                    // mount for the first time while still hidden behind
-                    // the welcome screen (a random initial state that's
-                    // already "running, mine"), and since `initial` is only
-                    // ever read once, at mount, letting it request the real
-                    // grow-from-0 entrance there would either not progress
-                    // at all until this screen later became visible, or
-                    // (worse) still be captured as "mid-flight" once it did
-                    // — either way reading as this slot animating into
-                    // place during what should be a static slide-in.
+                    // its slot in the tabs row whenever the pill's resting
+                    // target is mini (which flips the instant travel toward
+                    // it begins — see `pillView`'s own comment — so the
+                    // space opens up in step with the real persistent pill
+                    // heading here, not a beat later). Animating this slot's
+                    // OWN height (it used to just pop in) means the nav's
+                    // real height grows in smoothly instead of jumping in
+                    // one frame — that instant jump was what made the tabs/
+                    // panel below visibly detach from it, since only a
+                    // discrete size change like that (not a `layout="position"`
+                    // reposition) needs its own transition to not be felt
+                    // downstream. Targets miniSlotHeight (a measured pixel
+                    // number), never the string "auto" — see its comment
+                    // above. `initial`/`transition` skip the entrance
+                    // entirely while `suppressEntranceAnimation` is true —
+                    // this slot can mount for the first time while still
+                    // hidden behind the welcome screen (a random initial
+                    // state that's already "running, mine"), and since
+                    // `initial` is only ever read once, at mount, letting it
+                    // request the real grow-from-0 entrance there would
+                    // either not progress at all until this screen later
+                    // became visible, or (worse) still be captured as
+                    // "mid-flight" once it did — either way reading as this
+                    // slot animating into place during what should be a
+                    // static slide-in.
                     <motion.div
                       key="mini-session-slot"
                       initial={suppressEntranceAnimation ? false : { height: 0, opacity: 0 }}
@@ -1153,15 +1206,19 @@ export function StatusBar({
                       // fully unclipped instead; the brief height animation
                       // doesn't read as messy without it.
                     >
-                      <div ref={miniSlotRef} className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4">
-                        <MiniSession
-                          elapsedMs={pillElapsed}
-                          onPause={pause}
-                          disabled={!isRunning}
-                          pillVisible={miniPillVisible}
-                          pillRef={miniPillRef}
-                        />
-                      </div>
+                      {/* Invisible — StatusBar's own single persistent pill
+                          (see its own comment) renders the real content;
+                          this exists purely to reserve this slot's own
+                          height (via miniSlotRef/miniSlotHeight above), a
+                          fixed MINI_PILL_HEIGHT_PX regardless of the
+                          digits' own natural width (that's measured
+                          separately, see miniPillRect's own always-mounted
+                          anchor). */}
+                      <div
+                        ref={miniSlotRef}
+                        className="pb-1.5 sm:pb-2 pr-1.5 sm:pr-2 -mr-4"
+                        style={{ height: MINI_PILL_HEIGHT_PX }}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1182,91 +1239,122 @@ export function StatusBar({
           style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
         />
       )}
-      {/* The pill's own travel shape — carries real digits (not an empty
-          outline) so the clock reads as the same object shrinking and
-          moving, not a blank placeholder. Animated with real numeric
-          top/left/width/height/font-size targets (not layoutId), so the
-          duration is actually honored. Rendered outside data-status-bar's
-          overflow-hidden so position:fixed isn't clipped. */}
-      <AnimatePresence>
-        {visualTravelActive &&
-          pillTravelRect &&
-          (() => {
-            const toMini = pillView === "mini";
-            const digitFull = TIMER_MORPH_DIGIT_FULL[colorTheme];
-            const borderFull = TIMER_MORPH_BORDER_FULL[colorTheme];
-            const digitPx = { from: toMini ? 30 : 14, to: toMini ? 14 : 30 };
-            const digitColor = {
-              from: toMini ? TIMER_MORPH_DIGIT_MINI : digitFull,
-              to: toMini ? digitFull : TIMER_MORPH_DIGIT_MINI,
-            };
-            const buttonPx = { from: toMini ? 56 : 28, to: toMini ? 28 : 56 };
-            const borderColor = {
-              from: toMini ? TIMER_MORPH_BORDER_MINI : borderFull,
-              to: toMini ? borderFull : TIMER_MORPH_BORDER_MINI,
-            };
-            return (
-              <motion.div
-                key="pill-travel-overlay"
-                initial={{
-                  top: pillTravelRect.from.top,
-                  left: pillTravelRect.from.left,
-                  width: pillTravelRect.from.width,
-                  height: pillTravelRect.from.height,
-                  borderColor: borderColor.from,
-                  opacity: 1,
-                }}
-                animate={{
-                  top: pillTravelRect.to.top,
-                  left: pillTravelRect.to.left,
-                  width: pillTravelRect.to.width,
-                  height: pillTravelRect.to.height,
-                  borderColor: borderColor.to,
-                  opacity: 1,
-                }}
-                exit={{ opacity: 0, transition: { duration: PILL_CROSSFADE_MS / 1000 } }}
+      {/* THE session pill — a single element, permanently mounted, that is
+          the big pill AND the mini pill AND the thing that travels between
+          them, rather than three separate elements (a resting big pill, a
+          resting mini pill, and a manually-animated travel clone that
+          crossfades into whichever of those two it lands on). That third
+          piece existed only because Motion's `layoutId` shared-element
+          morph turned out to ignore the configured duration entirely for a
+          size delta this large (verified by setting it to 2s and seeing no
+          change in pace) — replacing it with a shape animated by real
+          numeric top/left/width/height/font-size targets (not layoutId)
+          kept timing under actual control. Making that shape the ONLY
+          pill, always mounted, keeps that same numeric-target technique
+          but removes the swap: there's no "from" to snapshot and no
+          handoff to time, since the one real element simply keeps
+          existing and Motion animates its own current rendered state
+          toward whatever the new target is — which is also what makes the
+          old double-visible-pill bug structurally impossible now rather
+          than something to avoid hitting.
+          `pillTraveling` (SessionContext) already carries every delay this
+          needs (pause's own wait for the box to grow first, a fresh
+          start's wait for the odometer to settle) — `pillView` only flips
+          once that shared clock actually opens, so this never needs its
+          own copy of that timing, just a duration for the resulting
+          numeric tween. Colors are deliberately plain CSS classes with a
+          `transition-colors`, not part of the `animate` target: the
+          classes stay theme-aware for free (Tailwind's own `--color-*`
+          custom properties respond to the active theme; Motion's color
+          interpolation can't resolve a custom property mid-tween the way
+          CSS itself can — see actionColors.ts's own comment), and a plain
+          CSS transition on a class change animates just as smoothly.
+          Rendered outside data-status-bar's overflow-hidden so
+          position:fixed isn't clipped. */}
+      {bigPillRect &&
+        miniPillRect &&
+        (() => {
+          const toMini = pillView === "mini";
+          const target = toMini ? miniPillRect : bigPillRect;
+          const showButton = toMini || !isIdle;
+          const icon = toMini ? (
+            <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
+          ) : isPaused ? (
+            <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
+          ) : (
+            <ArrowRight className="size-3.5" strokeWidth={2.5} />
+          );
+          return (
+            <motion.div
+              className={cn(
+                "fixed z-50 flex items-stretch rounded-full border-2 bg-white overflow-hidden transition-colors",
+                toMini ? "border-blue-500" : "border-stone-300",
+              )}
+              style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
+              initial={false}
+              animate={{
+                top: target.top,
+                left: target.left,
+                width: target.width,
+                height: target.height,
+              }}
+              transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+            >
+              <motion.span
+                className={cn(
+                  "flex-1 flex items-center justify-center leading-none font-medium transition-colors",
+                  toMini ? "px-2 text-blue-700" : "px-3",
+                  !toMini && (digitsGray ? "text-stone-400" : "text-stone-800"),
+                )}
+                style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
+                initial={false}
+                animate={{ fontSize: toMini ? 14 : 30 }}
                 transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-                className="fixed z-50 flex items-stretch rounded-full border-2 bg-white pointer-events-none overflow-hidden"
               >
+                <OdometerDigits
+                  text={formatTime(pillElapsed)}
+                  slow={transitionKind === "start-new" || transitionKind === "join"}
+                />
+              </motion.span>
+              {/* No button at all once truly idle — there's nothing to
+                  resume/join, only "Start New Session" below, per the
+                  "no restarting a finished session" mental model. Only
+                  toggles while NOT traveling (idle is only ever reached
+                  via submit/discard, neither of which moves this pill —
+                  see TRANSITION_LANDED_MS's own comment), so mounting/
+                  unmounting it here never races an in-flight resize. */}
+              {showButton && (
                 <motion.span
-                  initial={{ fontSize: digitPx.from, color: digitColor.from }}
-                  animate={{ fontSize: digitPx.to, color: digitColor.to }}
-                  transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
-                  className="flex-1 flex items-center justify-center leading-none font-medium px-2"
-                >
-                  <OdometerDigits text={formatTime(pillElapsed)} />
-                </motion.span>
-                <motion.span
-                  initial={{ width: buttonPx.from }}
-                  animate={{ width: buttonPx.to }}
+                  initial={false}
+                  animate={{ width: toMini ? MINI_BUTTON_PX : BIG_BUTTON_PX }}
                   transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
                   className="shrink-0 bg-blue-500 grid place-items-center text-white"
                 >
-                  {/* Shows the DESTINATION icon from the very first frame of
-                      travel, not the departing one — toMini always means
-                      landing on the mini pill's own Pause affordance
-                      (resume/start-new/join all travel toward mini), and
-                      the only way travel ever heads the other direction is
-                      pause, always landing back on the big pill's own Play
-                      (resume) affordance. Without this the button-shaped
-                      end of the overlay was just a bare colored rectangle
-                      for the whole travel — e.g. resuming a session left
-                      the button looking blank instead of already reading
-                      as "now playing" the instant you tapped it. One fixed
-                      size for the whole travel (not animated alongside
-                      buttonPx) — legible at both the mini and big button's
-                      own width, so it doesn't need to itself pop between
-                      two sizes on top of the button's own resize. */}
-                  {toMini ? (
-                    <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
-                  ) : (
-                    <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
-                  )}
+                  <button
+                    onClick={toMini ? pause : requestPlay}
+                    aria-label={
+                      toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
+                    }
+                    className="btn-bevel grid place-items-center size-full bg-blue-500 hover:bg-blue-600 text-white transition-colors active:brightness-90"
+                  >
+                    {/* Scale lives on this inner span, not the button —
+                        see the (now-removed) resting big pill's own
+                        original comment: the button is a plain rectangle
+                        whose edges only look like a rounded pill-cap
+                        because the PARENT clips it with
+                        `overflow-hidden rounded-full` — scaling the
+                        button itself shrinks that rectangle away from
+                        the clip boundary on press, revealing the pill's
+                        white background around it. */}
+                    <span className="grid place-items-center active:scale-95 transition-transform">
+                      {icon}
+                    </span>
+                  </button>
                 </motion.span>
-              </motion.div>
-            );
-          })()}
-      </AnimatePresence>
+              )}
+            </motion.div>
+          );
+        })()}
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-400/80 ring-2 ring-inset ring-red-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
@@ -2007,14 +2095,11 @@ function ExpandedSessionBox({
   isAbandoned,
   reviewModeUnlocked,
   onToggleReviewMode,
-  renderPill = true,
-  pillVisible = true,
-  pillRef,
+  bigPillAnchorRef,
   dimmed = false,
   expandGen = 0,
   suppressEntranceAnimation = false,
   transitionKind = null,
-  onPlay,
   onStartNew,
   onEnd,
   onRequestDiscard,
@@ -2036,9 +2121,11 @@ function ExpandedSessionBox({
   isAbandoned: boolean;
   reviewModeUnlocked: boolean;
   onToggleReviewMode: () => void;
-  renderPill?: boolean;
-  pillVisible?: boolean;
-  pillRef?: React.RefObject<HTMLDivElement | null>;
+  /** The invisible, permanently-mounted spacer StatusBar's own single
+   *  persistent pill measures to know where "resting big" is — see its own
+   *  comment in StatusBar. Sized exactly like the real pill (`h-12 w-full`)
+   *  but renders no content of its own; the actual pill lives elsewhere. */
+  bigPillAnchorRef: React.RefObject<HTMLDivElement | null>;
   dimmed?: boolean;
   /** Bumped once every time the box expands back out from collapsed (see
    *  StatusBar's own comment) — keys the label/context/actions-row's
@@ -2057,7 +2144,6 @@ function ExpandedSessionBox({
    *  helper message that crossfades in over the label below, see its own
    *  comment. */
   transitionKind?: TransitionKind;
-  onPlay: () => void;
   onStartNew: () => void;
   onEnd: () => void;
   onRequestDiscard: () => void;
@@ -2088,10 +2174,6 @@ function ExpandedSessionBox({
   // so this doesn't need to re-encode it).
   const attributionVerb = isIdle ? "Saved" : isPaused ? "Paused" : "Started";
   const ease = SESSION_MORPH_EASE;
-  // Gray only while genuinely idle and showing a leftover previous-session
-  // value — once paused (this session's own time) or once a start/resume has
-  // been pressed (about to become live), it reads as black.
-  const digitsGray = status === "idle" && !dimmed;
 
   // Motion's "auto" height resolution wasn't reliable here (the collapse
   // kept resolving in under 40ms instead of easing over 250) — measuring
@@ -2177,10 +2259,44 @@ function ExpandedSessionBox({
   // this recomputes to `false` on every later render until the next open.
   const prevExpandGenForActionsRef = useRef(expandGen);
   const freshlyOpened = expandGen !== prevExpandGenForActionsRef.current;
-  if (freshlyOpened && pausedActionsHeight !== null) {
-    prevExpandGenForActionsRef.current = expandGen;
+  // The `actionsHeight !== pausedActionsHeight` guard isn't just a micro-
+  // optimization — it's load-bearing. The ref below only advances once a
+  // COMMIT actually happens (a `useLayoutEffect`, not a render-body
+  // mutation — see its own comment), which means `freshlyOpened` stays
+  // `true` across every render that occurs before that commit, e.g. once
+  // per every other unrelated re-render (elapsedMs ticking, etc.)
+  // happening to land in the same window. Without this guard, EVERY one of
+  // those renders re-issues `setActionsHeight(pausedActionsHeight)` — and
+  // confirmed empirically (direct instrumentation, not just reasoning from
+  // React's docs): React does NOT reliably treat a same-value render-phase
+  // dispatch as a no-op here, and repeated calls across enough renders hit
+  // the render-phase-update cap for real, throwing "Too many re-renders"
+  // and tearing down this whole component via its error boundary. Skipping
+  // the call once the value already matches avoids re-dispatching at all.
+  if (freshlyOpened && pausedActionsHeight !== null && actionsHeight !== pausedActionsHeight) {
     setActionsHeight(pausedActionsHeight);
   }
+  // Consuming the ref here, not in the render body above — mutating it
+  // synchronously during render (the way this used to work) landed on the
+  // COMMITTED render itself, not just the one that triggered it: React
+  // "adjust state during render" reruns this component's function
+  // synchronously (same pass, no extra paint) after `setActionsHeight`
+  // above, and since the ref had ALREADY been bumped inside that same
+  // render call, the re-run recomputed `freshlyOpened` as false before
+  // React ever committed anything — the height motion.div's own
+  // `transition` (which reads `freshlyOpened` fresh every render) always
+  // saw `false` on the render that actually painted, so it played its
+  // real, gradual ACTIONS_HEIGHT_MS tween from empty every time instead of
+  // the zero-duration snap this whole mechanism exists to provide. A
+  // `useLayoutEffect` only fires once per actual commit (not once per
+  // synchronous re-render-during-render call), so the ref advances a beat
+  // later than before — after the correctly-`true` render has already
+  // painted — instead of racing ahead of it.
+  useLayoutEffect(() => {
+    if (freshlyOpened && pausedActionsHeight !== null) {
+      prevExpandGenForActionsRef.current = expandGen;
+    }
+  }, [freshlyOpened, pausedActionsHeight, expandGen]);
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);
@@ -2291,55 +2407,12 @@ function ExpandedSessionBox({
           )}
         </motion.div>
 
-        {/* No layoutId morph — see the manual-FLIP overlay comment in
-            StatusBar for why. This just crossfades in/out at its own,
-            always-correct position/size once the traveling shape lands. */}
-        {renderPill && (
-          <div
-            ref={pillRef}
-            style={{ transitionDuration: `${PILL_CROSSFADE_MS}ms` }}
-            className={cn(
-              "flex items-stretch rounded-full overflow-hidden border-2 border-stone-300 bg-white w-full h-12 transition-opacity",
-              pillVisible ? "opacity-100" : "opacity-0 pointer-events-none",
-            )}
-          >
-            <span
-              className={cn(
-                "flex-1 flex items-center justify-center text-3xl leading-none font-medium px-3 transition-colors",
-                digitsGray ? "text-stone-400" : "text-stone-800",
-              )}
-              style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
-            >
-              <OdometerDigits
-                text={formatTime(elapsedMs)}
-                slow={transitionKind === "start-new" || transitionKind === "join"}
-              />
-            </span>
-            {/* No button at all once truly idle — there's nothing to
-                resume/join, only "Start New Session" below, per the
-                "no restarting a finished session" mental model. */}
-            {!isIdle && (
-              <button
-                onClick={onPlay}
-                aria-label={isPaused ? "Resume session" : "Join session"}
-                className="btn-bevel grid place-items-center w-14 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
-              >
-                <span className="grid place-items-center">
-                  {isPaused ? (
-                    <Play className="size-5" fill="currentColor" strokeWidth={0} />
-                  ) : (
-                    // Tried a custom "two lanes merging into an arrow" glyph
-                    // first (see JoinSessionIcon) — at this button's actual
-                    // 20px size the merge curves and the arrowhead both just
-                    // read as a plain ">>", so a single clean arrow reads
-                    // more clearly here.
-                    <ArrowRight className="size-5" strokeWidth={2.5} />
-                  )}
-                </span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* Invisible, permanently-mounted — StatusBar's own single
+            persistent pill (see its own comment) renders the real digits/
+            button and just measures this div to know where "resting big"
+            is. Same size as the real pill (`h-12 w-full`) so this box's
+            own natural height still accounts for the space it needs. */}
+        <div ref={bigPillAnchorRef} className="h-12 w-full" aria-hidden />
       </div>
 
       {/* Stays mounted (no AnimatePresence) and only ever fades for the
@@ -2579,48 +2652,6 @@ function DiscardAction({ onConfirm }: { onConfirm: () => void }) {
       >
         <ArrowRight className="size-4" strokeWidth={2.75} />
       </motion.button>
-    </div>
-  );
-}
-
-function MiniSession({
-  elapsedMs,
-  onPause,
-  disabled = false,
-  pillVisible = true,
-  pillRef,
-}: {
-  elapsedMs: number;
-  onPause: () => void;
-  disabled?: boolean;
-  pillVisible?: boolean;
-  pillRef?: React.RefObject<HTMLDivElement | null>;
-}) {
-  // No layoutId morph — see the manual-FLIP overlay comment in StatusBar.
-  // This just crossfades in/out at its own, always-correct position/size
-  // once the traveling shape lands.
-  return (
-    <div
-      ref={pillRef}
-      style={{ transitionDuration: `${PILL_CROSSFADE_MS}ms` }}
-      className={cn(
-        "flex items-stretch rounded-full overflow-hidden border-2 border-blue-500 bg-white h-7 transition-opacity",
-        pillVisible ? "opacity-100" : "opacity-0 pointer-events-none",
-      )}
-    >
-      <span className="flex items-center px-2 text-sm leading-none text-blue-700 font-medium">
-        <OdometerDigits text={formatTime(elapsedMs)} />
-      </span>
-      <button
-        onClick={disabled ? undefined : onPause}
-        aria-label="Pause session"
-        title="Pause session"
-        className="btn-bevel grid place-items-center w-7 bg-blue-500 hover:bg-blue-600 text-white transition-colors shrink-0 active:scale-95 active:brightness-90"
-      >
-        <span className="grid place-items-center">
-          <Pause className="size-3 -translate-x-0.5" fill="currentColor" strokeWidth={0} />
-        </span>
-      </button>
     </div>
   );
 }
