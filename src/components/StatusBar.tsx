@@ -153,7 +153,15 @@ const ACTIONS_DIM_SCALE = 0.94;
 // SessionContext's `pillTraveling` effect), rather than waiting for the pill
 // to actually land first. The big pill is a descendant of the box, not a
 // sibling like the mini pill, so nothing here needs to hold back for it.
-const ACTIONS_REVEAL_MS = 300 * SESSION_TRANSITION_SPEED;
+// Longer than it looks like it needs to be: on a fresh pause-open, this
+// whole row is clipped inside the outer box's own SESSION_MORPH_MS-long
+// height reveal (see the box height motion.div's comment), so the lower
+// buttons aren't scrolled into view until late in that reveal. A fade any
+// shorter finishes before then, so by the time those buttons are finally
+// uncovered they're already fully opaque — reading as a pop-in, not a
+// fade. Held past SESSION_MORPH_MS so there's still visible fade left once
+// the last button is revealed.
+const ACTIONS_REVEAL_MS = SESSION_MORPH_MS + 250;
 const ENTER_SCALE = 0.94;
 // How long to keep treating this screen as "just became visible" (see
 // `hasBeenVisible`/`suppressEntranceAnimation` below) after the
@@ -1922,7 +1930,11 @@ function formatRelativeFromNow(d: Date) {
 // dimming it — same idea as "Starting New Session" originally had all to
 // itself, now covering its two siblings too.
 const TRANSITION_MESSAGES: Record<Exclude<TransitionKind, null>, string> = {
-  "start-new": "Starting New Session",
+  // Shorter than "Starting New Session" on purpose: the pill's own
+  // clock-to-mini-slot travel flies up through this same header area a
+  // beat later (see PILL_TRAVEL_MS), and the longer text was wide enough
+  // to still be under it mid-flight, reading as an overlap.
+  "start-new": "Starting Session",
   join: "Joining Session",
   resume: "Resuming Session",
   discard: "Discarding Session",
@@ -2396,10 +2408,12 @@ function ExpandedSessionBox({
               motion.div above — Motion's onAnimationComplete fires once ALL
               of an element's own animated properties finish, and this pair
               deliberately runs on a slower, direction-dependent clock
-              (ACTIONS_DIM_MS fading out, ACTIONS_REVEAL_MS entering) than
-              the snappier ACTIONS_HEIGHT_MS the outer div's height — and by
-              extension onActionsHeightSettled, and by extension
-              boxNaturalHeight's own correction — needs to keep running on.
+              (ACTIONS_DIM_MS fading out, ACTIONS_REVEAL_MS entering — see
+              that constant's own comment for why it's held past
+              SESSION_MORPH_MS) than the snappier ACTIONS_HEIGHT_MS the outer
+              div's height — and by extension onActionsHeightSettled, and by
+              extension boxNaturalHeight's own correction — needs to keep
+              running on.
               `key={expandGen}` forces a fresh initial->animate replay on
               every entrance (mount doesn't otherwise change, since this row
               never unmounts) — `initial={false}` on the very first render
