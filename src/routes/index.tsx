@@ -24,7 +24,6 @@ import { ScheduleView } from "@/components/ScheduleView";
 import {
   SessionProvider,
   useSession,
-  PILL_LAND_MS,
   CURRENT_STAFF_ID,
   DATA_BANNER_EXIT_MS,
   SESSION_TRANSITION_SPEED,
@@ -1568,13 +1567,14 @@ function IndexInner({
 
   // Which single-unit animation the card list should play, and a remount
   // key. Idle never shows cards at all any more (see cardsHidden's own
-  // default-value comment below), so every route back INTO a running
-  // session — start-new included, now — is a real entrance that needs one
-  // of these: start-new reuses join's whole-list slide-in rather than
-  // getting its own variant (see the transitionStage-2 effect below).
-  // Submit and discard don't reveal anything at their own end any more
-  // either (idle has nothing to show), so this only ever actually changes
-  // for join and start-new now.
+  // default-value comment below), so start-new needs a real entrance —
+  // it reuses this "join" variant's whole-list slide-in rather than
+  // getting its own (see the transitionStage-2 effect below). The name is
+  // legacy: an actual join no longer touches the card list at all (see
+  // cardsHidden's own comment on why below), so this key only ever
+  // actually fires for start-new now. Submit and discard don't reveal
+  // anything at their own end either (idle has nothing to show), so this
+  // only ever changes for discard's own exit shape and start-new's entrance.
   const [cardsGen, setCardsGen] = useState(0);
   const [cardsAnimKind, setCardsAnimKind] = useState<"join" | "discard">("join");
 
@@ -1592,17 +1592,21 @@ function IndexInner({
   // header dimming start together. `cardsHidden` stays true — keeping the
   // old key's conditional slot empty (its own slower exit animation keeps
   // playing via AnimatePresence regardless) — until the new cards actually
-  // remount, which happens at a different moment per kind:
+  // remount.
   //  - discard doesn't run the header's pill travel (the box stays open),
   //    so it remounts immediately once stage 2 commits.
-  //  - join runs the pill travel (see SessionContext's own requestJoin
-  //    comment), so its remount waits PILL_LAND_MS, until the clock has
-  //    actually landed in the mini slot, instead of the new cards beating
-  //    it there. See SessionContext's PILL_LAND_MS comment.
+  //  - join doesn't hide anything here at all any more: joining never
+  //    changes a single card value (see SessionContext's own joinSession —
+  //    it only ever adds you to presentStaffIds), so the cards it was
+  //    already showing before you joined (a running-not-mine session is
+  //    just as visible, unhidden, as your own) are already correct and
+  //    complete. Sliding them out and a "fresh" identical set back in used
+  //    to read as the data getting cleared and replaced, which it never
+  //    actually was.
   //  - start-new never hides anything at all — see the cardsAnimKind
   //    comment above; nothing about the cards actually changes.
-  // Both cases use React's "adjust state during render" pattern (comparing
-  // against a ref of the previous value) for the instant parts, so there's
+  // This uses React's "adjust state during render" pattern (comparing
+  // against a ref of the previous value) for the instant part, so there's
   // no one-tick lag or intermediate stale-content flash. Discard is the one
   // exception, deliberately: see discardHideRafRef's own comment below.
   //
@@ -1630,9 +1634,9 @@ function IndexInner({
   const [cardsFullyCleared, setCardsFullyCleared] = useState(true);
   const handleCardsExitComplete = useCallback(() => setCardsFullyCleared(true), []);
   const prevKindForHideRef = useRef<TransitionKind>(null);
-  // Setting cardsHidden and endActionOverlay in the very same render (the
-  // way join still does above) doesn't work for discard: cardsHidden
-  // gates the outgoing cards' own presence in the JSX
+  // Setting cardsHidden and endActionOverlay in the very same render
+  // doesn't work for discard: cardsHidden gates the outgoing cards' own
+  // presence in the JSX
   // (`{!transitionHidden && (...)}` below), so AnimatePresence captures
   // whatever that subtree looked like on the LAST render before it
   // disappears — one render before endActionOverlay could ever apply to
@@ -1643,10 +1647,7 @@ function IndexInner({
   const discardHideRafRef = useRef<number | null>(null);
   if (transitionKind !== prevKindForHideRef.current) {
     prevKindForHideRef.current = transitionKind;
-    if (transitionKind === "join") {
-      setCardsHidden(true);
-      setCardsFullyCleared(false);
-    } else if (transitionKind === "discard") {
+    if (transitionKind === "discard") {
       // Switches the outgoing cards over to discard's own shrink/drop/
       // rotate exit (see SINGLE_UNIT_VARIANTS' own comment) before they're
       // hidden — safe to change while they're still mounted and settled at
@@ -1673,12 +1674,14 @@ function IndexInner({
   // this component ever gets to paint idle's hidden cards — that effect's
   // own comment explains why it's a layout effect in the first place (no
   // visible snap from idle into a mid-session view), which this matches by
-  // reacting during render rather than in an effect of its own. Every OTHER
-  // route into a running session (start-new, join) carries a non-null
+  // reacting during render rather than in an effect of its own. Start-new
+  // is the only OTHER route into a running session that carries a non-null
   // `transitionKind` at the exact render where `sessionActive` flips, and
-  // already has its own animated reveal (join above, start-new below) —
-  // the `transitionKind === null` guard is what keeps this from stepping on
-  // those.
+  // it already has its own animated reveal below — the
+  // `transitionKind === null` guard is what keeps this from stepping on
+  // that. (A real join never flips `sessionActive` at all — the session
+  // was already running before you joined it — so it was never a candidate
+  // for this fallback to begin with.)
   const prevSessionActiveForHideRef = useRef(sessionActive);
   if (sessionActive !== prevSessionActiveForHideRef.current) {
     const wasActive = prevSessionActiveForHideRef.current;
@@ -1707,15 +1710,7 @@ function IndexInner({
   // happening — entering a session is meant to open on its first card, not
   // wherever the user happened to be scrolled to on the idle/"browsing
   // before joining" screen. Instant (not smooth) and in a layout effect
-  // (before paint) so nothing is visibly scrolling; this also preempts a
-  // real, separate glitch: stage 1 hides the outgoing cards immediately
-  // (see `cardsHidden` above) but the new ones don't remount until
-  // PILL_LAND_MS later, so for that whole window the Data tab's pane is
-  // briefly far shorter than the page the user was actually scrolled
-  // against — if they were scrolled down, the browser's own native
-  // scroll-clamping snaps them to whatever the new (shorter) max happens to
-  // be the instant that content gap opens, a jump this makes moot by
-  // already being at the top before it can occur.
+  // (before paint) so nothing is visibly scrolling.
   useLayoutEffect(() => {
     if (transitionKind === "start-new" || transitionKind === "join") {
       dataContentRef.current?.scrollTo(0, 0);
@@ -1723,25 +1718,15 @@ function IndexInner({
   }, [transitionKind]);
 
   // Stage 2's own commit is itself transient — SessionContext resets
-  // transitionStage/transitionKind back to 0/null well before start-new's
-  // PILL_LAND_MS timeout can fire, so that reset must not be allowed to
-  // cancel the pending timeout (a plain `useEffect` cleanup tied to these
-  // deps would otherwise clearTimeout it the instant they revert). Guard
-  // with a ref so the stage-2 entrance logic only runs once per transition,
-  // and keep the timeout's clearTimeout in a separate, unmount-only effect.
-  const cardEntranceTimeoutRef = useRef<number | null>(null);
+  // transitionStage back to 0 shortly after (see runStagedTransition's own
+  // dwellMs) — so this needs a ref guard to make sure the reveal below only
+  // ever runs once per transition, not once per render that happens to
+  // still see transitionStage === 2.
   const stage2HandledRef = useRef(false);
   useEffect(() => {
     if (transitionStage === 2 && !stage2HandledRef.current) {
       stage2HandledRef.current = true;
-      if (transitionKind === "join") {
-        cardEntranceTimeoutRef.current = window.setTimeout(() => {
-          setCardsAnimKind("join");
-          setCardsGen((n) => n + 1);
-          setCardsHidden(false);
-          cardEntranceTimeoutRef.current = null;
-        }, PILL_LAND_MS);
-      } else if (transitionKind === "start-new") {
+      if (transitionKind === "start-new") {
         // Cards are never left sitting there while idle any more (see
         // cardsHidden's own default-value comment above), so start-new
         // needs a real entrance now — there's no longer an already-visible,
@@ -1788,7 +1773,6 @@ function IndexInner({
 
   useEffect(() => {
     return () => {
-      if (cardEntranceTimeoutRef.current) window.clearTimeout(cardEntranceTimeoutRef.current);
       if (discardHideRafRef.current) window.cancelAnimationFrame(discardHideRafRef.current);
     };
   }, []);
@@ -2818,15 +2802,16 @@ const DataCardList = memo(function DataCardList({
 }: {
   cardsGen: number;
   cardsAnimKind: "join" | "discard";
-  /** True during stages 1-2 of a join/discard transition (and, now, for
-   * the entire idle/no-session span — see cardsHidden's own default-value
-   * comment in IndexInner) — the old list plays its exit (this flipping
-   * true is what triggers it, since AnimatePresence here tracks its
-   * child's presence) and nothing renders until the fresh list mounts.
-   * Flipped back to false by start-new too now, alongside join/discard. */
+  /** True during a discard's own exit (and, now, for the entire idle/
+   * no-session span — see cardsHidden's own default-value comment in
+   * IndexInner) — the old list plays its exit (this flipping true is what
+   * triggers it, since AnimatePresence here tracks its child's presence)
+   * and nothing renders until the fresh list mounts. Flipped back to false
+   * by start-new's own entrance. A real join never touches this at all any
+   * more — see cardsHidden's own comment in IndexInner for why. */
   transitionHidden?: boolean;
   /** Suppresses the entrance transition the FIRST time cards go from
-   *  hidden to shown for reasons that aren't a real join/discard/start-new
+   *  hidden to shown for reasons that aren't a real discard/start-new
    *  (see IndexInner's own comment on `suppressEntranceAnimation`) — most
    *  importantly, SessionContext's scenario-seeding layout effect landing
    *  straight on running/paused: hydration's own first commit always

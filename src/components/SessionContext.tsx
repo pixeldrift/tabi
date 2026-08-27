@@ -82,10 +82,8 @@ export const BOX_COLLAPSE_MS = 200 * SESSION_TRANSITION_SPEED;
 // three beats: for a fresh start, the odometer visibly rolls down to zero
 // while the pill is still big and stationary (DIGIT_SETTLE_MS) before it
 // starts shrinking/traveling (PILL_TRAVEL_MS), then crossfades into the
-// real, correctly-positioned destination pill (PILL_CROSSFADE_MS). Cards
-// use PILL_LAND_MS to know when the pill has fully landed, so the new set
-// only enters once the clock has actually arrived, not the instant the old
-// set starts leaving.
+// real, correctly-positioned destination pill (PILL_CROSSFADE_MS).
+// PILL_LAND_MS is when that whole sequence has fully finished.
 // 3x the plain per-tick digit roll (see OdometerDigits' `slow` prop) so the
 // reset-to-zero spin is actually watchable instead of a quick snap, with a
 // matching hold here so the pill doesn't start traveling mid-spin.
