@@ -134,17 +134,6 @@ const MINI_PILL_HEIGHT_PX = 28;
 // button doesn't take), so unlike the mini pill above this needs no
 // separate "digit padding" constant.
 const BIG_BUTTON_PX = 56;
-// bigPillRect/miniPillRect's settle-poll (below) can't accept "stable" on
-// frame count alone during this many frames after mount. Now that both
-// targets are measured relative to pillAnchorContainerRef (see that ref's
-// own comment) rather than raw viewport pixels, the welcome->main slide
-// itself is no longer a hazard here — the pill and its container move
-// together, so their difference is correct even mid-slide. What's left is
-// the more ordinary hazard useElementRight's own settle-polling was
-// written for: fonts not yet applied, or an ancestor not yet at its final
-// width, on the very first layout pass after mount/hydration. Kept at a
-// generous floor since polling a few extra frames costs nothing visible.
-const MIN_SETTLE_POLL_FRAMES = 90; // ~1.5s at 60fps
 // ExpandedSessionBox's own action-button row (Start New Session <-> End &
 // Submit/Discard) animates its height over this long whenever `isPaused`
 // flips — see that component's own comment on why it's a measured pixel
@@ -477,6 +466,15 @@ export function StatusBar({
   // Motion itself reports that tween complete (via onActionsHeightSettled,
   // passed down to the actions row's own onAnimationComplete) — no guessing.
   const boxWrapRef = useRef<HTMLDivElement>(null);
+  // The session box's own OUTER animated element (the motion.div whose real
+  // `height` style Motion drives between 0 and boxNaturalHeight) — distinct
+  // from boxWrapRef above, which sizes to its unconstrained natural content
+  // and so never itself reports the collapsed/collapsing height. Observed
+  // by miniPillRect below: NotificationBar renders AFTER this box in
+  // document flow, so its own position — and therefore where the mini pill
+  // should land — genuinely moves while this box is still mid-collapse, not
+  // just once it's settled.
+  const sessionBoxAnimatedRef = useRef<HTMLDivElement>(null);
   const [boxNaturalHeight, setBoxNaturalHeight] = useState<number | null>(null);
   const actionsRowSettlingRef = useRef(false);
   const wasPausedForActionsRef = useRef(status === "paused");
@@ -645,69 +643,41 @@ export function StatusBar({
     const el = bigPillAnchorRef.current;
     const containerEl = pillAnchorContainerRef.current;
     if (!el || !containerEl) return;
-    // A single synchronous measure() at mount isn't safe here despite the
-    // anchor comment above about the box's own height tween — the anchor's
-    // HORIZONTAL position can still be transiently wrong on the very first
-    // layout pass (fonts not yet applied, an ancestor not yet at its final
-    // width during hydration), and since nothing about the anchor's own box
-    // SIZE changes afterward, a ResizeObserver never fires again to correct
-    // it — the wrong value sits there permanently. Same failure mode (and
-    // same fix) as useElementRight's own settle-polling: keep measuring
-    // every frame until a few consecutive reads agree, instead of trusting
-    // the first one.
-    let last: { top: number; left: number; width: number; height: number } | null = null;
     const measure = () => {
       const r = el.getBoundingClientRect();
       const containerRect = containerEl.getBoundingClientRect();
       // Relative to pillAnchorContainerRef, not raw viewport pixels — see
       // that ref's own comment for why.
-      const next = {
+      setBigPillRect({
         top: r.top - containerRect.top,
         left: r.left - containerRect.left,
         width: r.width,
         height: r.height,
-      };
-      const changed =
-        !last ||
-        last.top !== next.top ||
-        last.left !== next.left ||
-        last.width !== next.width ||
-        last.height !== next.height;
-      last = next;
-      setBigPillRect(next);
-      return changed;
+      });
     };
-    let raf = 0;
-    let settledStreak = 0;
-    let framesElapsed = 0;
-    const MAX_POLL_FRAMES = 120; // ~2s at 60fps — generous safety cap
-    const SETTLED_STREAK_TARGET = 4;
-    raf = requestAnimationFrame(function tick() {
-      const changed = measure();
-      settledStreak = changed ? 0 : settledStreak + 1;
-      framesElapsed += 1;
-      const settled =
-        settledStreak >= SETTLED_STREAK_TARGET && framesElapsed >= MIN_SETTLE_POLL_FRAMES;
-      if (!settled && framesElapsed < MAX_POLL_FRAMES) {
-        raf = requestAnimationFrame(tick);
-      }
-    });
+    measure();
+    // ResizeObserver catches any later change to the anchor's own box (its
+    // width tracks the container's, since it's `w-full`) for the life of
+    // the mount — no polling loop needed once the pill is positioned
+    // relative to its own container instead of the viewport (see that
+    // ref's comment): there's no slide-timing race left to poll through,
+    // just the ordinary case of a real layout change, which is exactly
+    // what ResizeObserver already reports natively. The one gap a resize
+    // observer can't cover — the very first layout pass landing wrong
+    // because a web font hadn't swapped in yet, changing text metrics
+    // without changing this anchor's own box size — is handled by
+    // `document.fonts.ready` instead of a blind poll: a one-time, real
+    // signal for exactly the condition being waited on, not a guess at how
+    // many frames it might take.
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure);
     return () => {
-      cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-    // Re-arms the settle-poll on every pillTraveling edge (travel starting
-    // AND landing), not just at mount — a ResizeObserver on this anchor
-    // alone can go quiet for the whole DIGIT_SETTLE_MS dwell before travel
-    // even starts (nothing about its own size changes during that wait),
-    // so the one poll from mount can genuinely finish, call itself
-    // "settled", and stop — permanently missing a real shift that shows up
-    // only once the transition actually gets moving.
-  }, [pillTraveling]);
+  }, []);
 
   // Mini pill's resting target isn't anchored to a real mini-pill element
   // at all — it's derived from two OTHER, always-present layout facts (the
@@ -744,16 +714,17 @@ export function StatusBar({
     const digitEl = miniDigitAnchorRef.current;
     const notificationBarWrapEl = notificationBarWrapRef.current;
     const containerEl = pillAnchorContainerRef.current;
-    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl || !notificationBarWrapEl || !containerEl) {
+    const sessionBoxEl = sessionBoxAnimatedRef.current;
+    if (
+      !titleRowEl ||
+      !saveIndicatorWrapEl ||
+      !digitEl ||
+      !notificationBarWrapEl ||
+      !containerEl ||
+      !sessionBoxEl
+    ) {
       return;
     }
-    // Same settle-polling fix as bigPillRect above, for the same reason:
-    // none of these elements' own SIZE changes once the page has settled,
-    // so a ResizeObserver alone never re-fires to correct a measurement
-    // taken on a transiently-wrong first layout pass (seen empirically
-    // landing 50-300px off on some mounts) — poll every frame until a few
-    // consecutive reads agree.
-    let last: { top: number; left: number; width: number; height: number } | null = null;
     const measure = () => {
       const titleRowRect = titleRowEl.getBoundingClientRect();
       const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
@@ -789,49 +760,33 @@ export function StatusBar({
       // button width is the mini pill's total width; MINI_PILL_HEIGHT_PX
       // is its fixed h-7.
       const width = digitWidth + MINI_DIGIT_PADDING_PX + MINI_BUTTON_PX;
-      const next = { top, left: right - width, width, height: MINI_PILL_HEIGHT_PX };
-      const changed =
-        !last ||
-        last.top !== next.top ||
-        last.left !== next.left ||
-        last.width !== next.width ||
-        last.height !== next.height;
-      last = next;
-      setMiniPillRect(next);
-      return changed;
+      setMiniPillRect({ top, left: right - width, width, height: MINI_PILL_HEIGHT_PX });
     };
-    let raf = 0;
-    let settledStreak = 0;
-    let framesElapsed = 0;
-    const MAX_POLL_FRAMES = 120; // ~2s at 60fps — generous safety cap
-    const SETTLED_STREAK_TARGET = 4;
-    raf = requestAnimationFrame(function tick() {
-      const changed = measure();
-      settledStreak = changed ? 0 : settledStreak + 1;
-      framesElapsed += 1;
-      const settled =
-        settledStreak >= SETTLED_STREAK_TARGET && framesElapsed >= MIN_SETTLE_POLL_FRAMES;
-      if (!settled && framesElapsed < MAX_POLL_FRAMES) {
-        raf = requestAnimationFrame(tick);
-      }
-    });
+    measure();
+    // ResizeObserver on every element this measurement actually reads —
+    // native, event-driven, and permanent for the life of the mount — plus
+    // one native `document.fonts.ready` correction for the one thing a
+    // resize observer can't see (text metrics shifting when a web font
+    // swaps in without any of these boxes changing size). See bigPillRect's
+    // own comment for why this replaced a manual per-frame poll.
     const ro = new ResizeObserver(measure);
     ro.observe(titleRowEl);
     ro.observe(saveIndicatorWrapEl);
     ro.observe(digitEl);
     ro.observe(notificationBarWrapEl);
+    // Fires on every real frame of the box's own Motion-driven collapse/
+    // expand — a live height change is exactly what ResizeObserver already
+    // reports natively — so the notification bar's dependent position (and
+    // this pill's target) tracks that collapse in real time instead of
+    // landing wherever the box happened to be at one synchronous read.
+    ro.observe(sessionBoxEl);
     window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure);
     return () => {
-      cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-    // Same pillTraveling re-arm as bigPillRect above, and for the same
-    // reason: these elements' own geometry can sit rock-stable for the
-    // whole DIGIT_SETTLE_MS dwell before travel starts, letting the
-    // mount-time poll call itself settled and quit well before whatever
-    // actually shifts once the transition gets moving.
-  }, [pillTraveling]);
+  }, []);
 
   // Same "never animate to the literal string auto" fix as boxNaturalHeight/
   // actionsHeight above — Motion's own "auto" resolution re-measures
@@ -1005,6 +960,7 @@ export function StatusBar({
                 The pill inside is hidden when running so only the mini pill carries the
                 shared layoutId, letting motion morph cleanly between the two positions. */}
               <motion.div
+                ref={sessionBoxAnimatedRef}
                 initial={false}
                 animate={{
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
