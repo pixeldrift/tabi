@@ -127,7 +127,12 @@ export const TRANSITION_LANDED_MS: Record<SessionTransitionKind, number> = {
   "start-new": DIGIT_SETTLE_MS + PILL_TRAVEL_MS,
   join: PILL_TRAVEL_MS,
   resume: PILL_TRAVEL_MS,
-  pause: HEADER_MORPH_MS + PILL_TRAVEL_MS,
+  // Pause's travel now starts immediately (see the pausing branch in the
+  // pillTraveling effect below) rather than waiting out the box's own
+  // HEADER_MORPH_MS grow first — and since PILL_TRAVEL_MS === HEADER_MORPH_MS,
+  // both finish at the same moment, so "landed" is just the one duration,
+  // not their sum.
+  pause: PILL_TRAVEL_MS,
   submit: HEADER_MORPH_MS,
   discard: HEADER_MORPH_MS,
 };
@@ -745,7 +750,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [pillTraveling, setPillTraveling] = useState(false);
   useEffect(() => {
     if (isMineAndRunning === prevIsMineAndRunningForPillRef.current) return;
-    const wasMineAndRunning = prevIsMineAndRunningForPillRef.current;
     prevIsMineAndRunningForPillRef.current = isMineAndRunning;
     pillTransitionKindRef.current = transitionKind;
     // Both staged "entering" kinds — a real fresh start and now a join too
@@ -756,12 +760,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const enteringStaged =
       isMineAndRunning &&
       (pillTransitionKindRef.current === "start-new" || pillTransitionKindRef.current === "join");
-    // The one other flip this effect sees besides a staged entry: a running
-    // session that was mine just stopped being "mine and running" with no
-    // transitionKind at all — the only way that happens is pause(), which
-    // (unlike resume/start-new/discard/join) never goes through
-    // runStagedTransition, so nothing else already delays anything for it.
-    const pausing = wasMineAndRunning && !isMineAndRunning;
     let travelTimeoutId: number | undefined;
     const beginTravel = () => {
       setPillTraveling(true);
@@ -774,35 +772,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
       };
     }
-    if (pausing) {
-      // Unlike resuming — whose mini landing spot sits up in the
-      // nav row, clear of the tab bar/content pane below entirely, so
-      // departing the instant the box starts collapsing never crosses
-      // anything — pausing's big-pill landing spot is INSIDE the box,
-      // below wherever the tab bar currently sits while the box is still
-      // short. The box's own expand pushes that tab bar down to make room,
-      // but that's a real, live reflow racing the pill's own travel: if the
-      // pill departs before the box has finished growing, it flies through
-      // space the tab bar hasn't vacated yet, visibly crossing over it.
-      // Waiting out the box's own HEADER_MORPH_MS expand first (the box
-      // itself still starts growing immediately, and — since its target
-      // height is now precomputed rather than discovered after the fact,
-      // see `pausedActionsHeight` in StatusBar — grows there in one clean
-      // step) means the tab bar has already been pushed down to its final
-      // resting place by the time the pill starts moving toward it.
-      const settleId = window.setTimeout(beginTravel, HEADER_MORPH_MS);
-      return () => {
-        window.clearTimeout(settleId);
-        if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);
-      };
-    }
-    // Resuming (the only kind left once enteringStaged/pausing are ruled
-    // out — see requestResume's own comment) starts the pill's travel
-    // immediately, in lockstep with the box's own collapse: the mini
-    // landing spot is anchored relative to the title row/save indicator
-    // (see StatusBar's own prediction effect), never to the box's own
-    // current height, so there's nothing to wait out — and nothing below
-    // it to cross either.
+    // Both remaining cases — pausing (a running session that was mine just
+    // stopped being "mine and running" with no transitionKind at all, the
+    // only way that happens) and resuming — start the pill's travel
+    // immediately, in lockstep with the box's own grow/collapse. Pausing's
+    // landing spot is inside the box, below wherever the tab bar ends up
+    // once the box has grown to fit the paused actions — departing before
+    // that grow finishes means the pill crosses space the tab bar hasn't
+    // vacated yet, but that box grow runs on the same HEADER_MORPH_MS as
+    // the pill's own travel, so departing together lands them together too.
     beginTravel();
     return () => {
       if (travelTimeoutId !== undefined) window.clearTimeout(travelTimeoutId);

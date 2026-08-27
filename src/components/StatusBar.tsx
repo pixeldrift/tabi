@@ -718,11 +718,12 @@ export function StatusBar({
       const titleRowRect = titleRowEl.getBoundingClientRect();
       const saveIndicatorWrapRect = saveIndicatorWrapEl.getBoundingClientRect();
       const digitWidth = digitEl.getBoundingClientRect().width;
-      // +4 matches the nav row's own `mt-1` — safe to hardcode rather than
-      // measure, since it's only ever `mt-1` (not the not-running `mt-1.5`)
-      // by the time anything is landing in "mini": that only happens once
-      // `isRunning` is already true.
-      const top = titleRowRect.bottom + 4;
+      // Lands a couple px above the nav row's own `mt-1` (rather than
+      // matching it exactly) so the pill's own bottom edge clears the
+      // content pane below with a visible gap instead of sitting flush
+      // against it — the reserved mini slot (see miniSlotRef) is a few px
+      // taller than the pill itself specifically to leave room for this.
+      const top = titleRowRect.bottom + 2;
       // The wrapper's OWN border-box right edge sits at the viewport edge
       // (its `-mr-4` cancels this row's own right padding entirely) — its
       // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
@@ -1297,19 +1298,40 @@ export function StatusBar({
           const target = toMini ? miniPillRect : bigPillRect;
           const showButton = toMini || !isIdle;
           const icon = toMini ? (
-            <Pause className="size-3.5" fill="currentColor" strokeWidth={0} />
+            // -translate-x-px: nudges toward the pill's own rounded end cap
+            // — dead-center in the button's plain rectangle reads slightly
+            // right-of-center once the pill's curved edge is taken into
+            // account, since the eye weights the icon against that curve,
+            // not the rectangle's raw bounds.
+            <Pause className="size-3.5 -translate-x-px" fill="currentColor" strokeWidth={0} />
           ) : isPaused ? (
             <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
           ) : (
             <ArrowRight className="size-3.5" strokeWidth={2.5} />
           );
+          // While the pill's own settle-poll (bigPillRect/miniPillRect
+          // above) is still finding its footing after mount — the same
+          // window StatusBar's other entrance-sensitive layout already
+          // treats as a plain snap, not a genuine animated change, see
+          // suppressEntranceAnimation's own comment — every intermediate
+          // reading it commits should land instantly instead of animating.
+          // Without this, the pill visibly chases each poll frame's
+          // still-settling value through a real, easing `PILL_TRAVEL_MS`
+          // transition — which outlasts the ~450ms welcome->main slide by
+          // enough that it keeps sliding for a beat after that slide has
+          // already finished, instead of simply being in its resting spot
+          // from the first visible frame.
+          const pillTransition = suppressEntranceAnimation
+            ? { duration: 0 }
+            : { duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE };
+          const pillCssDurationMs = suppressEntranceAnimation ? 0 : SESSION_MORPH_MS;
           return (
             <motion.div
               className={cn(
                 "fixed z-50 flex items-stretch rounded-full border-2 bg-white overflow-hidden transition-colors",
                 toMini ? "border-blue-500" : "border-stone-300",
               )}
-              style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
+              style={{ transitionDuration: `${pillCssDurationMs}ms` }}
               initial={false}
               animate={{
                 top: target.top,
@@ -1317,7 +1339,7 @@ export function StatusBar({
                 width: target.width,
                 height: target.height,
               }}
-              transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+              transition={pillTransition}
             >
               <motion.span
                 className={cn(
@@ -1325,10 +1347,10 @@ export function StatusBar({
                   toMini ? "px-2 text-blue-700" : "px-3",
                   !toMini && (digitsGray ? "text-stone-400" : "text-stone-800"),
                 )}
-                style={{ transitionDuration: `${SESSION_MORPH_MS}ms` }}
+                style={{ transitionDuration: `${pillCssDurationMs}ms` }}
                 initial={false}
                 animate={{ fontSize: toMini ? 14 : 30 }}
-                transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                transition={pillTransition}
               >
                 <OdometerDigits
                   text={formatTime(pillElapsed)}
@@ -1346,7 +1368,7 @@ export function StatusBar({
                 <motion.span
                   initial={false}
                   animate={{ width: toMini ? MINI_BUTTON_PX : BIG_BUTTON_PX }}
-                  transition={{ duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE }}
+                  transition={pillTransition}
                   className="shrink-0 bg-blue-500 grid place-items-center text-white"
                 >
                   <button
