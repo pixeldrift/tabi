@@ -7,6 +7,7 @@ import {
   useState,
   type ComponentType,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "motion/react";
 import {
   Play,
@@ -696,6 +697,15 @@ export function StatusBar({
   const titleRowRef = useRef<HTMLDivElement>(null);
   const saveIndicatorWrapRef = useRef<HTMLDivElement>(null);
   const miniDigitAnchorRef = useRef<HTMLSpanElement>(null);
+  // NotificationBar renders between the title row and the tabs/mini-slot
+  // nav below — an alert (e.g. a phase-change banner) popping in while a
+  // session's already running-mine adds real height there, in normal
+  // document flow, independent of anything about the session box's own
+  // collapse timing (which is why it isn't folded into the box-height
+  // caveat above). Without accounting for it, the mini pill's own `top`
+  // stayed pinned just below the title row regardless of whether a banner
+  // was showing, so it sat on top of the banner instead of below it.
+  const notificationBarWrapRef = useRef<HTMLDivElement>(null);
   const [miniPillRect, setMiniPillRect] = useState<{
     top: number;
     left: number;
@@ -706,13 +716,14 @@ export function StatusBar({
     const titleRowEl = titleRowRef.current;
     const saveIndicatorWrapEl = saveIndicatorWrapRef.current;
     const digitEl = miniDigitAnchorRef.current;
-    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl) return;
+    const notificationBarWrapEl = notificationBarWrapRef.current;
+    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl || !notificationBarWrapEl) return;
     // Same settle-polling fix as bigPillRect above, for the same reason:
-    // none of these three elements' own SIZE changes once the page has
-    // settled, so a ResizeObserver alone never re-fires to correct a
-    // measurement taken on a transiently-wrong first layout pass (seen
-    // empirically landing 50-300px off on some mounts) — poll every frame
-    // until a few consecutive reads agree.
+    // none of these elements' own SIZE changes once the page has settled,
+    // so a ResizeObserver alone never re-fires to correct a measurement
+    // taken on a transiently-wrong first layout pass (seen empirically
+    // landing 50-300px off on some mounts) — poll every frame until a few
+    // consecutive reads agree.
     let last: { top: number; left: number; width: number; height: number } | null = null;
     const measure = () => {
       const titleRowRect = titleRowEl.getBoundingClientRect();
@@ -723,8 +734,15 @@ export function StatusBar({
       // clears the content pane below with a visible gap instead of
       // sitting flush against it — the reserved mini slot (see
       // miniSlotRef) is a few px taller than the pill itself specifically
-      // to leave room for this.
-      const top = titleRowRect.bottom;
+      // to leave room for this. Takes whichever of the title row or the
+      // notification bar currently ends lower — the notification bar's
+      // wrapper always renders (even with zero height when there's
+      // nothing to show), so its own bottom edge naturally already sits
+      // below the title row's when there's genuinely nothing there.
+      const top = Math.max(
+        titleRowRect.bottom,
+        notificationBarWrapEl.getBoundingClientRect().bottom,
+      );
       // The wrapper's OWN border-box right edge sits at the viewport edge
       // (its `-mr-4` cancels this row's own right padding entirely) — its
       // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
@@ -770,6 +788,7 @@ export function StatusBar({
     ro.observe(titleRowEl);
     ro.observe(saveIndicatorWrapEl);
     ro.observe(digitEl);
+    ro.observe(notificationBarWrapEl);
     window.addEventListener("resize", measure);
     return () => {
       cancelAnimationFrame(raf);
@@ -777,8 +796,8 @@ export function StatusBar({
       window.removeEventListener("resize", measure);
     };
     // Same pillTraveling re-arm as bigPillRect above, and for the same
-    // reason: these three elements' own geometry can sit rock-stable for
-    // the whole DIGIT_SETTLE_MS dwell before travel starts, letting the
+    // reason: these elements' own geometry can sit rock-stable for the
+    // whole DIGIT_SETTLE_MS dwell before travel starts, letting the
     // mount-time poll call itself settled and quit well before whatever
     // actually shifts once the transition gets moving.
   }, [pillTraveling]);
@@ -1061,7 +1080,9 @@ export function StatusBar({
                 </div>
               </motion.div>
 
-              <NotificationBar />
+              <div ref={notificationBarWrapRef}>
+                <NotificationBar />
+              </div>
 
               {/* Tabs row + mini session (when running) */}
               <nav
@@ -1337,7 +1358,22 @@ export function StatusBar({
             ? { duration: 0 }
             : { duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE };
           const pillCssDurationMs = suppressEntranceAnimation ? 0 : SESSION_MORPH_MS;
-          return (
+          // Portaled to document.body — StatusBar (and this pill along with
+          // it) is a normal descendant of routes/index.tsx's welcome->main
+          // slide wrapper, a `position:fixed` motion.div that's genuinely
+          // `transform`-animated while sliding. A `transform` on an
+          // ancestor creates a new containing block for any descendant's
+          // own `position:fixed`, so without this portal the pill's "fixed"
+          // top/left were actually being resolved relative to THAT sliding
+          // wrapper's box, not the true viewport — moving in lockstep with
+          // the slide (however briefly it takes) instead of sitting still,
+          // and in the wrong place entirely (sometimes clipped off-screen
+          // by an ancestor's overflow, reading as "doesn't appear at all")
+          // whenever the wrapper's own current transform put its box
+          // somewhere that didn't line up with the pill's real target
+          // coordinates. Same fix DataDetailsDrawer's own pull tab already
+          // uses for exactly this class of problem.
+          return createPortal(
             <motion.div
               className={cn(
                 "fixed z-50 flex items-stretch rounded-full border-2 bg-white overflow-hidden transition-colors",
@@ -1405,7 +1441,8 @@ export function StatusBar({
                   </button>
                 </motion.span>
               )}
-            </motion.div>
+            </motion.div>,
+            document.body,
           );
         })()}
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
