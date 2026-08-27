@@ -2096,7 +2096,7 @@ function IndexInner({
                             className="py-1.5 px-8 text-center"
                           >
                             <span className="text-sm text-muted-foreground">
-                              No active session. Start a new session to add data.
+                              Start a new session to collect data.
                             </span>
                           </motion.div>
                         </motion.div>
