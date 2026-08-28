@@ -1218,19 +1218,24 @@ function IntervalTimeline({
   // (see its own comment above) — that grace only delays which interval
   // is highlighted/scored, not where "now" actually, physically is.
   // Continuous centering, the same idiom as Percent Correct's own
-  // trial-bubble strip: the viewed interval's own bubble — which normally
-  // marks the interval's END (see below), matching the bar's own divider
-  // ticks — always sits dead-center in the viewport. The bar/chevron rows
-  // (real elapsed time — see their own comments) always use this value.
+  // trial-bubble strip: the viewed interval's own bubble/bracket always
+  // sits dead-center in the viewport. The bar/chevron rows (real elapsed
+  // time — see their own comments) always use this value, which targets
+  // the interval's real END boundary — that's Momentary's own bubble/
+  // line/dot position too, since it scores one specific instant
+  // (conventionally an interval's end), a real point in time like the
+  // bar itself. Whole and Partial aren't tied to any single instant, so
+  // their bubble+bracket read more naturally centered over the interval
+  // they belong to instead — see `labelTrackOffsetPx` below.
   const trackOffsetPx = -((viewIdx + 1) * SEG_W);
-  // Partial's bubble sits over its own bracket instead of the interval's
-  // real END boundary (see the bubble row's own comment) — so centering
-  // THAT bubble (and its bracket, which shares this same offset) needs its
-  // own half-segment-earlier target, or the currently-viewed one would
-  // land off-center every time. Every other sampling type's bubble/bracket
-  // still sits at the real boundary, so this is just `trackOffsetPx` again.
+  // Whole/Partial's bubble+bracket sit centered over their own interval
+  // (see the bubble row's own comment) rather than at its real END
+  // boundary — so centering THAT pair needs its own half-segment-earlier
+  // target, or the currently-viewed one would land off-center every time.
+  // Momentary's bubble/line/dot stay on the real boundary (see
+  // `trackOffsetPx`'s own comment), so it just reuses that value as-is.
   const labelTrackOffsetPx =
-    samplingType === "partial" ? -((viewIdx + 0.5) * SEG_W) : trackOffsetPx;
+    samplingType === "momentary" ? trackOffsetPx : -((viewIdx + 0.5) * SEG_W);
 
   return (
     <div className="pt-0.5">
@@ -1252,15 +1257,15 @@ function IntervalTimeline({
             const recency = recencyOf(i, viewIdx);
             const { bg, text, fade } = statusColors(statuses[i], recency);
             const isCurrent = recency === "current";
-            // Every bubble sits at its interval's own END boundary — except
-            // Partial's, which sits centered over its own (segment-centered,
-            // half-width) bracket instead: since that bracket's own width is
-            // a stylized "less than whole," not a real time sub-span, there
-            // was no reason to leave it trailing off to one side under a
-            // bubble anchored somewhere else. Whole's bracket spans the
-            // segment's own real timespan and its bubble stays at the real
-            // boundary, so nothing moves there.
-            const bubbleLeft = samplingType === "partial" ? (i + 0.5) * SEG_W : (i + 1) * SEG_W;
+            // Whole/Partial's bubble sits centered over its own interval,
+            // matching where its bracket sits (see that row's own comment)
+            // — a span of time reads more naturally under a bubble
+            // centered over the whole span than one parked at its far
+            // edge. Momentary's bubble stays at the interval's real END
+            // boundary instead, since it scores that one specific instant
+            // — a real point in time, not a span, so there's no "span" to
+            // center over.
+            const bubbleLeft = samplingType === "momentary" ? (i + 1) * SEG_W : (i + 0.5) * SEG_W;
             return (
               <div
                 key={i}
