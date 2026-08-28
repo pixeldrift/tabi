@@ -1292,13 +1292,20 @@ function IntervalTimeline({
           elapsed-time bar. Whole/Partial show a bracket here (a sideways
           curly brace, full or half width, its point hanging from the
           bubble above and its two hooked ends reaching down to the bar
-          below). Momentary has no span to show — just a connector
-          dropping from the bubble down to meet the bar, where its own dot
-          actually lives (see the bar's own comment below): "on the
-          timeline," matching how Whole/Partial's bracket reads as part of
-          it. Always visible (gray when unscored), not just appearing once
-          scored — this is a legend for what the card is measuring, not a
-          "you scored this" celebration mark. */}
+          below) for the currently-viewed interval ONLY — every other
+          interval's own bracket would just repeat the same fixed shape for
+          that sampling type card-wide, adding visual noise without adding
+          information; showing it only where you're actually looking (and
+          about to score) is what actually matters moment to moment.
+          Momentary has no span to show — just a connector dropping from
+          the bubble down to meet the bar, where its own dot actually lives
+          (see the bar's own comment below): "on the timeline," matching
+          how Whole/Partial's bracket reads as part of it. That connector/
+          dot pair still renders for every interval (it doubles as each
+          one's own scored/unscored status, same as the bar's fill), unlike
+          the single-interval bracket above. Gray when unscored, not just
+          appearing once scored — this is a legend for what the card is
+          measuring, not a "you scored this" celebration mark. */}
       <div
         className="relative overflow-hidden"
         style={{ height: SAMPLING_ROW_H, ...HORIZONTAL_FADE_MASK }}
@@ -1320,6 +1327,7 @@ function IntervalTimeline({
                 />
               );
             }
+            if (i !== viewIdx) return null;
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
             const left = i * SEG_W + (SEG_W - width) / 2;
             return (
