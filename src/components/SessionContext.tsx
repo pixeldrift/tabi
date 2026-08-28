@@ -151,6 +151,16 @@ interface SessionContextValue {
   elapsedMs: number;
   lastUpdated: Date | null;
   pause: () => void;
+  // Removes CURRENT_STAFF_ID from presentStaffIds without touching status —
+  // the timer keeps running for whoever else is still in presentStaffIds.
+  // Only meaningful (and only ever offered in the UI) when someone else
+  // actually is: leaving a session nobody else is present in would just be
+  // pause in disguise, minus the "for all" clarity pause's own confirm
+  // already gives. isSessionMine reads presence (see its own comment),
+  // so this flips it false the same way it would if you'd never joined —
+  // the pill/box respond exactly like the "running, not mine" case
+  // already does, no separate leave-specific rendering needed anywhere.
+  leaveSession: () => void;
   endAndSubmit: () => void;
   // Which of the two ways a session most recently ended — set directly by
   // endAndSubmit/clearAndDiscard themselves, not inferred from status/
@@ -509,6 +519,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     beginTransition("pause");
     playSoundEffect("sessionPause");
   }, [elapsedMs, beginTransition]);
+  // Deliberately doesn't touch status, startedById, or lastUpdated — the
+  // session (and its attribution) keeps running exactly as it was for
+  // whoever's still in presentStaffIds; only YOUR OWN presence changes.
+  // Reuses "pause"'s own beginTransition kind purely for its established
+  // box-grow/pill-travel choreography (the same motion this client's own
+  // view needs whenever it stops being mine-and-running without a full
+  // staged start-new/join/discard sequence) — it doesn't imply anything
+  // about status, which is what the box's own "Session Paused" label
+  // actually reads (see ExpandedSessionBox's `label`), so nothing else
+  // downstream mistakes this for an actual pause.
+  const leaveSession = useCallback(() => {
+    setPresentStaffIds((ids) => ids.filter((id) => id !== CURRENT_STAFF_ID));
+    beginTransition("pause");
+  }, [beginTransition]);
   const resume = useCallback(() => {
     setStatus("running");
     setLastUpdated(new Date());
@@ -889,6 +913,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       elapsedMs,
       lastUpdated,
       pause,
+      leaveSession,
       endAndSubmit,
       lastEndAction,
       transitionStage,
@@ -927,6 +952,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       elapsedMs,
       lastUpdated,
       pause,
+      leaveSession,
       endAndSubmit,
       lastEndAction,
       transitionStage,
