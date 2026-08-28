@@ -1252,14 +1252,14 @@ function IntervalTimeline({
         </motion.div>
       </div>
       {/* Sampling-type indicator — sits between the bubble row and the
-          elapsed-time bar, showing which portion of each interval actually
-          counts for scoring: a full-width stripe for Whole, a half-width
-          stripe (centered) for Partial, or — since Momentary checks a
-          single instant, not a span — a short connector dropping straight
-          down from the bubble to a small dot instead of any stripe at all.
-          Always visible (gray when unscored), not just appearing once
-          scored — this is a legend for what the card is measuring, not a
-          "you scored this" celebration mark. */}
+          elapsed-time bar. Whole/Partial show a full- or half-width stripe
+          here, right up against the bar below. Momentary has no span to
+          show — just a connector dropping from the bubble down to meet the
+          bar, where its own dot actually lives (see the bar's own comment
+          below): "on the timeline," matching how Whole/Partial's stripe
+          reads as part of it. Always visible (gray when unscored), not
+          just appearing once scored — this is a legend for what the card
+          is measuring, not a "you scored this" celebration mark. */}
       <div
         className="relative overflow-hidden"
         style={{ height: SAMPLING_ROW_H, ...HORIZONTAL_FADE_MASK }}
@@ -1271,27 +1271,17 @@ function IntervalTimeline({
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
-            const color = samplingIndicatorColor(statuses[i]);
             if (samplingType === "momentary") {
               return (
                 <div
                   key={i}
-                  className="absolute top-0 -translate-x-1/2 flex flex-col items-center"
-                  style={{ left: (i + 1) * SEG_W }}
-                >
-                  <div
-                    className="w-px bg-stone-300"
-                    style={{ height: SAMPLING_ROW_H - SAMPLING_DOT_SIZE }}
-                    aria-hidden
-                  />
-                  <div
-                    className={cn("rounded-full", color)}
-                    style={{ width: SAMPLING_DOT_SIZE, height: SAMPLING_DOT_SIZE }}
-                    aria-hidden
-                  />
-                </div>
+                  className="absolute top-0 w-px bg-stone-300 -translate-x-1/2"
+                  style={{ left: (i + 1) * SEG_W, height: SAMPLING_ROW_H }}
+                  aria-hidden
+                />
               );
             }
+            const color = samplingIndicatorColor(statuses[i]);
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
             const left = i * SEG_W + (SEG_W - width) / 2;
             return (
@@ -1340,6 +1330,29 @@ function IntervalTimeline({
               aria-hidden
             />
           ))}
+          {/* Momentary's own marker actually sits ON the timeline (this bar),
+              not floating above it — the connector line in the sampling-
+              indicator row above just leads the eye down to it, the same
+              way Whole/Partial's own stripe reads as part of this bar even
+              though it's technically drawn in that row too. Vertically
+              centered in the bar's own height, same x as its bubble. */}
+          {samplingType === "momentary" &&
+            Array.from({ length: intervalCount }, (_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "absolute rounded-full -translate-x-1/2 -translate-y-1/2",
+                  samplingIndicatorColor(statuses[i]),
+                )}
+                style={{
+                  left: (i + 1) * SEG_W,
+                  top: BAR_H / 2,
+                  width: SAMPLING_DOT_SIZE,
+                  height: SAMPLING_DOT_SIZE,
+                }}
+                aria-hidden
+              />
+            ))}
         </motion.div>
       </div>
       {/* The "now" chevron and the mini timer pill follow the same real
