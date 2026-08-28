@@ -12,6 +12,7 @@ import {
   PanelBottomOpen,
   Pencil,
   Search,
+  Stamp,
   Star,
   Target,
   X,
@@ -45,6 +46,7 @@ export const KIND_META: Record<
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
   interval: { label: "Interval", icon: (p) => <IntervalIcon {...p} /> },
   checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },
+  timestamp: { label: "Timestamp", icon: (p) => <Stamp {...p} /> },
 };
 
 // Fades the collapsing button group's own trailing (right) edge — the one

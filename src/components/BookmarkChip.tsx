@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { Check, X, HandHelping, CircleSlash2, Play, Pause, Minus, Plus } from "lucide-react";
+import { Check, X, HandHelping, CircleSlash2, Play, Pause, Minus, Plus, Stamp } from "lucide-react";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useDurationChip, formatCompactTime } from "./DurationCard";
 import { useRateChip } from "./RateCard";
 import { useIntervalChip } from "./IntervalCard";
+import { useTimestampChip } from "./TimestampCard";
 import { useTrialChip, ListPromptLevelButton } from "./TrialCard";
 import { useFrequencyChip } from "./FrequencyCard";
 import { useRatingChip, ListRatingButton } from "./RatingCard";
@@ -93,6 +94,15 @@ export function BookmarkChip({ card, mounted, active, onSelect, onJumpToCard }: 
     case "checklist":
       return (
         <ChecklistChip
+          card={card}
+          active={active}
+          onSelect={onSelect}
+          onJumpToCard={onJumpToCard}
+        />
+      );
+    case "timestamp":
+      return (
+        <TimestampChip
           card={card}
           active={active}
           onSelect={onSelect}
@@ -477,6 +487,27 @@ function IntervalChip({
         disabled={!canRecordData}
         ariaLabel={positiveLabel}
         onClick={() => score("correct")}
+      />
+    </ChipShell>
+  );
+}
+
+function TimestampChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "timestamp" }> } & ChipSelectionProps) {
+  const { count, logNow, canRecordData } = useTimestampChip(card.id);
+  return (
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
+      <ListActionBadge value={count} weight="bold" />
+      <ListActionButton
+        icon={Stamp}
+        variant="blue-solid"
+        disabled={!canRecordData}
+        ariaLabel="Log now"
+        onClick={logNow}
       />
     </ChipShell>
   );

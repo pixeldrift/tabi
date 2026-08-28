@@ -24,7 +24,8 @@ export type CardKind =
   | "task-analysis"
   | "rating"
   | "interval"
-  | "checklist";
+  | "checklist"
+  | "timestamp";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 

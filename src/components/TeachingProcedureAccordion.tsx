@@ -76,6 +76,7 @@ const MEASUREMENT_LABELS: Record<CardKind, { positive: string; negative: string 
   rating: { positive: "Mark Correct if", negative: "Mark Error if" },
   interval: { positive: "Mark Correct if", negative: "Mark Incorrect if" },
   checklist: { positive: "Check off if", negative: "Leave unchecked if" },
+  timestamp: { positive: "Log this if", negative: "Don't log if" },
 };
 
 // Procedure and Measurement are what staff actually reach for mid-session —

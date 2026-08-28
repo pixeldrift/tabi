@@ -40,6 +40,7 @@ const KIND_ORDER: CardKind[] = [
   "rating",
   "interval",
   "checklist",
+  "timestamp",
 ];
 
 // Same order PROMPT_LEVEL_ICONS declares them in (least to most intrusive) —
@@ -213,6 +214,10 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       helpText: "One entry per item, in order. Description is optional, shown in expanded view.",
     },
   ],
+  // No kind-specific fields — a Timestamp card is a bare log; title, phase,
+  // and description (collected generically before this switch even runs)
+  // are all it needs.
+  timestamp: [],
 };
 
 /** Slide+fade variants for the two-step wizard body. `direction` (passed in
@@ -422,6 +427,8 @@ function buildCardConfig(
         items,
       };
     }
+    case "timestamp":
+      return { id, kind, title, phase, description };
   }
 }
 
@@ -1234,20 +1241,26 @@ export function AddCardDialog({
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-4">
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
-                          {DATA_TYPE_INFO[kind].label} details
-                        </h3>
-                        {KIND_FIELD_SCHEMAS[kind].map((field) => (
-                          <SchemaField
-                            key={field.key}
-                            field={field}
-                            value={content[field.key]}
-                            onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
-                            content={content}
-                          />
-                        ))}
-                      </div>
+                      {/* A kind with no fields of its own (Timestamp is a
+                          bare log — nothing beyond the common Basics above)
+                          skips this section entirely rather than showing an
+                          empty "___ details" header over nothing. */}
+                      {KIND_FIELD_SCHEMAS[kind].length > 0 && (
+                        <div className="flex flex-col gap-4">
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground -mb-2">
+                            {DATA_TYPE_INFO[kind].label} details
+                          </h3>
+                          {KIND_FIELD_SCHEMAS[kind].map((field) => (
+                            <SchemaField
+                              key={field.key}
+                              field={field}
+                              value={content[field.key]}
+                              onChange={(v) => setContent((prev) => ({ ...prev, [field.key]: v }))}
+                              content={content}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </ScrollFade>
                 </motion.div>

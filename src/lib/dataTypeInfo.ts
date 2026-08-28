@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createElement } from "react";
-import { Star } from "lucide-react";
+import { Star, Stamp } from "lucide-react";
 import { PercentCorrectIcon } from "@/components/icons/PercentCorrectIcon";
 import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
 import { RateIcon } from "@/components/icons/RateIcon";
@@ -71,6 +71,12 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     icon: createElement(ChecklistIcon),
     description:
       "A fixed list of items to check off as applicable, rather than tallied or timed. Best for a set of indicators observed over the course of a session, like signs of rapport, where each one either applies or doesn't and there's no count or duration to track.",
+  },
+  timestamp: {
+    label: "Timestamp",
+    icon: createElement(Stamp),
+    description:
+      "Logs the exact date and time something happened — a simple, ongoing record of moments, not a count, duration, or interval check.",
   },
 };
 

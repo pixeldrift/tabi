@@ -19,6 +19,7 @@ import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
 import { IntervalCard } from "@/components/IntervalCard";
+import { TimestampCard } from "@/components/TimestampCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import {
@@ -190,6 +191,12 @@ export type CardConfig = {
        *  expanded view (see ChecklistCard), omit it for an item with
        *  nothing more to say than its own label. */
       items: { label: string; description?: string }[];
+    }
+  | {
+      kind: "timestamp";
+      title: string;
+      phase: string;
+      description: string;
     }
 );
 
@@ -1020,6 +1027,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
   "rating",
   "interval",
   "checklist",
+  "timestamp",
 ];
 
 // Clinical progression order, not the cards' own declaration order — the
@@ -1043,6 +1051,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   rating: "Score",
   interval: "Interval",
   checklist: "Checklist",
+  timestamp: "Timestamp",
 };
 
 const CUSTOM_CARDS_STORAGE_KEY = "aba-daba-custom-cards-v1";
@@ -1059,21 +1068,6 @@ function loadCustomCards(): CardConfig[] {
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // One-time migration: the Interval kind's slug used to be "timestamp"
-    // (renamed to free that name up for a real event-timestamp kind later).
-    // Cards a user already created and saved via Add New Card still have the
-    // old literal baked into their JSON — there's no other migration path
-    // for this storage key, so without this they'd silently stop matching
-    // any `kind === "interval"` check throughout the app the moment this
-    // shipped. Rewritten on the raw, still-`unknown` shape (not the already-
-    // cast `CardConfig[]`) — overriding a discriminant on an already-narrowed
-    // union member produces an intersection TS can't reconcile back against
-    // every OTHER branch's own required fields.
-    for (const card of parsed as { kind?: unknown }[]) {
-      if (card && typeof card === "object" && card.kind === "timestamp") {
-        (card as { kind: unknown }).kind = "interval";
-      }
-    }
     return parsed as CardConfig[];
   } catch {
     return [];
@@ -2537,6 +2531,15 @@ function renderCard(
           phase={card.phase}
           description={card.description}
           items={card.items}
+          {...common}
+        />
+      );
+    case "timestamp":
+      return (
+        <TimestampCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
           {...common}
         />
       );

@@ -12,6 +12,7 @@ import {
   Frown,
   Pencil,
   Search,
+  Stamp,
   Star,
   Target,
   Delete,
@@ -170,6 +171,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Interval — Momentary", "Momentary Time Sampling corner icon", IntervalMomentaryIcon),
       custom("Checklist", "Checklist card kind", ChecklistIcon),
       lucide("Star", "Score card kind + score selector", Star),
+      lucide("Stamp", "Timestamp card kind", Stamp),
     ],
   },
   {
