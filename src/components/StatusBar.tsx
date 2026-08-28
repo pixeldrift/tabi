@@ -668,7 +668,13 @@ export function StatusBar({
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, []);
+    // `isRunning` re-triggers this for the same reason miniPillRect's own
+    // effect below now does: this anchor sits inside the header's
+    // `isRunning ? "pt-1" : "pt-2"` padded wrapper (see that div's own
+    // comment), which shifts the anchor's POSITION the instant a session
+    // starts/stops running anywhere (not just "mine") without changing the
+    // anchor's own SIZE — invisible to a plain ResizeObserver.
+  }, [isRunning]);
 
   // Mini pill's resting target isn't anchored to a real mini-pill element
   // at all — it's derived from two OTHER, always-present layout facts (the
@@ -779,7 +785,20 @@ export function StatusBar({
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, []);
+    // `isRunning` is a real dependency, not just an exhaustive-deps
+    // formality: the header's own top padding (`isRunning ? "pt-1" :
+    // "pt-2"`, see its own JSX below) shifts titleRowEl's POSITION the
+    // instant a session starts/stops running, without changing titleRowEl's
+    // own SIZE — a plain ResizeObserver never fires for a position-only
+    // shift on an ancestor's padding, so without this the very first
+    // measurement after that flip (and every one after, until some
+    // unrelated resize/font-ready event happens to force a re-measure)
+    // stayed pinned to whatever `top` was computed before the flip, landing
+    // the mini pill a few px off from the nav row it's supposed to sit
+    // flush against. Re-running this whole effect on that flip forces a
+    // fresh, correct read the moment it matters instead of waiting on an
+    // event that was never guaranteed to fire again.
+  }, [isRunning]);
 
   // Same "never animate to the literal string auto" fix as boxNaturalHeight/
   // actionsHeight above — Motion's own "auto" resolution re-measures
@@ -1329,6 +1348,30 @@ export function StatusBar({
             const pillTransition = suppressEntranceAnimation
               ? { duration: 0 }
               : { duration: PILL_TRAVEL_MS / 1000, ease: PILL_TRAVEL_EASE };
+            // `top` gets its OWN transition, separate from left/width/height
+            // above, for exactly one case: already resting in mini (not
+            // `pillTraveling` — that coordinated big<->mini move still uses
+            // the uniform pillTransition for all four, unchanged) and a
+            // notification popping in or clearing changes notifWrap's
+            // height, which miniPillRect's own top formula reads directly.
+            // NotificationBar's `layout` animation on that wrapper is a
+            // Motion FLIP: the box's real DOM height (what getBoundingClientRect
+            // — and so this formula — actually reads) snaps to its new value
+            // in the very first frame, and only the VISUAL smoothing is a
+            // transform layered on top; the plain, un-animated `<nav>` right
+            // below it reflows off that same real box size, so it snaps
+            // instantly too. Chasing that already-final value through our
+            // OWN separate eased tween is what reads as lagging behind the
+            // tab row — matching NOTIFICATION_AREA_TRANSITION's duration
+            // doesn't fix that, since nav isn't actually animating on that
+            // duration either; it needs to snap right along with it, not
+            // just ease faster. Verified empirically: sampling pillTop
+            // against navTop through a live notification's appear/hold/
+            // clear cycle, the two move in exact lockstep at every sample
+            // once this snaps, with zero drift during the hold. Snapping
+            // keeps this pill locked to the exact same real,
+            // instantly-updated geometry nav already reflows against.
+            const topTransition = toMini && !pillTraveling ? { duration: 0 } : pillTransition;
             const pillCssDurationMs = suppressEntranceAnimation ? 0 : SESSION_MORPH_MS;
             return (
               <motion.div
@@ -1344,7 +1387,7 @@ export function StatusBar({
                   width: target.width,
                   height: target.height,
                 }}
-                transition={pillTransition}
+                transition={{ top: topTransition, default: pillTransition }}
               >
                 <motion.span
                   className={cn(
@@ -1378,7 +1421,22 @@ export function StatusBar({
                   animate={{ width: buttonWidth, opacity: isIdle ? 0 : 1 }}
                   transition={pillTransition}
                   aria-hidden={isIdle}
-                  className="shrink-0 overflow-hidden bg-blue-500 grid place-items-center text-white"
+                  // `h-full` alongside the parent's own `items-stretch`, not
+                  // instead of it — belt and suspenders. The parent pill's
+                  // own height is a Motion-animated inline style, not an
+                  // ordinary CSS value the browser lays out once and leaves
+                  // alone, and this span's WIDTH is *also* separately
+                  // animated (buttonWidth, above) — that combination has
+                  // occasionally left this span short of the pill's full
+                  // height (a visible white gap under the button, reported
+                  // as "the button sits too high"), self-correcting the
+                  // next time anything forces a reflow (e.g. resizing the
+                  // window). `h-full` pins this span's height directly to
+                  // its positioned parent's already-resolved height instead
+                  // of leaving it to a live stretch recalculation that
+                  // apparently doesn't always rerun on every frame both
+                  // dimensions are changing.
+                  className="shrink-0 h-full overflow-hidden bg-blue-500 grid place-items-center text-white"
                 >
                   <button
                     tabIndex={isIdle ? -1 : 0}
