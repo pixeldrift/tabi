@@ -1303,7 +1303,14 @@ function IntervalTimeline({
               );
             }
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
-            const left = i * SEG_W + (SEG_W - width) / 2;
+            // Whole spans the segment's own real timespan (its bubble sits
+            // at the segment's END, so the bracket naturally trails off to
+            // its left rather than centering under the bubble). Partial's
+            // width is already just a stylized "less than whole," not tied
+            // to any particular real sub-span within the interval, so it
+            // centers on the bubble instead — otherwise its narrower
+            // bracket reads as visibly adrift from the bubble it belongs to.
+            const left = samplingType === "partial" ? (i + 1) * SEG_W - width / 2 : i * SEG_W;
             return (
               <svg
                 key={i}
