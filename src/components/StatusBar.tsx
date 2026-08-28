@@ -1506,20 +1506,21 @@ export function StatusBar({
                 pause();
                 setPauseOrLeaveOpen(false);
               }}
-              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
             >
-              Pause session for all
-              <Pause className="size-4" fill="currentColor" strokeWidth={0} />
+              Pause session for everyone
+              <Pause className="size-4 shrink-0" fill="currentColor" strokeWidth={0} />
             </button>
+            <span className="text-xs text-muted-foreground text-center">Or</span>
             <button
               onClick={() => {
                 leaveSession();
                 setPauseOrLeaveOpen(false);
               }}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-white hover:bg-stone-50 text-stone-700 text-sm font-medium px-4 transition-colors w-full"
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-stone-600 hover:bg-stone-700 active:bg-stone-700 text-white text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
             >
-              Leave session running and exit
-              <LogOut className="size-4" />
+              Exit and leave running
+              <LogOut className="size-4 shrink-0" />
             </button>
           </DialogFooter>
         </DialogContent>
