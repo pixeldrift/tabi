@@ -78,6 +78,9 @@ import { DurationIcon } from "./DurationIcon";
 import { RateIcon } from "./RateIcon";
 import { TaskAnalysisIcon } from "./TaskAnalysisIcon";
 import { IntervalIcon } from "./IntervalIcon";
+import { IntervalWholeIcon } from "./IntervalWholeIcon";
+import { IntervalPartialIcon } from "./IntervalPartialIcon";
+import { IntervalMomentaryIcon } from "./IntervalMomentaryIcon";
 import { VerbalPromptIcon } from "./VerbalPromptIcon";
 import { GesturalPromptIcon } from "./GesturalPromptIcon";
 import { ModelingPromptIcon } from "./ModelingPromptIcon";
@@ -162,6 +165,9 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Rate", "Rate card kind", RateIcon),
       custom("Task Analysis", "Task Analysis card kind", TaskAnalysisIcon),
       custom("Interval", "Interval card kind", IntervalIcon),
+      custom("Interval — Whole", "Whole Interval Recording corner icon", IntervalWholeIcon),
+      custom("Interval — Partial", "Partial Interval Recording corner icon", IntervalPartialIcon),
+      custom("Interval — Momentary", "Momentary Time Sampling corner icon", IntervalMomentaryIcon),
       custom("Checklist", "Checklist card kind", ChecklistIcon),
       lucide("Star", "Score card kind + score selector", Star),
     ],

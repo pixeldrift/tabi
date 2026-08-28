@@ -7,6 +7,9 @@ import { MiniTileShell } from "./MiniTileShell";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { IntervalIcon } from "./icons/IntervalIcon";
+import { IntervalWholeIcon } from "./icons/IntervalWholeIcon";
+import { IntervalPartialIcon } from "./icons/IntervalPartialIcon";
+import { IntervalMomentaryIcon } from "./icons/IntervalMomentaryIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { Switch } from "@/components/ui/switch";
@@ -20,11 +23,34 @@ import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
 
+export type SamplingType = "whole" | "partial" | "momentary";
+
+/** Short, corner-label-sized names — the full ABA terms (Whole/Partial
+ *  Interval Recording, Momentary Time Sampling) live in the sampling-type
+ *  picker's own helpText and this kind's info-modal description instead,
+ *  so the on-card label stays a single line at its small corner size. */
+const SAMPLING_TYPE_LABEL: Record<SamplingType, string> = {
+  whole: "Whole Interval",
+  partial: "Partial Interval",
+  momentary: "Momentary",
+};
+
+const SAMPLING_TYPE_ICON: Record<SamplingType, typeof IntervalIcon> = {
+  whole: IntervalWholeIcon,
+  partial: IntervalPartialIcon,
+  momentary: IntervalMomentaryIcon,
+};
+
 export interface IntervalCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
   description?: string;
+  /** Which of the three standard ABA interval-recording methods this card
+   *  follows — purely presentational (corner label, icon, and timeline
+   *  indicator). Defaults to "whole", matching every pre-existing card's
+   *  actual behavior before this field existed. */
+  samplingType?: SamplingType;
   /** Length of each scored interval, in minutes (e.g. 30 or 60). */
   intervalMin: number;
   /** Total number of intervals across the whole observation window — omit
@@ -158,6 +184,18 @@ function statusColors(status: IntervalStatus, recency: Recency) {
     : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
+// Solid-fill coloring for the sampling-type row's stripe/dot — deliberately
+// simpler than statusColors' bordered-badge palette above (no recency/fade
+// dimension here, just "not yet scored" vs. which button scored it), and a
+// gray REST state instead of statusColors' "nothing at all until scored" —
+// the sampling-type indicator is a permanent "this is what counts" legend,
+// not a scored-only celebration mark.
+function samplingIndicatorColor(status: IntervalStatus) {
+  if (status === "correct") return "bg-green-500";
+  if (status === "incorrect") return "bg-red-500";
+  return "bg-stone-300";
+}
+
 /** Everything the bookmark bar's Interval chip needs. `elapsed` (like
  *  Rate's own denominator) ticks automatically whenever the session is
  *  running via the real IntervalCard's own `subscribeTick` effect — this
@@ -204,6 +242,7 @@ export function IntervalCard({
   title,
   phase = "Intervention",
   description,
+  samplingType = "whole",
   intervalMin,
   intervalCount,
   defaultWindowHours = 4,
@@ -234,6 +273,8 @@ export function IntervalCard({
   onWidthModeChange,
 }: IntervalCardProps) {
   const cardKey = id ?? title;
+  const samplingLabel = SAMPLING_TYPE_LABEL[samplingType];
+  const SamplingIcon = SAMPLING_TYPE_ICON[samplingType];
   // Splits the whole card into two mutually-exclusive modes further down —
   // checkpoint mode replaces the elapsed-interval timeline/alert entirely
   // with a fixed list of named, wall-clock-anchored checks (see the
@@ -683,9 +724,9 @@ export function IntervalCard({
   const details = (
     <>
       <DrawerQuickFacts
-        icon={<IntervalIcon />}
+        icon={<SamplingIcon />}
         kind="interval"
-        dataTypeLabel="Interval"
+        dataTypeLabel={samplingLabel}
         phase={phase}
         stats={
           isCheckpointMode
@@ -887,9 +928,9 @@ export function IntervalCard({
     return (
       <DataListRow
         title={title}
-        dataTypeIcon={<IntervalIcon />}
+        dataTypeIcon={<SamplingIcon />}
         kind="interval"
-        dataTypeLabel="Interval"
+        dataTypeLabel={samplingLabel}
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -939,8 +980,8 @@ export function IntervalCard({
       <CardShell
         title={title}
         phase={phase}
-        dataType="Interval"
-        dataTypeIcon={<IntervalIcon />}
+        dataType={samplingLabel}
+        dataTypeIcon={<SamplingIcon />}
         kind="interval"
         isActive={isActive}
         onActivate={onActivate}
@@ -1026,6 +1067,7 @@ export function IntervalCard({
               fillFrac={activeFillFrac}
               viewIdx={activeViewIdx}
               statuses={activeStatuses}
+              samplingType={samplingType}
               timerPill={isCheckpointMode ? checkpointTimerPill : timerPill}
             />
           </div>
@@ -1070,6 +1112,14 @@ const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
 // strip.
 const SEG_W = 64;
 const BAR_H = 10;
+// The sampling-type row sits between the bubble row and the elapsed-time
+// bar. Whole/Partial render as a thin stripe there (same idiom the old
+// scored-only stripe used, just promoted to its own always-visible row and
+// made sampling-type-aware); Momentary instead renders a short connector
+// line down from its bubble plus a small dot, so the two need to share one
+// row height: connector + dot = SAMPLING_ROW_H exactly.
+const SAMPLING_ROW_H = 12;
+const SAMPLING_DOT_SIZE = 6;
 // Same diameter as every period bubble (see IntervalTimeline's own comment) —
 // hoisted here so the nav arrows below can vertically center themselves on
 // the bubble row specifically, rather than the timeline's full height
@@ -1117,6 +1167,7 @@ function IntervalTimeline({
   fillFrac,
   viewIdx,
   statuses,
+  samplingType,
   timerPill,
 }: {
   intervalCount: number;
@@ -1130,6 +1181,7 @@ function IntervalTimeline({
   fillFrac: number;
   viewIdx: number;
   statuses: IntervalStatus[];
+  samplingType: SamplingType;
   timerPill: ReactNode;
 }) {
   const fillPx = fillFrac * SEG_W;
@@ -1199,6 +1251,60 @@ function IntervalTimeline({
           })}
         </motion.div>
       </div>
+      {/* Sampling-type indicator — sits between the bubble row and the
+          elapsed-time bar, showing which portion of each interval actually
+          counts for scoring: a full-width stripe for Whole, a half-width
+          stripe (centered) for Partial, or — since Momentary checks a
+          single instant, not a span — a short connector dropping straight
+          down from the bubble to a small dot instead of any stripe at all.
+          Always visible (gray when unscored), not just appearing once
+          scored — this is a legend for what the card is measuring, not a
+          "you scored this" celebration mark. */}
+      <div
+        className="relative overflow-hidden"
+        style={{ height: SAMPLING_ROW_H, ...HORIZONTAL_FADE_MASK }}
+      >
+        <motion.div
+          className="absolute left-1/2 top-0"
+          style={{ height: SAMPLING_ROW_H }}
+          animate={{ x: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
+          {Array.from({ length: intervalCount }, (_, i) => {
+            const color = samplingIndicatorColor(statuses[i]);
+            if (samplingType === "momentary") {
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 -translate-x-1/2 flex flex-col items-center"
+                  style={{ left: (i + 1) * SEG_W }}
+                >
+                  <div
+                    className="w-px bg-stone-300"
+                    style={{ height: SAMPLING_ROW_H - SAMPLING_DOT_SIZE }}
+                    aria-hidden
+                  />
+                  <div
+                    className={cn("rounded-full", color)}
+                    style={{ width: SAMPLING_DOT_SIZE, height: SAMPLING_DOT_SIZE }}
+                    aria-hidden
+                  />
+                </div>
+              );
+            }
+            const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
+            const left = i * SEG_W + (SEG_W - width) / 2;
+            return (
+              <div
+                key={i}
+                className={cn("absolute top-0 h-[3px] rounded-full", color)}
+                style={{ left, width }}
+                aria-hidden
+              />
+            );
+          })}
+        </motion.div>
+      </div>
       {/* The single combined progress indicator: the gray track fills light
           blue as the session clock advances, and the chevron below marks
           exactly how far the fill has reached — no separate "percent
@@ -1234,26 +1340,6 @@ function IntervalTimeline({
               aria-hidden
             />
           ))}
-          {/* A colored top-border stripe spanning exactly a scored
-              interval's own timespan, running right up to its bubble above —
-              the bar segment itself reads as "this whole stretch of time is
-              what that bubble covers," not just the single point where the
-              bubble sits. */}
-          {Array.from({ length: intervalCount }, (_, i) => {
-            const status = statuses[i];
-            if (status == null) return null;
-            return (
-              <div
-                key={`seg-${i}`}
-                className={cn(
-                  "absolute top-0 h-[3px] rounded-full",
-                  status === "correct" ? "bg-green-500" : "bg-red-500",
-                )}
-                style={{ left: i * SEG_W, width: SEG_W }}
-                aria-hidden
-              />
-            );
-          })}
         </motion.div>
       </div>
       {/* The "now" chevron and the mini timer pill follow the same real

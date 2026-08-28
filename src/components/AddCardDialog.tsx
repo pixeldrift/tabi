@@ -70,7 +70,8 @@ interface FieldSchema {
     | "ranking"
     | "checklistItems"
     | "checkpointMode"
-    | "checkpoints";
+    | "checkpoints"
+    | "samplingType";
   required?: boolean;
   placeholder?: string;
   helpText?: string;
@@ -167,6 +168,13 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
   ],
   interval: [
     { key: "intervalMin", label: "Interval length (minutes)", type: "number", required: true },
+    {
+      key: "samplingType",
+      label: "Sampling type",
+      type: "samplingType",
+      helpText:
+        "Whole Interval Recording (scores only if the behavior occurs the entire interval), Partial Interval Recording (scores if it occurs at any point), or Momentary Time Sampling (scores only if it's occurring at that one instant).",
+    },
     {
       key: "intervalCount",
       label: "Total intervals",
@@ -352,6 +360,15 @@ function buildCardConfig(
       };
     }
     case "interval": {
+      // Omitted rather than always written, matching how CardConfig's own
+      // field is documented ("omitted defaults to whole") — mirrors
+      // positiveLabel/negativeLabel's own str()-returns-undefined-when-
+      // blank idiom just below, keeping the persisted object minimal
+      // instead of baking today's default into every card's own JSON.
+      const samplingType =
+        content.samplingType === "partial" || content.samplingType === "momentary"
+          ? content.samplingType
+          : undefined;
       const checkpointMode = content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval";
       const rawCheckpoints =
         (content.checkpoints as
@@ -377,6 +394,7 @@ function buildCardConfig(
         phase,
         description,
         behaviorRole,
+        samplingType,
         intervalMin: num("intervalMin") ?? 30,
         intervalCount: num("intervalCount"),
         defaultWindowHours: num("defaultWindowHours"),
@@ -550,6 +568,32 @@ function SchemaField({
               className={cn(
                 "h-8 rounded-full px-4 text-sm font-medium transition-colors",
                 (value ?? "interval") === opt.key
+                  ? "btn-bevel bg-blue-500 text-white"
+                  : "text-stone-500 hover:text-stone-800",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {field.type === "samplingType" && (
+        <div className="mt-1.5 flex items-center gap-1 rounded-full border border-border bg-stone-100/60 p-1 w-fit">
+          {(
+            [
+              { key: "whole", label: "Whole" },
+              { key: "partial", label: "Partial" },
+              { key: "momentary", label: "Momentary" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange(opt.key)}
+              aria-pressed={(value ?? "whole") === opt.key}
+              className={cn(
+                "h-8 rounded-full px-4 text-sm font-medium transition-colors",
+                (value ?? "whole") === opt.key
                   ? "btn-bevel bg-blue-500 text-white"
                   : "text-stone-500 hover:text-stone-800",
               )}
