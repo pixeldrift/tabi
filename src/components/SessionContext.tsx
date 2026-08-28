@@ -299,7 +299,7 @@ interface CardSessionValue {
   // context). Deliberately a separate field from sessionRunning above:
   // Review Mode must unlock editing without ALSO waking up any card's own
   // tick-driven timer logic, which reads the real sessionRunning straight
-  // from the main context instead (RateCard/DurationCard/TimestampCard).
+  // from the main context instead (RateCard/DurationCard/IntervalCard).
   canRecordData: boolean;
   // Flips true the moment the session has actually accrued any real time
   // (or was continued from a previous session that already had some) and

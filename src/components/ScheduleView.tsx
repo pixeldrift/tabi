@@ -742,7 +742,7 @@ export function ScheduleView({
 }) {
   const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
   // `now`/`bumpTime` live in ScheduleContext now, not here — shared with
-  // TimestampCard's checkpoint-mode alerts so they read the exact same
+  // IntervalCard's checkpoint-mode alerts so they read the exact same
   // simulated demo clock instead of a second, independently-real one that
   // could disagree with it. See that context's own comment.
   const { now, bumpTime, setPhineasAppointments } = useScheduleData();

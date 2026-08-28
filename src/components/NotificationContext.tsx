@@ -60,15 +60,15 @@ export interface Notification {
   // this one notification's repeating alarm (see NotificationBar's own
   // activeAlarm effect) — for alerts where the sound needs to stay fixed
   // regardless of what the user picked as their general default (e.g. a
-  // routine Timestamp interval check always uses a gentle "chime" rather
+  // routine Interval check always uses a gentle "chime" rather
   // than whatever louder style the user may have set as their default).
   soundOverride?: AlarmSoundStyle;
-  // Present only for a Timestamp card's own "time to check" alert — adds 3
+  // Present only for an Interval card's own "time to check" alert — adds 3
   // extra buttons to the row (scroll-to-card, negative, positive) alongside
   // the standard audio/snooze/dismiss ones. The callbacks close directly
   // over the pushing card's own `score`/scroll-ref, so no separate lookup
   // registry is needed; see NotificationBar's own rendering of this.
-  timestampCheck?: {
+  intervalCheck?: {
     positiveLabel: string;
     negativeLabel: string;
     initialStatus: "correct" | "incorrect" | null;
@@ -107,13 +107,13 @@ interface PushInput {
   sourceRef?: Notification["sourceRef"];
   activityAt?: number;
   soundOverride?: AlarmSoundStyle;
-  timestampCheck?: Notification["timestampCheck"];
+  intervalCheck?: Notification["intervalCheck"];
   excludeFromHistory?: boolean;
   // Push directly into "archived" instead of "live" — skips the transient
   // top banner (and its chime/vibrate) entirely, landing straight in the
   // Notifications tab as history. Used for alerts that fire while nobody's
   // actually in a running session to receive them (see ScheduleView's own
-  // alert-firing effect and TimestampCard's "time to check" push) — an
+  // alert-firing effect and IntervalCard's "time to check" push) — an
   // interruption nobody's there to act on isn't useful; the tab is where it
   // belongs instead. Defaults to true (the normal, interactive, live case).
   live?: boolean;
@@ -142,7 +142,7 @@ interface NotificationContextValue {
   clear: (id: string) => void;
   clearAll: () => void;
   // Looks up a still-tracked notification by its own dedupeKey and clears
-  // it outright — used by TimestampCard so scoring an interval directly on
+  // it outright — used by IntervalCard so scoring an interval directly on
   // the card (not via the alert's own buttons) also retires that interval's
   // now-pointless "time to check" alert, rather than leaving it to sit as
   // dead history in the Notifications tab. A no-op if nothing was ever
@@ -520,7 +520,7 @@ export function NotificationProvider({
         sourceRef: input.sourceRef,
         activityAt: input.activityAt,
         soundOverride: input.soundOverride,
-        timestampCheck: input.timestampCheck,
+        intervalCheck: input.intervalCheck,
         excludeFromHistory: input.excludeFromHistory,
         state: live ? "live" : "archived",
       };

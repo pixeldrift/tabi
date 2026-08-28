@@ -316,12 +316,12 @@ function NotificationRow({
   // Once silenced the row stays but reads as muted, regardless of the
   // notification's own stored icon (which is what drives the chime).
   const Icon = silenced ? BellOff : ICON_MAP[n.icon];
-  // Local, optimistic highlight for the Timestamp check's own two extra
+  // Local, optimistic highlight for the Interval check's own two extra
   // score buttons — seeded from the interval's status at the moment this
   // alert fired, then just toggled in place on tap (matching the actual
   // card's own score() toggle-on-repeat-press semantics) rather than
   // re-reading the card's live state on every render.
-  const [intervalStatus, setIntervalStatus] = useState(n.timestampCheck?.initialStatus ?? null);
+  const [intervalStatus, setIntervalStatus] = useState(n.intervalCheck?.initialStatus ?? null);
   const dismissTimeoutRef = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -330,9 +330,9 @@ function NotificationRow({
     [],
   );
   const handleIntervalScore = (value: "correct" | "incorrect") => {
-    if (!n.timestampCheck) return;
+    if (!n.intervalCheck) return;
     setIntervalStatus((prev) => (prev === value ? null : value));
-    n.timestampCheck.onScore(value);
+    n.intervalCheck.onScore(value);
     // A brief pause — long enough to actually see the button fill in — then
     // clear outright (the same slide-off `commit` every other dismissal
     // uses, just backed by `clear` instead of `dismiss`) so a recorded
@@ -524,20 +524,20 @@ function NotificationRow({
           <div
             role="button"
             tabIndex={0}
-            data-tour="timestamp-alert-jump"
-            // Timestamp's own "time to check" alert has no sourceRef to
+            data-tour="interval-alert-jump"
+            // Interval's own "time to check" alert has no sourceRef to
             // activate — tapping it instead does what its old standalone
             // "Now" button used to (jump straight to the card), rather than
             // giving up that whole tap target to a no-op.
             onClick={() => {
               if (wasDragging.current) return;
-              if (n.timestampCheck) n.timestampCheck.onScrollToCard();
+              if (n.intervalCheck) n.intervalCheck.onScrollToCard();
               else onActivate();
             }}
             onKeyDown={(e) => {
               if (e.key !== "Enter" && e.key !== " ") return;
               e.preventDefault();
-              if (n.timestampCheck) n.timestampCheck.onScrollToCard();
+              if (n.intervalCheck) n.intervalCheck.onScrollToCard();
               else onActivate();
             }}
             className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
@@ -559,14 +559,14 @@ function NotificationRow({
                   the whole row does what that button did — otherwise nothing
                   here signals the tap does anything beyond dismiss/silence
                   like every other alert kind. */}
-              {n.timestampCheck && (
+              {n.intervalCheck && (
                 <ArrowDownToLine
                   className="absolute -bottom-1 -right-1 size-3 rounded-full bg-background p-px"
                   aria-hidden
                 />
               )}
             </div>
-            {n.timestampCheck && <span className="sr-only">Tap to jump to the card</span>}
+            {n.intervalCheck && <span className="sr-only">Tap to jump to the card</span>}
             <div className="flex-1 min-w-0">
               <NotificationTitle
                 title={n.title}
@@ -586,7 +586,7 @@ function NotificationRow({
             </div>
           </div>
 
-          {/* Card-specific cluster (Timestamp's own "time to check" alert) —
+          {/* Card-specific cluster (Interval's own "time to check" alert) —
               kept as its own group, distinct from the standard audio/snooze/
               dismiss cluster on the right, rather than all six buttons
               reading as one undifferentiated row. `shrink-0` (rather than
@@ -596,12 +596,12 @@ function NotificationRow({
               regardless of how little this cluster needs. The scroll-to-card
               jump this used to have its own dedicated button for now lives
               on the title/icon tap target itself (see its own onClick). */}
-          {n.timestampCheck && (
+          {n.intervalCheck && (
             <div className="shrink-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                aria-label={n.timestampCheck.negativeLabel}
-                title={n.timestampCheck.negativeLabel}
+                aria-label={n.intervalCheck.negativeLabel}
+                title={n.intervalCheck.negativeLabel}
                 onClick={() => handleIntervalScore("incorrect")}
                 className={cn(
                   "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",
@@ -614,8 +614,8 @@ function NotificationRow({
               </button>
               <button
                 type="button"
-                aria-label={n.timestampCheck.positiveLabel}
-                title={n.timestampCheck.positiveLabel}
+                aria-label={n.intervalCheck.positiveLabel}
+                title={n.intervalCheck.positiveLabel}
                 onClick={() => handleIntervalScore("correct")}
                 className={cn(
                   "shrink-0 inline-flex items-center justify-center size-8 rounded-full border-2 transition-colors",

@@ -18,7 +18,7 @@ import { RateCard } from "@/components/RateCard";
 import { DurationCard } from "@/components/DurationCard";
 import { TaskAnalysisCard } from "@/components/TaskAnalysisCard";
 import { RatingCard } from "@/components/RatingCard";
-import { TimestampCard } from "@/components/TimestampCard";
+import { IntervalCard } from "@/components/IntervalCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import {
@@ -137,7 +137,7 @@ export type CardConfig = {
       levelDescriptions?: string[];
     }
   | {
-      kind: "timestamp";
+      kind: "interval";
       title: string;
       phase: string;
       description: string;
@@ -634,7 +634,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
   },
   {
     id: "remains-dry",
-    kind: "timestamp",
+    kind: "interval",
     title: "Remains dry for 1.5 Hrs",
     phase: "Intervention",
     description:
@@ -662,7 +662,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
   },
   {
     id: "accepts-medication",
-    kind: "timestamp",
+    kind: "interval",
     title: "Accepts medication without resisting",
     phase: "Intervention",
     description:
@@ -1006,7 +1006,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
   "duration",
   "task-analysis",
   "rating",
-  "timestamp",
+  "interval",
   "checklist",
 ];
 
@@ -1029,7 +1029,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   duration: "Duration",
   "task-analysis": "Task Analysis",
   rating: "Score",
-  timestamp: "Interval",
+  interval: "Interval",
   checklist: "Checklist",
 };
 
@@ -1046,7 +1046,23 @@ function loadCustomCards(): CardConfig[] {
     const raw = window.localStorage.getItem(CUSTOM_CARDS_STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as CardConfig[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // One-time migration: the Interval kind's slug used to be "timestamp"
+    // (renamed to free that name up for a real event-timestamp kind later).
+    // Cards a user already created and saved via Add New Card still have the
+    // old literal baked into their JSON — there's no other migration path
+    // for this storage key, so without this they'd silently stop matching
+    // any `kind === "interval"` check throughout the app the moment this
+    // shipped. Rewritten on the raw, still-`unknown` shape (not the already-
+    // cast `CardConfig[]`) — overriding a discriminant on an already-narrowed
+    // union member produces an intersection TS can't reconcile back against
+    // every OTHER branch's own required fields.
+    for (const card of parsed as { kind?: unknown }[]) {
+      if (card && typeof card === "object" && card.kind === "timestamp") {
+        (card as { kind: unknown }).kind = "interval";
+      }
+    }
+    return parsed as CardConfig[];
   } catch {
     return [];
   }
@@ -2484,9 +2500,9 @@ function renderCard(
           {...common}
         />
       );
-    case "timestamp":
+    case "interval":
       return (
-        <TimestampCard
+        <IntervalCard
           title={card.title}
           phase={card.phase}
           description={card.description}

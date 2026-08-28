@@ -6,7 +6,7 @@ import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
-import { TimestampIcon } from "./icons/TimestampIcon";
+import { IntervalIcon } from "./icons/IntervalIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { Switch } from "@/components/ui/switch";
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
 
-export interface TimestampCardProps extends CardEditAndDrawerProps {
+export interface IntervalCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
@@ -158,9 +158,9 @@ function statusColors(status: IntervalStatus, recency: Recency) {
     : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
-/** Everything the bookmark bar's Timestamp chip needs. `elapsed` (like
+/** Everything the bookmark bar's Interval chip needs. `elapsed` (like
  *  Rate's own denominator) ticks automatically whenever the session is
- *  running via the real TimestampCard's own `subscribeTick` effect — this
+ *  running via the real IntervalCard's own `subscribeTick` effect — this
  *  hook only reads it (live via the store's useSyncExternalStore
  *  subscription), never re-subscribes to the tick itself. `currentIndex` is
  *  a pure function of `elapsed`, same formula the real card uses, so both
@@ -169,7 +169,7 @@ function statusColors(status: IntervalStatus, recency: Recency) {
  *  real card is also mounted — and clears any matching "time to check"
  *  alert, mirroring the real card's own `scoreFromCard` (not the alert's own
  *  `score`, which deliberately leaves that alert to clear itself). */
-export function useTimestampChip(cardKey: string, intervalMin: number, intervalCount?: number) {
+export function useIntervalChip(cardKey: string, intervalMin: number, intervalCount?: number) {
   const [elapsed] = useCardState(cardKey, "elapsed", 0);
   const { markDirty, canRecordData } = useCardSession();
   const { clearByDedupeKey } = useNotifications();
@@ -193,13 +193,13 @@ export function useTimestampChip(cardKey: string, intervalMin: number, intervalC
       next[currentIndex] = next[currentIndex] === value ? null : value;
       return next;
     });
-    clearByDedupeKey(`timestamp-check:${cardKey}:${currentIndex}`);
+    clearByDedupeKey(`interval-check:${cardKey}:${currentIndex}`);
   };
 
   return { currentIndex, currentStatus: statuses[currentIndex] ?? null, score, canRecordData };
 }
 
-export function TimestampCard({
+export function IntervalCard({
   id,
   title,
   phase = "Intervention",
@@ -232,7 +232,7 @@ export function TimestampCard({
   slideFrom,
   widthMode,
   onWidthModeChange,
-}: TimestampCardProps) {
+}: IntervalCardProps) {
   const cardKey = id ?? title;
   // Splits the whole card into two mutually-exclusive modes further down —
   // checkpoint mode replaces the elapsed-interval timeline/alert entirely
@@ -388,7 +388,7 @@ export function TimestampCard({
   // short.
   const scoreFromCard = (index: number, value: Exclude<IntervalStatus, null>) => {
     score(index, value);
-    clearByDedupeKey(`timestamp-check:${cardKey}:${index}`);
+    clearByDedupeKey(`interval-check:${cardKey}:${index}`);
   };
   // Pops a "time to check" alert the instant a new interval boundary is
   // actually crossed in real time (not while the session is paused — elapsed,
@@ -437,7 +437,7 @@ export function TimestampCard({
     // expanded view's per-row buttons) — nothing left for the alert to ask.
     if (statuses[alertedIndex] != null) return;
     pushNotification({
-      dedupeKey: `timestamp-check:${cardKey}:${alertedIndex}`,
+      dedupeKey: `interval-check:${cardKey}:${alertedIndex}`,
       kind: "alert-now",
       title: `Check if ${positiveLabel}`,
       body: intervalCheckRangeLabel(alertedIndex, intervalMin),
@@ -451,7 +451,7 @@ export function TimestampCard({
       // it still lands in the Notifications tab, same as ScheduleView's own
       // alerts (see that file's matching `live:` gate).
       live: sessionRunning && isSessionMine,
-      timestampCheck: {
+      intervalCheck: {
         positiveLabel,
         negativeLabel,
         initialStatus: statuses[alertedIndex] ?? null,
@@ -546,7 +546,7 @@ export function TimestampCard({
   };
   const scoreCheckpointFromCard = (index: number, value: Exclude<IntervalStatus, null>) => {
     scoreCheckpoint(index, value);
-    clearByDedupeKey(`timestamp-checkpoint:${cardKey}:${index}:${now.toDateString()}`);
+    clearByDedupeKey(`interval-checkpoint:${cardKey}:${index}:${now.toDateString()}`);
   };
   // Fires each checkpoint's own alert the instant its time is actually
   // crossed while this card is mounted and watching — edge-triggered, same
@@ -572,7 +572,7 @@ export function TimestampCard({
       if (min === null || !(prevMin < min && nowMin >= min)) return;
       if (checkpointStatuses[i] != null) return;
       pushNotification({
-        dedupeKey: `timestamp-checkpoint:${cardKey}:${i}:${dayKey}`,
+        dedupeKey: `interval-checkpoint:${cardKey}:${i}:${dayKey}`,
         kind: "alert-now",
         title: cp.alertText?.trim() || `Check ${cp.label}`,
         body: `${cp.label} — ${cp.time}`,
@@ -580,7 +580,7 @@ export function TimestampCard({
         allowSnooze: true,
         soundOverride: "chime",
         live: sessionRunning && isSessionMine,
-        timestampCheck: {
+        intervalCheck: {
           positiveLabel,
           negativeLabel,
           initialStatus: checkpointStatuses[i] ?? null,
@@ -612,7 +612,7 @@ export function TimestampCard({
     isCheckpointMode ? checkpointIsComplete : isComplete,
     {
       title,
-      kind: "timestamp",
+      kind: "interval",
       value: isCheckpointMode
         ? `${checkpointScoredCount}/${checkpointCount}`
         : `${scoredCount}/${displayIntervalCount}`,
@@ -683,8 +683,8 @@ export function TimestampCard({
   const details = (
     <>
       <DrawerQuickFacts
-        icon={<TimestampIcon />}
-        kind="timestamp"
+        icon={<IntervalIcon />}
+        kind="interval"
         dataTypeLabel="Interval"
         phase={phase}
         stats={
@@ -722,7 +722,7 @@ export function TimestampCard({
           <TeachingProcedureAccordion
             description={description}
             data={teachingProcedure}
-            kind="timestamp"
+            kind="interval"
             measurementLabelOverride={measurementLabelOverride}
           />
         </div>
@@ -887,8 +887,8 @@ export function TimestampCard({
     return (
       <DataListRow
         title={title}
-        dataTypeIcon={<TimestampIcon />}
-        kind="timestamp"
+        dataTypeIcon={<IntervalIcon />}
+        kind="interval"
         dataTypeLabel="Interval"
         isActive={isActive}
         onActivate={onActivate}
@@ -940,8 +940,8 @@ export function TimestampCard({
         title={title}
         phase={phase}
         dataType="Interval"
-        dataTypeIcon={<TimestampIcon />}
-        kind="timestamp"
+        dataTypeIcon={<IntervalIcon />}
+        kind="interval"
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -976,7 +976,7 @@ export function TimestampCard({
           setExpanded((v) => !v);
         }}
         expandedView={
-          <TimestampExpandedView
+          <IntervalExpandedView
             intervalCount={activeCount}
             rowLabel={
               isCheckpointMode
@@ -1207,7 +1207,7 @@ function IntervalTimeline({
           the viewport — otherwise, once the viewed interval is centered,
           gray backdrop would show through before the session's own start. */}
       <div
-        data-tour="timestamp-interval-progress"
+        data-tour="interval-progress"
         className="relative overflow-hidden mt-0.5"
         style={{ height: BAR_H, ...HORIZONTAL_FADE_MASK }}
       >
@@ -1324,7 +1324,7 @@ const CHEVRON_PAD_Y = 10;
  *  standard view's own horizontal strip, nothing here fades at its edges —
  *  that fade exists purely so the horizontal nav arrows don't look like
  *  they're clipping content, and this view has no nav arrows of its own. */
-function TimestampExpandedView({
+function IntervalExpandedView({
   intervalCount,
   rowLabel,
   statuses,

@@ -23,7 +23,7 @@ export type CardKind =
   | "duration"
   | "task-analysis"
   | "rating"
-  | "timestamp"
+  | "interval"
   | "checklist";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";

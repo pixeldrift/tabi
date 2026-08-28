@@ -34,7 +34,7 @@ export interface FrequencyCardProps extends CardEditAndDrawerProps {
 /** Everything the bookmark bar's Frequency chip needs — `count` is a plain
  *  tap-driven tally, safe to write straight through the store even while
  *  the real FrequencyCard is also mounted elsewhere (no ticking effect to
- *  duplicate, unlike Duration/Rate/Timestamp). Mirrors the real card's own
+ *  duplicate, unlike Duration/Rate/Interval). Mirrors the real card's own
  *  inc()/dec() exactly (including the floor-at-zero clamp and the distinct
  *  tallyUp/tallyDown sounds) so the chip's reused ListActionButton pair
  *  behaves identically to the List display mode's own Minus/Plus row. */

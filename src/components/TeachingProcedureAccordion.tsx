@@ -74,7 +74,7 @@ const MEASUREMENT_LABELS: Record<CardKind, { positive: string; negative: string 
   rate: { positive: "Counts as an instance if", negative: "Does not count if" },
   duration: { positive: "Counts as the same instance if", negative: "Does not count if" },
   rating: { positive: "Mark Correct if", negative: "Mark Error if" },
-  timestamp: { positive: "Mark Correct if", negative: "Mark Incorrect if" },
+  interval: { positive: "Mark Correct if", negative: "Mark Incorrect if" },
   checklist: { positive: "Check off if", negative: "Leave unchecked if" },
 };
 
@@ -102,7 +102,7 @@ export function TeachingProcedureAccordion({
   data?: TeachingProcedure;
   kind: CardKind;
   /** Overrides the kind's default positive/negative row labels — for a card
-   *  whose own scoring buttons use bespoke wording (e.g. a Timestamp card
+   *  whose own scoring buttons use bespoke wording (e.g. an Interval card
    *  scoring "Dry"/"Wet/Soiled" instead of the generic "Correct"/
    *  "Incorrect") so the drawer's Measurement row always names the exact
    *  button it's describing. */

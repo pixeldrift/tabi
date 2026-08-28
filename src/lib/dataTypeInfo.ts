@@ -6,7 +6,7 @@ import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
 import { RateIcon } from "@/components/icons/RateIcon";
 import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
-import { TimestampIcon } from "@/components/icons/TimestampIcon";
+import { IntervalIcon } from "@/components/icons/IntervalIcon";
 import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
 import type { CardKind } from "@/components/DataToolbarContext";
 
@@ -60,11 +60,11 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     description:
       "Captures a subjective rating on a fixed scale for something that isn't a simple count. Good for things like how engaged or ready to learn a client seemed during a session.",
   },
-  timestamp: {
+  interval: {
     label: "Interval",
-    icon: createElement(TimestampIcon),
+    icon: createElement(IntervalIcon),
     description:
-      "Logs the specific time a behavior occurred, without measuring how long it lasted or how many times it happened. Useful for spotting patterns tied to time of day.",
+      "Checks in at fixed time intervals (or scheduled times of day) and marks whether the target behavior is or isn't occurring at each check, rather than counting or timing it directly. Good for spotting patterns tied to time.",
   },
   checklist: {
     label: "Checklist",

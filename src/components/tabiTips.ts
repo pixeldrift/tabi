@@ -69,11 +69,11 @@ export const TABI_TIPS: TabiTip[] = [
     body: 'When viewing the schedule, you can tap the "Now" button to jump directly to the current time to see what\'s on thr scheduke right now.',
   },
   {
-    id: "timestamp-alert-jump",
+    id: "interval-alert-jump",
     tab: "data",
-    selector: '[data-tour="timestamp-alert-jump"]',
+    selector: '[data-tour="interval-alert-jump"]',
     title: "Score right from the alert",
-    body: "For data collection with a timestamp, you can collect your data directly from the reminder alert, or tap it to jump to that card in the list.",
+    body: "For interval data collection, you can collect your data directly from the reminder alert, or tap it to jump to that card in the list.",
   },
   {
     id: "duration-stopwatch-badge",
@@ -293,10 +293,10 @@ export const TABI_TIPS: TabiTip[] = [
     body: "Even if you have a spotty connection, Tabi auto-syncs frequently in the background. Tap the cloud icon to force an instant save for peace of mind, or tap the status for precise details.",
   },
   {
-    id: "timestamp-interval-progress",
+    id: "interval-progress",
     tab: "data",
     viewMode: "card",
-    selector: '[data-tour="timestamp-interval-progress"]',
+    selector: '[data-tour="interval-progress"]',
     title: "Keep track of intervals",
     body: "Interval cards show a live progress bar comparing the current elapsed time to the logging intervals, so you always know to mark your next data point.",
   },

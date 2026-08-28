@@ -4,7 +4,7 @@ import { renderBreakableTitle } from "./BreakableTitle";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useDurationChip, formatCompactTime } from "./DurationCard";
 import { useRateChip } from "./RateCard";
-import { useTimestampChip } from "./TimestampCard";
+import { useIntervalChip } from "./IntervalCard";
 import { useTrialChip, ListPromptLevelButton } from "./TrialCard";
 import { useFrequencyChip } from "./FrequencyCard";
 import { useRatingChip, ListRatingButton } from "./RatingCard";
@@ -86,14 +86,9 @@ export function BookmarkChip({ card, mounted, active, onSelect, onJumpToCard }: 
       return (
         <RatingChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
       );
-    case "timestamp":
+    case "interval":
       return (
-        <TimestampChip
-          card={card}
-          active={active}
-          onSelect={onSelect}
-          onJumpToCard={onJumpToCard}
-        />
+        <IntervalChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
       );
     case "checklist":
       return (
@@ -451,13 +446,13 @@ function ChecklistChip({
   );
 }
 
-function TimestampChip({
+function IntervalChip({
   card,
   active,
   onSelect,
   onJumpToCard,
-}: { card: Extract<CardConfig, { kind: "timestamp" }> } & ChipSelectionProps) {
-  const { currentIndex, currentStatus, score, canRecordData } = useTimestampChip(
+}: { card: Extract<CardConfig, { kind: "interval" }> } & ChipSelectionProps) {
+  const { currentIndex, currentStatus, score, canRecordData } = useIntervalChip(
     card.id,
     card.intervalMin,
     card.intervalCount,
