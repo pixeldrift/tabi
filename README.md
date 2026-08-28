@@ -248,6 +248,12 @@ checked off. See git history for what's already shipped.
       wants every item explicitly accounted for each session (e.g. a fixed
       assessment battery), which is real added RBT burden Checklist
       deliberately avoids by design
+- [ ] 🟡 Interval data type (`timestamp` kind): distinguish whole-interval,
+      partial-interval, and momentary/instantaneous time sampling — today's
+      card treats every interval the same way. Wants a unique icon per
+      variant, plus a bracket-style indicator on the interval's own timeline
+      showing which portion of the interval window will actually be marked
+      (the whole span, vs. any-portion, vs. a single instant within it)
 
 
 ### 🗄️ Long-term Roadmap - Potential Future Features
