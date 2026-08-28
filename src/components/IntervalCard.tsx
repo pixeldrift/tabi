@@ -1122,17 +1122,20 @@ const SEG_W = 64;
 const BAR_H = 10;
 // The sampling-type row sits between the bubble row and the elapsed-time
 // bar. Whole/Partial render a bracket there — a sideways curly brace
-// ("{" on its side: hooked ends, straight arms meeting at one point,
-// reaching down toward the bar below it) sized to the segment's own full
-// or half width; Momentary instead renders a short connector line down
-// from its bubble, with its own dot actually living on the bar below (see
-// that bar's own comment) rather than in this row. Connector height and
-// the bracket's own apex depth both equal SAMPLING_ROW_H, so every variant
-// reaches exactly as far down, right to the bar's edge.
+// ("{" on its side: a single point at top, straight arms spreading down
+// to hooked ends) sized to the segment's own full or half width. The
+// point sits at the row's own top edge, right where the bubble above it
+// is — the bracket reads as hanging FROM the bubble, not pointing at the
+// bar — while its two hooked ends reach down to the bar below. Momentary
+// instead renders a short connector line down from its bubble, with its
+// own dot actually living on the bar below (see that bar's own comment)
+// rather than in this row. Connector height and the bracket's own total
+// height both equal SAMPLING_ROW_H, so every variant reaches exactly as
+// far down, right to the bar's edge.
 const SAMPLING_ROW_H = 12;
 const SAMPLING_DOT_SIZE = 6;
-// How far each end of the bracket's hook rises before the arms start
-// angling in toward the center apex — same proportions as the icon
+// How far each hooked end rises from the bar's edge before the arms start
+// angling in toward the point at top — same proportions as the icon
 // variants (IntervalWholeIcon/IntervalPartialIcon) so the two read as the
 // same shape at different sizes, not two different designs.
 const BRACKET_TICK_PX = 4;
@@ -1269,8 +1272,9 @@ function IntervalTimeline({
       </div>
       {/* Sampling-type indicator — sits between the bubble row and the
           elapsed-time bar. Whole/Partial show a bracket here (a sideways
-          curly brace, full or half width, its apex reaching down to meet
-          the bar below). Momentary has no span to show — just a connector
+          curly brace, full or half width, its point hanging from the
+          bubble above and its two hooked ends reaching down to the bar
+          below). Momentary has no span to show — just a connector
           dropping from the bubble down to meet the bar, where its own dot
           actually lives (see the bar's own comment below): "on the
           timeline," matching how Whole/Partial's bracket reads as part of
@@ -1309,7 +1313,7 @@ function IntervalTimeline({
                 viewBox={`0 0 ${width} ${SAMPLING_ROW_H}`}
               >
                 <path
-                  d={`M1,0 L1,${BRACKET_TICK_PX} L${width / 2},${SAMPLING_ROW_H - 1} L${width - 1},${BRACKET_TICK_PX} L${width - 1},0`}
+                  d={`M1,${SAMPLING_ROW_H} L1,${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width / 2},1 L${width - 1},${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width - 1},${SAMPLING_ROW_H}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
@@ -1361,9 +1365,9 @@ function IntervalTimeline({
               indicator row above just leads the eye down to it, the same
               way Whole/Partial's own bracket reads as part of this bar
               even though it's technically drawn in that row too (its own
-              apex reaches down to the bar's edge for the same reason).
-              Vertically centered in the bar's own height, same x as its
-              bubble. */}
+              hooked ends reach down to the bar's edge for the same
+              reason). Vertically centered in the bar's own height, same x
+              as its bubble. */}
           {samplingType === "momentary" &&
             Array.from({ length: intervalCount }, (_, i) => (
               <div
