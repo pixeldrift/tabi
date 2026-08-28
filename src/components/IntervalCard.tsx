@@ -1218,10 +1218,19 @@ function IntervalTimeline({
   // (see its own comment above) — that grace only delays which interval
   // is highlighted/scored, not where "now" actually, physically is.
   // Continuous centering, the same idiom as Percent Correct's own
-  // trial-bubble strip: the viewed interval's own bubble — which now marks
-  // the interval's END (see below), matching the bar's own divider ticks —
-  // always sits dead-center in the viewport.
+  // trial-bubble strip: the viewed interval's own bubble — which normally
+  // marks the interval's END (see below), matching the bar's own divider
+  // ticks — always sits dead-center in the viewport. The bar/chevron rows
+  // (real elapsed time — see their own comments) always use this value.
   const trackOffsetPx = -((viewIdx + 1) * SEG_W);
+  // Partial's bubble sits over its own bracket instead of the interval's
+  // real END boundary (see the bubble row's own comment) — so centering
+  // THAT bubble (and its bracket, which shares this same offset) needs its
+  // own half-segment-earlier target, or the currently-viewed one would
+  // land off-center every time. Every other sampling type's bubble/bracket
+  // still sits at the real boundary, so this is just `trackOffsetPx` again.
+  const labelTrackOffsetPx =
+    samplingType === "partial" ? -((viewIdx + 0.5) * SEG_W) : trackOffsetPx;
 
   return (
     <div className="pt-0.5">
@@ -1236,18 +1245,27 @@ function IntervalTimeline({
         <motion.div
           className="absolute left-1/2 top-0"
           style={{ height: BUBBLE_ROW_H }}
-          animate={{ x: trackOffsetPx }}
+          animate={{ x: labelTrackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
             const recency = recencyOf(i, viewIdx);
             const { bg, text, fade } = statusColors(statuses[i], recency);
             const isCurrent = recency === "current";
+            // Every bubble sits at its interval's own END boundary — except
+            // Partial's, which sits centered over its own (segment-centered,
+            // half-width) bracket instead: since that bracket's own width is
+            // a stylized "less than whole," not a real time sub-span, there
+            // was no reason to leave it trailing off to one side under a
+            // bubble anchored somewhere else. Whole's bracket spans the
+            // segment's own real timespan and its bubble stays at the real
+            // boundary, so nothing moves there.
+            const bubbleLeft = samplingType === "partial" ? (i + 0.5) * SEG_W : (i + 1) * SEG_W;
             return (
               <div
                 key={i}
                 className="absolute bottom-0 -translate-x-1/2"
-                style={{ left: (i + 1) * SEG_W }}
+                style={{ left: bubbleLeft }}
               >
                 <motion.div
                   className={cn(
@@ -1288,7 +1306,7 @@ function IntervalTimeline({
         <motion.div
           className="absolute left-1/2 top-0"
           style={{ height: SAMPLING_ROW_H }}
-          animate={{ x: trackOffsetPx }}
+          animate={{ x: labelTrackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
@@ -1303,14 +1321,7 @@ function IntervalTimeline({
               );
             }
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
-            // Whole spans the segment's own real timespan (its bubble sits
-            // at the segment's END, so the bracket naturally trails off to
-            // its left rather than centering under the bubble). Partial's
-            // width is already just a stylized "less than whole," not tied
-            // to any particular real sub-span within the interval, so it
-            // centers on the bubble instead — otherwise its narrower
-            // bracket reads as visibly adrift from the bubble it belongs to.
-            const left = samplingType === "partial" ? (i + 1) * SEG_W - width / 2 : i * SEG_W;
+            const left = i * SEG_W + (SEG_W - width) / 2;
             return (
               <svg
                 key={i}
