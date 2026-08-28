@@ -1517,7 +1517,7 @@ export function StatusBar({
                 leaveSession();
                 setPauseOrLeaveOpen(false);
               }}
-              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-stone-600 hover:bg-stone-700 active:bg-stone-700 text-white text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-600 text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
             >
               Exit and leave running
               <LogOut className="size-4 shrink-0" />
