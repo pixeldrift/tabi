@@ -2930,6 +2930,7 @@ const DataCardList = memo(function DataCardList({
   // achieves the same "one per row" result without it.
   const stackToLeftColumn =
     drawerOpen && (displayMode === "grid-large" || displayMode === "grid-small");
+  const isGridMode = displayMode === "grid-large" || displayMode === "grid-small";
 
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, displayMode, {
@@ -3040,7 +3041,18 @@ const DataCardList = memo(function DataCardList({
               className="w-full flex justify-center"
               style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
             >
-              <div className="relative">
+              {/* No explicit width for card/list — this flex item shrink-
+                  wraps to CardShell/DataListRow's own intrinsic content
+                  size, and the parent's `justify-center` centers whatever
+                  that ends up being. The two grid modes need `w-full`
+                  instead: MiniTileShell's `aspect-square w-full` has no
+                  intrinsic size of its own to shrink-wrap around (a
+                  percentage width doesn't count toward a flex item's
+                  automatic content-based sizing) — without an explicit
+                  width here, that circular "size to my content, which
+                  sizes to 100% of me" collapsed the whole tile down to a
+                  couple of px regardless of its actual grid column width. */}
+              <div className={cn("relative", isGridMode && "w-full")}>
                 <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
                 {endActionOverlay && <CardEndActionOverlay kind={endActionOverlay} />}
               </div>
