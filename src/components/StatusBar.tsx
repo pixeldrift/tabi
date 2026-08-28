@@ -466,15 +466,6 @@ export function StatusBar({
   // Motion itself reports that tween complete (via onActionsHeightSettled,
   // passed down to the actions row's own onAnimationComplete) — no guessing.
   const boxWrapRef = useRef<HTMLDivElement>(null);
-  // The session box's own OUTER animated element (the motion.div whose real
-  // `height` style Motion drives between 0 and boxNaturalHeight) — distinct
-  // from boxWrapRef above, which sizes to its unconstrained natural content
-  // and so never itself reports the collapsed/collapsing height. Observed
-  // by miniPillRect below: NotificationBar renders AFTER this box in
-  // document flow, so its own position — and therefore where the mini pill
-  // should land — genuinely moves while this box is still mid-collapse, not
-  // just once it's settled.
-  const sessionBoxAnimatedRef = useRef<HTMLDivElement>(null);
   const [boxNaturalHeight, setBoxNaturalHeight] = useState<number | null>(null);
   const actionsRowSettlingRef = useRef(false);
   const wasPausedForActionsRef = useRef(status === "paused");
@@ -714,15 +705,7 @@ export function StatusBar({
     const digitEl = miniDigitAnchorRef.current;
     const notificationBarWrapEl = notificationBarWrapRef.current;
     const containerEl = pillAnchorContainerRef.current;
-    const sessionBoxEl = sessionBoxAnimatedRef.current;
-    if (
-      !titleRowEl ||
-      !saveIndicatorWrapEl ||
-      !digitEl ||
-      !notificationBarWrapEl ||
-      !containerEl ||
-      !sessionBoxEl
-    ) {
+    if (!titleRowEl || !saveIndicatorWrapEl || !digitEl || !notificationBarWrapEl || !containerEl) {
       return;
     }
     const measure = () => {
@@ -753,10 +736,14 @@ export function StatusBar({
       // the wrapper's own height to the title row's bottom instead assumes
       // the box is already at its target (0) unconditionally, which is
       // exactly the assumption that's always true whenever mini matters.
+      // The trailing `- 2` is a manual visual nudge (per feedback the pill
+      // still read as sitting slightly too low relative to the nav row
+      // beside it), not derived from any of the measured boxes above.
       const top =
         titleRowRect.bottom +
         notificationBarWrapEl.getBoundingClientRect().height -
-        containerRect.top;
+        containerRect.top -
+        2;
       // The wrapper's OWN border-box right edge sits at the viewport edge
       // (its `-mr-4` cancels this row's own right padding entirely) — its
       // `pr-1.5`/`sm:pr-2` is what actually pulls its CHILD in from there,
@@ -786,12 +773,6 @@ export function StatusBar({
     ro.observe(saveIndicatorWrapEl);
     ro.observe(digitEl);
     ro.observe(notificationBarWrapEl);
-    // Fires on every real frame of the box's own Motion-driven collapse/
-    // expand — a live height change is exactly what ResizeObserver already
-    // reports natively — so the notification bar's dependent position (and
-    // this pill's target) tracks that collapse in real time instead of
-    // landing wherever the box happened to be at one synchronous read.
-    ro.observe(sessionBoxEl);
     window.addEventListener("resize", measure);
     document.fonts?.ready.then(measure);
     return () => {
@@ -972,7 +953,6 @@ export function StatusBar({
                 The pill inside is hidden when running so only the mini pill carries the
                 shared layoutId, letting motion morph cleanly between the two positions. */}
               <motion.div
-                ref={sessionBoxAnimatedRef}
                 initial={false}
                 animate={{
                   height: boxCollapsed ? 0 : (boxNaturalHeight ?? "auto"),
@@ -1321,7 +1301,7 @@ export function StatusBar({
           (() => {
             const toMini = pillView === "mini";
             const target = toMini ? miniPillRect : bigPillRect;
-            const showButton = toMini || !isIdle;
+            const buttonWidth = isIdle ? 0 : toMini ? MINI_BUTTON_PX : BIG_BUTTON_PX;
             const icon = toMini ? (
               // -translate-x-px: nudges toward the pill's own rounded end cap
               // — dead-center in the button's plain rectangle reads slightly
@@ -1386,42 +1366,42 @@ export function StatusBar({
                     slow={transitionKind === "start-new"}
                   />
                 </motion.span>
-                {/* No button at all once truly idle — there's nothing to
-                    resume/join, only "Start New Session" below, per the
-                    "no restarting a finished session" mental model. Only
-                    toggles while NOT traveling (idle is only ever reached
-                    via submit/discard, neither of which moves this pill —
-                    see TRANSITION_LANDED_MS's own comment), so mounting/
-                    unmounting it here never races an in-flight resize. */}
-                {showButton && (
-                  <motion.span
-                    initial={false}
-                    animate={{ width: toMini ? MINI_BUTTON_PX : BIG_BUTTON_PX }}
-                    transition={pillTransition}
-                    className="shrink-0 bg-blue-500 grid place-items-center text-white"
+                {/* Always mounted — even once truly idle, where there's
+                    nothing to resume/join and buttonWidth animates to 0 —
+                    rather than conditionally unmounting, so going idle
+                    shrinks and fades the button out (and lets the digit
+                    span's own `flex-1` reflow smoothly into the freed
+                    space) instead of it just vanishing and the digits
+                    instantly snapping over to fill the gap. */}
+                <motion.span
+                  initial={false}
+                  animate={{ width: buttonWidth, opacity: isIdle ? 0 : 1 }}
+                  transition={pillTransition}
+                  aria-hidden={isIdle}
+                  className="shrink-0 overflow-hidden bg-blue-500 grid place-items-center text-white"
+                >
+                  <button
+                    tabIndex={isIdle ? -1 : 0}
+                    onClick={toMini ? pause : requestPlay}
+                    aria-label={
+                      toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
+                    }
+                    className="grid place-items-center size-full bg-blue-500 hover:bg-blue-600 text-white transition-colors active:brightness-90"
                   >
-                    <button
-                      onClick={toMini ? pause : requestPlay}
-                      aria-label={
-                        toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
-                      }
-                      className="btn-bevel grid place-items-center size-full bg-blue-500 hover:bg-blue-600 text-white transition-colors active:brightness-90"
-                    >
-                      {/* Scale lives on this inner span, not the button —
-                          see the (now-removed) resting big pill's own
-                          original comment: the button is a plain rectangle
-                          whose edges only look like a rounded pill-cap
-                          because the PARENT clips it with
-                          `overflow-hidden rounded-full` — scaling the
-                          button itself shrinks that rectangle away from
-                          the clip boundary on press, revealing the pill's
-                          white background around it. */}
-                      <span className="grid place-items-center active:scale-95 transition-transform">
-                        {icon}
-                      </span>
-                    </button>
-                  </motion.span>
-                )}
+                    {/* Scale lives on this inner span, not the button —
+                        see the (now-removed) resting big pill's own
+                        original comment: the button is a plain rectangle
+                        whose edges only look like a rounded pill-cap
+                        because the PARENT clips it with
+                        `overflow-hidden rounded-full` — scaling the
+                        button itself shrinks that rectangle away from
+                        the clip boundary on press, revealing the pill's
+                        white background around it. */}
+                    <span className="grid place-items-center active:scale-95 transition-transform">
+                      {icon}
+                    </span>
+                  </button>
+                </motion.span>
               </motion.div>
             );
           })()}
@@ -2242,7 +2222,7 @@ function ExpandedSessionBox({
   // running, but started/joined by someone else.
   const isRunningNotMine = status === "running" && !isSessionMine;
   const label = isIdle
-    ? "Previous Session Ended:"
+    ? "Last Session:"
     : isPaused
       ? "Session Paused:"
       : isAbandoned
