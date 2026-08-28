@@ -7,6 +7,9 @@ import { MiniTileShell } from "./MiniTileShell";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { IntervalIcon } from "./icons/IntervalIcon";
+import { IntervalWholeIcon } from "./icons/IntervalWholeIcon";
+import { IntervalPartialIcon } from "./icons/IntervalPartialIcon";
+import { IntervalMomentaryIcon } from "./icons/IntervalMomentaryIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { Switch } from "@/components/ui/switch";
@@ -20,11 +23,34 @@ import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
 
+export type SamplingType = "whole" | "partial" | "momentary";
+
+/** Short, corner-label-sized names — the full ABA terms (Whole/Partial
+ *  Interval Recording, Momentary Time Sampling) live in the sampling-type
+ *  picker's own helpText and this kind's info-modal description instead,
+ *  so the on-card label stays a single line at its small corner size. */
+const SAMPLING_TYPE_LABEL: Record<SamplingType, string> = {
+  whole: "Whole Interval",
+  partial: "Partial Interval",
+  momentary: "Momentary",
+};
+
+const SAMPLING_TYPE_ICON: Record<SamplingType, typeof IntervalIcon> = {
+  whole: IntervalWholeIcon,
+  partial: IntervalPartialIcon,
+  momentary: IntervalMomentaryIcon,
+};
+
 export interface IntervalCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
   phase?: string;
   description?: string;
+  /** Which of the three standard ABA interval-recording methods this card
+   *  follows — purely presentational (corner label, icon, and timeline
+   *  indicator). Defaults to "whole", matching every pre-existing card's
+   *  actual behavior before this field existed. */
+  samplingType?: SamplingType;
   /** Length of each scored interval, in minutes (e.g. 30 or 60). */
   intervalMin: number;
   /** Total number of intervals across the whole observation window — omit
@@ -158,6 +184,26 @@ function statusColors(status: IntervalStatus, recency: Recency) {
     : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
+// Coloring for the sampling-type row's bracket/dot — deliberately simpler
+// than statusColors' bordered-badge palette above (no recency/fade
+// dimension here, just "not yet scored" vs. which button scored it), and a
+// gray REST state instead of statusColors' "nothing at all until scored" —
+// the sampling-type indicator is a permanent "this is what counts" legend,
+// not a scored-only celebration mark. Two variants of the same three
+// colors: `bg-*` for the momentary dot (a plain filled div) and `text-*`
+// for the whole/partial bracket (an SVG path stroked with currentColor).
+function samplingIndicatorFillColor(status: IntervalStatus) {
+  if (status === "correct") return "bg-green-500";
+  if (status === "incorrect") return "bg-red-500";
+  return "bg-stone-300";
+}
+
+function samplingIndicatorStrokeColor(status: IntervalStatus) {
+  if (status === "correct") return "text-green-500";
+  if (status === "incorrect") return "text-red-500";
+  return "text-stone-300";
+}
+
 /** Everything the bookmark bar's Interval chip needs. `elapsed` (like
  *  Rate's own denominator) ticks automatically whenever the session is
  *  running via the real IntervalCard's own `subscribeTick` effect — this
@@ -204,6 +250,7 @@ export function IntervalCard({
   title,
   phase = "Intervention",
   description,
+  samplingType = "whole",
   intervalMin,
   intervalCount,
   defaultWindowHours = 4,
@@ -234,6 +281,8 @@ export function IntervalCard({
   onWidthModeChange,
 }: IntervalCardProps) {
   const cardKey = id ?? title;
+  const samplingLabel = SAMPLING_TYPE_LABEL[samplingType];
+  const SamplingIcon = SAMPLING_TYPE_ICON[samplingType];
   // Splits the whole card into two mutually-exclusive modes further down —
   // checkpoint mode replaces the elapsed-interval timeline/alert entirely
   // with a fixed list of named, wall-clock-anchored checks (see the
@@ -683,9 +732,9 @@ export function IntervalCard({
   const details = (
     <>
       <DrawerQuickFacts
-        icon={<IntervalIcon />}
+        icon={<SamplingIcon />}
         kind="interval"
-        dataTypeLabel="Interval"
+        dataTypeLabel={samplingLabel}
         phase={phase}
         stats={
           isCheckpointMode
@@ -887,9 +936,9 @@ export function IntervalCard({
     return (
       <DataListRow
         title={title}
-        dataTypeIcon={<IntervalIcon />}
+        dataTypeIcon={<SamplingIcon />}
         kind="interval"
-        dataTypeLabel="Interval"
+        dataTypeLabel={samplingLabel}
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -939,8 +988,8 @@ export function IntervalCard({
       <CardShell
         title={title}
         phase={phase}
-        dataType="Interval"
-        dataTypeIcon={<IntervalIcon />}
+        dataType={samplingLabel}
+        dataTypeIcon={<SamplingIcon />}
         kind="interval"
         isActive={isActive}
         onActivate={onActivate}
@@ -1026,6 +1075,7 @@ export function IntervalCard({
               fillFrac={activeFillFrac}
               viewIdx={activeViewIdx}
               statuses={activeStatuses}
+              samplingType={samplingType}
               timerPill={isCheckpointMode ? checkpointTimerPill : timerPill}
             />
           </div>
@@ -1070,6 +1120,25 @@ const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
 // strip.
 const SEG_W = 64;
 const BAR_H = 10;
+// The sampling-type row sits between the bubble row and the elapsed-time
+// bar. Whole/Partial render a bracket there — a sideways curly brace
+// ("{" on its side: a single point at top, straight arms spreading down
+// to hooked ends) sized to the segment's own full or half width. The
+// point sits at the row's own top edge, right where the bubble above it
+// is — the bracket reads as hanging FROM the bubble, not pointing at the
+// bar — while its two hooked ends reach down to the bar below. Momentary
+// instead renders a short connector line down from its bubble, with its
+// own dot actually living on the bar below (see that bar's own comment)
+// rather than in this row. Connector height and the bracket's own total
+// height both equal SAMPLING_ROW_H, so every variant reaches exactly as
+// far down, right to the bar's edge.
+const SAMPLING_ROW_H = 12;
+const SAMPLING_DOT_SIZE = 6;
+// How far each hooked end rises from the bar's edge before the arms start
+// angling in toward the point at top — same proportions as the icon
+// variants (IntervalWholeIcon/IntervalPartialIcon) so the two read as the
+// same shape at different sizes, not two different designs.
+const BRACKET_TICK_PX = 4;
 // Same diameter as every period bubble (see IntervalTimeline's own comment) —
 // hoisted here so the nav arrows below can vertically center themselves on
 // the bubble row specifically, rather than the timeline's full height
@@ -1117,6 +1186,7 @@ function IntervalTimeline({
   fillFrac,
   viewIdx,
   statuses,
+  samplingType,
   timerPill,
 }: {
   intervalCount: number;
@@ -1130,6 +1200,7 @@ function IntervalTimeline({
   fillFrac: number;
   viewIdx: number;
   statuses: IntervalStatus[];
+  samplingType: SamplingType;
   timerPill: ReactNode;
 }) {
   const fillPx = fillFrac * SEG_W;
@@ -1147,9 +1218,16 @@ function IntervalTimeline({
   // (see its own comment above) — that grace only delays which interval
   // is highlighted/scored, not where "now" actually, physically is.
   // Continuous centering, the same idiom as Percent Correct's own
-  // trial-bubble strip: the viewed interval's own bubble — which now marks
-  // the interval's END (see below), matching the bar's own divider ticks —
-  // always sits dead-center in the viewport.
+  // trial-bubble strip: the SAME track transform drives every row (bubble,
+  // sampling indicator, bar, chevron) so they all move as one piece — only
+  // each row's own LOCAL per-element position (see below) determines where
+  // within that shared, moving track a given element actually lands.
+  // Targets the interval's real END boundary; the current interval's own
+  // bar segment (spanning one SEG_W ending at that boundary) therefore
+  // spans from -SEG_W to 0 on screen, not centered on 0 itself — its
+  // MIDPOINT (screen -SEG_W/2) is what Whole/Partial's bubble+bracket
+  // target instead (see their own comments), which is what actually keeps
+  // them centered over the bar segment they belong to, not the viewport.
   const trackOffsetPx = -((viewIdx + 1) * SEG_W);
 
   return (
@@ -1172,11 +1250,20 @@ function IntervalTimeline({
             const recency = recencyOf(i, viewIdx);
             const { bg, text, fade } = statusColors(statuses[i], recency);
             const isCurrent = recency === "current";
+            // Whole/Partial's bubble sits centered over its own interval,
+            // matching where its bracket sits (see that row's own comment)
+            // — a span of time reads more naturally under a bubble
+            // centered over the whole span than one parked at its far
+            // edge. Momentary's bubble stays at the interval's real END
+            // boundary instead, since it scores that one specific instant
+            // — a real point in time, not a span, so there's no "span" to
+            // center over.
+            const bubbleLeft = samplingType === "momentary" ? (i + 1) * SEG_W : (i + 0.5) * SEG_W;
             return (
               <div
                 key={i}
                 className="absolute bottom-0 -translate-x-1/2"
-                style={{ left: (i + 1) * SEG_W }}
+                style={{ left: bubbleLeft }}
               >
                 <motion.div
                   className={cn(
@@ -1195,6 +1282,69 @@ function IntervalTimeline({
                   {i + 1}
                 </motion.div>
               </div>
+            );
+          })}
+        </motion.div>
+      </div>
+      {/* Sampling-type indicator — sits between the bubble row and the
+          elapsed-time bar. Whole/Partial show a bracket here (a sideways
+          curly brace, full or half width, its point hanging from the
+          bubble above and its two hooked ends reaching down to the bar
+          below) for the currently-viewed interval ONLY — every other
+          interval's own bracket would just repeat the same fixed shape for
+          that sampling type card-wide, adding visual noise without adding
+          information; showing it only where you're actually looking (and
+          about to score) is what actually matters moment to moment.
+          Momentary has no span to show — just a connector dropping from
+          the bubble down to meet the bar, where its own dot actually lives
+          (see the bar's own comment below): "on the timeline," matching
+          how Whole/Partial's bracket reads as part of it. That connector/
+          dot pair still renders for every interval (it doubles as each
+          one's own scored/unscored status, same as the bar's fill), unlike
+          the single-interval bracket above. Gray when unscored, not just
+          appearing once scored — this is a legend for what the card is
+          measuring, not a "you scored this" celebration mark. */}
+      <div
+        className="relative overflow-hidden"
+        style={{ height: SAMPLING_ROW_H, ...HORIZONTAL_FADE_MASK }}
+      >
+        <motion.div
+          className="absolute left-1/2 top-0"
+          style={{ height: SAMPLING_ROW_H }}
+          animate={{ x: trackOffsetPx }}
+          transition={SPRING_TRANSITION}
+        >
+          {Array.from({ length: intervalCount }, (_, i) => {
+            if (samplingType === "momentary") {
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 w-px bg-stone-300 -translate-x-1/2"
+                  style={{ left: (i + 1) * SEG_W, height: SAMPLING_ROW_H }}
+                  aria-hidden
+                />
+              );
+            }
+            if (i !== viewIdx) return null;
+            const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
+            const left = i * SEG_W + (SEG_W - width) / 2;
+            return (
+              <svg
+                key={i}
+                aria-hidden
+                className={cn("absolute top-0", samplingIndicatorStrokeColor(statuses[i]))}
+                style={{ left, width, height: SAMPLING_ROW_H }}
+                viewBox={`0 0 ${width} ${SAMPLING_ROW_H}`}
+              >
+                <path
+                  d={`M1,${SAMPLING_ROW_H} L1,${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width / 2},1 L${width - 1},${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width - 1},${SAMPLING_ROW_H}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             );
           })}
         </motion.div>
@@ -1234,26 +1384,31 @@ function IntervalTimeline({
               aria-hidden
             />
           ))}
-          {/* A colored top-border stripe spanning exactly a scored
-              interval's own timespan, running right up to its bubble above —
-              the bar segment itself reads as "this whole stretch of time is
-              what that bubble covers," not just the single point where the
-              bubble sits. */}
-          {Array.from({ length: intervalCount }, (_, i) => {
-            const status = statuses[i];
-            if (status == null) return null;
-            return (
+          {/* Momentary's own marker actually sits ON the timeline (this bar),
+              not floating above it — the connector line in the sampling-
+              indicator row above just leads the eye down to it, the same
+              way Whole/Partial's own bracket reads as part of this bar
+              even though it's technically drawn in that row too (its own
+              hooked ends reach down to the bar's edge for the same
+              reason). Vertically centered in the bar's own height, same x
+              as its bubble. */}
+          {samplingType === "momentary" &&
+            Array.from({ length: intervalCount }, (_, i) => (
               <div
-                key={`seg-${i}`}
+                key={i}
                 className={cn(
-                  "absolute top-0 h-[3px] rounded-full",
-                  status === "correct" ? "bg-green-500" : "bg-red-500",
+                  "absolute rounded-full -translate-x-1/2 -translate-y-1/2",
+                  samplingIndicatorFillColor(statuses[i]),
                 )}
-                style={{ left: i * SEG_W, width: SEG_W }}
+                style={{
+                  left: (i + 1) * SEG_W,
+                  top: BAR_H / 2,
+                  width: SAMPLING_DOT_SIZE,
+                  height: SAMPLING_DOT_SIZE,
+                }}
                 aria-hidden
               />
-            );
-          })}
+            ))}
         </motion.div>
       </div>
       {/* The "now" chevron and the mini timer pill follow the same real

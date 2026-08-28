@@ -141,6 +141,12 @@ export type CardConfig = {
       title: string;
       phase: string;
       description: string;
+      /** Which of the three standard ABA interval-recording methods this
+       *  card follows — purely presentational (corner label, icon, and
+       *  timeline indicator; scoring itself is Correct/Incorrect either
+       *  way). Omitted defaults to "whole", matching every pre-existing
+       *  card's actual behavior before this field existed. */
+      samplingType?: "whole" | "partial" | "momentary";
       /** Length of each scored interval, in minutes (e.g. 30 or 60). */
       intervalMin: number;
       /** Total number of intervals across the whole observation window —
@@ -2506,6 +2512,7 @@ function renderCard(
           title={card.title}
           phase={card.phase}
           description={card.description}
+          samplingType={card.samplingType}
           intervalMin={card.intervalMin}
           intervalCount={card.intervalCount}
           defaultWindowHours={card.defaultWindowHours}

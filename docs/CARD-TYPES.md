@@ -220,6 +220,7 @@ condition (§4) because there's nothing partial about picking a rating.
 | Field | Type | Required | Behavior |
 |---|---|---|---|
 | `intervalMin` | `number` | yes | Length of each scored interval, in minutes (e.g. 30, 60). |
+| `samplingType` | `"whole"` \| `"partial"` \| `"momentary"` | no (defaults to "whole") | Which of the three standard ABA interval-recording methods this card follows (Whole/Partial Interval Recording, Momentary Time Sampling) — purely presentational (corner label, icon, timeline indicator); scoring is Correct/Incorrect either way. |
 | `intervalCount` | `number` | no | Total intervals across the whole observation window. Omit for an open-ended card that just keeps showing new intervals for as long as the session runs. |
 | `defaultWindowHours` | `number` | no (defaults to 4) | Only relevant when `intervalCount` is omitted — how many hours' worth of intervals to show by default. |
 | `positiveLabel` | `string` | no (defaults to "Correct") | Overrides the button + measurement-row label for the positive outcome — e.g. "Dry" instead of "Correct" for a toileting check. |

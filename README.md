@@ -248,19 +248,6 @@ checked off. See git history for what's already shipped.
       wants every item explicitly accounted for each session (e.g. a fixed
       assessment battery), which is real added RBT burden Checklist
       deliberately avoids by design
-- [ ] 🟡 Interval data type (`interval` kind, née `timestamp` — renamed to
-      free up "Timestamp" for the new event-logging kind below): distinguish
-      the three standard ABA interval-recording methods — **Whole Interval
-      Recording** (scores only if the behavior occurs for the entire
-      interval), **Partial Interval Recording** (scores if it occurs at any
-      point during the interval), and **Momentary Time Sampling** (scores
-      only if it's occurring at one specific instant) — today's card treats
-      every interval the same way. Wants: an admin dropdown to pick the
-      sampling type, a distinct icon per variant (a bracket motif under the
-      clock face — full-width for whole, half-width for partial, a dot for
-      momentary), a full name in the card's own corner ("Whole Interval,"
-      etc.), and a matching bracket indicator on the interval's own timeline
-      showing which portion of the window will actually be marked
 - [ ] 🔴 New "Timestamp" card kind — logs real date/time events (distinct
       from the Interval kind above, which samples at fixed intervals rather
       than logging discrete moments). A constantly-running, faded/no-button
