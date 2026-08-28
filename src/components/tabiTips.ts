@@ -97,6 +97,13 @@ export const TABI_TIPS: TabiTip[] = [
     body: "You can easily see if anyone else is in the same session with you, whethere it's another RBT, your BCBA, or a related-services clinician. You'll get a notification when someone joins the data sheet.",
   },
   {
+    id: "pause-or-leave",
+    tab: "data",
+    selector: '[data-tour="mini-pause-button"]',
+    title: "Pausing with others in session",
+    body: "If someone else is also in the session when you tap Pause, you'll get the choice to pause it for everyone or just leave it running and step away yourself.",
+  },
+  {
     id: "review-mode",
     tab: "data",
     selector: '[data-tour="review-mode-toggle"]',

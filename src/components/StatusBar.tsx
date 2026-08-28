@@ -1464,6 +1464,7 @@ export function StatusBar({
                     aria-label={
                       toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
                     }
+                    data-tour={toMini ? "mini-pause-button" : undefined}
                     className="grid place-items-center size-full bg-blue-500 hover:bg-blue-600 text-white transition-colors active:brightness-90"
                   >
                     {/* Scale lives on this inner span, not the button —

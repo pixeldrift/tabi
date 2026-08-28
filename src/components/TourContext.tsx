@@ -169,6 +169,26 @@ export function TourProvider({
     generation,
   );
 
+  // A step's target can go from "always there" to "collapsed to nothing"
+  // as the app's own state changes underneath it (e.g. session-box, which
+  // this tour's first step points at — the mini-pill rearchitecture that
+  // introduced session-box's own collapse-to-zero-height state didn't
+  // exist when this step was authored) — `useSpotlightTargetRect` already
+  // reports that as "not-found" the same as a selector matching nothing at
+  // all, but nothing used to act on it here (unlike the tip engine's own
+  // matching effect below in TipContext, which redraws a different tip).
+  // Left alone, SpotlightCallout renders fully transparent with nothing to
+  // click — its own `fixed inset-0` backdrop still intercepts every click
+  // on the page underneath it, silently locking the whole app until a
+  // reload. Skipping ahead (or finishing, on the last step) the same way a
+  // real Next tap would is what next() already does; this just calls it
+  // for you.
+  useEffect(() => {
+    if (!active || targetStatus !== "not-found") return;
+    next();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, targetStatus]);
+
   const value = useMemo(
     () => ({
       active,

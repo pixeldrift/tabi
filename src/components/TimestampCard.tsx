@@ -405,7 +405,24 @@ export function TimestampCard({
     if (isCheckpointMode) return;
     if (rawIndex === 0) return;
     if (rawIndex === prevAlertRawIndexRef.current) return;
+    // A jump of more than one step means this render is catching up from a
+    // stale baseline, not observing a single boundary actually cross in
+    // real time — `elapsed` starts at 0 on mount (see its own useCardState
+    // default) and only gets corrected to the session's real elapsed time
+    // by a separate, later effect (see its own comment on why that one
+    // isn't a layout effect), so `prevAlertRawIndexRef`'s OWN initial value
+    // (captured from that same pre-sync `rawIndex`) is 0 too — the first
+    // render after the real value lands can jump straight from 0 to
+    // whatever interval the session is actually several hours into,
+    // without ever passing through 1, 2, 3... Firing for `rawIndex - 1`
+    // here would announce a "just crossed" boundary that in reality
+    // finished hours before this card even mounted. Same philosophy as the
+    // checkpoint-mode alert below (a checkpoint that already passed before
+    // mount is simply missed, never backfilled) — silently re-baseline
+    // instead of alerting for every interval skipped while catching up.
+    const skippedAhead = rawIndex > prevAlertRawIndexRef.current + 1;
     prevAlertRawIndexRef.current = rawIndex;
+    if (skippedAhead) return;
     // Bookkeeping above still runs with alerts off, so re-enabling doesn't
     // dump a backlog of alerts for every boundary that passed while muted.
     if (!alertsEnabled) return;

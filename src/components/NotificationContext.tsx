@@ -315,14 +315,6 @@ const MAX_RETAINED = 50;
 // specify one.
 const DEFAULT_GENERAL_AUTOFADE_MS = 4000;
 
-// How long after a genuinely fresh session start or a join (see
-// `sessionJustStarted`/`justJoined` below) to hold every push to
-// "archived" — long enough to clear the handoff (the pill's own travel,
-// the box's collapse or expand, digits settling) a technician's actually
-// watching, short enough that anything queued right behind it still shows
-// up moments later rather than silently vanishing.
-const SESSION_START_QUIET_MS = 1000;
-
 export function NotificationProvider({
   children,
   onActivate,
@@ -336,7 +328,7 @@ export function NotificationProvider({
   // NotificationProvider sits inside both TourProvider and TipProvider (see
   // routes/index.tsx), so it can read this directly rather than routing a
   // prop down. A push that lands while either overlay owns the screen, or
-  // within SESSION_START_QUIET_MS of a fresh session start or a join (see
+  // while a fresh session start or join is still actively handing off (see
   // `sessionJustStarted`/`justJoined` below), is nobody's-there-to-act-on-it
   // in exactly the same sense as an alert firing with no one in the running
   // session (see push()'s own `live`
@@ -353,16 +345,28 @@ export function NotificationProvider({
   // means "a genuinely fresh session," same reasoning as those two
   // triggers': it bumps once per real start-new, not on every pause/resume
   // in between.
-  const { resetSignal, status, isSessionMine, startedById } = useSession();
+  const { resetSignal, status, isSessionMine, startedById, boxCollapsed } = useSession();
+  // Cleared the instant `boxCollapsed` actually goes true — the real
+  // completion signal for the box->pill handoff, not a guessed duration.
+  // A flat timeout here used to drift out of sync with the real transition
+  // (start-new/join's own box-collapse delay is DIGIT_SETTLE_MS +
+  // HEADER_MORPH_MS, scaled by SESSION_TRANSITION_SPEED — nothing in this
+  // file tracked that, so a short flat constant let anything queued in the
+  // gap between "suppression expired" and "the box actually finished
+  // collapsing" chime audibly mid-transition), and there's no reason to
+  // reinvent that duration here when the same boolean SessionActivityTrigger
+  // already waits on for its own "You joined X's session" push is right
+  // there to read directly.
   const [sessionJustStarted, setSessionJustStarted] = useState(false);
   const prevResetSignalRef = useRef(resetSignal);
   useEffect(() => {
     if (resetSignal === prevResetSignalRef.current) return;
     prevResetSignalRef.current = resetSignal;
     setSessionJustStarted(true);
-    const id = window.setTimeout(() => setSessionJustStarted(false), SESSION_START_QUIET_MS);
-    return () => window.clearTimeout(id);
   }, [resetSignal]);
+  useEffect(() => {
+    if (sessionJustStarted && boxCollapsed) setSessionJustStarted(false);
+  }, [sessionJustStarted, boxCollapsed]);
   // Same treatment for joining someone else's already-running session —
   // same handoff-in-progress reasoning, just a different trigger than a
   // fresh start (no resetSignal bump on a join, see its own comment in
@@ -377,11 +381,15 @@ export function NotificationProvider({
   useEffect(() => {
     if (joinedSomeoneElse === prevJoinedRef.current) return;
     prevJoinedRef.current = joinedSomeoneElse;
-    if (!joinedSomeoneElse) return;
+    if (!joinedSomeoneElse) {
+      setJustJoined(false);
+      return;
+    }
     setJustJoined(true);
-    const id = window.setTimeout(() => setJustJoined(false), SESSION_START_QUIET_MS);
-    return () => window.clearTimeout(id);
   }, [joinedSomeoneElse]);
+  useEffect(() => {
+    if (justJoined && boxCollapsed) setJustJoined(false);
+  }, [justJoined, boxCollapsed]);
   const notificationsSuppressed = tourActive || tipActive || sessionJustStarted || justJoined;
   const onActivateRef = useRef(onActivate);
   useEffect(() => {
