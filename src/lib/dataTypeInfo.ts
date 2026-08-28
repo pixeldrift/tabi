@@ -56,7 +56,7 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
   },
   rating: {
     label: "Score",
-    icon: createElement(Star, { fill: "currentColor", strokeWidth: 0 }),
+    icon: createElement(Star, { strokeWidth: 2 }),
     description:
       "Captures a subjective rating on a fixed scale for something that isn't a simple count. Good for things like how engaged or ready to learn a client seemed during a session.",
   },
