@@ -1218,24 +1218,17 @@ function IntervalTimeline({
   // (see its own comment above) — that grace only delays which interval
   // is highlighted/scored, not where "now" actually, physically is.
   // Continuous centering, the same idiom as Percent Correct's own
-  // trial-bubble strip: the viewed interval's own bubble/bracket always
-  // sits dead-center in the viewport. The bar/chevron rows (real elapsed
-  // time — see their own comments) always use this value, which targets
-  // the interval's real END boundary — that's Momentary's own bubble/
-  // line/dot position too, since it scores one specific instant
-  // (conventionally an interval's end), a real point in time like the
-  // bar itself. Whole and Partial aren't tied to any single instant, so
-  // their bubble+bracket read more naturally centered over the interval
-  // they belong to instead — see `labelTrackOffsetPx` below.
+  // trial-bubble strip: the SAME track transform drives every row (bubble,
+  // sampling indicator, bar, chevron) so they all move as one piece — only
+  // each row's own LOCAL per-element position (see below) determines where
+  // within that shared, moving track a given element actually lands.
+  // Targets the interval's real END boundary; the current interval's own
+  // bar segment (spanning one SEG_W ending at that boundary) therefore
+  // spans from -SEG_W to 0 on screen, not centered on 0 itself — its
+  // MIDPOINT (screen -SEG_W/2) is what Whole/Partial's bubble+bracket
+  // target instead (see their own comments), which is what actually keeps
+  // them centered over the bar segment they belong to, not the viewport.
   const trackOffsetPx = -((viewIdx + 1) * SEG_W);
-  // Whole/Partial's bubble+bracket sit centered over their own interval
-  // (see the bubble row's own comment) rather than at its real END
-  // boundary — so centering THAT pair needs its own half-segment-earlier
-  // target, or the currently-viewed one would land off-center every time.
-  // Momentary's bubble/line/dot stay on the real boundary (see
-  // `trackOffsetPx`'s own comment), so it just reuses that value as-is.
-  const labelTrackOffsetPx =
-    samplingType === "momentary" ? trackOffsetPx : -((viewIdx + 0.5) * SEG_W);
 
   return (
     <div className="pt-0.5">
@@ -1250,7 +1243,7 @@ function IntervalTimeline({
         <motion.div
           className="absolute left-1/2 top-0"
           style={{ height: BUBBLE_ROW_H }}
-          animate={{ x: labelTrackOffsetPx }}
+          animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
@@ -1318,7 +1311,7 @@ function IntervalTimeline({
         <motion.div
           className="absolute left-1/2 top-0"
           style={{ height: SAMPLING_ROW_H }}
-          animate={{ x: labelTrackOffsetPx }}
+          animate={{ x: trackOffsetPx }}
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
