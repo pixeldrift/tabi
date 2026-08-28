@@ -29,6 +29,7 @@ import {
   CircleSlash2,
   User,
   LockKeyholeOpen,
+  LogOut,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
 import { PersonPill, staffName } from "./StaffDirectory";
@@ -272,6 +273,7 @@ export function StatusBar({
     status,
     elapsedMs,
     pause,
+    leaveSession,
     endAndSubmit,
     transitionStage,
     transitionKind,
@@ -408,6 +410,10 @@ export function StatusBar({
 
   const [discardOpen, setDiscardOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  // Only ever opened from the mini pill's own pause button, and only when
+  // otherPresentStaffIds is non-empty (see that click handler) — pausing a
+  // session nobody else is in has nothing to ask about.
+  const [pauseOrLeaveOpen, setPauseOrLeaveOpen] = useState(false);
   const [incompleteOpen, setIncompleteOpen] = useState(true);
   const [completeOpen, setCompleteOpen] = useState(true);
   const [untouchedOpen, setUntouchedOpen] = useState(true);
@@ -1333,6 +1339,20 @@ export function StatusBar({
             ) : (
               <ArrowRight className="size-3.5" strokeWidth={2.5} />
             );
+            // Pausing with someone else still in the session would stop
+            // the timer for them too, which the button's own single tap
+            // was never clear about — asking first only when there's
+            // actually someone else here to affect (otherPresentStaffIds
+            // is only ever non-empty while toMini, so this never fires for
+            // the big pill's Resume/Join button, which reuses this same
+            // handler).
+            const handlePauseClick = () => {
+              if (otherPresentStaffIds.length > 0) {
+                setPauseOrLeaveOpen(true);
+              } else {
+                pause();
+              }
+            };
             // While the pill's own settle-poll (bigPillRect/miniPillRect
             // above) is still finding its footing after mount — the same
             // window StatusBar's other entrance-sensitive layout already
@@ -1440,7 +1460,7 @@ export function StatusBar({
                 >
                   <button
                     tabIndex={isIdle ? -1 : 0}
-                    onClick={toMini ? pause : requestPlay}
+                    onClick={toMini ? handlePauseClick : requestPlay}
                     aria-label={
                       toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
                     }
@@ -1475,6 +1495,35 @@ export function StatusBar({
           style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
         />
       )}
+      <Dialog open={pauseOrLeaveOpen} onOpenChange={setPauseOrLeaveOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-blue-400/80 ring-2 ring-inset ring-blue-400/80 rounded-xl">
+          <DialogHeader className="text-left sm:text-left">
+            <DialogTitle>Other users are in this session.</DialogTitle>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+            <button
+              onClick={() => {
+                pause();
+                setPauseOrLeaveOpen(false);
+              }}
+              className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full"
+            >
+              Pause session for all
+              <Pause className="size-4" fill="currentColor" strokeWidth={0} />
+            </button>
+            <button
+              onClick={() => {
+                leaveSession();
+                setPauseOrLeaveOpen(false);
+              }}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-white hover:bg-stone-50 text-stone-700 text-sm font-medium px-4 transition-colors w-full"
+            >
+              Leave session running and exit
+              <LogOut className="size-4" />
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-red-400/80 ring-2 ring-inset ring-red-400/80 rounded-xl">
           <DialogHeader className="text-left sm:text-left">
