@@ -260,7 +260,7 @@ export function CardShell({
         // paint, not its overflow, but keeping it on the SAME node as
         // overflow-hidden is what let the shadow visibly clip into a
         // squared-off corner instead of fading past the rounded edge.
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
+        "relative w-full max-w-md mx-auto rounded-xl bg-card text-card-foreground transition-all duration-200",
         isActive
           ? cn(
               // will-change-transform: pins this card to its own stable GPU

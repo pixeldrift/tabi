@@ -82,7 +82,7 @@ export function DataListRow({
         // comment (the same ring-based fix, applied here for consistency
         // even though this row has no progress bar of its own yet to
         // reveal the shadow-clip half of that bug).
-        "relative w-full max-w-md rounded-xl bg-card text-card-foreground transition-all duration-200",
+        "relative w-full max-w-md mx-auto rounded-xl bg-card text-card-foreground transition-all duration-200",
         // ring-1 (not CardShell/MiniTileShell's ring-2) — a full-width row
         // reads that same ring weight as noticeably heavier than a card or
         // tile does, since it runs edge-to-edge across the whole list

@@ -2930,7 +2930,6 @@ const DataCardList = memo(function DataCardList({
   // achieves the same "one per row" result without it.
   const stackToLeftColumn =
     drawerOpen && (displayMode === "grid-large" || displayMode === "grid-small");
-  const isGridMode = displayMode === "grid-large" || displayMode === "grid-small";
 
   const renderOne = (card: CardConfig, dragControls?: DragControls) =>
     renderCard(card, displayMode, {
@@ -3038,21 +3037,29 @@ const DataCardList = memo(function DataCardList({
               transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
               ref={setCardRef(card.id)}
               data-tour={card.id === visibleCards[0]?.id ? "first-card" : undefined}
-              className="w-full flex justify-center"
+              className="w-full"
               style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
             >
-              {/* No explicit width for card/list — this flex item shrink-
-                  wraps to CardShell/DataListRow's own intrinsic content
-                  size, and the parent's `justify-center` centers whatever
-                  that ends up being. The two grid modes need `w-full`
-                  instead: MiniTileShell's `aspect-square w-full` has no
-                  intrinsic size of its own to shrink-wrap around (a
-                  percentage width doesn't count toward a flex item's
-                  automatic content-based sizing) — without an explicit
-                  width here, that circular "size to my content, which
-                  sizes to 100% of me" collapsed the whole tile down to a
-                  couple of px regardless of its actual grid column width. */}
-              <div className={cn("relative", isGridMode && "w-full")}>
+              {/* `w-full` unconditionally, for every mode — this flex item
+                  otherwise has no explicit width and shrink-wraps to its
+                  own content's intrinsic size, which for CardShell/
+                  DataListRow means each card ends up whatever width ITS
+                  OWN content happens to need (a short title/few buttons
+                  reads narrower than a long one) instead of every card in
+                  the list reading as one uniform column — and for the two
+                  quick-action grid modes, MiniTileShell's `aspect-square
+                  w-full` has no intrinsic content size to shrink-wrap
+                  around AT ALL (a percentage width doesn't count toward a
+                  flex item's automatic content-based sizing), so that same
+                  shrink-wrap collapsed the whole tile down to a couple of
+                  px regardless of its actual grid column width. Centering
+                  a card/row that's narrower than this now-full-width slot
+                  (once CardShell/DataListRow's own `max-w-md` caps it on a
+                  wide viewport) is `mx-auto` on THEIR OWN root element now,
+                  not this wrapper's `justify-center` — this wrapper isn't
+                  narrower than its content anymore for that to center
+                  against. */}
+              <div className="relative w-full">
                 <MorphContent displayMode={displayMode}>{renderOne(card)}</MorphContent>
                 {endActionOverlay && <CardEndActionOverlay kind={endActionOverlay} />}
               </div>
@@ -3097,7 +3104,7 @@ function EditableCardItem({
       data-tour={isFirst ? "first-card" : undefined}
       dragListener={false}
       dragControls={dragControls}
-      className={cn("w-full flex justify-center", isHidden && "opacity-40")}
+      className={cn("w-full", isHidden && "opacity-40")}
       style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
     >
       <MorphContent displayMode={displayMode}>{renderOne(card, dragControls)}</MorphContent>
