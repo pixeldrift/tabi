@@ -1339,9 +1339,14 @@ export function StatusBar({
               // not the rectangle's raw bounds.
               <Pause className="size-3.5 -translate-x-px" fill="currentColor" strokeWidth={0} />
             ) : isPaused ? (
-              <Play className="size-3.5" fill="currentColor" strokeWidth={0} />
+              // Larger than the mini pill's own icon above — this button is
+              // BIG_BUTTON_PX (56px), more than double the mini pill's, so a
+              // matching size-3.5 read as lost in the middle of it. Sized up
+              // without touching BIG_BUTTON_PX itself, which only governs the
+              // button's own hit target/pill cutout.
+              <Play className="size-6" fill="currentColor" strokeWidth={0} />
             ) : (
-              <ArrowRight className="size-3.5" strokeWidth={2.5} />
+              <ArrowRight className="size-6" strokeWidth={2.5} />
             );
             // Pausing with someone else still in the session would stop
             // the timer for them too, which the button's own single tap
