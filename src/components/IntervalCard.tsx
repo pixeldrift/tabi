@@ -184,16 +184,24 @@ function statusColors(status: IntervalStatus, recency: Recency) {
     : { bg: "bg-foreground/5 border-foreground/10", text: "text-foreground/30", fade };
 }
 
-// Solid-fill coloring for the sampling-type row's stripe/dot — deliberately
-// simpler than statusColors' bordered-badge palette above (no recency/fade
+// Coloring for the sampling-type row's bracket/dot — deliberately simpler
+// than statusColors' bordered-badge palette above (no recency/fade
 // dimension here, just "not yet scored" vs. which button scored it), and a
 // gray REST state instead of statusColors' "nothing at all until scored" —
 // the sampling-type indicator is a permanent "this is what counts" legend,
-// not a scored-only celebration mark.
-function samplingIndicatorColor(status: IntervalStatus) {
+// not a scored-only celebration mark. Two variants of the same three
+// colors: `bg-*` for the momentary dot (a plain filled div) and `text-*`
+// for the whole/partial bracket (an SVG path stroked with currentColor).
+function samplingIndicatorFillColor(status: IntervalStatus) {
   if (status === "correct") return "bg-green-500";
   if (status === "incorrect") return "bg-red-500";
   return "bg-stone-300";
+}
+
+function samplingIndicatorStrokeColor(status: IntervalStatus) {
+  if (status === "correct") return "text-green-500";
+  if (status === "incorrect") return "text-red-500";
+  return "text-stone-300";
 }
 
 /** Everything the bookmark bar's Interval chip needs. `elapsed` (like
@@ -1113,13 +1121,21 @@ const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
 const SEG_W = 64;
 const BAR_H = 10;
 // The sampling-type row sits between the bubble row and the elapsed-time
-// bar. Whole/Partial render as a thin stripe there (same idiom the old
-// scored-only stripe used, just promoted to its own always-visible row and
-// made sampling-type-aware); Momentary instead renders a short connector
-// line down from its bubble plus a small dot, so the two need to share one
-// row height: connector + dot = SAMPLING_ROW_H exactly.
+// bar. Whole/Partial render a bracket there — a sideways curly brace
+// ("{" on its side: hooked ends, straight arms meeting at one point,
+// reaching down toward the bar below it) sized to the segment's own full
+// or half width; Momentary instead renders a short connector line down
+// from its bubble, with its own dot actually living on the bar below (see
+// that bar's own comment) rather than in this row. Connector height and
+// the bracket's own apex depth both equal SAMPLING_ROW_H, so every variant
+// reaches exactly as far down, right to the bar's edge.
 const SAMPLING_ROW_H = 12;
 const SAMPLING_DOT_SIZE = 6;
+// How far each end of the bracket's hook rises before the arms start
+// angling in toward the center apex — same proportions as the icon
+// variants (IntervalWholeIcon/IntervalPartialIcon) so the two read as the
+// same shape at different sizes, not two different designs.
+const BRACKET_TICK_PX = 4;
 // Same diameter as every period bubble (see IntervalTimeline's own comment) —
 // hoisted here so the nav arrows below can vertically center themselves on
 // the bubble row specifically, rather than the timeline's full height
@@ -1252,14 +1268,15 @@ function IntervalTimeline({
         </motion.div>
       </div>
       {/* Sampling-type indicator — sits between the bubble row and the
-          elapsed-time bar. Whole/Partial show a full- or half-width stripe
-          here, right up against the bar below. Momentary has no span to
-          show — just a connector dropping from the bubble down to meet the
-          bar, where its own dot actually lives (see the bar's own comment
-          below): "on the timeline," matching how Whole/Partial's stripe
-          reads as part of it. Always visible (gray when unscored), not
-          just appearing once scored — this is a legend for what the card
-          is measuring, not a "you scored this" celebration mark. */}
+          elapsed-time bar. Whole/Partial show a bracket here (a sideways
+          curly brace, full or half width, its apex reaching down to meet
+          the bar below). Momentary has no span to show — just a connector
+          dropping from the bubble down to meet the bar, where its own dot
+          actually lives (see the bar's own comment below): "on the
+          timeline," matching how Whole/Partial's bracket reads as part of
+          it. Always visible (gray when unscored), not just appearing once
+          scored — this is a legend for what the card is measuring, not a
+          "you scored this" celebration mark. */}
       <div
         className="relative overflow-hidden"
         style={{ height: SAMPLING_ROW_H, ...HORIZONTAL_FADE_MASK }}
@@ -1281,16 +1298,25 @@ function IntervalTimeline({
                 />
               );
             }
-            const color = samplingIndicatorColor(statuses[i]);
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
             const left = i * SEG_W + (SEG_W - width) / 2;
             return (
-              <div
+              <svg
                 key={i}
-                className={cn("absolute top-0 h-[3px] rounded-full", color)}
-                style={{ left, width }}
                 aria-hidden
-              />
+                className={cn("absolute top-0", samplingIndicatorStrokeColor(statuses[i]))}
+                style={{ left, width, height: SAMPLING_ROW_H }}
+                viewBox={`0 0 ${width} ${SAMPLING_ROW_H}`}
+              >
+                <path
+                  d={`M1,0 L1,${BRACKET_TICK_PX} L${width / 2},${SAMPLING_ROW_H - 1} L${width - 1},${BRACKET_TICK_PX} L${width - 1},0`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             );
           })}
         </motion.div>
@@ -1333,16 +1359,18 @@ function IntervalTimeline({
           {/* Momentary's own marker actually sits ON the timeline (this bar),
               not floating above it — the connector line in the sampling-
               indicator row above just leads the eye down to it, the same
-              way Whole/Partial's own stripe reads as part of this bar even
-              though it's technically drawn in that row too. Vertically
-              centered in the bar's own height, same x as its bubble. */}
+              way Whole/Partial's own bracket reads as part of this bar
+              even though it's technically drawn in that row too (its own
+              apex reaches down to the bar's edge for the same reason).
+              Vertically centered in the bar's own height, same x as its
+              bubble. */}
           {samplingType === "momentary" &&
             Array.from({ length: intervalCount }, (_, i) => (
               <div
                 key={i}
                 className={cn(
                   "absolute rounded-full -translate-x-1/2 -translate-y-1/2",
-                  samplingIndicatorColor(statuses[i]),
+                  samplingIndicatorFillColor(statuses[i]),
                 )}
                 style={{
                   left: (i + 1) * SEG_W,
