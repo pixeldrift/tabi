@@ -15,6 +15,7 @@ import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
 import { formatTimeOfDay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import { useScheduleData } from "./ScheduleContext";
 import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
@@ -405,7 +406,24 @@ export function TimestampCard({
     if (isCheckpointMode) return;
     if (rawIndex === 0) return;
     if (rawIndex === prevAlertRawIndexRef.current) return;
+    // A jump of more than one step means this render is catching up from a
+    // stale baseline, not observing a single boundary actually cross in
+    // real time — `elapsed` starts at 0 on mount (see its own useCardState
+    // default) and only gets corrected to the session's real elapsed time
+    // by a separate, later effect (see its own comment on why that one
+    // isn't a layout effect), so `prevAlertRawIndexRef`'s OWN initial value
+    // (captured from that same pre-sync `rawIndex`) is 0 too — the first
+    // render after the real value lands can jump straight from 0 to
+    // whatever interval the session is actually several hours into,
+    // without ever passing through 1, 2, 3... Firing for `rawIndex - 1`
+    // here would announce a "just crossed" boundary that in reality
+    // finished hours before this card even mounted. Same philosophy as the
+    // checkpoint-mode alert below (a checkpoint that already passed before
+    // mount is simply missed, never backfilled) — silently re-baseline
+    // instead of alerting for every interval skipped while catching up.
+    const skippedAhead = rawIndex > prevAlertRawIndexRef.current + 1;
     prevAlertRawIndexRef.current = rawIndex;
+    if (skippedAhead) return;
     // Bookkeeping above still runs with alerts off, so re-enabling doesn't
     // dump a backlog of alerts for every boundary that passed while muted.
     if (!alertsEnabled) return;
@@ -477,17 +495,15 @@ export function TimestampCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
-  // The real wall clock, ticked independently of the session clock — a
-  // checkpoint's alert has to fire at 10am whether or not a session happens
-  // to be running (or even started) right then, unlike the interval track's
-  // own elapsed-time alert. Only ticks while actually in checkpoint mode;
-  // 30s is plenty of precision for a "did we cross this minute" check.
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    if (!isCheckpointMode) return;
-    const id = window.setInterval(() => setNow(new Date()), 30000);
-    return () => window.clearInterval(id);
-  }, [isCheckpointMode]);
+  // The shared demo clock (ScheduleContext), not an independent real wall
+  // clock — a checkpoint's alert firing at "10am" needs to agree with
+  // whatever the Schedule tab itself considers 10am right now, which for
+  // this demo is a simulated time that only moves via that tab's own "tap
+  // to advance" control, not real ticking. Previously ticked its own
+  // `new Date()` every 30s, which (correctly, on its own terms) tracked
+  // the real clock — but that meant this card's "now" and the Schedule
+  // tab's own "now" could show two different times for the same moment.
+  const { now } = useScheduleData();
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   // Parsed once per render rather than baked into the authored data itself —
   // `checkpoints[].time` stays the same already-formatted "10:00a" string

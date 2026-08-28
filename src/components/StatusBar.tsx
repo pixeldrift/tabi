@@ -492,18 +492,22 @@ export function StatusBar({
     // for the whole transition).
     const boxJustOpened = !boxCollapsed && prevBoxCollapsedForActionsRef.current;
     prevBoxCollapsedForActionsRef.current = boxCollapsed;
-    if (boxJustOpened && isPaused) {
-      // Pausing opens the box fresh — the actions row's own height wrapper
-      // skips its tween for exactly this case (see its own
+    if (boxJustOpened) {
+      // The box opening fresh from collapsed — whether into paused (whose
+      // actions row skips its own tween for exactly this case, see its own
       // `key={expandGen}`/`initial={false}`, and `pausedActionsHeight`'s
-      // comment for why the target is already known), so there's no inner
-      // animation to chase here: the row is already at its final height in
-      // this same commit. Suppressing and waiting on
-      // `onActionsHeightSettled` instead would be waiting on a completion
-      // event for an animation that never actually ran — Motion doesn't
-      // reliably fire `onAnimationComplete` for a value that started (via
-      // `initial={false}`) already at its target, which left this
-      // suppressed forever.
+      // comment for why the target is already known) or into running-not-
+      // mine (leaveSession — no actions row at all to tween) — never has an
+      // inner animation to chase in this same commit; the content is
+      // already at its final height the instant it appears. Suppressing
+      // and waiting on `onActionsHeightSettled` instead would be waiting on
+      // a completion event for an animation that never actually ran —
+      // Motion doesn't reliably fire `onAnimationComplete` for a value that
+      // started (via `initial={false}`) already at its target, which left
+      // this suppressed forever (confirmed: exactly what leaveSession hit
+      // before this was broadened past isPaused alone — boxNaturalHeight
+      // stayed stuck at whatever it was before collapsing, leaving a big
+      // dead gap between the box's real content and the tabs below).
       actionsRowSettlingRef.current = false;
       const el = boxWrapRef.current;
       if (el) setBoxNaturalHeight(el.scrollHeight);
@@ -1464,6 +1468,7 @@ export function StatusBar({
                     aria-label={
                       toMini ? "Pause session" : isPaused ? "Resume session" : "Join session"
                     }
+                    data-tour={toMini ? "mini-pause-button" : undefined}
                     className="grid place-items-center size-full bg-blue-500 hover:bg-blue-600 text-white transition-colors active:brightness-90"
                   >
                     {/* Scale lives on this inner span, not the button —
@@ -2405,46 +2410,67 @@ function ExpandedSessionBox({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // The instant the box opens fresh (expandGen bumps — always a pause, see
-  // above), seed `actionsHeight` straight from that already-known shadow
-  // measurement rather than waiting for the real, now-visible button row's
-  // own ResizeObserver to fire — same "adjust during render" pattern as
-  // `expandGen` itself. Since the paused button set's height never actually
-  // varies, this consistently lands on the exact right number the real row
-  // would have measured anyway, just without the lag.
+  // The instant the box opens fresh (expandGen bumps — a pause, but also
+  // leaveSession's own "step away, session keeps running" exit: that flips
+  // isSessionMine false, which drops `collapsed` the exact same way pausing
+  // does, so it opens the box fresh from collapsed too — see `collapsed`'s
+  // own comment in SessionContext), seed `actionsHeight` straight from an
+  // already-known target rather than waiting for the real, now-visible
+  // button row's own ResizeObserver to fire — same "adjust during render"
+  // pattern as `expandGen` itself. Only the PAUSED case has a real button
+  // row to seed a height from (the shadow measurement below); running-not-
+  // mine (leaveSession) and idle both render no actions row at all (see
+  // that row's own JSX), so their already-known target is simply 0 — no
+  // shadow measurement needed for a height that can never be anything else.
+  // Seeding straight to `pausedActionsHeight` unconditionally here used to
+  // ignore which of these this actually was: opening fresh into
+  // running-not-mine still got stamped with the PAUSED row's height (99px
+  // of stale "End & Submit / Review Mode / Discard" button space) because
+  // that's what happened to be sitting in `pausedActionsHeight` at the
+  // time, leaving this row's own real content empty but its wrapper still
+  // holding the paused set's worth of space open — exactly the dead gap
+  // between the box's visible content and the tabs below that leaveSession
+  // was reported to leave. Since the paused button set's height never
+  // actually varies, and non-paused's target is always exactly 0, this
+  // consistently lands on the exact right number the real row would have
+  // measured anyway, just without the lag.
   //
   // Only marks this generation "consumed" (advances the ref) once the seed
-  // actually happens — `pausedActionsHeight` is itself only known once ITS
-  // OWN ResizeObserver has fired at least once, which (being scheduled
-  // rather than synchronous) isn't guaranteed to have happened yet on the
-  // very first render where `expandGen` bumps. Consuming the ref
-  // unconditionally there left `actionsHeight` stuck at whatever it was
-  // before (0, from the real row's own last real-content measurement while
-  // running/empty) forever after — this render's mismatch never got a
-  // second look once the ref moved on. Leaving the ref alone instead means
-  // this same check just re-runs on every subsequent render (including the
-  // one `setPausedActionsHeight` itself triggers) until it can actually
-  // succeed. `freshlyOpened` itself (read below, in the height motion.div's
-  // own transition) doesn't need its own reset: once the ref DOES advance,
+  // actually happens — for the paused branch, `pausedActionsHeight` is
+  // itself only known once ITS OWN ResizeObserver has fired at least once,
+  // which (being scheduled rather than synchronous) isn't guaranteed to
+  // have happened yet on the very first render where `expandGen` bumps.
+  // Consuming the ref unconditionally there left `actionsHeight` stuck at
+  // whatever it was before (0, from the real row's own last real-content
+  // measurement while running/empty) forever after — this render's
+  // mismatch never got a second look once the ref moved on. Leaving the
+  // ref alone instead means this same check just re-runs on every
+  // subsequent render (including the one `setPausedActionsHeight` itself
+  // triggers) until it can actually succeed. The non-paused branch's
+  // target (0) is always already known, so it never has this problem.
+  // `freshlyOpened` itself (read below, in the height motion.div's own
+  // transition) doesn't need its own reset: once the ref DOES advance,
   // this recomputes to `false` on every later render until the next open.
   const prevExpandGenForActionsRef = useRef(expandGen);
   const freshlyOpened = expandGen !== prevExpandGenForActionsRef.current;
-  // The `actionsHeight !== pausedActionsHeight` guard isn't just a micro-
+  const freshOpenTarget = isPaused ? pausedActionsHeight : 0;
+  const freshOpenTargetKnown = !isPaused || pausedActionsHeight !== null;
+  // The `actionsHeight !== freshOpenTarget` guard isn't just a micro-
   // optimization — it's load-bearing. The ref below only advances once a
   // COMMIT actually happens (a `useLayoutEffect`, not a render-body
   // mutation — see its own comment), which means `freshlyOpened` stays
   // `true` across every render that occurs before that commit, e.g. once
   // per every other unrelated re-render (elapsedMs ticking, etc.)
   // happening to land in the same window. Without this guard, EVERY one of
-  // those renders re-issues `setActionsHeight(pausedActionsHeight)` — and
+  // those renders re-issues `setActionsHeight(freshOpenTarget)` — and
   // confirmed empirically (direct instrumentation, not just reasoning from
   // React's docs): React does NOT reliably treat a same-value render-phase
   // dispatch as a no-op here, and repeated calls across enough renders hit
   // the render-phase-update cap for real, throwing "Too many re-renders"
   // and tearing down this whole component via its error boundary. Skipping
   // the call once the value already matches avoids re-dispatching at all.
-  if (freshlyOpened && pausedActionsHeight !== null && actionsHeight !== pausedActionsHeight) {
-    setActionsHeight(pausedActionsHeight);
+  if (freshlyOpened && freshOpenTargetKnown && actionsHeight !== freshOpenTarget) {
+    setActionsHeight(freshOpenTarget);
   }
   // Consuming the ref here, not in the render body above — mutating it
   // synchronously during render (the way this used to work) landed on the
@@ -2463,10 +2489,10 @@ function ExpandedSessionBox({
   // later than before — after the correctly-`true` render has already
   // painted — instead of racing ahead of it.
   useLayoutEffect(() => {
-    if (freshlyOpened && pausedActionsHeight !== null) {
+    if (freshlyOpened && freshOpenTargetKnown) {
       prevExpandGenForActionsRef.current = expandGen;
     }
-  }, [freshlyOpened, pausedActionsHeight, expandGen]);
+  }, [freshlyOpened, freshOpenTargetKnown, expandGen]);
 
   // Re-render to refresh "x ago" string.
   const [, setTick] = useState(0);

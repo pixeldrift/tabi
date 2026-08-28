@@ -1,10 +1,33 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
+import { useSettings } from "./SettingsContext";
 
 // Kept separate from ScheduleView's other state (schedule items, edit mode,
 // layout mode, etc.) — this is the one slice ClientInfoPane's Related
 // Service Times row also needs, so it's the one slice worth sharing rather
 // than lifting all of ScheduleView's local state into a context it doesn't
-// otherwise need.
+// otherwise need. `now`/`bumpTime` below are the other slice worth sharing,
+// for the same reason: TimestampCard's checkpoint-mode alerts need the
+// exact same simulated demo clock the Schedule tab itself shows and lets
+// you tap forward, not a second, independently-real one that could
+// (and, before this, did) disagree with it.
+
+function toMin(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+// Randomizes to somewhere within the clinic's own configured hours (not a
+// genuinely random hour) so a demo opened at, say, 2am still lands on a
+// plausible mid-session time — see ScheduleView's own former copy of this
+// (now moved here so the same clock can be shared) for the fuller history.
+function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
+  const d = new Date();
+  const startMin = toMin(dayStartTime);
+  const endMin = toMin(dayEndTime);
+  const m = startMin + Math.floor(Math.random() * (endMin - startMin));
+  d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+  return d;
+}
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 export type Day = (typeof DAYS)[number];
@@ -63,14 +86,48 @@ interface ScheduleContextValue {
    *  instead of a second, separately-maintained list. */
   phineasAppointments: Appointment[];
   setPhineasAppointments: (appts: Appointment[]) => void;
+  /** The demo's one shared "current time" — randomized once per mount
+   *  within the clinic's configured hours (see randomDemoTime above), then
+   *  only ever moved by an explicit `bumpTime()` call (the Schedule tab's
+   *  own "tap to advance 10 minutes" control), never by a real ticking
+   *  clock. Anything in the app that needs to know "what time is it
+   *  right now" for demo purposes — the Schedule tab's own alert-firing
+   *  and "now" line, TimestampCard's checkpoint-mode alerts — reads this
+   *  one value, so they can never disagree with each other the way a
+   *  real `new Date()` read independently in two places could (and did). */
+  now: Date;
+  bumpTime: () => void;
 }
 
 const ScheduleContext = createContext<ScheduleContextValue | null>(null);
 
 export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [phineasAppointments, setPhineasAppointments] = useState<Appointment[]>(PHINEAS_APPTS);
+  const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
+  // Deterministic on first render — server and client render this the same
+  // way — then randomized immediately after via a layout effect, before
+  // paint, so nothing ever visibly flashes the placeholder (same "0 now,
+  // corrected client-side" pattern useStickyTop uses for the same reason).
+  const [now, setNow] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  });
+  useLayoutEffect(() => {
+    setNow(randomDemoTime(dayStartTime, dayEndTime));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const bumpTime = () => {
+    setNow((prev) => {
+      const d = new Date(prev);
+      d.setMinutes(d.getMinutes() + 10);
+      return d;
+    });
+  };
   return (
-    <ScheduleContext.Provider value={{ phineasAppointments, setPhineasAppointments }}>
+    <ScheduleContext.Provider
+      value={{ phineasAppointments, setPhineasAppointments, now, bumpTime }}
+    >
       {children}
     </ScheduleContext.Provider>
   );

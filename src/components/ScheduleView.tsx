@@ -661,15 +661,6 @@ function fmt12(t: string) {
   return `${hh}:${m.toString().padStart(2, "0")}${period}`;
 }
 
-function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
-  const d = new Date();
-  const startMin = toMin(dayStartTime);
-  const endMin = toMin(dayEndTime);
-  const m = startMin + Math.floor(Math.random() * (endMin - startMin));
-  d.setHours(Math.floor(m / 60), m % 60, 0, 0);
-  return d;
-}
-
 // Randomly pins ~half of every schedule's activities (autofade off) — a
 // fresh draw each time this is called, used to seed the initial demo state
 // client-side only (see the layout effect below), not inside a lazy
@@ -750,30 +741,17 @@ export function ScheduleView({
   contentRef: RefObject<HTMLElement | null>;
 }) {
   const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
-  // Deterministic on first render — server and client render this the same
-  // way — then randomized immediately after via a layout effect, before
-  // paint, so nothing ever visibly flashes the placeholder (same "0 now,
-  // corrected client-side" pattern useStickyTop uses for the same reason).
+  // `now`/`bumpTime` live in ScheduleContext now, not here — shared with
+  // TimestampCard's checkpoint-mode alerts so they read the exact same
+  // simulated demo clock instead of a second, independently-real one that
+  // could disagree with it. See that context's own comment.
+  const { now, bumpTime, setPhineasAppointments } = useScheduleData();
   // See randomizeSchedules' own comment for why this can't just be a random
-  // draw straight in these lazy initializers anymore.
-  const [now, setNow] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(12, 0, 0, 0);
-    return d;
-  });
+  // draw straight in this lazy initializer.
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
   useLayoutEffect(() => {
-    setNow(randomDemoTime(dayStartTime, dayEndTime));
     setSchedules(randomizeSchedules());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const bumpTime = () => {
-    setNow((prev) => {
-      const d = new Date(prev);
-      d.setMinutes(d.getMinutes() + 10);
-      return d;
-    });
-  };
 
   const [activeName, setActiveName] = useState<string>("Phineas' Schedule");
   const active = schedules.find((s) => s.name === activeName) ?? schedules[0];
@@ -783,7 +761,6 @@ export function ScheduleView({
   // is actually on Phineas' Schedule here — looked up by name rather than
   // just using `active` since the Schedule tab's own dropdown can have a
   // different preset (Group A/B/C) selected at any given moment.
-  const { setPhineasAppointments } = useScheduleData();
   useEffect(() => {
     const phineasSchedule = schedules.find((s) => s.name === "Phineas' Schedule");
     if (phineasSchedule) setPhineasAppointments(phineasSchedule.appointments);
