@@ -68,6 +68,7 @@ import { DATA_TYPE_INFO } from "@/lib/dataTypeInfo";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
 import { useSettings } from "@/components/SettingsContext";
+import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
@@ -2165,7 +2166,12 @@ function formatFullDate(d: Date | null) {
 
 function formatFullTime(d: Date | null) {
   if (!d) return "—";
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const hhmm = formatTimeOfDay(
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+  );
+  const period = hhmm.slice(-1);
+  return `${hhmm.slice(0, -1)}:${seconds}${period}`;
 }
 
 function formatRelativeFromNow(d: Date) {
@@ -2183,11 +2189,9 @@ function formatRelativeFromNow(d: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const days = Math.round((today.getTime() - that.getTime()) / 86400000);
-  const timeStr = d
-    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-    .toLowerCase()
-    .replace(/\s*am/g, "a")
-    .replace(/\s*pm/g, "p");
+  const timeStr = formatTimeOfDay(
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+  );
   if (days === 1) return `Yesterday at ${timeStr}`;
   if (days < 7) return `${d.toLocaleDateString(undefined, { weekday: "long" })} at ${timeStr}`;
   return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} at ${timeStr}`;
@@ -2873,8 +2877,8 @@ function formatExactTime(d: Date) {
   const hh = String(((h24 + 11) % 12) + 1).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   const ss = String(d.getSeconds()).padStart(2, "0");
-  const ampm = h24 < 12 ? "AM" : "PM";
-  return `${hh}:${min}:${ss} ${ampm}`;
+  const period = h24 < 12 ? "a" : "p";
+  return `${hh}:${min}:${ss}${period}`;
 }
 
 // Hour is a single, unpadded digit — a session can't run longer than a

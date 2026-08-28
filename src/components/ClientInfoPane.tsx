@@ -168,7 +168,9 @@ function formatUpdated(d: Date | null) {
   if (!d) return "—";
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const time = formatTimeOfDay(
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+  );
   const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return sameDay ? `today (${date}) at ${time}` : `${date} at ${time}`;
 }

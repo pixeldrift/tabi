@@ -722,6 +722,29 @@ const BUILT_IN_CARDS: CardConfig[] = [
     },
   },
   {
+    id: "toileting-accident",
+    kind: "timestamp",
+    title: "Has toileting accident",
+    phase: "Baseline",
+    description:
+      "Log the exact moment a toileting accident happens — a simple, ongoing record of when they occur, not a count, duration, or interval check.",
+    teachingProcedure: {
+      goal: "Reduce the frequency of toileting accidents by identifying time-of-day patterns worth targeting with a proactive bathroom schedule.",
+      rationale:
+        "A running log of exact accident times — not just a daily tally — is what actually reveals whether accidents cluster around specific times (right after meals, mid-afternoon, etc.) that a proactive schedule could target.",
+      procedure:
+        "The moment you notice or are told an accident happened, tap Log Timestamp Now. If you learn about it after the fact, edit the logged time to when it actually happened rather than when you found out.",
+      measurement: {
+        markCorrect: "Any instance of urination or a bowel movement outside the toilet.",
+        markError:
+          "A near-miss caught and redirected to the toilet in time doesn't count — only log ones that actually happened.",
+      },
+      materials: "Change of clothes, standard bathroom/cleanup supplies.",
+      instructionalNotes:
+        "Log every instance, however minor — a pattern only shows up in the full record, not a filtered one.",
+    },
+  },
+  {
     id: "pairing-indicators",
     kind: "checklist",
     title: "Pairing indicators",

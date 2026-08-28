@@ -1016,10 +1016,9 @@ export function ScheduleView({
     day: "2-digit",
     year: "numeric",
   });
-  const timeStr = now.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const timeStr = formatTimeOfDay(
+    `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+  );
 
   // Edit mode's "Add Activity" is offered into any genuine blank stretch —
   // before the first item, between any two items, and after the last —
