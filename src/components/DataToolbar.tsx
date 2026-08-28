@@ -23,7 +23,7 @@ import { FrequencyIcon } from "@/components/icons/FrequencyIcon";
 import { RateIcon } from "@/components/icons/RateIcon";
 import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
-import { TimestampIcon } from "@/components/icons/TimestampIcon";
+import { IntervalIcon } from "@/components/icons/IntervalIcon";
 import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
@@ -43,7 +43,7 @@ export const KIND_META: Record<
   duration: { label: "Duration", icon: (p) => <DurationIcon {...p} /> },
   "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
-  timestamp: { label: "Interval", icon: (p) => <TimestampIcon {...p} /> },
+  interval: { label: "Interval", icon: (p) => <IntervalIcon {...p} /> },
   checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },
 };
 

@@ -2,13 +2,13 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Bookmark, Frown, Pencil, X } from "lucide-react";
 import { BookmarkChip } from "./BookmarkChip";
-import { HORIZONTAL_FADE_MASK } from "./TimestampCard";
+import { HORIZONTAL_FADE_MASK } from "./IntervalCard";
 import { useDataToolbar } from "./DataToolbarContext";
 import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
 import type { CardConfig } from "@/routes/index";
 
-// HORIZONTAL_FADE_MASK fades both edges — right for TimestampCard's own
+// HORIZONTAL_FADE_MASK fades both edges — right for IntervalCard's own
 // centered carousel, where either direction can always have more content.
 // The bar's strip isn't like that: it starts pinned at scrollLeft 0, right
 // up against the corner toggle, so a left fade there would feather the

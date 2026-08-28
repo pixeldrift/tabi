@@ -28,7 +28,7 @@ fixed-at-creation, same as a WordPress post type.
 | `duration` | Duration | `DurationIcon` | Times how long a behavior lasts, from start to finish, using a built-in stopwatch per instance. |
 | `task-analysis` | Task Analysis | `TaskAnalysisIcon` | Breaks a multi-step skill into its individual steps, then tracks each step's own level of independence. |
 | `rating` | Score | `Star` (filled) | Captures a subjective rating on a fixed scale for something that isn't a simple count. |
-| `timestamp` | Timestamp | `TimestampIcon` | Logs the specific time a behavior occurred, without measuring duration or count — useful for spotting time-of-day patterns. |
+| `interval` | Interval | `IntervalIcon` | Checks in at fixed time intervals (or scheduled times of day) and marks whether the target behavior is or isn't occurring at each check, rather than counting or timing it directly — useful for spotting time-of-day patterns. |
 
 The label/icon/description triple above lives in `DATA_TYPE_INFO`
 (`src/lib/dataTypeInfo.ts`) and powers the "Data type" info modal in every
@@ -104,7 +104,7 @@ by kind, to match whatever the card's own buttons actually say:
 | `rate` | Counts as an instance if | Does not count if |
 | `duration` | Counts as the same instance if | Does not count if |
 | `rating` | Mark Correct if | Mark Error if |
-| `timestamp` | Mark Correct if (overridden per-card, see §4.7) | Mark Incorrect if (ditto) |
+| `interval` | Mark Correct if (overridden per-card, see §4.7) | Mark Incorrect if (ditto) |
 
 One more accordion row exists (**Video**) but isn't backed by a real field
 yet — it's a static 16:9 placeholder with a play glyph, standing in for a
@@ -132,7 +132,7 @@ copy, they're the completion threshold.
 | `rate` | count > 0 OR elapsed > 0 (the clock itself counts as data) | elapsed ≥ `minDurationSec` if set, else count > 0 or elapsed > 0 | count / rate-per-minute |
 | `duration` | total ms > 0, OR (interfering, no min, any elapsed session time) | total sec ≥ `minDurationSec` if set, else total ms > 0 or the interfering zero-case | formatted total time / `"Total Time"` |
 | `rating` | rating > 0 | same as `hasData` — a rating is binary "picked or not" | rating / `"out of {max}"` |
-| `timestamp` | any interval scored | scored count === total interval count | `scored/total` / `"Intervals Marked"` |
+| `interval` | any interval scored | scored count === total interval count | `scored/total` / `"Intervals Marked"` |
 
 The recurring **"interfering + no minimum ⇒ zero already counts as
 complete"** pattern (frequency, duration) exists because a reduction goal's
@@ -215,7 +215,7 @@ Structurally the odd one out: no running trial/tally list, just one
 overwritable value per session. `hasData`/`isComplete` collapse to the same
 condition (§4) because there's nothing partial about picking a rating.
 
-### 5.7 `timestamp`
+### 5.7 `interval`
 
 | Field | Type | Required | Behavior |
 |---|---|---|---|
@@ -238,7 +238,7 @@ Drawer quick facts: Interval (length), Scored (`n/total`).
   completion logic — worth deciding whether to (a) restrict the toggle to
   Frequency/Duration only, or (b) actually wire the other 5 kinds up to
   respect it the same way, before the form ships.
-- **`locked` is a "TEMPORARY test hook"** on both Rate and Timestamp,
+- **`locked` is a "TEMPORARY test hook"** on both Rate and Interval,
   by its own code comment — decide whether it graduates into a real,
   documented feature (manual time entry) or gets dropped before a creation
   form has to explain it to a user.

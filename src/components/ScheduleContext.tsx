@@ -6,7 +6,7 @@ import { useSettings } from "./SettingsContext";
 // Service Times row also needs, so it's the one slice worth sharing rather
 // than lifting all of ScheduleView's local state into a context it doesn't
 // otherwise need. `now`/`bumpTime` below are the other slice worth sharing,
-// for the same reason: TimestampCard's checkpoint-mode alerts need the
+// for the same reason: IntervalCard's checkpoint-mode alerts need the
 // exact same simulated demo clock the Schedule tab itself shows and lets
 // you tap forward, not a second, independently-real one that could
 // (and, before this, did) disagree with it.
@@ -92,7 +92,7 @@ interface ScheduleContextValue {
    *  own "tap to advance 10 minutes" control), never by a real ticking
    *  clock. Anything in the app that needs to know "what time is it
    *  right now" for demo purposes — the Schedule tab's own alert-firing
-   *  and "now" line, TimestampCard's checkpoint-mode alerts — reads this
+   *  and "now" line, IntervalCard's checkpoint-mode alerts — reads this
    *  one value, so they can never disagree with each other the way a
    *  real `new Date()` read independently in two places could (and did). */
   now: Date;

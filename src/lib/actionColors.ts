@@ -4,7 +4,7 @@ import type { ColorTheme } from "@/components/SettingsContext";
 // animations need as literal strings — its own color interpolation can't
 // resolve a `var(--custom-property)` reference mid-tween the way CSS itself
 // can, so these can't just point at styles.css's own custom properties the
-// way static SVG fills do (see TimestampCard/ScheduleView's "now" chevron).
+// way static SVG fills do (see IntervalCard/ScheduleView's "now" chevron).
 // Kept here as the one place these particular values are defined, so they
 // can't drift from the Tailwind shade each is pinned to.
 export const TIMER_MORPH_DIGIT_MINI = "#292524"; // stone-800 — same in every theme

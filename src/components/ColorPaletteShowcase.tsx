@@ -427,7 +427,7 @@ export function ColorPaletteShowcase() {
                   ))}
                 </div>
                 <p className="text-[11px] text-muted-foreground/70 mt-2">
-                  Most match an existing shade above (chevrons in TimestampCard/ScheduleView, the
+                  Most match an existing shade above (chevrons in IntervalCard/ScheduleView, the
                   synced-timer digit/border color morph in StatusBar) — the two "no match" entries
                   are the default theme's own recolored blue-700/blue-500 (actionColors.ts's
                   TIMER_MORPH_*_FULL), needed as literal hex because Framer Motion's color

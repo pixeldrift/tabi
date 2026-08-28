@@ -38,7 +38,7 @@ const KIND_ORDER: CardKind[] = [
   "duration",
   "task-analysis",
   "rating",
-  "timestamp",
+  "interval",
   "checklist",
 ];
 
@@ -52,7 +52,7 @@ const KNOWN_PHASES = Object.keys(PHASE_INFO);
  *  the "template" a single SchemaField renderer below walks, so adding or
  *  adjusting a kind's fields never means writing a new block of markup.
  *  Deliberately excludes: the two "TEMPORARY test hook" `locked` fields
- *  (Rate/Timestamp), `stepPlan` (Task Analysis's per-step expected-mastery
+ *  (Rate/Interval), `stepPlan` (Task Analysis's per-step expected-mastery
  *  plan), and `levelDescriptions` (Rating — already has a working generic
  *  placeholder fallback) — see docs/CARD-TYPES.md §6 for why. */
 interface FieldSchema {
@@ -165,7 +165,7 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       helpText: "One entry per star, low to high. That's the number of stars shown.",
     },
   ],
-  timestamp: [
+  interval: [
     { key: "intervalMin", label: "Interval length (minutes)", type: "number", required: true },
     {
       key: "intervalCount",
@@ -351,7 +351,7 @@ function buildCardConfig(
         levelDescriptions,
       };
     }
-    case "timestamp": {
+    case "interval": {
       const checkpointMode = content.checkpointMode === "timeOfDay" ? "timeOfDay" : "interval";
       const rawCheckpoints =
         (content.checkpoints as
