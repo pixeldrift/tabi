@@ -673,6 +673,12 @@ const BUILT_IN_CARDS: CardConfig[] = [
     phase: "Intervention",
     description:
       "Checked four times a day — 10am, noon, 2pm, and 4pm — each firing its own real-time alert with a scoreable popup right when it's due, the same as Remains Dry's own 'time to check' alerts. Accepted/Resisted is scored independently per dose, not a single overall check.",
+    // Demo showcase for Momentary Time Sampling — a real dose either is or
+    // isn't accepted in that one moment, not over a span, which is exactly
+    // the sampling method this describes (unlike Remains Dry's own Whole
+    // Interval default just above, which fits a condition checked across
+    // a whole stretch of time instead).
+    samplingType: "momentary",
     intervalMin: 15,
     intervalCount: 1,
     positiveLabel: "Accepted",
