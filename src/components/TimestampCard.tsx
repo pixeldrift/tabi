@@ -15,6 +15,7 @@ import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
 import { formatTimeOfDay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import { useScheduleData } from "./ScheduleContext";
 import { cn } from "@/lib/utils";
 
 export type IntervalStatus = "correct" | "incorrect" | null;
@@ -494,17 +495,15 @@ export function TimestampCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
 
-  // The real wall clock, ticked independently of the session clock — a
-  // checkpoint's alert has to fire at 10am whether or not a session happens
-  // to be running (or even started) right then, unlike the interval track's
-  // own elapsed-time alert. Only ticks while actually in checkpoint mode;
-  // 30s is plenty of precision for a "did we cross this minute" check.
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    if (!isCheckpointMode) return;
-    const id = window.setInterval(() => setNow(new Date()), 30000);
-    return () => window.clearInterval(id);
-  }, [isCheckpointMode]);
+  // The shared demo clock (ScheduleContext), not an independent real wall
+  // clock — a checkpoint's alert firing at "10am" needs to agree with
+  // whatever the Schedule tab itself considers 10am right now, which for
+  // this demo is a simulated time that only moves via that tab's own "tap
+  // to advance" control, not real ticking. Previously ticked its own
+  // `new Date()` every 30s, which (correctly, on its own terms) tracked
+  // the real clock — but that meant this card's "now" and the Schedule
+  // tab's own "now" could show two different times for the same moment.
+  const { now } = useScheduleData();
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
   // Parsed once per render rather than baked into the authored data itself —
   // `checkpoints[].time` stays the same already-formatted "10:00a" string
