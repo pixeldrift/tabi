@@ -248,22 +248,27 @@ checked off. See git history for what's already shipped.
       wants every item explicitly accounted for each session (e.g. a fixed
       assessment battery), which is real added RBT burden Checklist
       deliberately avoids by design
-- [ ] 🔴 New "Timestamp" card kind — logs real date/time events (distinct
-      from the Interval kind above, which samples at fixed intervals rather
-      than logging discrete moments). A constantly-running, faded/no-button
-      timer pill (like a Duration card's, minus the button) with the day's
-      date in small text above it and the entry count in a bubble on the
-      pill's left, matching every other card's own count-bubble convention.
-      A "Log Now" button below (rubber-stamp icon, doubling as this kind's
-      own data-type icon) that, on tap, turns the faded pill's numbers/date
-      solid and primary-colored the same way a tally's own confirm-flash
-      does, then slides that stamped copy left into the log while the
-      original faded pill stays put and keeps ticking. Nav arrows activate
-      once ≥1 entry exists, same convention as every other card's browsable
-      history. Expanded view lists every logged entry, time on the left,
-      date on the right, count bubble on the left — same row shape every
-      other card's own expanded list already uses. Build on its own
-      dedicated, long-lived branch and evaluate there before merging to main
+- [ ] 🔴 Admin text-editing page — a helper page, linked from Settings, where
+      every piece of descriptive prose in the app (anything beyond a plain
+      label/title — helper text, placeholders, empty-state copy, tooltips,
+      etc.) can be found and edited in one place, instead of hunting through
+      individual components for a specific string
+- [ ] 🟡 Notifications tab cleanup — a badge for new/unread notifications,
+      the ability to clear just one type at a time instead of all-or-nothing,
+      and a simplified set of notification types overall
+- [ ] 🟡 Transfers between techs, arrivals, and departures shown directly on
+      the Schedule (not just clinical appointments), each able to carry its
+      own alert — related to, but more specific than, the full calendar/
+      handoff integration item below
+- [ ] 🟢 A small idle animation on the app's logo (an eye blink or similar) —
+      a charm touch, not tied to any state change
+- [ ] 🟡 Distinguish the Rate and Duration data-type icons more clearly — the
+      two currently look similar and are hard to tell apart at small sizes.
+      Rate's own function is closer to Frequency's ("a tally per time") than
+      to Duration's ("how long something lasted"), so its icon should lean
+      that direction — e.g. a stopwatch combined with a number sign somehow
+      (a split face reading as both? a small number sign in place of hands?).
+      Needs actual visual iteration/approval, not a blind swap
 
 
 ### 🗄️ Long-term Roadmap - Potential Future Features
@@ -353,4 +358,4 @@ and scheduling items below all need to respect that split.
       on the RBT side. Deprioritized to the bottom of this list — this demo
       isn't focused on supervisor/BCBA-side functions
 
-_Roadmap last updated: 2026-08-25_
+_Roadmap last updated: 2026-08-29_
