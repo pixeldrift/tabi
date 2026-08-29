@@ -18,7 +18,8 @@ import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { useSession, CURRENT_STAFF_ID } from "@/components/SessionContext";
 import { useNotifications } from "@/components/NotificationContext";
 import { useScheduleData, type Appointment } from "@/components/ScheduleContext";
-import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
+import { formatTimeOfDayForDisplay } from "@/components/TimeOfDayKeypad";
+import { useSettings } from "@/components/SettingsContext";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import phineasPhoto from "@/assets/images/people/phineas.jpeg";
 import lindaPhoto from "@/assets/images/people/linda.jpeg";
@@ -164,12 +165,13 @@ function calculateAge(dobIso: string): number {
   return age;
 }
 
-function formatUpdated(d: Date | null) {
+function formatUpdated(d: Date | null, use24Hour: boolean) {
   if (!d) return "—";
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
-  const time = formatTimeOfDay(
+  const time = formatTimeOfDayForDisplay(
     `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+    use24Hour,
   );
   const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return sameDay ? `today (${date}) at ${time}` : `${date} at ${time}`;
@@ -179,8 +181,11 @@ function formatUpdated(d: Date | null) {
 // — one start/end applies to every day an appointment recurs on, unlike the
 // old hand-written relatedServices copy that could (inaccurately) give each
 // day its own time.
-function formatApptSchedule(appt: { days: string[]; start: string; end: string }): string {
-  return `${appt.days.join(", ")} ${formatTimeOfDay(appt.start)}–${formatTimeOfDay(appt.end)}`;
+function formatApptSchedule(
+  appt: { days: string[]; start: string; end: string },
+  use24Hour: boolean,
+): string {
+  return `${appt.days.join(", ")} ${formatTimeOfDayForDisplay(appt.start, use24Hour)}–${formatTimeOfDayForDisplay(appt.end, use24Hour)}`;
 }
 
 export function ClientInfoPane({
@@ -195,6 +200,7 @@ export function ClientInfoPane({
 }) {
   const { lastUpdated } = useSession();
   const { phineasAppointments } = useScheduleData();
+  const { use24HourTime } = useSettings();
   return (
     <div className="max-w-2xl mx-auto pb-8">
       <div className="mt-6 px-4">
@@ -286,7 +292,7 @@ export function ClientInfoPane({
         {/* Metadata about the record, not something a BCBA needs up front —
           stays last. */}
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground">
-          <span>Last updated {formatUpdated(lastUpdated)} by</span>
+          <span>Last updated {formatUpdated(lastUpdated, use24HourTime)} by</span>
           <PersonPill staffId={CURRENT_STAFF_ID} />
         </div>
       </div>
@@ -322,6 +328,7 @@ function AboutMeSection({
   phineasAppointments: Appointment[];
   onViewSchedule: () => void;
 }) {
+  const { use24HourTime } = useSettings();
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set(ABOUT_ME_ROW_IDS));
   const allCollapsed = collapsedIds.size === ABOUT_ME_ROW_IDS.length;
 
@@ -458,7 +465,7 @@ function AboutMeSection({
           emoji="🤝"
           label="Related Services"
           value={phineasAppointments
-            .map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a)}`)
+            .map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a, use24HourTime)}`)
             .join("\n")}
           collapsed={collapsedIds.has("relatedServices")}
           onToggle={toggleRow}
@@ -484,7 +491,7 @@ function AboutMeSection({
                     ) : (
                       <span className="text-foreground/80">{a.provider}</span>
                     )}
-                    <span>&middot; {formatApptSchedule(a)}</span>
+                    <span>&middot; {formatApptSchedule(a, use24HourTime)}</span>
                   </div>
                 );
               })

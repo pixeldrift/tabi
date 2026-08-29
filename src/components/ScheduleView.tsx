@@ -53,7 +53,7 @@ import { cn } from "@/lib/utils";
 import { ScrubText } from "@/components/ScrubText";
 import { useNotifications } from "@/components/NotificationContext";
 import { useSession } from "@/components/SessionContext";
-import { TimeOfDayKeypad, formatTimeOfDay } from "@/components/TimeOfDayKeypad";
+import { TimeOfDayKeypad, formatTimeOfDayForDisplay } from "@/components/TimeOfDayKeypad";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { useKeyboardInset, keyboardInsetStyle } from "@/hooks/use-keyboard-inset";
 import { useSettings } from "@/components/SettingsContext";
@@ -654,7 +654,11 @@ function toMin(t: string) {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
-function fmt12(t: string) {
+// `use24Hour` mirrors the Settings 24-hour toggle (see SettingsContext's
+// `use24HourTime`) — `t` is already 24h "HH:MM" here, so that branch is a
+// plain pass-through rather than a second conversion.
+function fmt12(t: string, use24Hour: boolean) {
+  if (use24Hour) return t;
   const [h, m] = t.split(":").map(Number);
   const period = h >= 12 ? "p" : "a";
   const hh = ((h + 11) % 12) + 1;
@@ -740,7 +744,7 @@ export function ScheduleView({
    *  tracking measures pinning against this container. */
   contentRef: RefObject<HTMLElement | null>;
 }) {
-  const { dayStart: dayStartTime, dayEnd: dayEndTime } = useSettings();
+  const { dayStart: dayStartTime, dayEnd: dayEndTime, use24HourTime } = useSettings();
   // `now`/`bumpTime` live in ScheduleContext now, not here — shared with
   // IntervalCard's checkpoint-mode alerts so they read the exact same
   // simulated demo clock instead of a second, independently-real one that
@@ -1016,8 +1020,9 @@ export function ScheduleView({
     day: "2-digit",
     year: "numeric",
   });
-  const timeStr = formatTimeOfDay(
+  const timeStr = formatTimeOfDayForDisplay(
     `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+    use24HourTime,
   );
 
   // Edit mode's "Add Activity" is offered into any genuine blank stretch —
@@ -1529,7 +1534,8 @@ export function ScheduleView({
                           {a.type} <span className="text-muted-foreground">· {a.provider}</span>
                         </div>
                         <div className="text-[11px] text-muted-foreground">
-                          {a.days.join(", ")} · {fmt12(a.start)}–{fmt12(a.end)}
+                          {a.days.join(", ")} · {fmt12(a.start, use24HourTime)}–
+                          {fmt12(a.end, use24HourTime)}
                         </div>
                       </div>
                       <Button
@@ -1698,7 +1704,7 @@ export function ScheduleView({
                 fill="none"
               />
             </svg>
-            {fmt12(`${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`)}
+            {fmt12(`${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`, use24HourTime)}
           </button>
         </div>
       </div>
@@ -1849,7 +1855,7 @@ export function ScheduleView({
                           content by default regardless of DOM order, so
                           without this the lines would draw over the label. */}
                       <span className="relative z-10 text-[11px] tabular-nums leading-tight text-right pr-1.5">
-                        {fmt12(fromMin(gap.startMin))}
+                        {fmt12(fromMin(gap.startMin), use24HourTime)}
                       </span>
                       <span className="relative z-10 flex items-center gap-1.5 text-xs font-medium">
                         <Plus className="size-3.5" /> Add Activity
@@ -1963,7 +1969,7 @@ export function ScheduleView({
                     className="text-[11px] tabular-nums leading-tight text-right pr-1.5 pt-0.5"
                     style={textHalo(rowHaloColor)}
                   >
-                    {fmt12(it.start)}
+                    {fmt12(it.start, use24HourTime)}
                   </div>
                   <div className="flex items-start gap-1.5 min-w-0">
                     {showIcons && (
@@ -2122,7 +2128,7 @@ export function ScheduleView({
                         className="text-[11px] tabular-nums leading-tight text-green-700 pl-0.5 pt-0.5"
                         style={textHalo(APPT_HALO_COLOR)}
                       >
-                        {fmt12(a.start)}
+                        {fmt12(a.start, use24HourTime)}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
@@ -2225,7 +2231,7 @@ export function ScheduleView({
         title="Delete Activity?"
         body={
           confirmItemDelete
-            ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start)} will be removed.`
+            ? `“${confirmItemDelete.activity}” at ${fmt12(confirmItemDelete.start, use24HourTime)} will be removed.`
             : ""
         }
         confirmLabel="Delete"
@@ -2372,6 +2378,7 @@ function ItemDialog({
   onClose: () => void;
   onSave: (i: ScheduleItem) => void;
 }) {
+  const { use24HourTime } = useSettings();
   const [start, setStart] = useState("10:00");
   const [end, setEnd] = useState("10:30");
   const [activity, setActivity] = useState<string>(ACTIVITIES[0]);
@@ -2472,8 +2479,8 @@ function ItemDialog({
   // activity's start so the shift itself can't create a new overlap.
   const handleStartChange = (newStart: string) => {
     if (prevItem && toMin(newStart) < toMin(prevItem.end)) {
-      setError(`Cannot start before ${fmt12(prevItem.end)}.`);
-      setConflictHint(`${nameOf(prevItem)} ends ${fmt12(prevItem.end)}.`);
+      setError(`Cannot start before ${fmt12(prevItem.end, use24HourTime)}.`);
+      setConflictHint(`${nameOf(prevItem)} ends ${fmt12(prevItem.end, use24HourTime)}.`);
       return;
     }
     setError(null);
@@ -2498,8 +2505,8 @@ function ItemDialog({
       return;
     }
     if (nextItem && toMin(newEnd) > toMin(nextItem.start)) {
-      setError(`Cannot end after ${fmt12(nextItem.start)}.`);
-      setConflictHint(`${nameOf(nextItem)} starts ${fmt12(nextItem.start)}.`);
+      setError(`Cannot end after ${fmt12(nextItem.start, use24HourTime)}.`);
+      setConflictHint(`${nameOf(nextItem)} starts ${fmt12(nextItem.start, use24HourTime)}.`);
       return;
     }
     setError(null);
@@ -2513,9 +2520,9 @@ function ItemDialog({
   const hint = error
     ? null
     : editingField === "start" && prevItem
-      ? `${nameOf(prevItem)} ends ${fmt12(prevItem.end)}.`
+      ? `${nameOf(prevItem)} ends ${fmt12(prevItem.end, use24HourTime)}.`
       : editingField === "end" && nextItem
-        ? `${nameOf(nextItem)} starts ${fmt12(nextItem.start)}.`
+        ? `${nameOf(nextItem)} starts ${fmt12(nextItem.start, use24HourTime)}.`
         : null;
 
   const handleSave = () => {
@@ -3029,7 +3036,8 @@ function TimeField({
   resetActive?: boolean;
   onReset?: () => void;
 }) {
-  const display = value ? formatTimeOfDay(value) : "";
+  const { use24HourTime } = useSettings();
+  const display = value ? formatTimeOfDayForDisplay(value, use24HourTime) : "";
   const box = (
     <TimeOfDayKeypad value={value} onChange={onChange} onEditingChange={onEditingChange}>
       {({ isEditing, open }) => (

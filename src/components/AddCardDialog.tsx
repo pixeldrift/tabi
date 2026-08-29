@@ -26,8 +26,9 @@ import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
 import { ROUNDED_STAR_PATH } from "./RatingCard";
 import { TimeKeypad } from "./TimeKeypad";
-import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
+import { TimeOfDayKeypad, formatTimeOfDay, formatTimeOfDayForDisplay } from "./TimeOfDayKeypad";
 import { formatCompactTime } from "./DurationCard";
+import { useSettings } from "./SettingsContext";
 import type { CardKind } from "./DataToolbarContext";
 import type { CardConfig } from "@/routes/index";
 
@@ -861,6 +862,7 @@ function TimeBoxButton({
   value: number | string | undefined;
   onChange: (value: number | string) => void;
 }) {
+  const { use24HourTime } = useSettings();
   if (mode === "timeOfDay") {
     const hhmm = typeof value === "string" ? value : "";
     return (
@@ -871,7 +873,7 @@ function TimeBoxButton({
             onClick={open}
             className="h-10 w-[4.5rem] shrink-0 rounded-lg border border-input bg-white text-sm font-medium tabular-nums text-foreground shadow-[inset_0_2px_5px_rgba(0,0,0,0.12)] transition-colors hover:bg-stone-50"
           >
-            {hhmm ? formatTimeOfDay(hhmm) : "--:--"}
+            {hhmm ? formatTimeOfDayForDisplay(hhmm, use24HourTime) : "--:--"}
           </button>
         )}
       </TimeOfDayKeypad>

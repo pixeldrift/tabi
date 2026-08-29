@@ -68,7 +68,7 @@ import { DATA_TYPE_INFO } from "@/lib/dataTypeInfo";
 import { NotificationBar, NOTIFICATION_AREA_TRANSITION } from "@/components/NotificationBar";
 import { useNotifications } from "@/components/NotificationContext";
 import { useSettings } from "@/components/SettingsContext";
-import { formatTimeOfDay } from "@/components/TimeOfDayKeypad";
+import { formatTimeOfDayForDisplay } from "@/components/TimeOfDayKeypad";
 
 export type StatusTab = "info" | "data" | "schedule" | "notifications" | "settings";
 
@@ -1976,6 +1976,7 @@ function SaveIndicator({
   lastSavedAt: Date | null;
   onSync: () => void;
 }) {
+  const { use24HourTime } = useSettings();
   const isDirty = status === "dirty";
   const isSaving = status === "saving";
 
@@ -2102,7 +2103,7 @@ function SaveIndicator({
               </div>
               <div className="tabular-nums leading-tight">
                 <div>{formatFullDate(lastSavedAt)}</div>
-                <div>{formatFullTime(lastSavedAt)}</div>
+                <div>{formatFullTime(lastSavedAt, use24HourTime)}</div>
               </div>
             </div>
             <div>
@@ -2164,17 +2165,18 @@ function formatFullDate(d: Date | null) {
   });
 }
 
-function formatFullTime(d: Date | null) {
+function formatFullTime(d: Date | null, use24Hour: boolean) {
   if (!d) return "—";
   const seconds = String(d.getSeconds()).padStart(2, "0");
-  const hhmm = formatTimeOfDay(
-    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
-  );
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  if (use24Hour) return `${hh}:${mm}:${seconds}`;
+  const hhmm = formatTimeOfDayForDisplay(`${hh}:${mm}`, false);
   const period = hhmm.slice(-1);
   return `${hhmm.slice(0, -1)}:${seconds}${period}`;
 }
 
-function formatRelativeFromNow(d: Date) {
+function formatRelativeFromNow(d: Date, use24Hour: boolean) {
   const diff = Date.now() - d.getTime();
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return "Just now";
@@ -2189,8 +2191,9 @@ function formatRelativeFromNow(d: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const days = Math.round((today.getTime() - that.getTime()) / 86400000);
-  const timeStr = formatTimeOfDay(
+  const timeStr = formatTimeOfDayForDisplay(
     `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+    use24Hour,
   );
   if (days === 1) return `Yesterday at ${timeStr}`;
   if (days < 7) return `${d.toLocaleDateString(undefined, { weekday: "long" })} at ${timeStr}`;
@@ -2337,6 +2340,7 @@ function ExpandedSessionBox({
    *  this signal instead of just watching scrollHeight live. */
   onActionsHeightSettled?: () => void;
 }) {
+  const { use24HourTime } = useSettings();
   const isIdle = status === "idle";
   const isPaused = status === "paused";
   // The only other possibility once this box is even rendered (it's hidden
@@ -2581,7 +2585,7 @@ function ExpandedSessionBox({
                       type="button"
                       className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
                     >
-                      {formatRelativeFromNow(contextTime)}
+                      {formatRelativeFromNow(contextTime, use24HourTime)}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -2603,7 +2607,7 @@ function ExpandedSessionBox({
                     {/* Two lines — date, then time underneath — rather than
                       one long mm/dd/yyyy hh:mm:ss string. */}
                     <div>{formatExactDate(contextTime)}</div>
-                    <div>{formatExactTime(contextTime)}</div>
+                    <div>{formatExactTime(contextTime, use24HourTime)}</div>
                   </PopoverContent>
                 </Popover>
                 .
@@ -2872,11 +2876,12 @@ function formatExactDate(d: Date) {
   return `${mm}/${dd}/${yyyy}`;
 }
 
-function formatExactTime(d: Date) {
+function formatExactTime(d: Date, use24Hour: boolean) {
   const h24 = d.getHours();
-  const hh = String(((h24 + 11) % 12) + 1).padStart(2, "0");
   const min = String(d.getMinutes()).padStart(2, "0");
   const ss = String(d.getSeconds()).padStart(2, "0");
+  if (use24Hour) return `${String(h24).padStart(2, "0")}:${min}:${ss}`;
+  const hh = String(((h24 + 11) % 12) + 1).padStart(2, "0");
   const period = h24 < 12 ? "a" : "p";
   return `${hh}:${min}:${ss}${period}`;
 }

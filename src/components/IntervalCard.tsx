@@ -17,7 +17,8 @@ import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
-import { formatTimeOfDay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import { formatTimeOfDayForDisplay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import { useSettings } from "./SettingsContext";
 import { useScheduleData } from "./ScheduleContext";
 import { cn } from "@/lib/utils";
 
@@ -281,6 +282,17 @@ export function IntervalCard({
   onWidthModeChange,
 }: IntervalCardProps) {
   const cardKey = id ?? title;
+  const { use24HourTime } = useSettings();
+  // Checkpoints persist their time as the fixed "10:00a" string (see
+  // parseTimeOfDayLabel's own comment on why that encoding itself never
+  // changes) — this re-parses it back to 24h minutes purely for DISPLAY
+  // when the setting is on, same as every other on-screen time in the app.
+  const displayCpTime = (raw: string): string => {
+    if (!use24HourTime) return raw;
+    const parsed = parseTimeOfDayLabel(raw);
+    if (!parsed) return raw;
+    return `${String(parsed.hour24).padStart(2, "0")}:${String(parsed.minute).padStart(2, "0")}`;
+  };
   const samplingLabel = SAMPLING_TYPE_LABEL[samplingType];
   const SamplingIcon = SAMPLING_TYPE_ICON[samplingType];
   // Splits the whole card into two mutually-exclusive modes further down —
@@ -624,7 +636,7 @@ export function IntervalCard({
         dedupeKey: `interval-checkpoint:${cardKey}:${i}:${dayKey}`,
         kind: "alert-now",
         title: cp.alertText?.trim() || `Check ${cp.label}`,
-        body: `${cp.label} — ${cp.time}`,
+        body: `${cp.label} — ${displayCpTime(cp.time)}`,
         icon: "bell-chime",
         allowSnooze: true,
         soundOverride: "chime",
@@ -723,8 +735,9 @@ export function IntervalCard({
       title="Current time"
       className="inline-flex items-center shrink-0 rounded-full border border-border bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
     >
-      {formatTimeOfDay(
+      {formatTimeOfDayForDisplay(
         `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+        use24HourTime,
       )}
     </span>
   );
@@ -795,7 +808,7 @@ export function IntervalCard({
   // alone wouldn't say what it's actually checking.
   const activeSubLabel = isCheckpointMode
     ? checkpoints && checkpoints[activeViewIdx]
-      ? `${checkpoints[activeViewIdx].time} · ${checkpoints[activeViewIdx].label}`
+      ? `${displayCpTime(checkpoints[activeViewIdx].time)} · ${checkpoints[activeViewIdx].label}`
       : ""
     : intervalLabel(activeViewIdx, intervalMin);
 
@@ -1032,7 +1045,7 @@ export function IntervalCard({
               isCheckpointMode
                 ? (i) => {
                     const cp = checkpoints?.[i];
-                    return cp ? `${cp.time} · ${cp.label}` : "";
+                    return cp ? `${displayCpTime(cp.time)} · ${cp.label}` : "";
                   }
                 : (i) => intervalRange(i, intervalMin)
             }
@@ -1052,7 +1065,7 @@ export function IntervalCard({
             className={cn("text-center text-sm font-semibold", !isCheckpointMode && "tabular-nums")}
           >
             {isCheckpointMode
-              ? `${checkpoints?.[activeViewIdx]?.time ?? ""}${
+              ? `${checkpoints?.[activeViewIdx]?.time ? displayCpTime(checkpoints[activeViewIdx].time) : ""}${
                   checkpoints?.[activeViewIdx]?.label
                     ? ` — ${checkpoints[activeViewIdx].label}`
                     : ""

@@ -11,7 +11,7 @@ import {
 } from "./SettingsContext";
 import { DISPLAY_MODES } from "./DataToolbarContext";
 import { TABS } from "./StatusBar";
-import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
+import { TimeOfDayKeypad, formatTimeOfDayForDisplay } from "./TimeOfDayKeypad";
 import { IconsShowcase } from "./IconsShowcase";
 import { ColorPaletteShowcase } from "./ColorPaletteShowcase";
 import { SectionJumpBar } from "@/components/SectionJumpBar";
@@ -44,6 +44,7 @@ const CARD_TYPE_DOCS_URL = "https://github.com/pixeldrift/tabi/blob/main/docs/CA
 const slugifyGroup = (group: string) => `settings-${group.toLowerCase().replace(/\s+/g, "-")}`;
 
 function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { use24HourTime } = useSettings();
   return (
     <TimeOfDayKeypad value={value} onChange={onChange}>
       {({ isEditing, open }) => (
@@ -55,7 +56,7 @@ function SettingsTimeField({ value, onChange }: { value: string; onChange: (v: s
             isEditing ? "border-blue-400" : "border-blue-300",
           )}
         >
-          {formatTimeOfDay(value)}
+          {formatTimeOfDayForDisplay(value, use24HourTime)}
         </button>
       )}
     </TimeOfDayKeypad>
@@ -87,6 +88,8 @@ export function SettingsPane({
     setKeepActiveCardCentered,
     catEarsEnabled,
     setCatEarsEnabled,
+    use24HourTime,
+    setUse24HourTime,
     dayStart,
     setDayStart,
     dayEnd,
@@ -225,6 +228,24 @@ export function SettingsPane({
               id="catEarsEnabled"
               checked={catEarsEnabled}
               onCheckedChange={setCatEarsEnabled}
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="use24HourTime" className="text-sm font-medium">
+                Use 24-hour time
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                Show clocks, appointments, and checkpoints as plain 24-hour time (14:30) instead of
+                12-hour (2:30p), and stop the time keypads from guessing AM/PM.
+              </p>
+            </div>
+            <Switch
+              id="use24HourTime"
+              checked={use24HourTime}
+              onCheckedChange={setUse24HourTime}
               className="shrink-0"
             />
           </div>

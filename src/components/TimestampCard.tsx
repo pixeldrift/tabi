@@ -11,7 +11,8 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
-import { TimeOfDayKeypad, formatTimeOfDaySeconds } from "./TimeOfDayKeypad";
+import { TimeOfDayKeypad, formatTimeOfDaySecondsForDisplay } from "./TimeOfDayKeypad";
+import { useSettings } from "./SettingsContext";
 import { cn } from "@/lib/utils";
 
 export interface TimestampCardProps extends CardEditAndDrawerProps {
@@ -29,21 +30,13 @@ function to24hs(ms: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 }
 
-// The clock display itself — pill, side bubble focus, list/tile pill —
-// always reads as a plain 24h "HH:MM:SS" clock, not the app's compact
-// "10:00a" label convention. That convention (with seconds added) is
-// reserved for the expanded view, where a stamp's time is paired with its
-// date rather than styled to look like a running clock.
-function formatClockTime(ms: number): string {
-  return to24hs(ms);
-}
-
-// Same "h:mma"/"h:mmp" convention as the Schedule tab's own grid, extended
-// with seconds (see formatTimeOfDaySeconds) — for the expanded view's own
-// time+date rows only, where second-level precision on when something
-// actually happened is worth showing.
-function formatStampTime(ms: number) {
-  return formatTimeOfDaySeconds(to24hs(ms));
+// The clock display — pill, side bubble focus, list/tile pill, and the
+// expanded view's own time+date rows — reads as the app's compact "10:00a"
+// convention (with seconds) by default, or plain 24h "HH:MM:SS" when the
+// Settings 24-hour toggle is on, same as every other on-screen clock (see
+// formatTimeOfDaySecondsForDisplay).
+function formatClockTime(ms: number, use24Hour: boolean): string {
+  return formatTimeOfDaySecondsForDisplay(to24hs(ms), use24Hour);
 }
 
 function formatStampDate(ms: number) {
@@ -120,6 +113,7 @@ export function TimestampCard({
   onWidthModeChange,
 }: TimestampCardProps) {
   const cardKey = id ?? title;
+  const { use24HourTime } = useSettings();
   const [entries, setEntries] = useCardState<number[]>(cardKey, "entries", () => []);
   const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", 0);
   const [expanded, setExpanded] = useState(false);
@@ -297,7 +291,7 @@ export function TimestampCard({
               large ? "text-sm px-2.5" : "text-[11px] px-2",
             )}
           >
-            {formatClockTime(now)}
+            {formatClockTime(now, use24HourTime)}
           </span>
         </div>
 
@@ -414,7 +408,7 @@ export function TimestampCard({
             >
               {viewingLive ? (
                 <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] text-stone-400">
-                  {formatClockTime(now)}
+                  {formatClockTime(now, use24HourTime)}
                 </span>
               ) : (
                 <TimeOfDayKeypad
@@ -434,7 +428,7 @@ export function TimestampCard({
                       aria-label={`Edit time for entry ${viewIdx + 1}`}
                       className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] cursor-text disabled:cursor-not-allowed"
                     >
-                      {formatClockTime(entries[viewIdx])}
+                      {formatClockTime(entries[viewIdx], use24HourTime)}
                     </button>
                   )}
                 </TimeOfDayKeypad>
@@ -525,7 +519,7 @@ export function TimestampCard({
                       aria-label={`Edit time for entry ${i + 1}`}
                       className="flex-1 text-left tabular-nums text-sm text-foreground/80 transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-foreground/80"
                     >
-                      {formatStampTime(ts)}
+                      {formatClockTime(ts, use24HourTime)}
                     </button>
                   )}
                 </TimeOfDayKeypad>
@@ -539,7 +533,7 @@ export function TimestampCard({
                 {liveIndex + 1}
               </span>
               <span className="flex-1 tabular-nums text-sm font-semibold text-stone-400">
-                {formatStampTime(now)}
+                {formatClockTime(now, use24HourTime)}
               </span>
               <button
                 type="button"
@@ -685,6 +679,7 @@ function TimestampCenterPill({
   onLog: () => void;
   flash: boolean;
 }) {
+  const { use24HourTime } = useSettings();
   const displayMs = isLive ? now : (ms as number);
   return (
     <div
@@ -729,7 +724,7 @@ function TimestampCenterPill({
                     flash ? "text-blue-600" : "text-stone-400",
                   )}
                 >
-                  {formatClockTime(displayMs)}
+                  {formatClockTime(displayMs, use24HourTime)}
                 </motion.span>
               ) : (
                 <TimeOfDayKeypad
@@ -749,7 +744,7 @@ function TimestampCenterPill({
                       aria-label={`Edit time for entry ${index + 1}`}
                       className="font-display text-xl tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {formatClockTime(displayMs)}
+                      {formatClockTime(displayMs, use24HourTime)}
                     </button>
                   )}
                 </TimeOfDayKeypad>

@@ -62,6 +62,16 @@ const DEFAULT_ALARM_SOUND: AlarmSoundStyle = "alert";
 
 const DEFAULT_KEEP_ACTIVE_CARD_CENTERED = false;
 
+// Every clock/appointment display across the app defaults to the compact
+// 12-hour "10:00a" convention (see formatTimeOfDay) — this only flips
+// specific DISPLAY call sites over to plain 24h "HH:MM" text (and turns off
+// the time-entry keypads' own AM/PM guessing, see TimeOfDayKeypad's
+// `use24HourTime` read). It never touches formatTimeOfDay's own output
+// format, which stays fixed since checkpoint schedules persist their times
+// through it (see AddCardDialog's buildCardConfig) — flipping this setting
+// must not change how already-saved data is encoded or parsed.
+const DEFAULT_USE_24_HOUR_TIME = false;
+
 const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
 
 // A fun Easter egg, off by default like the tour/tip auto-shows above —
@@ -159,6 +169,14 @@ interface SettingsContextValue {
    *  fit for the same treatment — see StatusBar's own tab bar). */
   catEarsEnabled: boolean;
   setCatEarsEnabled: (v: boolean) => void;
+  /** When true, every on-screen clock/appointment/checkpoint display reads
+   *  as plain 24h "HH:MM" instead of the default compact 12h "10:00a"
+   *  convention, and the time-entry keypads stop guessing AM/PM (a typed
+   *  24h value like "14:30" is taken literally rather than converted). See
+   *  DEFAULT_USE_24_HOUR_TIME's own comment for why this never touches how
+   *  times are actually stored. */
+  use24HourTime: boolean;
+  setUse24HourTime: (v: boolean) => void;
   /** Clinic hours (24h "HH:MM") the Schedule tab's grid is bounded to. */
   dayStart: string;
   setDayStart: (v: string) => void;
@@ -224,6 +242,7 @@ interface StoredShape {
   keepActiveCardCentered: boolean;
   bookmarkBarVisible: boolean;
   catEarsEnabled: boolean;
+  use24HourTime: boolean;
   dayStart: string;
   dayEnd: string;
   defaultTab: StatusTab;
@@ -250,6 +269,7 @@ function loadStored(): StoredShape {
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
     bookmarkBarVisible: DEFAULT_BOOKMARK_BAR_VISIBLE,
     catEarsEnabled: DEFAULT_CAT_EARS_ENABLED,
+    use24HourTime: DEFAULT_USE_24_HOUR_TIME,
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
     defaultTab: DEFAULT_TAB,
@@ -272,6 +292,7 @@ function loadStored(): StoredShape {
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
       bookmarkBarVisible: parsed.bookmarkBarVisible ?? DEFAULT_BOOKMARK_BAR_VISIBLE,
       catEarsEnabled: parsed.catEarsEnabled ?? DEFAULT_CAT_EARS_ENABLED,
+      use24HourTime: parsed.use24HourTime ?? DEFAULT_USE_24_HOUR_TIME,
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
       defaultTab: parsed.defaultTab ?? DEFAULT_TAB,
@@ -309,6 +330,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
   const [bookmarkBarVisible, setBookmarkBarVisible] = useState(DEFAULT_BOOKMARK_BAR_VISIBLE);
   const [catEarsEnabled, setCatEarsEnabled] = useState(DEFAULT_CAT_EARS_ENABLED);
+  const [use24HourTime, setUse24HourTime] = useState(DEFAULT_USE_24_HOUR_TIME);
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
   const [defaultTab, setDefaultTab] = useState<StatusTab>(DEFAULT_TAB);
@@ -327,6 +349,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
     setBookmarkBarVisible(stored.bookmarkBarVisible);
     setCatEarsEnabled(stored.catEarsEnabled);
+    setUse24HourTime(stored.use24HourTime);
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
     setDefaultTab(stored.defaultTab);
@@ -350,6 +373,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       bookmarkBarVisible,
       catEarsEnabled,
+      use24HourTime,
       dayStart,
       dayEnd,
       defaultTab,
@@ -368,6 +392,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     keepActiveCardCentered,
     bookmarkBarVisible,
     catEarsEnabled,
+    use24HourTime,
     dayStart,
     dayEnd,
     defaultTab,
@@ -395,6 +420,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
     setBookmarkBarVisible(DEFAULT_BOOKMARK_BAR_VISIBLE);
     setCatEarsEnabled(DEFAULT_CAT_EARS_ENABLED);
+    setUse24HourTime(DEFAULT_USE_24_HOUR_TIME);
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
     setDefaultTab(DEFAULT_TAB);
@@ -428,6 +454,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setBookmarkBarVisible,
       catEarsEnabled,
       setCatEarsEnabled,
+      use24HourTime,
+      setUse24HourTime,
       dayStart,
       setDayStart,
       dayEnd,
@@ -457,6 +485,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       bookmarkBarVisible,
       catEarsEnabled,
+      use24HourTime,
       dayStart,
       dayEnd,
       defaultTab,

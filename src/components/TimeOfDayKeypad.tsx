@@ -4,6 +4,7 @@ import { Delete, Check, X, Plus } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
+import { useSettings } from "./SettingsContext";
 
 export interface TimeOfDayKeypadProps {
   /** Current committed value as 24h "HH:MM" (or "HH:MM:SS" when
@@ -70,6 +71,11 @@ export function TimeOfDayKeypad({
   withSeconds = false,
   children,
 }: TimeOfDayKeypadProps) {
+  // The Settings 24-hour toggle — while on, entered digits are always read
+  // as literal 24h notation (see commit's own use of this below) and the
+  // AM/PM picker doesn't render at all, rather than guessing a period for a
+  // value that was never ambiguous in the first place.
+  const { use24HourTime } = useSettings();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState("");
   const [isPM, setIsPM] = useState(false);
@@ -120,8 +126,10 @@ export function TimeOfDayKeypad({
   // mm ≤ 59, and (when present) ss ≤ 59.
   const valid = entered >= maxDigits - 1 && hh <= 23 && mm <= 59 && (!withSeconds || ss <= 59);
 
-  // Period selection is only shown/active once a valid hour can be inferred.
-  const periodActive = entered >= maxDigits - 1;
+  // Period selection is only shown/active once a valid hour can be inferred
+  // — and never while the 24-hour setting is on, since there's no AM/PM to
+  // pick at all in that mode.
+  const periodActive = !use24HourTime && entered >= maxDigits - 1;
 
   // Hour > 12 = explicit military time → forces PM on commit.
   const forcedPM = hh > 12 && hh <= 23;
@@ -154,7 +162,7 @@ export function TimeOfDayKeypad({
     if (!valid) return;
     let outH: number;
     const outM = mm;
-    if (forced24h) {
+    if (forced24h || use24HourTime) {
       outH = hh;
     } else {
       const h12 = hh === 0 ? 12 : hh;
@@ -282,41 +290,43 @@ export function TimeOfDayKeypad({
                 {unitNodes}
               </span>
             </div>
-            <div
-              className="ml-1.5 flex flex-col justify-center gap-0.5 py-0.5"
-              data-tour="time-period-override"
-            >
-              <button
-                type="button"
-                onClick={() => pickPeriod(false)}
-                disabled={!periodActive}
-                className={cn(
-                  "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
-                  !periodActive
-                    ? "text-stone-300 cursor-default"
-                    : !isPM
-                      ? "btn-bevel bg-blue-500 text-white"
-                      : "text-stone-400 hover:text-stone-600",
-                )}
+            {!use24HourTime && (
+              <div
+                className="ml-1.5 flex flex-col justify-center gap-0.5 py-0.5"
+                data-tour="time-period-override"
               >
-                AM
-              </button>
-              <button
-                type="button"
-                onClick={() => pickPeriod(true)}
-                disabled={!periodActive}
-                className={cn(
-                  "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
-                  !periodActive
-                    ? "text-stone-300 cursor-default"
-                    : isPM
-                      ? "btn-bevel bg-blue-500 text-white"
-                      : "text-stone-400 hover:text-stone-600",
-                )}
-              >
-                PM
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => pickPeriod(false)}
+                  disabled={!periodActive}
+                  className={cn(
+                    "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
+                    !periodActive
+                      ? "text-stone-300 cursor-default"
+                      : !isPM
+                        ? "btn-bevel bg-blue-500 text-white"
+                        : "text-stone-400 hover:text-stone-600",
+                  )}
+                >
+                  AM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => pickPeriod(true)}
+                  disabled={!periodActive}
+                  className={cn(
+                    "text-[10px] leading-none font-bold px-1.5 py-0.5 rounded transition-colors",
+                    !periodActive
+                      ? "text-stone-300 cursor-default"
+                      : isPM
+                        ? "btn-bevel bg-blue-500 text-white"
+                        : "text-stone-400 hover:text-stone-600",
+                  )}
+                >
+                  PM
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-1.5">
@@ -468,6 +478,27 @@ export function formatTimeOfDaySeconds(value: string): string {
   const { hour12, minute, isPM } = from24h(value);
   const second = parseInt(value.split(":")[2], 10) || 0;
   return `${hour12}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}${isPM ? "p" : "a"}`;
+}
+
+// The Settings 24-hour toggle's own display layer — every actual on-screen
+// clock/appointment/checkpoint reads through one of these two instead of
+// calling formatTimeOfDay/formatTimeOfDaySeconds directly, so flipping the
+// setting changes what's shown everywhere at once. Deliberately NOT built
+// into formatTimeOfDay itself: that function's "10:00a" output is also the
+// literal encoding checkpoint schedules are persisted in (see
+// AddCardDialog's buildCardConfig and parseTimeOfDayLabel below, which
+// hard-parses that exact shape) — changing its format based on a live
+// setting would silently corrupt how already-saved checkpoints round-trip.
+// `value` is already 24h "HH:MM"/"HH:MM:SS" here, so the 24-hour branch is
+// just a pass-through.
+export function formatTimeOfDayForDisplay(value: string, use24Hour: boolean): string {
+  if (!value) return "";
+  return use24Hour ? value : formatTimeOfDay(value);
+}
+
+export function formatTimeOfDaySecondsForDisplay(value: string, use24Hour: boolean): string {
+  if (!value) return "";
+  return use24Hour ? value : formatTimeOfDaySeconds(value);
 }
 
 /** Reverses formatTimeOfDay's own "10:00a" / "12:00p" display format back
