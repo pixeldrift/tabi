@@ -186,20 +186,29 @@ export function DataListRow({
         reaches outward from its own box, and sitting this close to the
         row's own rounded-xl corner meant the clip wrapper's rounded shape
         was slicing into that shadow instead of letting it fade naturally.
-        top-2/right-2/h-4 mirror the header row's own py-2 exactly — a
-        genuinely centered one-line row (measured: 34px row, 16px actions
-        box, (34-16)/2 ≈ 9px ≈ top-2) rather than nudging the anchor to
-        compensate for .btn-bevel's own downward-only shadow — that read as
-        visually "off," not corrected, once every kind's own actions
-        (including non-bevelled ones like Rating's star row) had to share
-        the same offset. right-2 literally matches top-2/bottom (rather
-        than a smaller inset meant to visually offset the rounded-xl
-        corner) per explicit feedback that the two edges should read as the
-        same distance, not just be numerically close. items-center
-        self-centers whichever kind's own actions height (a 28px button row
-        vs. a 20px star row) inside that shared anchor. */}
+        h-[34px] (measured: a one-line row's own real height) rather than
+        the header row's own h-4 icon size — that mismatch was the actual
+        bug in a prior pass here: items-center inside a 16px-tall box only
+        *looked* like it centered a kind's 28px-tall button row (h-7,
+        the shared height ListActionButton/ListActionBadge/ListActionSlide
+        all use) because top-2's own offset happened to average out for
+        that one specific height, while the measured gap above/below it
+        (3px) came out three times smaller than the right inset (9px) —
+        not the "nudge to compensate for .btn-bevel's shadow" this used to
+        chase, just an anchor box sized for the wrong content. Sizing the
+        anchor to the row's own one-line height instead makes items-center
+        genuinely center whichever kind's own actions height (28px button
+        row, 20px star row, or anything else) within it, top-0 (not top-2)
+        because the anchor box itself now already accounts for the
+        vertical space a one-line row provides. Kept as a fixed height
+        (not inset-y-0 spanning the row) so a two-line-title row's now
+        taller bottom edge doesn't pull this back into re-centering across
+        the whole row — only the row's bottom edge should move when the
+        title wraps, same as before. right-0.5 (2px, not right-2's 8px)
+        is what actually lands the right gap at the same ~3px the vertical
+        centering above now produces for a 28px control. */}
       {showActions && (
-        <div className="absolute z-10 top-2 right-2 h-4 flex items-center">{actions}</div>
+        <div className="absolute z-10 top-0 right-0.5 h-[34px] flex items-center">{actions}</div>
       )}
 
       {isActive && (
