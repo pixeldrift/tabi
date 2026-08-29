@@ -302,7 +302,44 @@ export function ChecklistCard({
          *  and the label before it reads as crowded, and swiping still
          *  covers navigation either way. */}
         <div className="w-full flex flex-col items-center gap-1">
-          <div className="flex items-center justify-center gap-1.5">
+          {/* `relative` anchors the large-density-only nav arrows to just
+              this dots row's own height, so they land vertically centered
+              on the dots specifically rather than on the dots+label stack
+              as a whole — and the label's own SwipeStrip below no longer
+              needs to reserve a side gutter for them, since they're not
+              sharing its row any more. */}
+          <div className="relative w-full flex items-center justify-center gap-1.5">
+            {/* Large density only — pushed out to the tile's own edges
+             *  (not hugging the label) since there's room to spare at that
+             *  size; small density relies on swiping/the dots alone. */}
+            {large && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(current - 1);
+                  }}
+                  disabled={current === 0}
+                  aria-label="Previous item"
+                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(current + 1);
+                  }}
+                  disabled={current >= items.length - 1}
+                  aria-label="Next item"
+                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </>
+            )}
             {items.map((_, i) => (
               <button
                 key={i}
@@ -322,37 +359,6 @@ export function ChecklistCard({
             ))}
           </div>
           <div className="relative w-full">
-            {/* Large density only — pushed out to the tile's own edges
-             *  (not hugging the label) since there's room to spare at that
-             *  size; small density relies on swiping/the dots alone. */}
-            {large && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goTo(current - 1);
-                  }}
-                  disabled={current === 0}
-                  aria-label="Previous item"
-                  className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goTo(current + 1);
-                  }}
-                  disabled={current >= items.length - 1}
-                  aria-label="Next item"
-                  className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </>
-            )}
             {/* Real touch/drag swiping between items, same SwipeStrip every
              *  other kind's tile already uses — synced to the same
              *  current/goTo state the dots and (large-only) arrows drive,
@@ -364,7 +370,7 @@ export function ChecklistCard({
               onCurrentChange={goTo}
               variant="paged"
               className="w-full"
-              itemWrapperClassName={cn("w-full flex items-center justify-center", large && "px-6")}
+              itemWrapperClassName="w-full flex items-center justify-center"
             >
               {(i) => (
                 <p

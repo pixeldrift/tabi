@@ -1700,7 +1700,13 @@ function TriangleNav({
       style={{ top: NAV_CENTER_PX }}
       className={cn(
         "absolute -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
-        isLeft ? "-left-2" : "-right-2",
+        // This card's own timeline row reserves extra side padding (px-10)
+        // for the interval visualization, which left its arrows sitting
+        // noticeably further from the card's edge than every other card's
+        // own nav arrows — pulled in further here (rather than shrinking
+        // that shared padding, which other elements in the row also rely
+        // on) to roughly halve that gap instead.
+        isLeft ? "-left-4" : "-right-4",
       )}
     >
       <svg

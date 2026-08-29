@@ -462,6 +462,13 @@ const STAR_TINY_NUDGE: Record<number, { x: number; y: number }> = {
   5: { x: 0, y: 0.5 },
 };
 
+// The "1" glyph itself (not the star under it — that's STAR_TINY_NUDGE
+// above) sits with almost all its ink in a narrow stem right of center, so
+// centering its BOX still reads as sitting left of true center. Nudged up
+// and right by roughly the stem's own width to land it optically centered,
+// independent of whatever nudge the star itself gets.
+const DIGIT_ONE_NUDGE = { x: 1, y: -1 };
+
 /** The List display mode's own star row — every star tappable directly on
  *  the row itself, no popover. A popover anchored this close to the row's
  *  right edge (see the now-unused ListRatingButton below) had nowhere good
@@ -761,7 +768,10 @@ function RatingStar({
         style={{
           fontSize: Math.max(11, size * 0.36),
           top: `${DIGIT_LINE_FRACTION * 100}%`,
-          transform: "translateY(-50%)",
+          transform:
+            value === 1
+              ? `translate(${DIGIT_ONE_NUDGE.x}px, calc(-50% + ${DIGIT_ONE_NUDGE.y}px))`
+              : "translateY(-50%)",
         }}
       >
         {value}

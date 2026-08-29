@@ -1145,7 +1145,7 @@ function TriangleNav({
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
         "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
-        isLeft ? "left-0" : "right-0",
+        isLeft ? "-left-2" : "-right-2",
       )}
     >
       <svg

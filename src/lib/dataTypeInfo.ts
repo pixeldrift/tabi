@@ -88,25 +88,29 @@ export interface PhaseInfo {
  *  an unrecognized custom phase just shows the plain phase name with no
  *  extra explanation rather than needing this map kept exhaustively in
  *  sync. */
+// Ordered to match the typical progression of an ABA treatment plan —
+// Baseline and Probing establish where a client starts, Intervention
+// actively teaches, Fading backs supports off, and Maintenance checks the
+// result holds — rather than alphabetically or by whenever each was added.
 export const PHASE_INFO: Record<string, PhaseInfo> = {
   Baseline: {
     description:
       "A behavior is currently in the standard stages of normal activity for that client. This is the starting point before any teaching or behavior plan begins, so later progress has something to be measured against.",
   },
-  Intervention: {
-    description:
-      "Trying to make a change in a behavior through targeted techniques. A specific teaching strategy or behavior plan is actively being used.",
-  },
   Probing: {
     description:
       "Investigating a client's abilities to establish what the baseline is. A quick, occasional check on a skill without ongoing teaching.",
   },
-  Maintenance: {
+  Intervention: {
     description:
-      "A behavior has been successfully modified, but is still reinforced occasionally to make sure that it remains permanent.",
+      "Trying to make a change in a behavior through targeted techniques. A specific teaching strategy or behavior plan is actively being used.",
   },
   Fading: {
     description:
       "Trying to reduce the need for intervention and reinforcement to make the behavior automatic and independent.",
+  },
+  Maintenance: {
+    description:
+      "A behavior has been successfully modified, but is still reinforced occasionally to make sure that it remains permanent.",
   },
 };

@@ -221,7 +221,7 @@ export function TeachingProcedureAccordion({
             <div className="space-y-2">
               {"scale" in data.measurement ? (
                 data.measurement.scale.map((level) => (
-                  <p key={level.value} className="flex gap-1.5">
+                  <p key={level.value} className="flex items-start gap-1.5">
                     <ScaleStarBadge value={level.value} />
                     <span>{level.description}</span>
                   </p>
@@ -317,7 +317,19 @@ export function TeachingProcedureAccordion({
 // size row every level reads at the same fixed size here.
 function ScaleStarBadge({ value }: { value: number }) {
   return (
-    <span aria-hidden className="relative shrink-0 mt-0.5 size-5 grid place-items-center">
+    <span
+      aria-hidden
+      className="relative shrink-0 grid place-items-center size-[25px]"
+      style={{
+        // The star polygon's own geometric centroid sits at ~0.52 of its box
+        // height down from the top (see RatingCard's identical derivation),
+        // not at the box's visual center — so with this span's own top
+        // aligned to the description's first line (`items-start` on the row
+        // above), a small upward pull is what actually lands the star's
+        // centroid at that line's x-height center instead of visibly low.
+        marginTop: -2.5,
+      }}
+    >
       <svg viewBox="0 0 24 24" className="absolute inset-0 fill-blue-100 stroke-blue-300">
         <path d={ROUNDED_STAR_PATH} strokeWidth={1.5} strokeLinejoin="round" />
       </svg>

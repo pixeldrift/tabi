@@ -690,52 +690,12 @@ export function TaskAnalysisCard({
             above) — plain w-full here, no scroll-snap padding trick, so the
             percentage resolves against genuine available space. Wraps both
             strips below purely so ResizeObserver has a stable element to
-            watch; it isn't otherwise part of either strip's own layout.
-            `relative` additionally anchors the large-density-only nav
-            arrows (position: absolute doesn't affect the measured width
-            above, so this is safe to add without disturbing that). */}
-        <div
-          ref={tileContentRef}
-          className={cn(
-            "relative w-full flex flex-col items-center gap-0.5",
-            // Shrinks the measured content width (tileContentWidth reads
-            // this div's own content-box rect, which already excludes
-            // padding) so the step text's own width leaves the arrows'
-            // gutter clear instead of running underneath them.
-            large && "px-6",
-          )}
-        >
-          {/* Large density only — same "pushed to the tile's own edges"
-           *  nav-arrow convention as Checklist's/Percent Correct's tiles;
-           *  small density relies on swiping/tapping a dot alone. */}
-          {large && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goTo(activeCurrent - 1);
-                }}
-                disabled={activeCurrent === 0}
-                aria-label="Previous step"
-                className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goTo(activeCurrent + 1);
-                }}
-                disabled={activeCurrent >= steps.length - 1}
-                aria-label="Next step"
-                className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </>
-          )}
+            watch; it isn't otherwise part of either strip's own layout. No
+            side padding reserved here any more — the nav arrows now live
+            over the dots row below instead of this whole stack, so the step
+            text gets the tile's full width rather than a gutter it never
+            actually used. */}
+        <div ref={tileContentRef} className="w-full flex flex-col items-center gap-0.5">
           {/* Every step's own dot, not just prev/current/next — a second
             SwipeStrip bound to the same current/goTo state as the step text
             below, so dragging either one moves both in lockstep and the
@@ -743,35 +703,71 @@ export function TaskAnalysisCard({
             smooth-scroll the text strip already uses). Only the current dot
             is enlarged; every other dot is the same size regardless of how
             far it is from center — same fixed convention every other card's
-            own dot row uses (see Duration's). */}
-          <SwipeStrip
-            count={steps.length}
-            current={activeCurrent}
-            onCurrentChange={goTo}
-            variant="centered"
-            className="-mt-1 w-full"
-            gapClassName={large ? "gap-2" : "gap-1.5"}
-            itemWrapperClassName="flex items-center justify-center"
-          >
-            {(i) => {
-              const isCurrent = i === activeCurrent;
-              return (
-                <span
+            own dot row uses (see Duration's). `relative` anchors the
+            large-density-only nav arrows to just this row's own height, so
+            they land vertically centered on the dots specifically rather
+            than on the dots+text stack as a whole. */}
+          <div className="relative w-full -mt-1">
+            {/* Large density only — same "pushed to the tile's own edges"
+             *  nav-arrow convention as Checklist's tile; small density
+             *  relies on swiping/tapping a dot alone. */}
+            {large && (
+              <>
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    goTo(i);
+                    goTo(activeCurrent - 1);
                   }}
-                  className={cn(
-                    "rounded-full transition-all duration-300",
-                    isCurrent ? (large ? "size-2.5" : "size-2") : large ? "size-1.5" : "size-1",
-                    statusDotColor(activeStatuses[i]),
-                  )}
-                  style={{ opacity: isCurrent ? 1 : 0.5 }}
-                  aria-hidden
-                />
-              );
-            }}
-          </SwipeStrip>
+                  disabled={activeCurrent === 0}
+                  aria-label="Previous step"
+                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goTo(activeCurrent + 1);
+                  }}
+                  disabled={activeCurrent >= steps.length - 1}
+                  aria-label="Next step"
+                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </>
+            )}
+            <SwipeStrip
+              count={steps.length}
+              current={activeCurrent}
+              onCurrentChange={goTo}
+              variant="centered"
+              className="w-full"
+              gapClassName={large ? "gap-2" : "gap-1.5"}
+              itemWrapperClassName="flex items-center justify-center"
+            >
+              {(i) => {
+                const isCurrent = i === activeCurrent;
+                return (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(i);
+                    }}
+                    className={cn(
+                      "rounded-full transition-all duration-300",
+                      isCurrent ? (large ? "size-2.5" : "size-2") : large ? "size-1.5" : "size-1",
+                      statusDotColor(activeStatuses[i]),
+                    )}
+                    style={{ opacity: isCurrent ? 1 : 0.5 }}
+                    aria-hidden
+                  />
+                );
+              }}
+            </SwipeStrip>
+          </div>
           <SwipeStrip
             count={steps.length}
             current={activeCurrent}
