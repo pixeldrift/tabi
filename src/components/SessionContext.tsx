@@ -69,12 +69,15 @@ export const ABANDONMENT_THRESHOLD_MS = 30 * 60 * 1000;
 
 // Every session start/pause/resume/end timing constant below (and the
 // matching ones StatusBar.tsx and routes/index.tsx define locally for the
-// same choreography) is multiplied by this. 2x, not new hand-picked
-// numbers, so the RELATIVE pacing between constants — which beat is meant
-// to read as quick vs. deliberate — stays intact; only the whole sequence's
-// wall-clock speed changes, slow enough to actually watch each step happen
-// instead of them blurring together at normal-app speed.
-export const SESSION_TRANSITION_SPEED = 2;
+// same choreography) is multiplied by this — one shared knob, not new
+// hand-picked numbers per constant, so the RELATIVE pacing between them —
+// which beat is meant to read as quick vs. deliberate — stays intact
+// regardless of what this is set to. Was 2 (slow enough to watch each
+// step happen individually while that choreography was still being
+// tuned); per feedback that the whole sequence now reads as sluggish —
+// a real pause between "timer resets," "pill flies," "header shrinks" —
+// dropped back to each constant's own originally-designed pace.
+export const SESSION_TRANSITION_SPEED = 1;
 
 // Shared 3-stage session-transition timing (ms) — CARD_EXIT_MS is stage 1's
 // dwell (below), which also drives the header's own dimming (StatusBar).
