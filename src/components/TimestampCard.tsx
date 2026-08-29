@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Stamp, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
 import { SwipeStrip } from "./SwipeStrip";
-import { ListActionBadge } from "./ListRowActions";
+import { ListActionBadge, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
-import { HORIZONTAL_FADE_MASK } from "./IntervalCard";
 import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
 import { cn } from "@/lib/utils";
 
@@ -29,9 +28,19 @@ function to24h(ms: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+// The clock display itself — pill, tape bubble, list/tile pill — always
+// reads as a plain 24h "HH:MM:SS" clock, not the app's compact "10:00a"
+// label convention. That convention is reserved for the expanded view,
+// where a stamp's time is paired with its date rather than styled to look
+// like a running clock.
+function formatClockTime(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+}
+
 // Same "h:mma"/"h:mmp" convention as the Schedule tab's own grid — one
-// canonical formatter used app-wide (see TimeOfDayKeypad.tsx), rather than
-// this card inventing its own "9:34:37 PM" style.
+// canonical formatter used app-wide (see TimeOfDayKeypad.tsx) — for the
+// expanded view's own time+date rows only.
 function formatStampTime(ms: number) {
   return formatTimeOfDay(to24h(ms));
 }
@@ -72,22 +81,19 @@ export function useTimestampChip(cardId: string) {
   return { count: entries.length, logNow, canRecordData };
 }
 
-// How many past digits the log button's press animates through before the
-// stamped copy actually lands in the history tape — long enough that the
-// pill's own quick scale-up + color flash reads as its own distinct first
-// beat, short enough the "slide over" still feels like part of the same tap.
-const PUSH_DELAY_MS = 220;
 const FLASH_DURATION_MS = 500;
-// How many of the most recent (up to and including the focused one) stamps
-// the history tape keeps mounted at once. Deliberately small — a centered,
-// fixed-width pill only leaves one side of a max-w-md card for the tape at
-// all, and confirmed via Playwright that a wider window overflowed that
-// space and left its off-screen chips' (still real, still hit-testable)
-// click targets sitting underneath the nav arrow instead.
-const TAPE_WINDOW = 2;
-const PILL_W = 160;
-const PILL_HALF_GAP = 88; // half of PILL_W + an 8px gap to the tape
-const ARROW_HIT = 28; // TriangleNav's own hit-box size (size-7)
+const FLIGHT_DURATION_MS = 450;
+// Same track geometry DurationCard's own instance carousel uses (see its
+// CenterPill/SideBubble/TriangleNav) — the focused item grows to this size,
+// every other item shrinks to a small numbered bubble, and the whole track
+// slides so the focused one stays centered. CENTER_W is a little wider than
+// Duration's own to fit a 24h "HH:MM:SS" clock instead of a shorter
+// elapsed-time string.
+const BUBBLE = 22;
+const CENTER_W = 190;
+const CENTER_H = 52;
+const GAP = 8;
+const STEP_WIDTH = BUBBLE + GAP;
 
 export function TimestampCard({
   id,
@@ -144,39 +150,53 @@ export function TimestampCard({
   // tally uses (see its own comment) — flash disables the CSS transition so
   // the color/border change is instant on tap, then re-enables it once flash
   // clears so the fade-back is a smooth ease rather than an instant snap.
-  // The actual entry isn't pushed until PUSH_DELAY_MS later — that gap is
-  // what makes the pill's own scale-up-and-color-change read as a first,
-  // distinct beat before the stamped copy slides into the history tape.
   const [flash, setFlash] = useState(false);
   const flashTimeoutRef = useRef<number | null>(null);
-  const pushTimeoutRef = useRef<number | null>(null);
+  // A short-lived "flying" copy of the just-logged digits — rendered once,
+  // separately from the real track, animating from the live pill's own
+  // position down to a small bubble's size/position before unmounting. The
+  // real entry (and the track's own grow/shrink) already lands correctly
+  // without this; it's purely the "digits visibly lift off and travel"
+  // flourish layered on top.
+  const [flightTs, setFlightTs] = useState<number | null>(null);
+  const flightTimeoutRef = useRef<number | null>(null);
   useEffect(
     () => () => {
       if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
-      if (pushTimeoutRef.current !== null) window.clearTimeout(pushTimeoutRef.current);
+      if (flightTimeoutRef.current !== null) window.clearTimeout(flightTimeoutRef.current);
     },
     [],
   );
+
+  // The track always has one more slot than logged entries — the last one
+  // is never a real entry, it's the live, ticking "now" position. Logging
+  // doesn't advance into that slot; it fills the current one and a fresh
+  // live slot opens up after it, the same "using the last slot opens a new
+  // blank one" idea DurationCard's own instances array already uses.
+  const trackCount = entries.length + 1;
+  const liveIndex = entries.length;
+
+  const goTo = (idx: number) => {
+    setViewIdx(Math.max(0, Math.min(trackCount - 1, idx)));
+  };
 
   const logNow = () => {
     if (!canRecordData) return;
     markDirty();
     const ts = Date.now();
-    const insertIdx = entries.length;
 
     setFlash(true);
     if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = window.setTimeout(() => setFlash(false), FLASH_DURATION_MS);
 
-    if (pushTimeoutRef.current !== null) window.clearTimeout(pushTimeoutRef.current);
-    pushTimeoutRef.current = window.setTimeout(() => {
-      setEntries((prev) => [...prev, ts]);
-      setViewIdx(insertIdx);
-    }, PUSH_DELAY_MS);
-  };
+    setFlightTs(ts);
+    if (flightTimeoutRef.current !== null) window.clearTimeout(flightTimeoutRef.current);
+    flightTimeoutRef.current = window.setTimeout(() => setFlightTs(null), FLIGHT_DURATION_MS);
 
-  const goTo = (idx: number) => {
-    setViewIdx(Math.max(0, Math.min(entries.length - 1, idx)));
+    setEntries((prev) => [...prev, ts]);
+    // Keep viewing "live" — the just-logged entry now sits one slot behind
+    // it, exactly the shrink-and-slide-left the flight animation shows.
+    setViewIdx(entries.length + 1);
   };
 
   const updateEntryTime = (idx: number, next24h: string) => {
@@ -191,12 +211,14 @@ export function TimestampCard({
     unit: entries.length === 1 ? "Entry" : "Entries",
   });
 
-  // The tape only ever needs to render the window ending at whichever entry
-  // is currently focused (viewIdx) — sliding the nav arrows back further
-  // than TAPE_WINDOW just moves which slice of history that window shows,
-  // rather than growing the tape itself.
-  const windowStart = Math.max(0, viewIdx - (TAPE_WINDOW - 1));
-  const windowEntries = entries.slice(windowStart, viewIdx + 1);
+  const trackOffset = -(viewIdx * STEP_WIDTH + CENTER_W / 2);
+  const dragX = useMotionValue(0);
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const finalOffset = trackOffset + info.offset.x;
+    const targetIdx = Math.round(-(finalOffset + CENTER_W / 2) / STEP_WIDTH);
+    goTo(targetIdx);
+    animate(dragX, 0, { type: "spring", stiffness: 320, damping: 32 });
+  };
 
   const details = (
     <>
@@ -263,8 +285,8 @@ export function TimestampCard({
         }
       >
         {/* Live ticking clock pill — no date needed at this density, just
-            the count bubble + running time, same as the standard view's
-            own pill minus the date line above it. */}
+            the instance bubble + running 24h clock, same as the standard
+            view's own pill minus the date line above it. */}
         <div
           className={cn(
             "shrink-0 flex items-stretch rounded-full border-2 border-border bg-white overflow-hidden",
@@ -277,7 +299,7 @@ export function TimestampCard({
               large ? "size-6 text-[11px] ml-1" : "size-5 text-[9px] ml-0.5",
             )}
           >
-            {entries.length + 1}
+            {liveIndex + 1}
           </span>
           <span
             className={cn(
@@ -285,13 +307,15 @@ export function TimestampCard({
               large ? "text-sm px-2.5" : "text-[11px] px-2",
             )}
           >
-            {formatStampTime(now)}
+            {formatClockTime(now)}
           </span>
         </div>
 
         {/* Large density only — same "pushed to the tile's own edges"
             nav-arrow convention as Task Analysis's/Checklist's tiles; small
-            density relies on tapping/swiping a dot alone. */}
+            density relies on tapping/swiping a dot alone. The live slot
+            gets its own (blue) dot alongside the logged entries so the
+            strip's own position always has somewhere valid to point. */}
         {entries.length > 0 && (
           <div className="relative w-full flex items-center justify-center mt-1">
             {large && (
@@ -314,7 +338,7 @@ export function TimestampCard({
                     e.stopPropagation();
                     goTo(viewIdx + 1);
                   }}
-                  disabled={viewIdx >= entries.length - 1}
+                  disabled={viewIdx >= trackCount - 1}
                   aria-label="Next entry"
                   className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
                 >
@@ -323,7 +347,7 @@ export function TimestampCard({
               </>
             )}
             <SwipeStrip
-              count={entries.length}
+              count={trackCount}
               current={viewIdx}
               onCurrentChange={goTo}
               variant="centered"
@@ -332,6 +356,7 @@ export function TimestampCard({
             >
               {(i) => {
                 const isCurrent = i === viewIdx;
+                const isLive = i === liveIndex;
                 return (
                   <span
                     onClick={(e) => {
@@ -341,8 +366,11 @@ export function TimestampCard({
                     className={cn(
                       "rounded-full transition-all duration-300",
                       isCurrent
-                        ? cn(large ? "size-2" : "size-1.5", "bg-blue-500")
-                        : cn(large ? "size-1.5" : "size-1", "bg-blue-200"),
+                        ? cn(large ? "size-2" : "size-1.5", isLive ? "bg-blue-500" : "bg-stone-400")
+                        : cn(
+                            large ? "size-1.5" : "size-1",
+                            isLive ? "bg-blue-200" : "bg-stone-200",
+                          ),
                     )}
                     aria-hidden
                   />
@@ -356,6 +384,7 @@ export function TimestampCard({
   }
 
   if (listMode) {
+    const viewingLive = viewIdx === liveIndex;
     return (
       <DataListRow
         title={title}
@@ -382,21 +411,56 @@ export function TimestampCard({
         progress={null}
         isComplete={hasData}
         actions={
-          <div className="flex items-center gap-1">
-            <ListActionBadge value={entries.length} weight="bold" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                logNow();
-              }}
-              disabled={!canRecordData}
-              aria-label="Log now"
-              className="btn-bevel grid size-7 shrink-0 place-items-center rounded-full text-white transition-colors disabled:opacity-40 bg-blue-500 hover:bg-blue-600 active:bg-blue-600"
+          // Instance badge + running clock travel together, same pattern as
+          // Duration's own list row — the actual time (editable, or ticking
+          // live) matters more here than a plain entry count.
+          <ListActionSlide actionKey={viewIdx}>
+            <ListActionBadge value={viewIdx + 1} />
+            <div
+              className={cn(
+                "flex items-stretch h-7 rounded-full overflow-hidden border-2 bg-white transition-colors",
+                viewingLive ? "border-border" : "border-blue-200",
+              )}
             >
-              <Stamp className="size-3.5" />
-            </button>
-          </div>
+              {viewingLive ? (
+                <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[4.5rem] text-stone-400">
+                  {formatClockTime(now)}
+                </span>
+              ) : (
+                <TimeOfDayKeypad
+                  value={to24h(entries[viewIdx])}
+                  onChange={(next) => updateEntryTime(viewIdx, next)}
+                >
+                  {({ open }) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        open();
+                      }}
+                      disabled={!canRecordData}
+                      aria-label={`Edit time for entry ${viewIdx + 1}`}
+                      className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[4.5rem] cursor-text disabled:cursor-not-allowed"
+                    >
+                      {formatClockTime(entries[viewIdx])}
+                    </button>
+                  )}
+                </TimeOfDayKeypad>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  logNow();
+                }}
+                disabled={!canRecordData}
+                aria-label="Log now"
+                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
+              >
+                <Stamp className="size-3" />
+              </button>
+            </div>
+          </ListActionSlide>
         }
       />
     );
@@ -478,7 +542,7 @@ export function TimestampCard({
                 rather than as a separate full-width bar below the list. */}
             <li className="flex items-center gap-2 rounded-lg px-2 py-1.5 mt-1 border-t border-dashed border-border pt-2.5">
               <span className="grid place-items-center size-6 rounded-full bg-stone-300 text-[11px] font-medium text-white shrink-0">
-                {entries.length + 1}
+                {liveIndex + 1}
               </span>
               <span className="flex-1 tabular-nums text-sm font-semibold text-stone-400">
                 {formatStampTime(now)}
@@ -508,114 +572,101 @@ export function TimestampCard({
               {formatStampDate(now)}
             </span>
           </div>
-          <div className="relative h-[52px] mt-1">
+
+          <div className="relative h-[68px] mt-1">
             <TriangleNav
               direction="left"
               onClick={() => goTo(viewIdx - 1)}
+              onDoubleClick={() => goTo(0)}
               disabled={viewIdx <= 0}
             />
             <TriangleNav
               direction="right"
               onClick={() => goTo(viewIdx + 1)}
-              disabled={viewIdx >= entries.length - 1}
+              onDoubleClick={() => goTo(trackCount - 1)}
+              disabled={viewIdx >= trackCount - 1}
             />
 
-            {/* History tape — starts clear of the left TriangleNav's own
-                hit box, so an old stamp sitting at the tape's left edge is
-                never covered by the arrow's invisible hit area (confirmed
-                via Playwright: without this inset, clicks meant for that
-                stamp landed on "Previous entry" instead). Ends a fixed gap
-                left of center (half the pill's own width plus an 8px gap)
-                so the tape's own content, however wide, never pushes the
-                live pill off its dead-center position. Fades toward the
-                far/left edge, same mask IntervalCard's own timeline uses. */}
             <div
-              className="absolute inset-y-0 overflow-hidden"
+              className="relative h-full overflow-hidden"
               style={{
-                left: ARROW_HIT,
-                right: `calc(50% + ${PILL_HALF_GAP}px)`,
-                ...HORIZONTAL_FADE_MASK,
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
               }}
             >
-              <div className="h-full flex items-center justify-end gap-1.5 px-1">
-                <AnimatePresence initial={false}>
-                  {windowEntries.map((ts, i) => {
-                    const realIndex = windowStart + i;
-                    const isNewest = realIndex === entries.length - 1;
-                    const isFocused = realIndex === viewIdx;
-                    return (
-                      <motion.div
-                        key={ts}
-                        layout
-                        initial={{ opacity: 0, x: 20, scale: 0.85 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                      >
-                        <TimeOfDayKeypad
-                          value={to24h(ts)}
-                          onChange={(next) => updateEntryTime(realIndex, next)}
-                        >
-                          {({ open }) => (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                open();
-                              }}
-                              disabled={!canRecordData}
-                              aria-label={`Edit time for entry ${realIndex + 1}`}
-                              style={{
-                                transition:
-                                  isNewest && flash
-                                    ? "none"
-                                    : "color 700ms ease-out, background-color 700ms ease-out, border-color 700ms ease-out",
-                              }}
-                              className={cn(
-                                "shrink-0 rounded-full border px-1.5 py-1 text-[9px] font-medium tabular-nums whitespace-nowrap disabled:cursor-not-allowed",
-                                isNewest && flash
-                                  ? "border-blue-300 bg-blue-50 text-blue-700"
-                                  : isFocused
-                                    ? "border-blue-200 bg-blue-50/70 text-blue-700"
-                                    : "border-stone-200 bg-stone-50 text-muted-foreground hover:border-blue-200",
-                              )}
-                            >
-                              {formatStampTime(ts)}
-                            </button>
-                          )}
-                        </TimeOfDayKeypad>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            </div>
+              <motion.div
+                className="absolute top-1/2 left-1/2 flex items-center"
+                style={{ gap: GAP, x: dragX, translateY: "-50%" }}
+                animate={{ x: trackOffset }}
+                transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                drag="x"
+                dragConstraints={{ left: -((trackCount - 1) * STEP_WIDTH) - 200, right: 200 }}
+                dragElastic={0.08}
+                onDragEnd={handleDragEnd}
+              >
+                {Array.from({ length: trackCount }, (_, i) => {
+                  const isCenter = i === viewIdx;
+                  const isLive = i === liveIndex;
+                  return (
+                    <motion.div
+                      key={i}
+                      className="relative shrink-0 grid place-items-center select-none"
+                      animate={{
+                        width: isCenter ? CENTER_W : BUBBLE,
+                        height: isCenter ? CENTER_H : BUBBLE,
+                      }}
+                      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                    >
+                      {isCenter ? (
+                        <TimestampCenterPill
+                          index={i}
+                          isLive={isLive}
+                          ms={isLive ? null : entries[i]}
+                          now={now}
+                          disabled={!canRecordData}
+                          onEditTime={(next) => updateEntryTime(i, next)}
+                          flash={flash}
+                        />
+                      ) : (
+                        <TimestampSideBubble
+                          index={i}
+                          isLive={isLive}
+                          justLogged={flash && i === entries.length - 1}
+                          onClick={() => goTo(i)}
+                        />
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
 
-            {/* Live "now" pill — permanently centered, independent of the
-                tape's own content width; only its text and border color
-                flash on log, it never itself moves. */}
-            <div
-              className={cn(
-                "absolute left-1/2 -translate-x-1/2 top-0 flex items-stretch rounded-full border-2 bg-white overflow-hidden h-[52px]",
-                flash ? "border-blue-400" : "border-border",
-              )}
-              style={{ width: PILL_W, transition: flash ? "none" : "border-color 700ms ease-out" }}
-            >
-              <div className="flex-1 flex items-center gap-2 pl-2 pr-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-300 text-white text-xs font-semibold tabular-nums">
-                  {entries.length + 1}
-                </span>
-                <motion.span
-                  animate={{ scale: flash ? 1.16 : 1 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-                  className={cn(
-                    "flex-1 text-center font-display text-lg tabular-nums leading-none",
-                    flash ? "text-blue-600" : "text-stone-400",
-                  )}
-                >
-                  {formatStampTime(now)}
-                </motion.span>
-              </div>
+              {/* The "lift off, shrink, slide" flourish on log — a temporary
+                  copy of the stamped digits at the live pill's own size and
+                  position, arcing up and then down-left into roughly where
+                  its new bubble settles, fading out as it shrinks. The real
+                  entry (and the track's own grow/shrink + slide) already
+                  land correctly without this; it's a purely decorative
+                  overlay. */}
+              <AnimatePresence>
+                {flightTs !== null && (
+                  <motion.span
+                    key={flightTs}
+                    initial={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+                    animate={{
+                      opacity: [1, 1, 0],
+                      scale: [1, 1.05, 0.3],
+                      x: [0, 0, -STEP_WIDTH],
+                      y: [0, -14, 0],
+                    }}
+                    transition={{ duration: FLIGHT_DURATION_MS / 1000, ease: "easeOut" }}
+                    className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 pointer-events-none font-display text-xl tabular-nums text-blue-600"
+                  >
+                    {formatClockTime(flightTs)}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -632,7 +683,7 @@ export function TimestampCard({
           </div>
 
           <div className="mt-3 flex items-center justify-center h-4">
-            {hasData ? (
+            {viewIdx < entries.length ? (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground text-center">
                 Entry{" "}
                 <span className="normal-case tracking-normal tabular-nums text-foreground">
@@ -645,7 +696,7 @@ export function TimestampCard({
               </span>
             ) : (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                No entries yet
+                {hasData ? "Viewing current time" : "No entries yet"}
               </span>
             )}
           </div>
@@ -655,13 +706,125 @@ export function TimestampCard({
   );
 }
 
+function TimestampCenterPill({
+  index,
+  isLive,
+  ms,
+  now,
+  disabled,
+  onEditTime,
+  flash,
+}: {
+  index: number;
+  isLive: boolean;
+  ms: number | null;
+  now: number;
+  disabled?: boolean;
+  onEditTime: (next24h: string) => void;
+  flash: boolean;
+}) {
+  const displayMs = isLive ? now : (ms as number);
+  return (
+    <div
+      className={cn(
+        "absolute inset-0 flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+        flash && isLive ? "border-blue-400" : "border-border",
+      )}
+      style={{ transition: flash && isLive ? "none" : "border-color 700ms ease-out" }}
+    >
+      <div className="flex-1 flex items-center justify-center gap-2 px-2">
+        <span
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-full text-white text-xs font-semibold tabular-nums transition-colors",
+            isLive ? "bg-blue-500" : "bg-stone-300",
+          )}
+        >
+          {index + 1}
+        </span>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={isLive ? "live" : index}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="inline-block"
+          >
+            {isLive ? (
+              <motion.span
+                animate={{ scale: flash ? 1.16 : 1 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                className={cn(
+                  "font-display text-xl tabular-nums leading-none",
+                  flash ? "text-blue-600" : "text-stone-400",
+                )}
+              >
+                {formatClockTime(displayMs)}
+              </motion.span>
+            ) : (
+              <TimeOfDayKeypad value={to24h(displayMs)} onChange={onEditTime}>
+                {({ open }) => (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    disabled={disabled}
+                    aria-label={`Edit time for entry ${index + 1}`}
+                    className="font-display text-xl tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {formatClockTime(displayMs)}
+                  </button>
+                )}
+              </TimeOfDayKeypad>
+            )}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function TimestampSideBubble({
+  index,
+  isLive,
+  justLogged,
+  onClick,
+}: {
+  index: number;
+  isLive: boolean;
+  justLogged: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="absolute inset-0 grid place-items-center">
+      <span
+        className={cn(
+          "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums transition-colors",
+          justLogged
+            ? "bg-blue-100 border-blue-400 text-blue-700"
+            : isLive
+              ? "bg-blue-50 border-blue-200 text-blue-500"
+              : "bg-stone-50 border-stone-200 text-stone-400",
+        )}
+      >
+        {index + 1}
+      </span>
+    </button>
+  );
+}
+
 function TriangleNav({
   direction,
   onClick,
+  onDoubleClick,
   disabled,
 }: {
   direction: "left" | "right";
   onClick: () => void;
+  onDoubleClick?: () => void;
   disabled?: boolean;
 }) {
   const isLeft = direction === "left";
@@ -669,16 +832,22 @@ function TriangleNav({
     <motion.button
       aria-label={isLeft ? "Previous entry" : "Next entry"}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
       transition={{ type: "spring", stiffness: 500, damping: 22 }}
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-7 text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
-        isLeft ? "left-0" : "right-0",
+        "absolute top-1/2 -translate-y-1/2 z-20 grid place-items-center size-12 shrink-0 aspect-square text-blue-500 hover:text-blue-600 active:text-blue-700 transition-colors disabled:text-foreground/25 disabled:pointer-events-none",
+        isLeft ? "-left-2" : "-right-2",
       )}
     >
-      <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className="size-9 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"
+        fill="currentColor"
+        aria-hidden
+      >
         {isLeft ? (
           <path d="M15.5 4.2c1.1-.7 2.5.1 2.5 1.4v12.8c0 1.3-1.4 2.1-2.5 1.4L6.9 13.6a1.9 1.9 0 0 1 0-3.2L15.5 4.2z" />
         ) : (

@@ -1134,11 +1134,13 @@ export function TaskAnalysisCard({
               <TriangleNav
                 direction="left"
                 onClick={() => goTo(activeCurrent - 1)}
+                onDoubleClick={() => goTo(0)}
                 disabled={activeCurrent === 0}
               />
               <TriangleNav
                 direction="right"
                 onClick={() => goTo(activeCurrent + 1)}
+                onDoubleClick={() => goTo(steps.length - 1)}
                 disabled={activeCurrent >= steps.length - 1}
               />
               <div
@@ -1358,10 +1360,14 @@ export function TaskAnalysisCard({
 function TriangleNav({
   direction,
   onClick,
+  onDoubleClick,
   disabled,
 }: {
   direction: "left" | "right";
   onClick: () => void;
+  /** Jumps straight to the first/last step — the same shortcut every other
+   *  scrollable card's own nav arrows now offer. */
+  onDoubleClick?: () => void;
   disabled?: boolean;
 }) {
   const isLeft = direction === "left";
@@ -1369,6 +1375,7 @@ function TriangleNav({
     <motion.button
       aria-label={isLeft ? "Previous step" : "Next step"}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}

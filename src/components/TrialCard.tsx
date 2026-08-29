@@ -948,11 +948,13 @@ export function TrialCard({
               <TriangleNav
                 direction="left"
                 onClick={() => goTo(current - 1)}
+                onDoubleClick={() => goTo(0)}
                 disabled={current === 0}
               />
               <TriangleNav
                 direction="right"
                 onClick={() => goTo(current + 1)}
+                onDoubleClick={() => goTo(maxTrials ? maxTrials - 1 : completedCount)}
                 disabled={
                   (trials[current] === null && current >= completedCount) ||
                   (maxTrials ? current >= maxTrials - 1 : false)
@@ -1196,10 +1198,14 @@ export function TrialCard({
 function TriangleNav({
   direction,
   onClick,
+  onDoubleClick,
   disabled,
 }: {
   direction: "left" | "right";
   onClick: () => void;
+  /** Jumps straight to the first/last trial — the same shortcut every other
+   *  scrollable card's own nav arrows now offer. */
+  onDoubleClick?: () => void;
   disabled?: boolean;
 }) {
   const isLeft = direction === "left";
@@ -1207,6 +1213,7 @@ function TriangleNav({
     <motion.button
       aria-label={isLeft ? "Previous trial" : "Next trial"}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}

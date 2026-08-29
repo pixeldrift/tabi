@@ -1063,11 +1063,13 @@ export function IntervalCard({
             <TriangleNav
               direction="left"
               onClick={() => activeGoTo(activeViewIdx - 1)}
+              onDoubleClick={() => activeGoTo(0)}
               disabled={activeViewIdx <= 0}
             />
             <TriangleNav
               direction="right"
               onClick={() => activeGoTo(activeViewIdx + 1)}
+              onDoubleClick={() => activeGoTo(activeCount - 1)}
               disabled={activeViewIdx >= activeCount - 1}
             />
             <IntervalTimeline
@@ -1672,10 +1674,14 @@ function IntervalExpandedView({
 function TriangleNav({
   direction,
   onClick,
+  onDoubleClick,
   disabled,
 }: {
   direction: "left" | "right";
   onClick: () => void;
+  /** Jumps straight to the first/last interval — the same shortcut every
+   *  other scrollable card's own nav arrows now offer. */
+  onDoubleClick?: () => void;
   disabled?: boolean;
 }) {
   const isLeft = direction === "left";
@@ -1683,6 +1689,7 @@ function TriangleNav({
     <motion.button
       aria-label={isLeft ? "Previous interval" : "Next interval"}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}

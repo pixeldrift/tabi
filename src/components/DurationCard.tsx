@@ -891,11 +891,13 @@ export function DurationCard({
             <TriangleNav
               direction="left"
               onClick={() => goTo(viewIdx - 1)}
+              onDoubleClick={() => goTo(0)}
               disabled={viewIdx === 0}
             />
             <TriangleNav
               direction="right"
               onClick={() => goTo(viewIdx + 1)}
+              onDoubleClick={() => goTo(instances.length - 1)}
               disabled={viewIdx >= instances.length - 1}
             />
 
@@ -1121,10 +1123,14 @@ function SideBubble({
 function TriangleNav({
   direction,
   onClick,
+  onDoubleClick,
   disabled,
 }: {
   direction: "left" | "right";
   onClick: () => void;
+  /** Jumps straight to the first/last instance — the same shortcut every
+   *  other scrollable card's own nav arrows now offer. */
+  onDoubleClick?: () => void;
   disabled?: boolean;
 }) {
   const isLeft = direction === "left";
@@ -1132,6 +1138,7 @@ function TriangleNav({
     <motion.button
       aria-label={isLeft ? "Previous instance" : "Next instance"}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
