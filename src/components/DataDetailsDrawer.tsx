@@ -805,11 +805,17 @@ export function DataDetailsDrawer({
           border-color/width utilities below (not just after `border-r-0` in
           this string) or `cn`'s tailwind-merge treats `border-2`/`border` as
           the later, winning declaration for every side, right included.
-          -top-0.5 shifts it up by the panel's own 2px border width, so the
-          tab's outer top edge lines up with the panel's outer top edge
-          instead of sitting a couple pixels below it (top-0 aligns with the
-          inside of that border, not the outside). Only rendered while
-          closed — once open (either width), the tab has nothing left to do:
+          -top-px shifts it up by the panel's own CLOSED-state border width —
+          a plain 1px `border` here (see the panel's own className above;
+          only the OPEN state gets the heavier 2px `border-t-2`/`border-l-2`)
+          — so the tab's outer top edge lines up with the panel's outer top
+          edge instead of sitting a pixel below it (top-0 aligns with the
+          inside of that border, not the outside). Using -top-0.5 (-2px, a
+          leftover from when the panel's border was assumed to always be 2px)
+          overcorrected past that 1px border, poking the tab's own top edge
+          up above the toolbar row instead of flush with it. Only rendered
+          while closed — once open (either width), the tab has nothing left
+          to do:
           the whole panel already drags as its own handle, and its own
           expand/collapse control has moved into the sticky header below
           (see the header's own leading button) rather than living out here
@@ -831,7 +837,7 @@ export function DataDetailsDrawer({
           }}
           aria-label="Open details drawer"
           aria-expanded={false}
-          className="absolute -left-7 -top-0.5 w-7 grid place-items-center rounded-l-lg border-2 border-green-500/80 border-r-0 bg-background text-stone-500 hover:text-stone-800 transition-colors touch-none"
+          className="absolute -left-7 -top-px w-7 grid place-items-center rounded-l-lg border-2 border-green-500/80 border-r-0 bg-background text-stone-500 hover:text-stone-800 transition-colors touch-none"
           style={{ height: toolbarRowHeight }}
         >
           {/* Only one direction does anything from here (drag/tap left to
