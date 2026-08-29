@@ -907,7 +907,12 @@ export function IntervalCard({
         }
       >
         <div className="flex flex-col items-center gap-0">
-          <div className="inline-flex items-center gap-1">
+          {/* relative inline-flex wraps just the current-index number — same
+              technique as RateCard's/FrequencyCard's own tile number: the
+              "/count" suffix hangs off it via absolute positioning instead
+              of sitting in normal flex flow, so its width doesn't shift the
+              number off the tile's true center. */}
+          <div className="relative inline-flex items-center">
             <span
               className={cn(
                 "font-display leading-none tabular-nums",
@@ -916,16 +921,22 @@ export function IntervalCard({
             >
               {activeViewIdx + 1}
             </span>
-            <span className={cn("font-display text-foreground/30", large ? "text-lg" : "text-sm")}>
-              /
-            </span>
             <span
               className={cn(
-                "font-display leading-none tabular-nums text-foreground/50",
-                large ? "text-lg" : "text-sm",
+                "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-foreground/30",
+                large ? "-right-7" : "-right-6",
               )}
+              aria-hidden
             >
-              {activeCount}
+              <span className={cn("font-display", large ? "text-lg" : "text-sm")}>/</span>
+              <span
+                className={cn(
+                  "font-display leading-none tabular-nums text-foreground/50",
+                  large ? "text-lg" : "text-sm",
+                )}
+              >
+                {activeCount}
+              </span>
             </span>
           </div>
           <span

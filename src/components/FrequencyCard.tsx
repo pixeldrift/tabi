@@ -227,51 +227,58 @@ export function FrequencyCard({
           </div>
         }
       >
-        <NumberKeypad
-          value={count}
-          onReplace={(v) => commit(v)}
-          onAdd={(delta) => commit(count + delta)}
-          onOpenChange={setEditing}
-        >
-          {({ isEditing, open }) => (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                open();
-              }}
-              disabled={!canRecordData}
-              className="inline-flex items-center gap-1 cursor-text disabled:cursor-not-allowed"
-              aria-label={`Current count is ${count}. Tap to edit.`}
-            >
-              <NumberPadIcon
-                className={cn(
-                  "transition-colors",
-                  isEditing ? "text-muted-foreground/40" : "text-blue-400",
-                  large ? "size-3.5" : "size-3",
-                )}
-                aria-hidden
-              />
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={bumpKey}
-                  initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
-                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+        {/* relative inline-flex wraps just the number — same technique as
+            RateCard's own tile number: the keypad icon hangs off it via
+            absolute positioning instead of sitting in normal flex flow, so
+            its width doesn't shift the number off the tile's true center. */}
+        <div className="relative inline-flex items-center">
+          <NumberKeypad
+            value={count}
+            onReplace={(v) => commit(v)}
+            onAdd={(delta) => commit(count + delta)}
+            onOpenChange={setEditing}
+          >
+            {({ isEditing, open }) => (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  open();
+                }}
+                disabled={!canRecordData}
+                className="relative cursor-text disabled:cursor-not-allowed"
+                aria-label={`Current count is ${count}. Tap to edit.`}
+              >
+                <NumberPadIcon
                   className={cn(
-                    "block font-display leading-none tabular-nums",
-                    large ? "text-[38px]" : "text-[28px]",
-                    flash ? "text-blue-600" : "text-foreground",
+                    "pointer-events-none absolute top-1/2 -translate-y-1/2 transition-colors",
+                    large ? "-left-4" : "-left-3.5",
+                    isEditing ? "text-muted-foreground/40" : "text-blue-400",
+                    large ? "size-3.5" : "size-3",
                   )}
-                >
-                  {count}
-                </motion.span>
-              </AnimatePresence>
-            </button>
-          )}
-        </NumberKeypad>
+                  aria-hidden
+                />
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={bumpKey}
+                    initial={{ y: dir > 0 ? "60%" : "-60%", opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: dir > 0 ? "-60%" : "60%", opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
+                    style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                    className={cn(
+                      "block font-display leading-none tabular-nums",
+                      large ? "text-[38px]" : "text-[28px]",
+                      flash ? "text-blue-600" : "text-foreground",
+                    )}
+                  >
+                    {count}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
+            )}
+          </NumberKeypad>
+        </div>
       </MiniTileShell>
     );
   }

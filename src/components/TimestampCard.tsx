@@ -273,7 +273,15 @@ export function TimestampCard({
             view's own pill minus the date line above it. */}
         <div
           className={cn(
-            "shrink-0 flex items-stretch rounded-full border-2 border-border bg-white overflow-hidden",
+            // items-center, not items-stretch — the badge below has a fixed
+            // size (size-5/size-6), and a fixed-size flex item under
+            // items-stretch doesn't actually stretch, it falls back to
+            // flex-start (pinned to the pill's own top edge) instead of
+            // being centered. DurationCard's own equivalent pill avoids this
+            // by nesting an inner items-center wrapper; this one has no
+            // other content competing for that inner div, so centering the
+            // outer row directly is simpler and has the same effect.
+            "shrink-0 flex items-center rounded-full border-2 border-border bg-white overflow-hidden",
             large ? "h-9" : "h-7",
           )}
         >
