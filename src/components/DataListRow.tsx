@@ -152,18 +152,21 @@ export function DataListRow({
           cluster exactly where a one-line row would put it instead of
           sliding down to stay centered in a now-taller two-line row. Only
           the row's bottom edge should move when the title wraps.
-          top-2/right-2/h-4 mirror the header row's own py-2/pl-2 exactly —
-          a genuinely centered one-line row (measured: 34px row, 16px
-          actions box, (34-16)/2 ≈ 9px ≈ top-2) with the same inset on the
-          right that pl-2 already gives the icon on the left, rather than
-          nudging the anchor up to compensate for .btn-bevel's own
-          downward-only shadow — that read as visually "off," not
-          corrected, once every kind's own actions (including non-bevelled
-          ones like Rating's star row) had to share the same offset.
+          top-2/h-4 mirror the header row's own py-2 exactly — a genuinely
+          centered one-line row (measured: 34px row, 16px actions box,
+          (34-16)/2 ≈ 9px ≈ top-2) rather than nudging the anchor up to
+          compensate for .btn-bevel's own downward-only shadow — that read
+          as visually "off," not corrected, once every kind's own actions
+          (including non-bevelled ones like Rating's star row) had to share
+          the same offset. right-1.5, not the same right-2 that would
+          exactly mirror the icon's own pl-2 on the left — this row's
+          rounded-xl corner is large enough relative to its own height that
+          an edge inset matching the (straight) left edge read as more
+          clearance on the right than top/bottom, not the same amount.
           items-center self-centers whichever kind's own actions height (a
           28px button row vs. a 20px star row) inside that shared anchor. */}
         {showActions && (
-          <div className="absolute z-10 top-2 right-2 h-4 flex items-center">{actions}</div>
+          <div className="absolute z-10 top-2 right-1.5 h-4 flex items-center">{actions}</div>
         )}
 
         {/* A background wash tucked under the title only — stops well short

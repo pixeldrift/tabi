@@ -533,7 +533,7 @@ function ListRatingRow({
   // case (the tightest fit), so it's never the constraint even for a
   // hypothetical 6+ star goal.
   return (
-    <div className="flex items-center gap-1 mr-1.5">
+    <div className="flex items-center gap-1 mr-1.5 -mt-0.5">
       {Array.from({ length: numStars }, (_, i) => {
         const value = min + i + 1;
         const filled = rating >= value;

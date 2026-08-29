@@ -86,6 +86,10 @@ export function useTimestampChip(cardId: string) {
 }
 
 const FLASH_DURATION_MS = 500;
+// How long the flash/scale-hop plays alone before the new entry actually
+// commits and the track slides — long enough to clearly register as its
+// own beat, short enough that logging still feels immediate overall.
+const LOG_COMMIT_DELAY_MS = 220;
 // Same track geometry DurationCard's own instance carousel uses (see its
 // CenterPill/SideBubble/TriangleNav) — the focused item grows to this size,
 // every other item shrinks to a small numbered bubble, and the whole track
@@ -155,9 +159,14 @@ export function TimestampCard({
   // clears so the fade-back is a smooth ease rather than an instant snap.
   const [flash, setFlash] = useState(false);
   const flashTimeoutRef = useRef<number | null>(null);
+  // Delays committing a fresh log entry (see logNow below) just long enough
+  // for the flash/scale-hop to actually register before the track slides
+  // away from under it.
+  const logCommitTimeoutRef = useRef<number | null>(null);
   useEffect(
     () => () => {
       if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
+      if (logCommitTimeoutRef.current !== null) window.clearTimeout(logCommitTimeoutRef.current);
     },
     [],
   );
@@ -183,11 +192,23 @@ export function TimestampCard({
     if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = window.setTimeout(() => setFlash(false), FLASH_DURATION_MS);
 
-    setEntries((prev) => [...prev, ts]);
-    // Keep viewing "live" — the just-logged entry now sits one slot behind
-    // it, shrinking into its new bubble as the track's own grow/shrink +
-    // slide transitions play.
-    setViewIdx(entries.length + 1);
+    // Committing the new entry (which is what actually moves the track —
+    // trackOffset depends on viewIdx, and viewIdx moves the instant this
+    // fires) waits a beat behind the flash — otherwise both start in the
+    // very same commit, and the color/scale "this got recorded" pulse and
+    // the slide-away happen simultaneously instead of the pulse actually
+    // registering first.
+    if (logCommitTimeoutRef.current !== null) window.clearTimeout(logCommitTimeoutRef.current);
+    logCommitTimeoutRef.current = window.setTimeout(() => {
+      setEntries((prev) => {
+        const next = [...prev, ts];
+        // Keep viewing "live" — the just-logged entry now sits one slot
+        // behind it, shrinking into its new bubble as the track's own
+        // grow/shrink + slide transitions play.
+        setViewIdx(next.length);
+        return next;
+      });
+    }, LOG_COMMIT_DELAY_MS);
   };
 
   const updateEntryTime = (idx: number, next24hs: string) => {
