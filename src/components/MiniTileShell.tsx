@@ -167,9 +167,18 @@ export function MiniTileShell({
                 // renders — there's no hard edge there to clip against). 1.2
                 // gives real headroom for that overhang without reading as
                 // loose.
+                // min-h-[…]: reserves 2 lines' worth of height even when the
+                // title only needs one — without it, a short one-line title
+                // lets everything below (the dots row, content, actions) ride
+                // up to fill the freed space, so which zone the tile's own
+                // content lands in shifts tile to tile based on title length
+                // alone. Always 2 lines, not each density's own line-clamp
+                // max (3 for large) — reserving a 3rd line everywhere would
+                // waste real content space for the common one-line case just
+                // to cover the rare title that needs it.
                 large
-                  ? "text-[13px] line-clamp-3 leading-[1.2]"
-                  : "text-[10.5px] line-clamp-2 leading-[1.2]",
+                  ? "text-[13px] line-clamp-3 leading-[1.2] min-h-[31.2px]"
+                  : "text-[10.5px] line-clamp-2 leading-[1.2] min-h-[25.2px]",
               )}
             >
               {renderBreakableTitle(title)}

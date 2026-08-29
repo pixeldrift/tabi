@@ -282,11 +282,40 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
+        // Invisible spacer, not a real control: every other kind's dots+
+        // content block bottom-anchors against a real actions row below it
+        // (MiniTileShell's shared children wrapper is bottom-justified for
+        // exactly that reason — see its own comment), which is what leaves
+        // a gap above the dots/description rather than gluing them to the
+        // title. This kind has no actions row of its own — the log button
+        // already lives inside the pill itself, in `children` — so without
+        // reserving the same amount of space here, the dots+pill block
+        // would anchor straight to the tile's own bottom edge instead,
+        // landing well below where every other kind's dots row sits.
+        // Sized against Checklist's own dots-row position (measured
+        // directly, not derived from Checklist's real checkbox size): a
+        // bigger reserved height here actually pulls this block UP, not
+        // down — children's own box still ends exactly where actions
+        // begins (bottom-anchored against it), so reserving more space
+        // below shrinks children's box from the bottom, and content
+        // anchored to ITS bottom edge rides up with it. Checklist's real
+        // checkbox (size-10, 40px) undershot by ~16.5px at large density,
+        // since Checklist's own children also include a "large"-only
+        // ratio-text line ("N/M checked") this pill+dots pair doesn't have
+        // — one more line of content there means Checklist needs
+        // correspondingly less reserved space below to land at the same
+        // spot. size-14 (56px) measured flush against Checklist's own
+        // dots-row height. Small density keeps the checkbox's real size-7
+        // — Checklist skips the ratio line at that density (`large &&`),
+        // so its two-element shape already matches this kind's own
+        // dots+pill closely enough without needing the same correction.
+        actions={<div aria-hidden className={large ? "size-14" : "size-7"} />}
       >
         {/* Dots (+ large-density nav arrows) sit above the pill now, not
-            below it — the pill itself now actually tracks viewIdx (it used
-            to just always show the live clock regardless of which dot was
-            selected, so navigating never visibly did anything to it). */}
+            below it — the pill itself now actually tracks viewIdx (it
+            used to just always show the live clock regardless of which
+            dot was selected, so navigating never visibly did anything to
+            it). */}
         {entries.length > 0 && (
           <div className="relative w-full flex items-center justify-center mb-1">
             {large && (
@@ -353,13 +382,14 @@ export function TimestampCard({
 
         {/* Same shape as DurationCard's own tile pill — time on the left,
             a trailing solid log button standing in for play/pause — rather
-            than the old badge-left/text-right row. With the instance count
-            moved to plain text below (see the label past the pill) nothing
-            else needs space inside it, so the log button fits directly in
-            the pill instead of needing its own actions slot below the
-            tile, which is what collided with a two-line title. Drops the
-            am/pm letter (formatTileClockTime) to keep the row narrow
-            enough at this size — the full-size pill keeps it. */}
+            than the old badge-left/text-right row. No separate "Entry X of
+            Y" label below any more — the dots already convey position, and
+            this kind's tile is compact enough that the label read as
+            redundant once it was the thing pushing the dots+pill block
+            down away from the title (see the actions spacer's own comment
+            above for the rest of that fix). Drops the am/pm letter
+            (formatTileClockTime) to keep the row narrow enough at this
+            size — the full-size pill keeps it. */}
         <div
           className={cn(
             "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
@@ -427,28 +457,6 @@ export function TimestampCard({
             <Stamp className={large ? "size-4" : "size-3.5"} />
           </button>
         </div>
-
-        {/* "Entry X of Y" below the pill — same copy/convention the
-            full-size view's own equivalent label already uses, just
-            smaller — this is where the instance number now lives instead
-            of a badge inside the pill. */}
-        <span
-          className={cn(
-            "text-muted-foreground text-center truncate max-w-full",
-            large ? "text-[11px]" : "text-[9px]",
-          )}
-        >
-          {viewIdx < entries.length ? (
-            <>
-              Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
-              <span className="tabular-nums text-foreground">{entries.length}</span>
-            </>
-          ) : hasData ? (
-            "Viewing current time"
-          ) : (
-            "No entries yet"
-          )}
-        </span>
       </MiniTileShell>
     );
   }
