@@ -208,6 +208,9 @@ checked off. See git history for what's already shipped.
 
 ### ⚙️ Functionality / Features
 
+- [ ] 🟡 Multi-instance Task Analysis entry (step-by-step + trial navigation,
+      dual nav pattern) — a true necessary feature, not just polish, hence
+      near the top of this list
 - [ ] 🟡 Settings: "Add a new goal" section at the top of the page — A guided
       workflow to pick a data-collection type and fill in its details (TA
       steps; correct/incorrect/no-response/prompt-level options; min/max for
@@ -322,14 +325,6 @@ and scheduling items below all need to respect that split.
   - No auth/multi-user model exists yet — this prototype hardcodes a
     single current user and simulates the others; swapping in real
     auth/backend later shouldn't require changing this state model
-- [ ] "Did you know?" periodic tips — reuses the guided tour's own
-      spotlight/callout mechanism (see TourContext.tsx/TourOverlay.tsx),
-      but single-step and resurfaced periodically (e.g. once per sign-in)
-      rather than a one-time walkthrough. Content pulled from the Tips
-      section above — the point is surfacing genuinely non-obvious
-      quality-of-life touches, not re-explaining self-evident UI, and it
-      doubles as a natural way to announce newly-added features. Settings
-      toggle to turn it off, same as the tour's own hints toggle
 - [ ] Real half-hour/hour reminder for an abandoned session — push
       notification if the last driver has the app open, otherwise a text
       or email — today the abandoned state only shows in-app
