@@ -217,7 +217,18 @@ export function MiniTileShell({
             />
           )}
 
-          <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">
+          {/* justify-end, not -center: `actions` below already sits a fixed
+              distance from the tile's own bottom edge regardless of title
+              height (it's a shrink-0 sibling after this flex-1 spacer, and
+              this whole column stretches to the tile's fixed aspect-square
+              height) — but centering THIS wrapper's own content within its
+              own leftover space (which shrinks as the title grows to 2-3
+              lines) let it drift a few px up or down between tiles with
+              different title lengths even though their actions rows lined
+              up perfectly. Bottom-anchoring content here too, flush against
+              actions, keeps both in the same place across every tile
+              regardless of title length. */}
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-end gap-0.5">
             {children}
           </div>
 
