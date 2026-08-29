@@ -550,7 +550,23 @@ export function TrialCard({
           </div>
         }
       >
-        <div className="relative w-full">
+        {/* mb-[21px] (large only, measured): this kind's own SwipeStrip
+            wrapper renders taller than Frequency/Rate's own plain number
+            row even though both share the same MiniTileShell bottom-anchor
+            mechanism (a real `actions` row of similarly-sized buttons below
+            either one) — the extra height pushes this content's own top
+            down by that same amount once it's bottom-anchored, landing the
+            trial number 21px lower than Frequency/Rate's own number.
+            margin-BOTTOM, not a negative margin-top — this is the LAST (only)
+            child of MiniTileShell's own justify-end column, so its border-box
+            bottom edge is what's actually pinned to the container's end; a
+            top margin on that kind of item gets exactly canceled out by the
+            justify-end math (verified: it shifts the item's computed "outer"
+            top up but the container repositions the outer box by the same
+            amount in the opposite direction, leaving the rendered border box
+            exactly where it started) — margin-bottom is what actually opens
+            space below the pinned edge and lets the whole block move up. */}
+        <div className={cn("relative w-full", large && "mb-[21px]")}>
           {/* Large density only — same "pushed to the tile's own edges"
            *  nav-arrow convention as Checklist's tile; small density relies
            *  on swiping/tapping a bubble alone. */}
