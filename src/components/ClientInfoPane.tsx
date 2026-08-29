@@ -660,7 +660,11 @@ function RequestEditDialog({
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="w-full resize-none overflow-y-auto rounded-xl border-2 border-blue-300 bg-white px-3 py-2 text-sm leading-snug shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          // rounded-lg (this app's base --radius) — matches the fixed corner
+          // radius every one-line text field resolves to, rather than a
+          // larger class that reads as an exaggerated corner as this
+          // auto-grows taller between MIN_TEXTAREA_PX/MAX_TEXTAREA_PX.
+          className="w-full resize-none overflow-y-auto rounded-lg border-2 border-blue-300 bg-white px-3 py-2 text-sm leading-snug shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         <DialogFooter className="flex-row justify-end gap-2">
           <Button

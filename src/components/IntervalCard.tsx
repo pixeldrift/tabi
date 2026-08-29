@@ -112,12 +112,6 @@ function intervalRange(index: number, intervalMin: number): string {
   return `${formatBoundary(start, hourMode)}-${formatBoundary(end, hourMode)}`;
 }
 
-/** "1: 0-30m" — same number/colon/text convention as Task Analysis's own
- *  step labels ("1: Turn on water"). */
-export function intervalLabel(index: number, intervalMin: number): string {
-  return `${index + 1}: ${intervalRange(index, intervalMin)}`;
-}
-
 /** A single time boundary in the "30m" / "1hr" / "1hr 30m" / "2hrs" style —
  *  shared by `intervalEndLabel` (just the higher boundary) and the "time to
  *  check" alert's own start-end range (see `intervalCheckRangeLabel`). */
@@ -803,14 +797,16 @@ export function IntervalCard({
   const activeGoTo = isCheckpointMode ? goToCheckpoint : goTo;
   const activeScoredCount = isCheckpointMode ? checkpointScoredCount : scoredCount;
   const activeIsComplete = isCheckpointMode ? checkpointIsComplete : isComplete;
-  // Tile/list's own compact sub-label — the interval range ("1: 0-30m") or,
-  // for a checkpoint, its clock time and name together, since the time
-  // alone wouldn't say what it's actually checking.
+  // The tile's own compact sub-label — just the interval range ("0-30m"),
+  // not intervalLabel's own leading "1: " (redundant here: the tile already
+  // shows that same step number as its own big centered digit right above
+  // this) — or, for a checkpoint, its clock time and name together, since
+  // the time alone wouldn't say what it's actually checking.
   const activeSubLabel = isCheckpointMode
     ? checkpoints && checkpoints[activeViewIdx]
       ? `${displayCpTime(checkpoints[activeViewIdx].time)} · ${checkpoints[activeViewIdx].label}`
       : ""
-    : intervalLabel(activeViewIdx, intervalMin);
+    : intervalRange(activeViewIdx, intervalMin);
 
   // The shared timeline's own "now" fill position, in the same SEG_W (and
   // ROW_SLOT, for the expanded view's vertical bar) per-segment units its
@@ -910,7 +906,7 @@ export function IntervalCard({
           </div>
         }
       >
-        <div className="flex flex-col items-center gap-0.5">
+        <div className="flex flex-col items-center gap-0">
           <div className="inline-flex items-center gap-1">
             <span
               className={cn(

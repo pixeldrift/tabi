@@ -76,15 +76,18 @@ function ChecklistBox({ checked, size = "size-5" }: { checked: boolean; size?: s
         size,
         checked
           ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-          : // Dimmed, not a crisp white outline — an unchecked box should
-            // read as "not yet scored," not as a firm "no."
-            "border-stone-200 bg-stone-100",
+          : // A visible white-on-gray outline, not the old dimmed gray-on-gray
+            // fill — that read as a disabled control rather than an empty one
+            // waiting to be tapped, the same problem IntervalCard's own idle
+            // Correct/Incorrect buttons avoid by staying light-tinted rather
+            // than grayscale.
+            "border-stone-300 bg-white",
       )}
     >
       {/* Always rendered, not just once checked — a faint checkmark on an
        *  otherwise-empty box is what tells you it's a real checkbox to tap,
        *  rather than a plain decorative square. */}
-      <Check className={cn("size-3.5", !checked && "text-stone-300")} strokeWidth={3} />
+      <Check className={cn("size-3.5", !checked && "text-stone-400")} strokeWidth={3} />
     </span>
   );
 }
@@ -277,8 +280,8 @@ export function ChecklistCard({
               large ? "size-10" : "size-7",
               checked[current]
                 ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : // Same dimmed "not yet scored" treatment as ChecklistBox.
-                  "border-stone-200 bg-stone-100 hover:bg-stone-200/70",
+                : // Same "not yet scored" treatment as ChecklistBox.
+                  "border-stone-300 bg-white hover:bg-stone-50",
             )}
           >
             {/* Same faint always-on checkmark as ChecklistBox — a hint this
@@ -286,7 +289,7 @@ export function ChecklistCard({
             <Check
               className={cn(
                 large ? "size-[19px]" : "size-3.5",
-                !checked[current] && "text-stone-300",
+                !checked[current] && "text-stone-400",
               )}
               strokeWidth={3}
             />

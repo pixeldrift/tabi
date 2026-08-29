@@ -190,6 +190,11 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
   // gives it room) or while there's an actual query (real typed text
   // takes over the box regardless of width).
   const showSearchIconOnly = searchNarrow && !searchFocused && searchQuery.length === 0;
+  // Whether the "Search" label itself should be visible — the mirror image
+  // of showSearchIconOnly (empty box, with room or focused). Split out as
+  // its own condition (rather than just `!showSearchIconOnly`) so the label
+  // fades independently of a real typed query ever showing through it.
+  const showSearchLabel = !showSearchIconOnly && searchQuery.length === 0;
 
   return (
     <div
@@ -464,12 +469,28 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
             its own for that, just to already be this row's only flex-1
             child. */}
             <div ref={searchBoxRef} className="relative flex-1 min-w-8">
-              <Search
+              {/* Fixed in place always — it used to slide from left-2 to
+                  centered whenever showSearchIconOnly flipped, while the
+                  native `placeholder` text beside it could only pop in/out
+                  instantly (browsers don't animate placeholder changes),
+                  so the two read as two separate, staggered transitions
+                  instead of one. Leaving the icon's own position alone and
+                  fading the label instead (see the span below) makes this a
+                  single, simultaneous change. */}
+              <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              {/* A real, fadeable element standing in for the native
+                  `placeholder` — see the icon's own comment above for why.
+                  left-7 matches the input's own pl-7 so it lands exactly
+                  where the native placeholder text used to start. */}
+              <span
+                aria-hidden
                 className={cn(
-                  "absolute top-1/2 size-3.5 -translate-y-1/2 text-stone-400 pointer-events-none transition-[left,transform] duration-300 ease-in-out",
-                  showSearchIconOnly ? "left-1/2 -translate-x-1/2" : "left-2",
+                  "absolute left-7 top-1/2 -translate-y-1/2 whitespace-nowrap text-base sm:text-xs text-stone-400 pointer-events-none transition-opacity duration-300 ease-in-out",
+                  showSearchLabel ? "opacity-100" : "opacity-0",
                 )}
-              />
+              >
+                Search
+              </span>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -477,12 +498,6 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
-                // Empty (not "Search") once the box is too narrow to fit the
-                // word next to its icon at rest — an icon-only affordance
-                // instead of letting the placeholder clip. Bypassed while
-                // focused, since focusing always triggers the expand above,
-                // which gives it room regardless of this narrow measurement.
-                placeholder={showSearchIconOnly ? "" : "Search"}
                 aria-label="Search cards"
                 // 16px (text-base) on phones — iOS Safari auto-zooms the whole
                 // page on focus for any input whose computed font-size is under

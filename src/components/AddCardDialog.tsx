@@ -736,7 +736,13 @@ function AutoGrowTextarea({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       rows={1}
-      className="flex w-full resize-none overflow-hidden rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      // rounded-lg (this app's base --radius, 16px) — the same fixed corner
+      // radius the one-line <Input> resolves to at its own h-8 (rounded-full
+      // clamps to half of 32px). A textarea grows taller as its own content
+      // wraps to more lines, so a class scaled up from that same base
+      // (rounded-2xl et al) reads as an oddly exaggerated corner on a tall
+      // box instead of matching every other text field's own rounding.
+      className="flex w-full resize-none overflow-hidden rounded-lg border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     />
   );
 }
@@ -1237,7 +1243,11 @@ export function AddCardDialog({
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={3}
-                            className="flex w-full rounded-2xl border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            // rounded-lg — see AutoGrowTextarea's own comment
+                            // on matching the one-line <Input>'s fixed radius
+                            // rather than a larger class that reads as
+                            // exaggerated on this taller, multi-row box.
+                            className="flex w-full rounded-lg border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                             placeholder="Score correct if…"
                           />
                         </div>
