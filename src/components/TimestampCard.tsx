@@ -529,9 +529,6 @@ export function TimestampCard({
                     </button>
                   )}
                 </TimeOfDayKeypad>
-                <span className="tabular-nums text-sm text-muted-foreground shrink-0">
-                  {formatStampDate(ts)}
-                </span>
               </li>
             ))}
             {/* The live pill's own expanded-view counterpart — always the

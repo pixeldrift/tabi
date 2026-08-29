@@ -1027,6 +1027,7 @@ export function IntervalCard({
         expandedView={
           <IntervalExpandedView
             intervalCount={activeCount}
+            samplingType={samplingType}
             rowLabel={
               isCheckpointMode
                 ? (i) => {
@@ -1135,12 +1136,20 @@ const BAR_H = 10;
 // height both equal SAMPLING_ROW_H, so every variant reaches exactly as
 // far down, right to the bar's edge.
 const SAMPLING_ROW_H = 12;
-const SAMPLING_DOT_SIZE = 6;
+// Bigger than the bar's own thickness (BAR_H = 10) on purpose — a
+// same-size or smaller dot read as just another segment of the bar rather
+// than a distinct marker sitting on top of it.
+const SAMPLING_DOT_SIZE = 13;
 // How far each hooked end rises from the bar's edge before the arms start
 // angling in toward the point at top — same proportions as the icon
 // variants (IntervalWholeIcon/IntervalPartialIcon) so the two read as the
 // same shape at different sizes, not two different designs.
 const BRACKET_TICK_PX = 4;
+// The bracket's own apex (and momentary's connector line, which reaches the
+// same distance) starts this far down from the row's own top edge instead
+// of right at y=0 — flush against 0 had the point/line touching the bubble
+// sitting just above this row.
+const SAMPLING_TOP_GAP_PX = 4;
 // Same diameter as every period bubble (see IntervalTimeline's own comment) —
 // hoisted here so the nav arrows below can vertically center themselves on
 // the bubble row specifically, rather than the timeline's full height
@@ -1317,17 +1326,29 @@ function IntervalTimeline({
           transition={SPRING_TRANSITION}
         >
           {Array.from({ length: intervalCount }, (_, i) => {
+            // Current-interval-only for both variants — momentary's own
+            // connector used to draw for every interval regardless, which
+            // was just noise for anything but the one actually being looked
+            // at (the bracket already worked this way).
+            if (i !== viewIdx) return null;
             if (samplingType === "momentary") {
               return (
                 <div
                   key={i}
-                  className="absolute top-0 w-px bg-stone-300 -translate-x-1/2"
-                  style={{ left: (i + 1) * SEG_W, height: SAMPLING_ROW_H }}
+                  // Same 2px thickness as the bracket's own stroke, and
+                  // starting SAMPLING_TOP_GAP_PX down instead of flush at
+                  // the row's top — both so it stops touching the bubble
+                  // sitting just above this row.
+                  className="absolute w-0.5 bg-stone-300 -translate-x-1/2"
+                  style={{
+                    left: (i + 1) * SEG_W,
+                    top: SAMPLING_TOP_GAP_PX,
+                    height: SAMPLING_ROW_H - SAMPLING_TOP_GAP_PX,
+                  }}
                   aria-hidden
                 />
               );
             }
-            if (i !== viewIdx) return null;
             const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
             const left = i * SEG_W + (SEG_W - width) / 2;
             return (
@@ -1339,7 +1360,7 @@ function IntervalTimeline({
                 viewBox={`0 0 ${width} ${SAMPLING_ROW_H}`}
               >
                 <path
-                  d={`M1,${SAMPLING_ROW_H} L1,${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width / 2},1 L${width - 1},${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width - 1},${SAMPLING_ROW_H}`}
+                  d={`M1,${SAMPLING_ROW_H} L1,${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width / 2},${SAMPLING_TOP_GAP_PX} L${width - 1},${SAMPLING_ROW_H - BRACKET_TICK_PX} L${width - 1},${SAMPLING_ROW_H}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
@@ -1386,6 +1407,41 @@ function IntervalTimeline({
               aria-hidden
             />
           ))}
+          {/* Whole/Partial's own scored-color accent — the same colored
+              edge stripe the expanded view's own vertical bar already
+              shows per interval, brought over to this horizontal bar too.
+              Partial's own stripe is half-width and centered on its
+              segment, matching its bracket above; Whole's spans the full
+              segment, also matching its own (full-width) bracket. Shown
+              for every scored interval, not just the current one — this is
+              read-at-a-glance history, unlike the single-interval bracket
+              above. */}
+          {(samplingType === "whole" || samplingType === "partial") &&
+            Array.from({ length: intervalCount }, (_, i) => {
+              const status = statuses[i];
+              if (status == null) return null;
+              const width = samplingType === "partial" ? SEG_W / 2 : SEG_W;
+              const left = i * SEG_W + (SEG_W - width) / 2;
+              return (
+                <div
+                  key={`seg-${i}`}
+                  className={cn(
+                    "absolute rounded-full",
+                    status === "correct" ? "bg-green-500" : "bg-red-500",
+                  )}
+                  // Explicit `top` rather than `bottom-0` — this sits inside
+                  // the same motion.div as every sibling here (the fill
+                  // track, momentary's dots), which has no explicit height
+                  // of its own since ALL of its children are absolutely
+                  // positioned; `bottom-0` resolved against that (in effect
+                  // zero) height instead of the visible BAR_H-tall bar,
+                  // landing this just above it instead of flush with its
+                  // own bottom edge.
+                  style={{ left, top: BAR_H - 3, width, height: 3 }}
+                  aria-hidden
+                />
+              );
+            })}
           {/* Momentary's own marker actually sits ON the timeline (this bar),
               not floating above it — the connector line in the sampling-
               indicator row above just leads the eye down to it, the same
@@ -1483,6 +1539,7 @@ const CHEVRON_PAD_Y = 10;
  *  they're clipping content, and this view has no nav arrows of its own. */
 function IntervalExpandedView({
   intervalCount,
+  samplingType,
   rowLabel,
   statuses,
   viewIdx,
@@ -1494,6 +1551,7 @@ function IntervalExpandedView({
   timerPill,
 }: {
   intervalCount: number;
+  samplingType: SamplingType;
   /** Each row's own descriptive text — the interval's own time range
    *  ("0-30m") for interval mode, or a checkpoint's clock time + name for
    *  checkpoint mode. Indexed rather than a precomputed array so the caller
@@ -1594,25 +1652,49 @@ function IntervalExpandedView({
                 aria-hidden
               />
             ))}
-            {/* A colored right-border stripe spanning exactly a scored
-                interval's own timespan, running right up to its badge —
-                the vertical counterpart of the standard view's own top-
-                border stripe (see IntervalTimeline). */}
-            {Array.from({ length: intervalCount }, (_, i) => {
-              const status = statuses[i];
-              if (status == null) return null;
-              return (
-                <div
-                  key={`seg-${i}`}
-                  className={cn(
-                    "absolute right-0 w-[3px] rounded-full",
-                    status === "correct" ? "bg-green-500" : "bg-red-500",
-                  )}
-                  style={{ top: i * ROW_SLOT, height: ROW_SLOT }}
-                  aria-hidden
-                />
-              );
-            })}
+            {/* Whole/Partial: a colored right-border stripe spanning a
+                scored interval's own timespan, running right up to its
+                badge — the vertical counterpart of the standard view's own
+                horizontal bar accent (see IntervalTimeline). Partial's own
+                stripe is half-height and centered on its span, matching its
+                (also half-width) bracket in the standard view. Momentary
+                instead gets a dot at the exact checkpoint moment (this
+                bar's own divider line), same "point in time, not a span"
+                marker the standard view's own bar uses, always shown (gray
+                when unscored) rather than only once scored. */}
+            {samplingType === "momentary"
+              ? Array.from({ length: intervalCount }, (_, i) => (
+                  <div
+                    key={`dot-${i}`}
+                    className={cn(
+                      "absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                      samplingIndicatorFillColor(statuses[i]),
+                    )}
+                    style={{
+                      top: (i + 1) * ROW_SLOT,
+                      width: SAMPLING_DOT_SIZE,
+                      height: SAMPLING_DOT_SIZE,
+                    }}
+                    aria-hidden
+                  />
+                ))
+              : Array.from({ length: intervalCount }, (_, i) => {
+                  const status = statuses[i];
+                  if (status == null) return null;
+                  const height = samplingType === "partial" ? ROW_SLOT / 2 : ROW_SLOT;
+                  const top = i * ROW_SLOT + (ROW_SLOT - height) / 2;
+                  return (
+                    <div
+                      key={`seg-${i}`}
+                      className={cn(
+                        "absolute right-0 w-[3px] rounded-full",
+                        status === "correct" ? "bg-green-500" : "bg-red-500",
+                      )}
+                      style={{ top, height }}
+                      aria-hidden
+                    />
+                  );
+                })}
           </div>
           <div className="relative flex-1 min-w-0" style={{ height: totalTrackHeight }}>
             {Array.from({ length: intervalCount }, (_, i) => {
