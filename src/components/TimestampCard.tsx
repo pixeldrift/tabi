@@ -11,7 +11,7 @@ import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
-import { TimeOfDayKeypad, formatTimeOfDay } from "./TimeOfDayKeypad";
+import { TimeOfDayKeypad, formatTimeOfDaySeconds } from "./TimeOfDayKeypad";
 import { cn } from "@/lib/utils";
 
 export interface TimestampCardProps extends CardEditAndDrawerProps {
@@ -23,26 +23,27 @@ export interface TimestampCardProps extends CardEditAndDrawerProps {
   onActivate?: () => void;
 }
 
-function to24h(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-// The clock display itself — pill, tape bubble, list/tile pill — always
-// reads as a plain 24h "HH:MM:SS" clock, not the app's compact "10:00a"
-// label convention. That convention is reserved for the expanded view,
-// where a stamp's time is paired with its date rather than styled to look
-// like a running clock.
-function formatClockTime(ms: number): string {
+// 24h "HH:MM:SS" — the keypad's own withSeconds value shape.
+function to24hs(ms: number): string {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 }
 
-// Same "h:mma"/"h:mmp" convention as the Schedule tab's own grid — one
-// canonical formatter used app-wide (see TimeOfDayKeypad.tsx) — for the
-// expanded view's own time+date rows only.
+// The clock display itself — pill, side bubble focus, list/tile pill —
+// always reads as a plain 24h "HH:MM:SS" clock, not the app's compact
+// "10:00a" label convention. That convention (with seconds added) is
+// reserved for the expanded view, where a stamp's time is paired with its
+// date rather than styled to look like a running clock.
+function formatClockTime(ms: number): string {
+  return to24hs(ms);
+}
+
+// Same "h:mma"/"h:mmp" convention as the Schedule tab's own grid, extended
+// with seconds (see formatTimeOfDaySeconds) — for the expanded view's own
+// time+date rows only, where second-level precision on when something
+// actually happened is worth showing.
 function formatStampTime(ms: number) {
-  return formatTimeOfDay(to24h(ms));
+  return formatTimeOfDaySeconds(to24hs(ms));
 }
 
 function formatStampDate(ms: number) {
@@ -53,14 +54,13 @@ function formatStampDate(ms: number) {
   });
 }
 
-// Replaces just the hour/minute of an existing stamp (via the keypad's 24h
-// "HH:MM" commit value), keeping that entry's original date and zeroing
-// seconds — editing a stamp's time was never meant to also silently move it
-// to a different day.
-function applyTimeOfDay(ms: number, hhmm: string): number {
-  const [h, m] = hhmm.split(":").map((s) => parseInt(s, 10));
+// Replaces an existing stamp's hour/minute/second (via the keypad's 24h
+// "HH:MM:SS" commit value), keeping that entry's original date — editing a
+// stamp's time was never meant to also silently move it to a different day.
+function applyTimeOfDaySeconds(ms: number, hhmmss: string): number {
+  const [h, m, s] = hhmmss.split(":").map((v) => parseInt(v, 10));
   const d = new Date(ms);
-  d.setHours(h, m, 0, 0);
+  d.setHours(h, m, s, 0);
   return d.getTime();
 }
 
@@ -82,15 +82,13 @@ export function useTimestampChip(cardId: string) {
 }
 
 const FLASH_DURATION_MS = 500;
-const FLIGHT_DURATION_MS = 450;
 // Same track geometry DurationCard's own instance carousel uses (see its
 // CenterPill/SideBubble/TriangleNav) — the focused item grows to this size,
 // every other item shrinks to a small numbered bubble, and the whole track
-// slides so the focused one stays centered. CENTER_W is a little wider than
-// Duration's own to fit a 24h "HH:MM:SS" clock instead of a shorter
-// elapsed-time string.
+// slides so the focused one stays centered. Same CENTER_W/CENTER_H as
+// Duration's own pill (badge + time + a trailing w-12 action button).
 const BUBBLE = 22;
-const CENTER_W = 190;
+const CENTER_W = 210;
 const CENTER_H = 52;
 const GAP = 8;
 const STEP_WIDTH = BUBBLE + GAP;
@@ -152,18 +150,9 @@ export function TimestampCard({
   // clears so the fade-back is a smooth ease rather than an instant snap.
   const [flash, setFlash] = useState(false);
   const flashTimeoutRef = useRef<number | null>(null);
-  // A short-lived "flying" copy of the just-logged digits — rendered once,
-  // separately from the real track, animating from the live pill's own
-  // position down to a small bubble's size/position before unmounting. The
-  // real entry (and the track's own grow/shrink) already lands correctly
-  // without this; it's purely the "digits visibly lift off and travel"
-  // flourish layered on top.
-  const [flightTs, setFlightTs] = useState<number | null>(null);
-  const flightTimeoutRef = useRef<number | null>(null);
   useEffect(
     () => () => {
       if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
-      if (flightTimeoutRef.current !== null) window.clearTimeout(flightTimeoutRef.current);
     },
     [],
   );
@@ -189,18 +178,15 @@ export function TimestampCard({
     if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
     flashTimeoutRef.current = window.setTimeout(() => setFlash(false), FLASH_DURATION_MS);
 
-    setFlightTs(ts);
-    if (flightTimeoutRef.current !== null) window.clearTimeout(flightTimeoutRef.current);
-    flightTimeoutRef.current = window.setTimeout(() => setFlightTs(null), FLIGHT_DURATION_MS);
-
     setEntries((prev) => [...prev, ts]);
     // Keep viewing "live" — the just-logged entry now sits one slot behind
-    // it, exactly the shrink-and-slide-left the flight animation shows.
+    // it, shrinking into its new bubble as the track's own grow/shrink +
+    // slide transitions play.
     setViewIdx(entries.length + 1);
   };
 
-  const updateEntryTime = (idx: number, next24h: string) => {
-    setEntries((prev) => prev.map((v, j) => (j === idx ? applyTimeOfDay(v, next24h) : v)));
+  const updateEntryTime = (idx: number, next24hs: string) => {
+    setEntries((prev) => prev.map((v, j) => (j === idx ? applyTimeOfDaySeconds(v, next24hs) : v)));
   };
 
   const hasData = entries.length > 0;
@@ -423,13 +409,14 @@ export function TimestampCard({
               )}
             >
               {viewingLive ? (
-                <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[4.5rem] text-stone-400">
+                <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] text-stone-400">
                   {formatClockTime(now)}
                 </span>
               ) : (
                 <TimeOfDayKeypad
-                  value={to24h(entries[viewIdx])}
+                  value={to24hs(entries[viewIdx])}
                   onChange={(next) => updateEntryTime(viewIdx, next)}
+                  withSeconds
                 >
                   {({ open }) => (
                     <button
@@ -440,7 +427,7 @@ export function TimestampCard({
                       }}
                       disabled={!canRecordData}
                       aria-label={`Edit time for entry ${viewIdx + 1}`}
-                      className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[4.5rem] cursor-text disabled:cursor-not-allowed"
+                      className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] cursor-text disabled:cursor-not-allowed"
                     >
                       {formatClockTime(entries[viewIdx])}
                     </button>
@@ -516,7 +503,11 @@ export function TimestampCard({
                 <span className="grid place-items-center size-6 rounded-full bg-stone-100 text-[11px] font-medium text-foreground/60 shrink-0">
                   {i + 1}
                 </span>
-                <TimeOfDayKeypad value={to24h(ts)} onChange={(next) => updateEntryTime(i, next)}>
+                <TimeOfDayKeypad
+                  value={to24hs(ts)}
+                  onChange={(next) => updateEntryTime(i, next)}
+                  withSeconds
+                >
                   {({ open }) => (
                     <button
                       type="button"
@@ -627,6 +618,7 @@ export function TimestampCard({
                           now={now}
                           disabled={!canRecordData}
                           onEditTime={(next) => updateEntryTime(i, next)}
+                          onLog={logNow}
                           flash={flash}
                         />
                       ) : (
@@ -641,45 +633,7 @@ export function TimestampCard({
                   );
                 })}
               </motion.div>
-
-              {/* The "lift off, shrink, slide" flourish on log — a temporary
-                  copy of the stamped digits at the live pill's own size and
-                  position, arcing up and then down-left into roughly where
-                  its new bubble settles, fading out as it shrinks. The real
-                  entry (and the track's own grow/shrink + slide) already
-                  land correctly without this; it's a purely decorative
-                  overlay. */}
-              <AnimatePresence>
-                {flightTs !== null && (
-                  <motion.span
-                    key={flightTs}
-                    initial={{ opacity: 1, scale: 1, x: 0, y: 0 }}
-                    animate={{
-                      opacity: [1, 1, 0],
-                      scale: [1, 1.05, 0.3],
-                      x: [0, 0, -STEP_WIDTH],
-                      y: [0, -14, 0],
-                    }}
-                    transition={{ duration: FLIGHT_DURATION_MS / 1000, ease: "easeOut" }}
-                    className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 pointer-events-none font-display text-xl tabular-nums text-blue-600"
-                  >
-                    {formatClockTime(flightTs)}
-                  </motion.span>
-                )}
-              </AnimatePresence>
             </div>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={logNow}
-              disabled={!canRecordData}
-              className="btn-bevel inline-flex items-center justify-center gap-1.5 rounded-full h-9 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium px-4 transition-colors active:scale-95 disabled:opacity-40"
-            >
-              Log Timestamp Now
-              <Stamp className="size-3.5" />
-            </button>
           </div>
 
           <div className="mt-3 flex items-center justify-center h-4">
@@ -713,6 +667,7 @@ function TimestampCenterPill({
   now,
   disabled,
   onEditTime,
+  onLog,
   flash,
 }: {
   index: number;
@@ -720,7 +675,8 @@ function TimestampCenterPill({
   ms: number | null;
   now: number;
   disabled?: boolean;
-  onEditTime: (next24h: string) => void;
+  onEditTime: (next24hs: string) => void;
+  onLog: () => void;
   flash: boolean;
 }) {
   const displayMs = isLive ? now : (ms as number);
@@ -732,7 +688,13 @@ function TimestampCenterPill({
       )}
       style={{ transition: flash && isLive ? "none" : "border-color 700ms ease-out" }}
     >
-      <div className="flex-1 flex items-center justify-center gap-2 px-2">
+      {/* Badge pinned to the pill's own left edge (pl-2/pr-2 on this flex
+          row) with the time centered in the remaining space on its own —
+          same layout DurationCard's own CenterPill uses — rather than
+          centering badge+time together as one block, which let the badge
+          drift off the left edge once a trailing button took up room on
+          the right. */}
+      <div className="flex-1 flex items-center gap-2 pl-2 pr-2">
         <span
           className={cn(
             "grid size-7 shrink-0 place-items-center rounded-full text-white text-xs font-semibold tabular-nums transition-colors",
@@ -741,48 +703,62 @@ function TimestampCenterPill({
         >
           {index + 1}
         </span>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={isLive ? "live" : index}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-            className="inline-block"
-          >
-            {isLive ? (
-              <motion.span
-                animate={{ scale: flash ? 1.16 : 1 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-                className={cn(
-                  "font-display text-xl tabular-nums leading-none",
-                  flash ? "text-blue-600" : "text-stone-400",
-                )}
-              >
-                {formatClockTime(displayMs)}
-              </motion.span>
-            ) : (
-              <TimeOfDayKeypad value={to24h(displayMs)} onChange={onEditTime}>
-                {({ open }) => (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      open();
-                    }}
-                    disabled={disabled}
-                    aria-label={`Edit time for entry ${index + 1}`}
-                    className="font-display text-xl tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {formatClockTime(displayMs)}
-                  </button>
-                )}
-              </TimeOfDayKeypad>
-            )}
-          </motion.span>
-        </AnimatePresence>
+        <div className="flex-1 grid place-items-center leading-none">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={isLive ? "live" : index}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="inline-block"
+            >
+              {isLive ? (
+                <motion.span
+                  animate={{ scale: flash ? 1.16 : 1 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                  className={cn(
+                    "font-display text-xl tabular-nums leading-none",
+                    flash ? "text-blue-600" : "text-stone-400",
+                  )}
+                >
+                  {formatClockTime(displayMs)}
+                </motion.span>
+              ) : (
+                <TimeOfDayKeypad value={to24hs(displayMs)} onChange={onEditTime} withSeconds>
+                  {({ open }) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        open();
+                      }}
+                      disabled={disabled}
+                      aria-label={`Edit time for entry ${index + 1}`}
+                      className="font-display text-xl tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {formatClockTime(displayMs)}
+                    </button>
+                  )}
+                </TimeOfDayKeypad>
+              )}
+            </motion.span>
+          </AnimatePresence>
+        </div>
       </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onLog();
+        }}
+        disabled={disabled}
+        aria-label="Log timestamp now"
+        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
+      >
+        <Stamp className="size-4" />
+      </button>
     </div>
   );
 }

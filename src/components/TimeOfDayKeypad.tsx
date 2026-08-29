@@ -6,18 +6,24 @@ import { cn } from "@/lib/utils";
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 
 export interface TimeOfDayKeypadProps {
-  /** Current committed value as 24h "HH:MM" (or "" if unset). */
+  /** Current committed value as 24h "HH:MM" (or "HH:MM:SS" when
+   *  `withSeconds` is set), or "" if unset. */
   value: string;
-  /** Called when user commits. Receives 24h "HH:MM". */
+  /** Called when user commits. Receives 24h "HH:MM" ("HH:MM:SS" when
+   *  `withSeconds` is set). */
   onChange: (next: string) => void;
   /** Fires whenever the keypad popover opens/closes — lets a parent that
    *  renders multiple time fields know which one is actively being edited. */
   onEditingChange?: (isEditing: boolean) => void;
+  /** Adds a third "ss" digit pair for callers that need second-level
+   *  precision (e.g. Timestamp's own logged entries) — everything else
+   *  (appointments, checkpoints, schedule fields) leaves this unset and
+   *  keeps the plain "HH:MM" entry, since a scheduled time never needs
+   *  seconds. */
+  withSeconds?: boolean;
   children: (state: { isEditing: boolean; open: () => void }) => React.ReactNode;
 }
 
-const MAX_DIGITS = 4;
-const UNIT_HINTS = ["hh", "mm"];
 const BUSINESS_START = 8; // 8 AM
 const BUSINESS_END = 18; // 6 PM
 
@@ -52,6 +58,7 @@ export function TimeOfDayKeypad({
   value: _value,
   onChange,
   onEditingChange,
+  withSeconds = false,
   children,
 }: TimeOfDayKeypadProps) {
   const [open, setOpen] = useState(false);
@@ -62,6 +69,9 @@ export function TimeOfDayKeypad({
   const anchorRef = useRef<HTMLSpanElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+
+  const maxDigits = withSeconds ? 6 : 4;
+  const unitHints = withSeconds ? ["hh", "mm", "ss"] : ["hh", "mm"];
 
   useEffect(() => onEditingChange?.(open), [open, onEditingChange]);
 
@@ -76,9 +86,12 @@ export function TimeOfDayKeypad({
     }
   }, [open]);
 
-  const applyDigit = useCallback((digit: string) => {
-    setPending((prev) => (prev + digit).slice(-MAX_DIGITS));
-  }, []);
+  const applyDigit = useCallback(
+    (digit: string) => {
+      setPending((prev) => (prev + digit).slice(-maxDigits));
+    },
+    [maxDigits],
+  );
 
   const backspace = useCallback(() => setPending((p) => p.slice(0, -1)), []);
   const clear = useCallback(() => {
@@ -86,17 +99,20 @@ export function TimeOfDayKeypad({
     setUserPeriodOverride(false);
   }, []);
 
-  // Raw entered digits, right-aligned in HHMM.
-  const padded = pending.padStart(MAX_DIGITS, "0");
+  // Raw entered digits, right-aligned in HHMM (or HHMMSS).
+  const padded = pending.padStart(maxDigits, "0");
   const entered = pending.length;
   const hh = parseInt(padded.slice(0, 2), 10) || 0;
   const mm = parseInt(padded.slice(2, 4), 10) || 0;
+  const ss = withSeconds ? parseInt(padded.slice(4, 6), 10) || 0 : 0;
 
-  // A valid time requires at least 3 digits (e.g. 318 → 3:18) with hh ≤ 23 and mm ≤ 59.
-  const valid = entered >= 3 && hh <= 23 && mm <= 59;
+  // A valid time requires at least one fewer digit than the full width
+  // (e.g. 318 → 3:18, or 91530 → 9:15:30 with seconds) with hh ≤ 23,
+  // mm ≤ 59, and (when present) ss ≤ 59.
+  const valid = entered >= maxDigits - 1 && hh <= 23 && mm <= 59 && (!withSeconds || ss <= 59);
 
-  // Period selection is only shown/active once a valid hour can be inferred (≥3 digits).
-  const periodActive = entered >= 3;
+  // Period selection is only shown/active once a valid hour can be inferred.
+  const periodActive = entered >= maxDigits - 1;
 
   // Hour > 12 = explicit military time → forces PM on commit.
   const forcedPM = hh > 12 && hh <= 23;
@@ -136,28 +152,31 @@ export function TimeOfDayKeypad({
       outH = h12 % 12;
       if (isPM) outH += 12;
     }
-    const result = `${String(outH).padStart(2, "0")}:${String(outM).padStart(2, "0")}`;
+    const result = withSeconds
+      ? `${String(outH).padStart(2, "0")}:${String(outM).padStart(2, "0")}:${String(ss).padStart(2, "0")}`
+      : `${String(outH).padStart(2, "0")}:${String(outM).padStart(2, "0")}`;
     onChange(result);
     setOpen(false);
   };
 
-  // Digit nodes: when empty, render a fully grayed "00:00" placeholder,
-  // plus a small "hh mm" unit hint centered under each digit pair (see
-  // TimeKeypad's identical treatment for why — plain digits only, never
-  // letters swapped into the digit slots themselves).
+  // Digit nodes: when empty, render a fully grayed "00:00" (or "00:00:00")
+  // placeholder, plus a small "hh mm ss" unit hint centered under each digit
+  // pair (see TimeKeypad's identical treatment for why — plain digits only,
+  // never letters swapped into the digit slots themselves).
+  const unitCount = withSeconds ? 3 : 2;
   const unitNodes: React.ReactNode[] = [];
-  for (let u = 0; u < 2; u++) {
+  for (let u = 0; u < unitCount; u++) {
     if (u > 0) {
       unitNodes.push(
-        <span key="sep" className="self-start text-muted-foreground/40">
+        <span key={`sep-${u}`} className="self-start text-muted-foreground/40">
           :
         </span>,
       );
     }
     const i0 = u * 2;
     const i1 = u * 2 + 1;
-    const isReal0 = entered > 0 && i0 >= MAX_DIGITS - entered;
-    const isReal1 = entered > 0 && i1 >= MAX_DIGITS - entered;
+    const isReal0 = entered > 0 && i0 >= maxDigits - entered;
+    const isReal1 = entered > 0 && i1 >= maxDigits - entered;
     unitNodes.push(
       <span key={`unit-${u}`} className="flex flex-col items-center">
         <span className="flex">
@@ -169,7 +188,7 @@ export function TimeOfDayKeypad({
           </span>
         </span>
         <span className="mt-0.5 text-[8px] font-medium leading-none tracking-wide text-muted-foreground/50">
-          {UNIT_HINTS[u]}
+          {unitHints[u]}
         </span>
       </span>,
     );
@@ -196,7 +215,10 @@ export function TimeOfDayKeypad({
       >
         <div
           ref={contentRef}
-          className="relative w-[210px] rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          className={cn(
+            "relative rounded-2xl border-2 border-blue-400/80 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]",
+            withSeconds ? "w-[254px]" : "w-[210px]",
+          )}
         >
           <input
             ref={hiddenInputRef}
@@ -234,7 +256,12 @@ export function TimeOfDayKeypad({
               ui/input.tsx) rather than the old plain gray box. */}
           <div className="mb-2 flex items-stretch overflow-hidden rounded-lg border-2 border-blue-400/80 bg-white py-1.5 pl-3 pr-1.5 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)]">
             <div className="flex flex-1 flex-col items-end justify-center">
-              <span className="flex items-start font-display text-2xl leading-none tabular-nums">
+              <span
+                className={cn(
+                  "flex items-start font-display leading-none tabular-nums",
+                  withSeconds ? "text-xl" : "text-2xl",
+                )}
+              >
                 {unitNodes}
               </span>
             </div>
@@ -372,6 +399,17 @@ export function formatTimeOfDay(value: string): string {
   if (!value) return "";
   const { hour12, minute, isPM } = from24h(value);
   return `${hour12}:${String(minute).padStart(2, "0")}${isPM ? "p" : "a"}`;
+}
+
+// Same "no space, lowercase a/p" convention as formatTimeOfDay, extended
+// with seconds — for the few displays (Timestamp's own expanded view) that
+// pair a stamp's time with its date and want second-level precision there,
+// unlike every plain "HH:MM" scheduled-time field elsewhere in the app.
+export function formatTimeOfDaySeconds(value: string): string {
+  if (!value) return "";
+  const { hour12, minute, isPM } = from24h(value);
+  const second = parseInt(value.split(":")[2], 10) || 0;
+  return `${hour12}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}${isPM ? "p" : "a"}`;
 }
 
 /** Reverses formatTimeOfDay's own "10:00a" / "12:00p" display format back
