@@ -1160,6 +1160,15 @@ const SAMPLING_ROW_H = 12;
 // same-size or smaller dot read as just another segment of the bar rather
 // than a distinct marker sitting on top of it.
 const SAMPLING_DOT_SIZE = 13;
+// The bar row's own total height — taller than the bar itself (BAR_H) so
+// the momentary dot (deliberately bigger than the bar, see above) has room
+// to actually poke out top/bottom instead of being clipped by this row's
+// own overflow-hidden (needed for the carousel's horizontal windowing, not
+// for the bar's own vertical thickness). BAR_INSET centers the visual bar
+// within that taller row; every element that used to assume the bar sat
+// flush at the row's own top edge (top: 0) now sits BAR_INSET down instead.
+const BAR_ROW_H = SAMPLING_DOT_SIZE;
+const BAR_INSET = (BAR_ROW_H - BAR_H) / 2;
 // How far each hooked end rises from the bar's edge before the arms start
 // angling in toward the point at top — same proportions as the icon
 // variants (IntervalWholeIcon/IntervalPartialIcon) so the two read as the
@@ -1358,8 +1367,17 @@ function IntervalTimeline({
                   // Same 2px thickness as the bracket's own stroke, and
                   // starting SAMPLING_TOP_GAP_PX down instead of flush at
                   // the row's top — both so it stops touching the bubble
-                  // sitting just above this row.
-                  className="absolute w-0.5 bg-stone-300 -translate-x-1/2"
+                  // sitting just above this row. Colored the same way as
+                  // the bracket above (samplingIndicatorFillColor is this
+                  // connector's own bg-* counterpart to the bracket's
+                  // text-*-based samplingIndicatorStrokeColor) rather than
+                  // a flat gray, so it reflects this interval's scored
+                  // status just like the bracket and the dot it leads down
+                  // to already do.
+                  className={cn(
+                    "absolute w-0.5 -translate-x-1/2",
+                    samplingIndicatorFillColor(statuses[i]),
+                  )}
                   style={{
                     left: (i + 1) * SEG_W,
                     top: SAMPLING_TOP_GAP_PX,
@@ -1402,7 +1420,7 @@ function IntervalTimeline({
       <div
         data-tour="interval-progress"
         className="relative overflow-hidden mt-0.5"
-        style={{ height: BAR_H, ...HORIZONTAL_FADE_MASK }}
+        style={{ height: BAR_ROW_H, ...HORIZONTAL_FADE_MASK }}
       >
         <motion.div
           className="absolute left-1/2 top-0"
@@ -1411,7 +1429,7 @@ function IntervalTimeline({
         >
           <div
             className="absolute rounded-full overflow-hidden bg-stone-200"
-            style={{ top: 0, left: 0, height: BAR_H, width: intervalCount * SEG_W }}
+            style={{ top: BAR_INSET, left: 0, height: BAR_H, width: intervalCount * SEG_W }}
           >
             <div
               className="absolute bg-blue-200 transition-[width]"
@@ -1423,7 +1441,7 @@ function IntervalTimeline({
             <div
               key={i}
               className="absolute w-px bg-white"
-              style={{ top: 0, height: BAR_H, left: (i + 1) * SEG_W }}
+              style={{ top: BAR_INSET, height: BAR_H, left: (i + 1) * SEG_W }}
               aria-hidden
             />
           ))}
@@ -1456,8 +1474,10 @@ function IntervalTimeline({
                   // positioned; `bottom-0` resolved against that (in effect
                   // zero) height instead of the visible BAR_H-tall bar,
                   // landing this just above it instead of flush with its
-                  // own bottom edge.
-                  style={{ left, top: BAR_H - 3, width, height: 3 }}
+                  // own bottom edge. BAR_INSET offsets to the bar's own top
+                  // (see BAR_INSET's own comment — the bar itself no longer
+                  // sits flush at this row's top edge).
+                  style={{ left, top: BAR_INSET + BAR_H - 3, width, height: 3 }}
                   aria-hidden
                 />
               );
@@ -1468,8 +1488,12 @@ function IntervalTimeline({
               way Whole/Partial's own bracket reads as part of this bar
               even though it's technically drawn in that row too (its own
               hooked ends reach down to the bar's edge for the same
-              reason). Vertically centered in the bar's own height, same x
-              as its bubble. */}
+              reason). Vertically centered in the bar's own height (which
+              is this row's own height too, since BAR_INSET centers the bar
+              within it — see that constant's own comment), same x as its
+              bubble. Was clipped by this row's own overflow-hidden before
+              BAR_ROW_H gave the dot room to actually poke out past the
+              bar's own edges instead of being cropped flush with it. */}
           {samplingType === "momentary" &&
             Array.from({ length: intervalCount }, (_, i) => (
               <div
@@ -1480,7 +1504,7 @@ function IntervalTimeline({
                 )}
                 style={{
                   left: (i + 1) * SEG_W,
-                  top: BAR_H / 2,
+                  top: BAR_ROW_H / 2,
                   width: SAMPLING_DOT_SIZE,
                   height: SAMPLING_DOT_SIZE,
                 }}
@@ -1494,10 +1518,20 @@ function IntervalTimeline({
           chevron it belongs to rather than living in the card's own
           header — pulled up (negative margin) so the chevron's own tip
           overlaps into the bar above it instead of just pointing at a gap
-          underneath it. */}
+          underneath it. Pulls up by BAR_INSET more than CHEVRON_OVERLAP_PX
+          alone would: the bar's own row is now BAR_ROW_H tall (taller than
+          the bar itself, see that constant's own comment), so the bar's
+          real bottom edge sits BAR_INSET above the row's own bottom edge
+          instead of flush with it — without the extra pull, the chevron's
+          tip would just overlap that now-empty gap below the bar, short of
+          actually reaching it. */}
       <div
         className="relative overflow-hidden"
-        style={{ height: CHEVRON_ROW_H, marginTop: -CHEVRON_OVERLAP_PX, ...HORIZONTAL_FADE_MASK }}
+        style={{
+          height: CHEVRON_ROW_H,
+          marginTop: -(CHEVRON_OVERLAP_PX + BAR_INSET),
+          ...HORIZONTAL_FADE_MASK,
+        }}
       >
         <motion.div
           className="absolute left-1/2 top-0"
@@ -1652,23 +1686,34 @@ function IntervalExpandedView({
           </div>
           <div
             className="relative shrink-0 rounded-full bg-stone-200 overflow-hidden"
-            // Pulled left out of the row's own gap-3 (12px) so the chevron's
-            // tip — which only pokes CHEVRON_OVERLAP_PX past the gutter's
-            // own edge — actually reaches the bar instead of stopping short
-            // in the gap, the same overlap amount as the standard view's
-            // own horizontal bar.
-            style={{ width: 10, height: totalTrackHeight, marginLeft: -(12 - CHEVRON_OVERLAP_PX) }}
+            // BAR_ROW_H (not BAR_H's own 10px thickness) — wider than the
+            // visible bar so the momentary dot below (deliberately bigger
+            // than the bar, see SAMPLING_DOT_SIZE's own comment) has room
+            // to poke out past its edges instead of being clipped by this
+            // container's own overflow-hidden, the same fix as the standard
+            // view's own horizontal bar (see BAR_INSET's comment there).
+            // Pulled left out of the row's own gap-3 (12px), and further by
+            // BAR_INSET, so the chevron's tip — which only pokes
+            // CHEVRON_OVERLAP_PX past the gutter's own edge — reaches the
+            // visible bar's own (inset) left edge exactly, not this wider
+            // container's edge, the same overlap amount as the standard
+            // view's own horizontal bar.
+            style={{
+              width: BAR_ROW_H,
+              height: totalTrackHeight,
+              marginLeft: -(12 - CHEVRON_OVERLAP_PX + BAR_INSET),
+            }}
           >
             <div
-              className="absolute inset-x-0 bg-blue-200 transition-[height]"
-              style={{ top: 0, height: fillPx }}
+              className="absolute bg-blue-200 transition-[height]"
+              style={{ top: 0, left: BAR_INSET, right: BAR_INSET, height: fillPx }}
               aria-hidden
             />
             {Array.from({ length: intervalCount - 1 }, (_, i) => (
               <div
                 key={i}
-                className="absolute inset-x-0 h-px bg-white"
-                style={{ top: (i + 1) * ROW_SLOT }}
+                className="absolute h-px bg-white"
+                style={{ top: (i + 1) * ROW_SLOT, left: BAR_INSET, right: BAR_INSET }}
                 aria-hidden
               />
             ))}
@@ -1707,10 +1752,13 @@ function IntervalExpandedView({
                     <div
                       key={`seg-${i}`}
                       className={cn(
-                        "absolute right-0 w-[3px] rounded-full",
+                        "absolute w-[3px] rounded-full",
                         status === "correct" ? "bg-green-500" : "bg-red-500",
                       )}
-                      style={{ top, height }}
+                      // right: BAR_INSET — hugs the visible bar's own right
+                      // edge, not this wider container's edge (see the
+                      // container's own comment above).
+                      style={{ top, height, right: BAR_INSET }}
                       aria-hidden
                     />
                   );
