@@ -39,6 +39,17 @@ function formatClockTime(ms: number, use24Hour: boolean): string {
   return formatTimeOfDaySecondsForDisplay(to24hs(ms), use24Hour);
 }
 
+// Grid-tile-only variant — drops the trailing a/p letter formatClockTime's
+// 12-hour convention appends, freeing enough width for the tile's own pill
+// to also hold a trailing log button (mirroring DurationCard's tile pill)
+// without growing past the tile's own compact width. Loses the AM/PM
+// distinction, an accepted tradeoff at this size — the full-size pill
+// (TimestampCenterPill) keeps it.
+function formatTileClockTime(ms: number, use24Hour: boolean): string {
+  const full = formatClockTime(ms, use24Hour);
+  return /[ap]$/.test(full) ? full.slice(0, -1) : full;
+}
+
 function formatStampDate(ms: number) {
   return new Date(ms).toLocaleDateString(undefined, {
     month: "short",
@@ -227,6 +238,7 @@ export function TimestampCard({
 
   if (tileDensity) {
     const large = tileDensity === "large";
+    const viewingLive = viewIdx === liveIndex;
     return (
       <MiniTileShell
         title={title}
@@ -249,67 +261,13 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
-        actions={
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              logNow();
-            }}
-            disabled={!canRecordData}
-            aria-label="Log timestamp now"
-            className={cn(
-              "btn-bevel grid place-items-center rounded-full text-white transition-colors active:scale-95 disabled:opacity-40",
-              "bg-blue-500 hover:bg-blue-600 active:bg-blue-600",
-              large ? "size-10" : "size-8",
-            )}
-          >
-            <Stamp className={large ? "size-4" : "size-3.5"} />
-          </button>
-        }
       >
-        {/* Live ticking clock pill — no date needed at this density, just
-            the instance bubble + running 24h clock, same as the standard
-            view's own pill minus the date line above it. */}
-        <div
-          className={cn(
-            // items-center, not items-stretch — the badge below has a fixed
-            // size (size-5/size-6), and a fixed-size flex item under
-            // items-stretch doesn't actually stretch, it falls back to
-            // flex-start (pinned to the pill's own top edge) instead of
-            // being centered. DurationCard's own equivalent pill avoids this
-            // by nesting an inner items-center wrapper; this one has no
-            // other content competing for that inner div, so centering the
-            // outer row directly is simpler and has the same effect.
-            "shrink-0 flex items-center rounded-full border-2 border-border bg-white overflow-hidden",
-            large ? "h-9" : "h-7",
-          )}
-        >
-          <span
-            className={cn(
-              "grid shrink-0 place-items-center rounded-full bg-stone-300 text-white font-semibold tabular-nums",
-              large ? "size-6 text-[11px] ml-1" : "size-5 text-[9px] ml-0.5",
-            )}
-          >
-            {liveIndex + 1}
-          </span>
-          <span
-            className={cn(
-              "flex items-center font-display tabular-nums leading-none text-stone-400",
-              large ? "text-sm px-2.5" : "text-[11px] px-2",
-            )}
-          >
-            {formatClockTime(now, use24HourTime)}
-          </span>
-        </div>
-
-        {/* Large density only — same "pushed to the tile's own edges"
-            nav-arrow convention as Task Analysis's/Checklist's tiles; small
-            density relies on tapping/swiping a dot alone. The live slot
-            gets its own (blue) dot alongside the logged entries so the
-            strip's own position always has somewhere valid to point. */}
+        {/* Dots (+ large-density nav arrows) sit above the pill now, not
+            below it — the pill itself now actually tracks viewIdx (it used
+            to just always show the live clock regardless of which dot was
+            selected, so navigating never visibly did anything to it). */}
         {entries.length > 0 && (
-          <div className="relative w-full flex items-center justify-center mt-1">
+          <div className="relative w-full flex items-center justify-center mb-1">
             {large && (
               <>
                 <button
@@ -320,7 +278,7 @@ export function TimestampCard({
                   }}
                   disabled={viewIdx <= 0}
                   aria-label="Previous entry"
-                  className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -332,7 +290,7 @@ export function TimestampCard({
                   }}
                   disabled={viewIdx >= trackCount - 1}
                   aria-label="Next entry"
-                  className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
                 >
                   <ChevronRight className="size-4" />
                 </button>
@@ -371,6 +329,105 @@ export function TimestampCard({
             </SwipeStrip>
           </div>
         )}
+
+        {/* Same shape as DurationCard's own tile pill — time on the left,
+            a trailing solid log button standing in for play/pause — rather
+            than the old badge-left/text-right row. With the instance count
+            moved to plain text below (see the label past the pill) nothing
+            else needs space inside it, so the log button fits directly in
+            the pill instead of needing its own actions slot below the
+            tile, which is what collided with a two-line title. Drops the
+            am/pm letter (formatTileClockTime) to keep the row narrow
+            enough at this size — the full-size pill keeps it. */}
+        <div
+          className={cn(
+            "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+            large ? "h-9" : "h-7",
+            flash && viewingLive ? "border-blue-400" : "border-border",
+          )}
+          style={{ transition: flash && viewingLive ? "none" : "border-color 700ms ease-out" }}
+        >
+          <div
+            className={cn("flex-1 grid place-items-center leading-none", large ? "px-2.5" : "px-2")}
+          >
+            {viewingLive ? (
+              <motion.span
+                animate={{ scale: flash ? 1.16 : 1 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                className={cn(
+                  "font-display tabular-nums leading-none",
+                  large ? "text-sm" : "text-[11px]",
+                  flash ? "text-blue-600" : "text-stone-400",
+                )}
+              >
+                {formatTileClockTime(now, use24HourTime)}
+              </motion.span>
+            ) : (
+              <TimeOfDayKeypad
+                value={to24hs(entries[viewIdx])}
+                onChange={(next) => updateEntryTime(viewIdx, next)}
+                onAdd={(delta) => addToEntryTime(viewIdx, delta)}
+                withSeconds
+              >
+                {({ open }) => (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      open();
+                    }}
+                    disabled={!canRecordData}
+                    aria-label={`Edit time for entry ${viewIdx + 1}`}
+                    className={cn(
+                      "font-display tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
+                      large ? "text-sm" : "text-[11px]",
+                    )}
+                  >
+                    {formatTileClockTime(entries[viewIdx], use24HourTime)}
+                  </button>
+                )}
+              </TimeOfDayKeypad>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              logNow();
+            }}
+            disabled={!canRecordData}
+            aria-label="Log timestamp now"
+            className={cn(
+              "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
+              large ? "w-9" : "w-7",
+            )}
+          >
+            <Stamp className={large ? "size-4" : "size-3.5"} />
+          </button>
+        </div>
+
+        {/* "Entry X of Y" below the pill — same copy/convention the
+            full-size view's own equivalent label already uses, just
+            smaller — this is where the instance number now lives instead
+            of a badge inside the pill. */}
+        <span
+          className={cn(
+            "text-muted-foreground text-center truncate max-w-full",
+            large ? "text-[11px]" : "text-[9px]",
+          )}
+        >
+          {viewIdx < entries.length ? (
+            <>
+              Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
+              <span className="tabular-nums text-foreground">{entries.length}</span>
+            </>
+          ) : hasData ? (
+            "Viewing current time"
+          ) : (
+            "No entries yet"
+          )}
+        </span>
       </MiniTileShell>
     );
   }
