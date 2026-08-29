@@ -1207,7 +1207,7 @@ export function AddCardDialog({
                           </label>
                           <Select value={phase} onValueChange={setPhase}>
                             <SelectTrigger id="new-card-phase" className="mt-1.5">
-                              <SelectValue placeholder="Select phase to start in" />
+                              <SelectValue placeholder="Phase" />
                             </SelectTrigger>
                             <SelectContent>
                               {KNOWN_PHASES.map((p) => {
