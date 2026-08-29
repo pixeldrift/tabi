@@ -592,11 +592,11 @@ const BUILT_IN_CARDS: CardConfig[] = [
       "A holistic, end-of-session quality score capturing overall engagement and cooperation. Unlike the other cards, this is scored once — later interactions simply update the same score rather than adding new entries.",
     max: 5,
     levelDescriptions: [
-      "Highly resistant; required significant redirection throughout the session.",
-      "Engaged briefly; needed frequent prompts to reorient to tasks.",
-      "Adequate engagement with occasional prompting.",
-      "Consistently engaged with minimal prompting.",
-      "Fully engaged and cooperative throughout the session.",
+      "Highly resistant — required significant redirection throughout the session.",
+      "Briefly engaged — needed frequent prompts to reorient to tasks.",
+      "Adequately engaged — occasional prompting needed.",
+      "Consistently engaged — minimal prompting needed.",
+      "Fully engaged — cooperative throughout the session.",
     ],
     teachingProcedure: {
       goal: "Track Phineas's overall session engagement each session so the team can spot trends across activities, staff, or phases, rather than relying on memory of how a session generally felt.",

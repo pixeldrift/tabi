@@ -26,6 +26,19 @@ import { cn } from "@/lib/utils";
 // its actual visual weight instead of its arbitrary bounding box.
 const STAR_CENTROID_OFFSET = "translate-y-[6.9%]";
 
+// Demo level-description strings follow a "Short label — full detail"
+// convention (see routes/index.tsx's own rating card configs) — this pulls
+// out just the label half for the tile's compact display, where there's
+// room for a couple words but not a full sentence. Falls back to the whole
+// string for any description that doesn't happen to follow that convention
+// (a custom-created card's own free-text level description, say) rather
+// than showing nothing.
+function shortRatingLabel(desc: string | undefined): string {
+  if (!desc) return "";
+  const i = desc.indexOf(" — ");
+  return i === -1 ? desc : desc.slice(0, i);
+}
+
 export interface RatingCardProps extends CardEditAndDrawerProps {
   id?: string;
   title: string;
@@ -190,39 +203,53 @@ export function RatingCard({
           </>
         }
       >
-        <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
-          {Array.from({ length: numStars }, (_, i) => {
-            const value = min + i + 1;
-            const filled = rating >= value;
-            return (
-              <motion.button
-                key={value}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  pick(value);
-                }}
-                disabled={!canRecordData}
-                whileTap={{ scale: 0.88 }}
-                animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
-                transition={{ duration: 0.3 }}
-                aria-label={`Score ${value}`}
-                aria-pressed={filled}
-                className="shrink-0 disabled:opacity-40"
-              >
-                <Star
-                  className={cn(
-                    large ? "size-[26px]" : "size-[19px]",
-                    STAR_CENTROID_OFFSET,
-                    filled
-                      ? "fill-blue-500 stroke-blue-600"
-                      : "fill-foreground/10 stroke-foreground/25",
-                  )}
-                  strokeWidth={1.5}
-                />
-              </motion.button>
-            );
-          })}
+        <div className="flex flex-col items-center gap-1">
+          <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
+            {Array.from({ length: numStars }, (_, i) => {
+              const value = min + i + 1;
+              const filled = rating >= value;
+              return (
+                <motion.button
+                  key={value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    pick(value);
+                  }}
+                  disabled={!canRecordData}
+                  whileTap={{ scale: 0.88 }}
+                  animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  aria-label={`Score ${value}`}
+                  aria-pressed={filled}
+                  className="shrink-0 disabled:opacity-40"
+                >
+                  <Star
+                    className={cn(
+                      large ? "size-[26px]" : "size-[19px]",
+                      STAR_CENTROID_OFFSET,
+                      filled
+                        ? "fill-blue-500 stroke-blue-600"
+                        : "fill-foreground/10 stroke-foreground/25",
+                    )}
+                    strokeWidth={1.5}
+                  />
+                </motion.button>
+              );
+            })}
+          </div>
+          {/* Idle prompt below the stars, replaced by the current score's
+              own short label (see shortRatingLabel) once one's picked —
+              same "helper text that becomes the result" convention other
+              cards' own tile sub-labels already use. */}
+          <span
+            className={cn(
+              "text-muted-foreground text-center truncate max-w-full",
+              large ? "text-[11px]" : "text-[9px]",
+            )}
+          >
+            {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
+          </span>
         </div>
       </MiniTileShell>
     );
