@@ -189,6 +189,10 @@ export function TimestampCard({
     setEntries((prev) => prev.map((v, j) => (j === idx ? applyTimeOfDaySeconds(v, next24hs) : v)));
   };
 
+  const addToEntryTime = (idx: number, deltaMs: number) => {
+    setEntries((prev) => prev.map((v, j) => (j === idx ? v + deltaMs : v)));
+  };
+
   const hasData = entries.length > 0;
   useReportCardStatus(cardKey, hasData, hasData, {
     title,
@@ -416,6 +420,7 @@ export function TimestampCard({
                 <TimeOfDayKeypad
                   value={to24hs(entries[viewIdx])}
                   onChange={(next) => updateEntryTime(viewIdx, next)}
+                  onAdd={(delta) => addToEntryTime(viewIdx, delta)}
                   withSeconds
                 >
                   {({ open }) => (
@@ -506,6 +511,7 @@ export function TimestampCard({
                 <TimeOfDayKeypad
                   value={to24hs(ts)}
                   onChange={(next) => updateEntryTime(i, next)}
+                  onAdd={(delta) => addToEntryTime(i, delta)}
                   withSeconds
                 >
                   {({ open }) => (
@@ -618,6 +624,7 @@ export function TimestampCard({
                           now={now}
                           disabled={!canRecordData}
                           onEditTime={(next) => updateEntryTime(i, next)}
+                          onAddTime={(delta) => addToEntryTime(i, delta)}
                           onLog={logNow}
                           flash={flash}
                         />
@@ -667,6 +674,7 @@ function TimestampCenterPill({
   now,
   disabled,
   onEditTime,
+  onAddTime,
   onLog,
   flash,
 }: {
@@ -676,6 +684,7 @@ function TimestampCenterPill({
   now: number;
   disabled?: boolean;
   onEditTime: (next24hs: string) => void;
+  onAddTime: (deltaMs: number) => void;
   onLog: () => void;
   flash: boolean;
 }) {
@@ -726,7 +735,12 @@ function TimestampCenterPill({
                   {formatClockTime(displayMs)}
                 </motion.span>
               ) : (
-                <TimeOfDayKeypad value={to24hs(displayMs)} onChange={onEditTime} withSeconds>
+                <TimeOfDayKeypad
+                  value={to24hs(displayMs)}
+                  onChange={onEditTime}
+                  onAdd={onAddTime}
+                  withSeconds
+                >
                   {({ open }) => (
                     <button
                       type="button"

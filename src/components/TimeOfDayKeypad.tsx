@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Delete, Check, X } from "lucide-react";
+import { Delete, Check, X, Plus } from "lucide-react";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
@@ -12,6 +12,14 @@ export interface TimeOfDayKeypadProps {
   /** Called when user commits. Receives 24h "HH:MM" ("HH:MM:SS" when
    *  `withSeconds` is set). */
   onChange: (next: string) => void;
+  /** Renders a second, outline "+" commit button next to the usual solid
+   *  one — same two-button footer TimeKeypad's own duration entry already
+   *  has. The entered digits are read as a plain hh:mm(:ss) OFFSET (AM/PM
+   *  ignored) and passed here in milliseconds, for a caller that wants
+   *  "nudge this time forward by…" alongside "set it outright". Omit for
+   *  callers with no meaningful "add" (most scheduled-time fields just
+   *  replace), which keeps the single-button footer. */
+  onAdd?: (deltaMs: number) => void;
   /** Fires whenever the keypad popover opens/closes — lets a parent that
    *  renders multiple time fields know which one is actively being edited. */
   onEditingChange?: (isEditing: boolean) => void;
@@ -57,6 +65,7 @@ function autoPeriod(hh: number, manualLeadingZero: boolean): boolean | null {
 export function TimeOfDayKeypad({
   value: _value,
   onChange,
+  onAdd,
   onEditingChange,
   withSeconds = false,
   children,
@@ -156,6 +165,14 @@ export function TimeOfDayKeypad({
       ? `${String(outH).padStart(2, "0")}:${String(outM).padStart(2, "0")}:${String(ss).padStart(2, "0")}`
       : `${String(outH).padStart(2, "0")}:${String(outM).padStart(2, "0")}`;
     onChange(result);
+    setOpen(false);
+  };
+
+  // Same digits, read as a plain elapsed offset instead of a wall-clock
+  // time — no AM/PM involved, exactly TimeKeypad's own pendingToMs.
+  const commitAdd = () => {
+    if (!valid || !onAdd) return;
+    onAdd((hh * 3600 + mm * 60 + ss) * 1000);
     setOpen(false);
   };
 
@@ -327,19 +344,24 @@ export function TimeOfDayKeypad({
             >
               <X className="size-4" />
             </motion.button>
-            <motion.button
-              type="button"
-              onClick={commit}
-              disabled={!valid}
-              whileTap={valid ? { scale: 0.92 } : undefined}
-              aria-label="Set time"
-              className={cn(
-                "btn-bevel grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
-                "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700",
+            <div className="flex items-center gap-1.5">
+              {onAdd && (
+                <ActionButton
+                  onClick={commitAdd}
+                  disabled={!valid}
+                  tone="outline"
+                  icon={<Plus className="size-4" strokeWidth={3} />}
+                  ariaLabel="Add to time"
+                />
               )}
-            >
-              <Check className="size-4" strokeWidth={3} />
-            </motion.button>
+              <ActionButton
+                onClick={commit}
+                disabled={!valid}
+                tone="solid"
+                icon={<Check className="size-4" strokeWidth={3} />}
+                ariaLabel="Set time"
+              />
+            </div>
           </div>
 
           {/* Arrow's left offset tracks the trigger's real position (see
@@ -363,6 +385,42 @@ export function TimeOfDayKeypad({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+// Same solid/outline commit-button pattern as TimeKeypad's own ActionButton
+// (Add vs. Set/Update) — kept as a separate local copy since the two
+// keypads' commit semantics differ enough (wall-clock time vs. elapsed
+// duration) that sharing one component isn't worth the indirection.
+function ActionButton({
+  onClick,
+  disabled,
+  tone,
+  icon,
+  ariaLabel,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  tone: "solid" | "outline";
+  icon: React.ReactNode;
+  ariaLabel: string;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={disabled ? undefined : { scale: 0.92 }}
+      aria-label={ariaLabel}
+      className={cn(
+        "grid size-8 place-items-center rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none",
+        tone === "solid"
+          ? "btn-bevel bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+          : "border-2 border-blue-500 text-blue-600 hover:bg-blue-50 active:bg-blue-100",
+      )}
+    >
+      {icon}
+    </motion.button>
   );
 }
 
