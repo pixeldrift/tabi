@@ -144,31 +144,6 @@ export function DataListRow({
           )}
         </div>
 
-        {/* Floated (not part of the header's flex flow) so it stays put at
-          the row's right edge regardless of whether the title above it
-          wraps to one line or two — the icon sits at a constant offset from
-          the row's top regardless of wrapping (items-start, never
-          re-centers), so anchoring here the same way keeps the actions
-          cluster exactly where a one-line row would put it instead of
-          sliding down to stay centered in a now-taller two-line row. Only
-          the row's bottom edge should move when the title wraps.
-          top-2/h-4 mirror the header row's own py-2 exactly — a genuinely
-          centered one-line row (measured: 34px row, 16px actions box,
-          (34-16)/2 ≈ 9px ≈ top-2) rather than nudging the anchor up to
-          compensate for .btn-bevel's own downward-only shadow — that read
-          as visually "off," not corrected, once every kind's own actions
-          (including non-bevelled ones like Rating's star row) had to share
-          the same offset. right-1.5, not the same right-2 that would
-          exactly mirror the icon's own pl-2 on the left — this row's
-          rounded-xl corner is large enough relative to its own height that
-          an edge inset matching the (straight) left edge read as more
-          clearance on the right than top/bottom, not the same amount.
-          items-center self-centers whichever kind's own actions height (a
-          28px button row vs. a 20px star row) inside that shared anchor. */}
-        {showActions && (
-          <div className="absolute z-10 top-2 right-1.5 h-4 flex items-center">{actions}</div>
-        )}
-
         {/* A background wash tucked under the title only — stops well short
           of the floated actions cluster (rather than running the row's
           full width) so it never sits behind/underneath the buttons.
@@ -196,6 +171,36 @@ export function DataListRow({
           </div>
         )}
       </div>
+
+      {/* Floated (not part of the header's flex flow) so it stays put at
+        the row's right edge regardless of whether the title above it
+        wraps to one line or two — the icon sits at a constant offset from
+        the row's top regardless of wrapping (items-start, never
+        re-centers), so anchoring here the same way keeps the actions
+        cluster exactly where a one-line row would put it instead of
+        sliding down to stay centered in a now-taller two-line row. Only
+        the row's bottom edge should move when the title wraps.
+        A sibling of the overflow-hidden clip wrapper above (not a child of
+        it) — same fix CardShell.tsx already applies to its own outer
+        border/shadow (see that comment): a button's .btn-bevel shadow
+        reaches outward from its own box, and sitting this close to the
+        row's own rounded-xl corner meant the clip wrapper's rounded shape
+        was slicing into that shadow instead of letting it fade naturally.
+        top-2/right-2/h-4 mirror the header row's own py-2 exactly — a
+        genuinely centered one-line row (measured: 34px row, 16px actions
+        box, (34-16)/2 ≈ 9px ≈ top-2) rather than nudging the anchor to
+        compensate for .btn-bevel's own downward-only shadow — that read as
+        visually "off," not corrected, once every kind's own actions
+        (including non-bevelled ones like Rating's star row) had to share
+        the same offset. right-2 literally matches top-2/bottom (rather
+        than a smaller inset meant to visually offset the rounded-xl
+        corner) per explicit feedback that the two edges should read as the
+        same distance, not just be numerically close. items-center
+        self-centers whichever kind's own actions height (a 28px button row
+        vs. a 20px star row) inside that shared anchor. */}
+      {showActions && (
+        <div className="absolute z-10 top-2 right-2 h-4 flex items-center">{actions}</div>
+      )}
 
       {isActive && (
         <DataDetailsDrawer

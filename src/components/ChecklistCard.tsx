@@ -567,15 +567,34 @@ export function ListChecklistButton({
         ref={contentRef}
         side="top"
         align="end"
+        // Same 8px every other keypad-style popover in the app explicitly
+        // sets (TimeKeypad, TimeOfDayKeypad, NumberKeypad) — this one was
+        // left at ui/popover.tsx's own default of 4, which the arrow below
+        // wasn't sized for (its own -bottom-[7px]/border math assumes the
+        // same 8px gap those other popovers actually get), leaving it
+        // sitting too low with visible daylight on both sides instead of
+        // bridging cleanly from the box down to the trigger.
+        sideOffset={8}
         collisionPadding={8}
         // Same fix as ListPromptLevelButton's own comment in TrialCard.tsx —
         // needed for any popover anchored inside the bookmark bar's own
         // overflow-x-auto strip, and harmless for the List row's own
         // (non-scrolling) case too.
         collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
-        className="group z-[70] w-64 max-h-72 overflow-y-auto rounded-2xl border-2 border-blue-300 bg-card p-2 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        // relative, and no overflow/max-height of its own: this is the
+        // actual bordered box the arrow below is positioned against (same
+        // role as TimeOfDayKeypad/NumberKeypad's own inner "relative" box).
+        // The scrollable item list lives in a separate inner div instead —
+        // putting max-h-72/overflow-y-auto directly on THIS element (as it
+        // used to be) left it both unpositioned (its own "position" was
+        // never set, so the arrow's containing block silently fell back to
+        // Radix's outer positioning wrapper instead of this box) and a
+        // clip parent for its own overflowing children — clipping away the
+        // arrow's -bottom-[7px] tip that's deliberately meant to poke out
+        // past this box's border to form the seam.
+        className="group relative z-[70] w-64 rounded-2xl border-2 border-blue-300 bg-card p-2 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
           {items.map((item, i) => (
             <ChecklistRow
               key={i}

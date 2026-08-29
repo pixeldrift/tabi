@@ -649,12 +649,21 @@ export function ListRatingButton({
         ref={contentRef}
         side="top"
         align="center"
+        // Same 8px every other keypad-style popover in the app explicitly
+        // sets (TimeKeypad, TimeOfDayKeypad, NumberKeypad) — see
+        // ChecklistCard's own identical fix/comment.
+        sideOffset={8}
         collisionPadding={8}
         // See ListPromptLevelButton's own comment in TrialCard.tsx — same
         // fix, needed for the same reason once this is reused inside the
         // bookmark bar's overflow-x-auto strip.
         collisionBoundary={typeof document !== "undefined" ? document.body : undefined}
-        className="group z-[70] w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+        // relative: see ChecklistCard's ListChecklistButton popover for the
+        // full reasoning — without it, this box (unlike every keypad
+        // popover, which keeps an explicit "relative" box) isn't its own
+        // arrow's containing block, so the arrow's -bottom-[7px] etc. was
+        // computed against Radix's own outer positioning wrapper instead.
+        className="group relative z-[70] w-auto rounded-2xl border-2 border-blue-300 bg-card p-2.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
       >
         <div className="flex items-center gap-1.5">
           {Array.from({ length: numStars }, (_, i) => {
