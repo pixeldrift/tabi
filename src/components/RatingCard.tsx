@@ -202,7 +202,19 @@ export function RatingCard({
             )}
           </>
         }
-        actions={
+      >
+        {/* Stars + hint text together as one block, same shape as Interval's
+            own number+hint pairing — a plain h-full/justify-center wrapper
+            (not MiniTileShell's own shared justify-end children column,
+            which bottom-anchors against a real `actions` row this kind
+            doesn't have) so the block actually centers in the tile's real
+            middle instead of sinking to the tile's own bottom edge with
+            nothing below it to anchor against. Stars used to live in
+            `actions` instead (bottom-anchored on their own, hint text
+            separately centered above them) — that kept the hint from
+            reading as crammed under the stars, but left the two visually
+            disconnected floating pieces instead of one grouped control. */}
+        <div className="w-full h-full flex flex-col items-center justify-center gap-0.5">
           <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
             {Array.from({ length: numStars }, (_, i) => {
               const value = min + i + 1;
@@ -237,26 +249,15 @@ export function RatingCard({
               );
             })}
           </div>
-        }
-      >
-        {/* The stars now live in `actions` (bottom-anchored, same as every
-            other card kind's own interactive control) instead of sharing
-            this space with the hint text — that packed the two tightly
-            together and centered them as one block, leaving the hint
-            crammed directly under the stars instead of using the tile's
-            actual empty middle. On its own here, this centers in the
-            remaining space above the stars — replaced by the current
-            score's own short label (see shortRatingLabel) once one's
-            picked, same "helper text that becomes the result" convention
-            other cards' own tile sub-labels already use. */}
-        <span
-          className={cn(
-            "text-muted-foreground text-center truncate max-w-full",
-            large ? "text-[11px]" : "text-[9px]",
-          )}
-        >
-          {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
-        </span>
+          <span
+            className={cn(
+              "text-muted-foreground text-center truncate max-w-full",
+              large ? "text-[11px]" : "text-[9px]",
+            )}
+          >
+            {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
+          </span>
+        </div>
       </MiniTileShell>
     );
   }

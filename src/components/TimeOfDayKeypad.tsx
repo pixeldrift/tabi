@@ -117,6 +117,13 @@ export function TimeOfDayKeypad({
   // Raw entered digits, right-aligned in HHMM (or HHMMSS).
   const padded = pending.padStart(maxDigits, "0");
   const entered = pending.length;
+  // Any digit at all is enough to add an offset (e.g. "30" → 30s) — unlike
+  // `valid` below, which the wall-clock "Set time" commit needs (a bare
+  // "30" would be an ambiguous half-entered time, not a real hh:mm), a
+  // typed offset is unambiguous at any length: it's always read the same
+  // right-aligned way pendingToMs reads it. Same gate TimeKeypad's own
+  // commitAdd uses (hasPending there) for exactly this reason.
+  const hasPending = pending !== "";
   const hh = parseInt(padded.slice(0, 2), 10) || 0;
   const mm = parseInt(padded.slice(2, 4), 10) || 0;
   const ss = withSeconds ? parseInt(padded.slice(4, 6), 10) || 0 : 0;
@@ -177,9 +184,10 @@ export function TimeOfDayKeypad({
   };
 
   // Same digits, read as a plain elapsed offset instead of a wall-clock
-  // time — no AM/PM involved, exactly TimeKeypad's own pendingToMs.
+  // time — no AM/PM involved, exactly TimeKeypad's own pendingToMs. Gated
+  // on hasPending, not valid — see that constant's own comment.
   const commitAdd = () => {
-    if (!valid || !onAdd) return;
+    if (!hasPending || !onAdd) return;
     onAdd((hh * 3600 + mm * 60 + ss) * 1000);
     setOpen(false);
   };
@@ -358,7 +366,7 @@ export function TimeOfDayKeypad({
               {onAdd && (
                 <ActionButton
                   onClick={commitAdd}
-                  disabled={!valid}
+                  disabled={!hasPending}
                   tone="outline"
                   icon={<Plus className="size-4" strokeWidth={3} />}
                   ariaLabel="Add to time"

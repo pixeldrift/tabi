@@ -941,7 +941,16 @@ export function IntervalCard({
           </div>
           <span
             className={cn(
-              "text-muted-foreground tabular-nums truncate max-w-full",
+              // -mt-1.5: the gap between this and the number above reads as
+              // much bigger than the layout itself accounts for (measured:
+              // 0px — this and the number's own wrapper already sit flush)
+              // — it's leading-none's own residual line-height padding
+              // inside the number's line box (a display font's ascent/
+              // descent metrics leave real empty space above/below the
+              // glyph even at line-height:1), not a margin/gap either
+              // element controls directly. Pulling this up is the only way
+              // to actually close it.
+              "-mt-1.5 text-muted-foreground tabular-nums truncate max-w-full",
               large ? "text-[11px]" : "text-[9px]",
             )}
           >

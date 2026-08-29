@@ -282,34 +282,6 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
-        // Invisible spacer, not a real control: every other kind's dots+
-        // content block bottom-anchors against a real actions row below it
-        // (MiniTileShell's shared children wrapper is bottom-justified for
-        // exactly that reason — see its own comment), which is what leaves
-        // a gap above the dots/description rather than gluing them to the
-        // title. This kind has no actions row of its own — the log button
-        // already lives inside the pill itself, in `children` — so without
-        // reserving the same amount of space here, the dots+pill block
-        // would anchor straight to the tile's own bottom edge instead,
-        // landing well below where every other kind's dots row sits.
-        // Sized against Checklist's own dots-row position (measured
-        // directly, not derived from Checklist's real checkbox size): a
-        // bigger reserved height here actually pulls this block UP, not
-        // down — children's own box still ends exactly where actions
-        // begins (bottom-anchored against it), so reserving more space
-        // below shrinks children's box from the bottom, and content
-        // anchored to ITS bottom edge rides up with it. Checklist's real
-        // checkbox (size-10, 40px) undershot by ~16.5px at large density,
-        // since Checklist's own children also include a "large"-only
-        // ratio-text line ("N/M checked") this pill+dots pair doesn't have
-        // — one more line of content there means Checklist needs
-        // correspondingly less reserved space below to land at the same
-        // spot. size-14 (56px) measured flush against Checklist's own
-        // dots-row height. Small density keeps the checkbox's real size-7
-        // — Checklist skips the ratio line at that density (`large &&`),
-        // so its two-element shape already matches this kind's own
-        // dots+pill closely enough without needing the same correction.
-        actions={<div aria-hidden className={large ? "size-14" : "size-7"} />}
       >
         {/* Dots (+ large-density nav arrows) sit above the pill now, not
             below it — the pill itself now actually tracks viewIdx (it
@@ -382,24 +354,22 @@ export function TimestampCard({
 
         {/* Same shape as DurationCard's own tile pill — time on the left,
             a trailing solid log button standing in for play/pause — rather
-            than the old badge-left/text-right row. No separate "Entry X of
-            Y" label below any more — the dots already convey position, and
-            this kind's tile is compact enough that the label read as
-            redundant once it was the thing pushing the dots+pill block
-            down away from the title (see the actions spacer's own comment
-            above for the rest of that fix). Drops the am/pm letter
+            than the old badge-left/text-right row. large density matches
+            Duration's own pill exactly (h-10, text-lg, w-10 button) rather
+            than a smaller size of its own, so the two read as the same
+            kind of control at a glance. Drops the am/pm letter
             (formatTileClockTime) to keep the row narrow enough at this
             size — the full-size pill keeps it. */}
         <div
           className={cn(
             "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-            large ? "h-9" : "h-7",
+            large ? "h-10" : "h-7",
             flash && viewingLive ? "border-blue-400" : "border-border",
           )}
           style={{ transition: flash && viewingLive ? "none" : "border-color 700ms ease-out" }}
         >
           <div
-            className={cn("flex-1 grid place-items-center leading-none", large ? "px-2.5" : "px-2")}
+            className={cn("flex-1 grid place-items-center leading-none", large ? "px-3" : "px-2")}
           >
             {viewingLive ? (
               <motion.span
@@ -408,7 +378,7 @@ export function TimestampCard({
                 style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                 className={cn(
                   "font-display tabular-nums leading-none",
-                  large ? "text-sm" : "text-[11px]",
+                  large ? "text-lg" : "text-[11px]",
                   flash ? "text-blue-600" : "text-stone-400",
                 )}
               >
@@ -432,7 +402,7 @@ export function TimestampCard({
                     aria-label={`Edit time for entry ${viewIdx + 1}`}
                     className={cn(
                       "font-display tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                      large ? "text-sm" : "text-[11px]",
+                      large ? "text-lg" : "text-[11px]",
                     )}
                   >
                     {formatTileClockTime(entries[viewIdx], use24HourTime)}
@@ -449,14 +419,45 @@ export function TimestampCard({
             }}
             disabled={!canRecordData}
             aria-label="Log timestamp now"
+            // active:scale-100: cancels the global button:active fallback
+            // (styles.css) — that scale shrinks this button's own
+            // rectangle away from the pill's rounded-full overflow-hidden
+            // clip on press, revealing white background around it, same
+            // bug already fixed for the session timer's own mini pause
+            // button (see StatusBar.tsx). Scale instead lives on the
+            // icon-wrapping span below.
             className={cn(
-              "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40",
-              large ? "w-9" : "w-7",
+              "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
+              large ? "w-10" : "w-7",
             )}
           >
-            <Stamp className={large ? "size-4" : "size-3.5"} />
+            <span className="grid place-items-center active:scale-95 transition-transform">
+              <Stamp className={large ? "size-[17px]" : "size-3.5"} />
+            </span>
           </button>
         </div>
+        {/* Hint text below the pill — large density only (small density
+            keeps this pill as the tile's whole story, matching how it
+            already was before this pass). Same convention as every other
+            kind's own tile ("Tap star to score", Interval's range text,
+            etc.): centered, muted, small. "Current time" (not "Viewing
+            current time" — see the standard view's own identical wording
+            fix) once back on the live slot, "Entry X of Y" while browsing
+            a past stamp, "No entries yet" before the first one. */}
+        {large && (
+          <span className="text-[11px] text-muted-foreground text-center truncate max-w-full">
+            {viewIdx < entries.length ? (
+              <>
+                Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
+                <span className="tabular-nums text-foreground">{entries.length}</span>
+              </>
+            ) : hasData ? (
+              "Current time"
+            ) : (
+              "No entries yet"
+            )}
+          </span>
+        )}
       </MiniTileShell>
     );
   }
@@ -535,9 +536,15 @@ export function TimestampCard({
                 }}
                 disabled={!canRecordData}
                 aria-label="Log now"
-                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
+                // active:scale-100: see the tile-mode version of this same
+                // button for why (cancels the global button:active
+                // fallback, which would otherwise shrink this button away
+                // from the pill's own clip and reveal white around it).
+                className="grid place-items-center w-7 text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40"
               >
-                <Stamp className="size-3" />
+                <span className="grid place-items-center active:scale-95 transition-transform">
+                  <Stamp className="size-3" />
+                </span>
               </button>
             </div>
           </ListActionSlide>
@@ -740,9 +747,26 @@ export function TimestampCard({
                   {entries.length}
                 </span>
               </span>
+            ) : hasData ? (
+              // Same flash-driven scale hop TimestampCenterPill's own live
+              // time uses (see its comment) — a beat of feedback right as
+              // this label appears (viewIdx lands back on the live slot the
+              // instant a log commits) that a new entry actually landed,
+              // not just a plain label swap.
+              <motion.span
+                animate={{ scale: flash ? 1.16 : 1 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                className={cn(
+                  "text-[11px] uppercase tracking-wider",
+                  flash ? "text-blue-600" : "text-muted-foreground",
+                )}
+              >
+                Current time
+              </motion.span>
             ) : (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                {hasData ? "Viewing current time" : "No entries yet"}
+                No entries yet
               </span>
             )}
           </div>
@@ -855,9 +879,15 @@ function TimestampCenterPill({
         }}
         disabled={disabled}
         aria-label="Log timestamp now"
-        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 disabled:opacity-40"
+        // active:scale-100: same fix as this button's own tile/list-mode
+        // counterparts — cancels the global button:active fallback, which
+        // would otherwise shrink this button away from the pill's own
+        // rounded-full overflow-hidden clip on press.
+        className="btn-bevel grid w-12 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40"
       >
-        <Stamp className="size-4" />
+        <span className="grid place-items-center active:scale-95 transition-transform">
+          <Stamp className="size-4" />
+        </span>
       </button>
     </div>
   );
