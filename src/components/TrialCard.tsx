@@ -28,6 +28,7 @@ import { renderBreakableTitle } from "./BreakableTitle";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
 import { ACTION_BUTTON_COLORS } from "@/lib/actionButtonColors";
+import { HORIZONTAL_FADE_MASK } from "./IntervalCard";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 
@@ -563,7 +564,7 @@ export function TrialCard({
                 }}
                 disabled={current === 0}
                 aria-label="Previous trial"
-                className="absolute left-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
               >
                 <ChevronLeft className="size-4" />
               </button>
@@ -578,50 +579,57 @@ export function TrialCard({
                   (maxTrials ? current >= maxTrials - 1 : false)
                 }
                 aria-label="Next trial"
-                className="absolute right-0 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
               >
                 <ChevronRight className="size-4" />
               </button>
             </>
           )}
-          <SwipeStrip
-            count={trials.length}
-            current={current}
-            onCurrentChange={goTo}
-            variant="centered"
-            className="w-full"
-            gapClassName={large ? "gap-2" : "gap-1.5"}
-            itemWrapperClassName="flex items-center justify-center"
-          >
-            {(i, isCenter) => {
-              const t = trials[i];
-              const color =
-                t === "correct"
-                  ? "text-green-700"
-                  : t === "incorrect"
-                    ? "text-red-700"
-                    : t === "no-response"
-                      ? "text-amber-700"
-                      : isCenter
-                        ? "text-foreground"
-                        : "text-foreground/30";
-              return (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goTo(i);
-                  }}
-                  className={cn(
-                    "font-display font-bold tabular-nums transition-[font-size] leading-none",
-                    color,
-                  )}
-                  style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
-                >
-                  {i + 1}
-                </div>
-              );
-            }}
-          </SwipeStrip>
+          {/* Large density only — fades trailing trial numbers out before
+              they reach the tile's own edge, so they read as sliding away
+              rather than sitting directly under the nav arrows just outside
+              it (same HORIZONTAL_FADE_MASK convention IntervalCard's own
+              timelines use). */}
+          <div style={large ? HORIZONTAL_FADE_MASK : undefined}>
+            <SwipeStrip
+              count={trials.length}
+              current={current}
+              onCurrentChange={goTo}
+              variant="centered"
+              className="w-full"
+              gapClassName={large ? "gap-2" : "gap-1.5"}
+              itemWrapperClassName="flex items-center justify-center"
+            >
+              {(i, isCenter) => {
+                const t = trials[i];
+                const color =
+                  t === "correct"
+                    ? "text-green-700"
+                    : t === "incorrect"
+                      ? "text-red-700"
+                      : t === "no-response"
+                        ? "text-amber-700"
+                        : isCenter
+                          ? "text-foreground"
+                          : "text-foreground/30";
+                return (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(i);
+                    }}
+                    className={cn(
+                      "font-display font-bold tabular-nums transition-[font-size] leading-none",
+                      color,
+                    )}
+                    style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
+                  >
+                    {i + 1}
+                  </div>
+                );
+              }}
+            </SwipeStrip>
+          </div>
         </div>
       </MiniTileShell>
     );
