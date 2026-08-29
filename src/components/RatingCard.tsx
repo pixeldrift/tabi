@@ -202,8 +202,7 @@ export function RatingCard({
             )}
           </>
         }
-      >
-        <div className="flex flex-col items-center gap-1">
+        actions={
           <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
             {Array.from({ length: numStars }, (_, i) => {
               const value = min + i + 1;
@@ -238,19 +237,26 @@ export function RatingCard({
               );
             })}
           </div>
-          {/* Idle prompt below the stars, replaced by the current score's
-              own short label (see shortRatingLabel) once one's picked —
-              same "helper text that becomes the result" convention other
-              cards' own tile sub-labels already use. */}
-          <span
-            className={cn(
-              "text-muted-foreground text-center truncate max-w-full",
-              large ? "text-[11px]" : "text-[9px]",
-            )}
-          >
-            {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
-          </span>
-        </div>
+        }
+      >
+        {/* The stars now live in `actions` (bottom-anchored, same as every
+            other card kind's own interactive control) instead of sharing
+            this space with the hint text — that packed the two tightly
+            together and centered them as one block, leaving the hint
+            crammed directly under the stars instead of using the tile's
+            actual empty middle. On its own here, this centers in the
+            remaining space above the stars — replaced by the current
+            score's own short label (see shortRatingLabel) once one's
+            picked, same "helper text that becomes the result" convention
+            other cards' own tile sub-labels already use. */}
+        <span
+          className={cn(
+            "text-muted-foreground text-center truncate max-w-full",
+            large ? "text-[11px]" : "text-[9px]",
+          )}
+        >
+          {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
+        </span>
       </MiniTileShell>
     );
   }
