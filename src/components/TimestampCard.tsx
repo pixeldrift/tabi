@@ -315,76 +315,87 @@ export function TimestampCard({
           </div>
         }
       >
-        {/* Dots (+ large-density nav arrows) sit above the pill now, not
-            below it — the pill itself now actually tracks viewIdx (it
-            used to just always show the live clock regardless of which
-            dot was selected, so navigating never visibly did anything to
-            it). */}
-        {entries.length > 0 && (
-          <div className="relative w-full flex items-center justify-center mb-1">
-            {large && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goTo(viewIdx - 1);
-                  }}
-                  disabled={viewIdx <= 0}
-                  aria-label="Previous entry"
-                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goTo(viewIdx + 1);
-                  }}
-                  disabled={viewIdx >= trackCount - 1}
-                  aria-label="Next entry"
-                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronRight className="size-4" />
-                </button>
-              </>
-            )}
-            <SwipeStrip
-              count={trackCount}
-              current={viewIdx}
-              onCurrentChange={goTo}
-              variant="centered"
-              gapClassName={large ? "gap-2" : "gap-1.5"}
-              itemWrapperClassName="flex items-center justify-center"
-            >
-              {(i) => {
-                const isCurrent = i === viewIdx;
-                const isLive = i === liveIndex;
-                return (
-                  <span
+        {/* MiniTileShell's zone-3 box centers `children` with plain
+            `flex items-center justify-center` (row direction, no
+            `flex-col`) — passing the dots row and the pill as two separate
+            top-level children here left them side by side instead of
+            stacked (the pill landing visually "inside" the dots row rather
+            than below it). Same fix as DurationCard's own dots+pill wrapper:
+            one flex-col div holding both. */}
+        <div className="w-full flex flex-col items-center gap-1">
+          {/* Dots (+ large-density nav arrows) sit above the pill now, not
+              below it — the pill itself now actually tracks viewIdx (it
+              used to just always show the live clock regardless of which
+              dot was selected, so navigating never visibly did anything to
+              it). */}
+          {entries.length > 0 && (
+            <div className="relative w-full flex items-center justify-center">
+              {large && (
+                <>
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      goTo(i);
+                      goTo(viewIdx - 1);
                     }}
-                    className={cn(
-                      "rounded-full transition-all duration-300",
-                      isCurrent
-                        ? cn(large ? "size-2" : "size-1.5", isLive ? "bg-blue-500" : "bg-stone-400")
-                        : cn(
-                            large ? "size-1.5" : "size-1",
-                            isLive ? "bg-blue-200" : "bg-stone-200",
-                          ),
-                    )}
-                    aria-hidden
-                  />
-                );
-              }}
-            </SwipeStrip>
-          </div>
-        )}
+                    disabled={viewIdx <= 0}
+                    aria-label="Previous entry"
+                    className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(viewIdx + 1);
+                    }}
+                    disabled={viewIdx >= trackCount - 1}
+                    aria-label="Next entry"
+                    className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </>
+              )}
+              <SwipeStrip
+                count={trackCount}
+                current={viewIdx}
+                onCurrentChange={goTo}
+                variant="centered"
+                gapClassName={large ? "gap-2" : "gap-1.5"}
+                itemWrapperClassName="flex items-center justify-center"
+              >
+                {(i) => {
+                  const isCurrent = i === viewIdx;
+                  const isLive = i === liveIndex;
+                  return (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goTo(i);
+                      }}
+                      className={cn(
+                        "rounded-full transition-all duration-300",
+                        isCurrent
+                          ? cn(
+                              large ? "size-2" : "size-1.5",
+                              isLive ? "bg-blue-500" : "bg-stone-400",
+                            )
+                          : cn(
+                              large ? "size-1.5" : "size-1",
+                              isLive ? "bg-blue-200" : "bg-stone-200",
+                            ),
+                      )}
+                      aria-hidden
+                    />
+                  );
+                }}
+              </SwipeStrip>
+            </div>
+          )}
 
-        {/* Same shape as DurationCard's own tile pill — time on the left,
+          {/* Same shape as DurationCard's own tile pill — time on the left,
             a trailing solid log button standing in for play/pause — rather
             than the old badge-left/text-right row. large density matches
             Duration's own pill exactly (h-10, text-lg, w-10 button) rather
@@ -392,81 +403,82 @@ export function TimestampCard({
             kind of control at a glance. Drops the am/pm letter
             (formatTileClockTime) to keep the row narrow enough at this
             size — the full-size pill keeps it. */}
-        <div
-          className={cn(
-            "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-            large ? "h-10" : "h-7",
-            flash && viewingLive ? "border-blue-400" : "border-border",
-          )}
-          style={{ transition: flash && viewingLive ? "none" : "border-color 700ms ease-out" }}
-        >
           <div
-            className={cn("flex-1 grid place-items-center leading-none", large ? "px-3" : "px-2")}
-          >
-            {viewingLive ? (
-              <motion.span
-                animate={{ scale: flash ? 1.16 : 1 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                style={{ transition: flash ? "none" : "color 700ms ease-out" }}
-                className={cn(
-                  "font-display tabular-nums leading-none",
-                  large ? "text-lg" : "text-[11px]",
-                  flash ? "text-blue-600" : "text-stone-400",
-                )}
-              >
-                {formatTileClockTime(now, use24HourTime)}
-              </motion.span>
-            ) : (
-              <TimeOfDayKeypad
-                value={to24hs(entries[viewIdx])}
-                onChange={(next) => updateEntryTime(viewIdx, next)}
-                onAdd={(delta) => addToEntryTime(viewIdx, delta)}
-                withSeconds
-              >
-                {({ open }) => (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      open();
-                    }}
-                    disabled={!canRecordData}
-                    aria-label={`Edit time for entry ${viewIdx + 1}`}
-                    className={cn(
-                      "font-display tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                      large ? "text-lg" : "text-[11px]",
-                    )}
-                  >
-                    {formatTileClockTime(entries[viewIdx], use24HourTime)}
-                  </button>
-                )}
-              </TimeOfDayKeypad>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              logNow();
-            }}
-            disabled={!canRecordData}
-            aria-label="Log timestamp now"
-            // active:scale-100: cancels the global button:active fallback
-            // (styles.css) — that scale shrinks this button's own
-            // rectangle away from the pill's rounded-full overflow-hidden
-            // clip on press, revealing white background around it, same
-            // bug already fixed for the session timer's own mini pause
-            // button (see StatusBar.tsx). Scale instead lives on the
-            // icon-wrapping span below.
             className={cn(
-              "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
-              large ? "w-10" : "w-7",
+              "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+              large ? "h-10" : "h-7",
+              flash && viewingLive ? "border-blue-400" : "border-border",
             )}
+            style={{ transition: flash && viewingLive ? "none" : "border-color 700ms ease-out" }}
           >
-            <span className="grid place-items-center active:scale-95 transition-transform">
-              <Stamp className={large ? "size-[17px]" : "size-3.5"} />
-            </span>
-          </button>
+            <div
+              className={cn("flex-1 grid place-items-center leading-none", large ? "px-3" : "px-2")}
+            >
+              {viewingLive ? (
+                <motion.span
+                  animate={{ scale: flash ? 1.16 : 1 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                  className={cn(
+                    "font-display tabular-nums leading-none",
+                    large ? "text-lg" : "text-[11px]",
+                    flash ? "text-blue-600" : "text-stone-400",
+                  )}
+                >
+                  {formatTileClockTime(now, use24HourTime)}
+                </motion.span>
+              ) : (
+                <TimeOfDayKeypad
+                  value={to24hs(entries[viewIdx])}
+                  onChange={(next) => updateEntryTime(viewIdx, next)}
+                  onAdd={(delta) => addToEntryTime(viewIdx, delta)}
+                  withSeconds
+                >
+                  {({ open }) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        open();
+                      }}
+                      disabled={!canRecordData}
+                      aria-label={`Edit time for entry ${viewIdx + 1}`}
+                      className={cn(
+                        "font-display tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
+                        large ? "text-lg" : "text-[11px]",
+                      )}
+                    >
+                      {formatTileClockTime(entries[viewIdx], use24HourTime)}
+                    </button>
+                  )}
+                </TimeOfDayKeypad>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                logNow();
+              }}
+              disabled={!canRecordData}
+              aria-label="Log timestamp now"
+              // active:scale-100: cancels the global button:active fallback
+              // (styles.css) — that scale shrinks this button's own
+              // rectangle away from the pill's rounded-full overflow-hidden
+              // clip on press, revealing white background around it, same
+              // bug already fixed for the session timer's own mini pause
+              // button (see StatusBar.tsx). Scale instead lives on the
+              // icon-wrapping span below.
+              className={cn(
+                "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
+                large ? "w-10" : "w-7",
+              )}
+            >
+              <span className="grid place-items-center active:scale-95 transition-transform">
+                <Stamp className={large ? "size-[17px]" : "size-3.5"} />
+              </span>
+            </button>
+          </div>
         </div>
       </MiniTileShell>
     );
