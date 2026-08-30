@@ -294,9 +294,13 @@ export function TimestampCard({
         // browsing a past stamp, "No entries yet" before the first one.
         actions={
           <div className={cn("flex items-center justify-center", large ? "h-[42px]" : "h-7")}>
+            {/* uppercase tracking-wide — same plain metadata convention
+                every other kind's own tile status text uses (Duration's
+                "Instance N of M", Task Analysis's "Step X of Y"); this one
+                had fallen out of step with plain sentence case. */}
             <span
               className={cn(
-                "text-muted-foreground text-center truncate max-w-full",
+                "uppercase tracking-wide text-muted-foreground text-center truncate max-w-full",
                 large ? "text-[11px]" : "text-[9px]",
               )}
             >
@@ -305,8 +309,8 @@ export function TimestampCard({
                   Entry{" "}
                   <span
                     className={cn(
-                      "font-bold tabular-nums text-foreground",
-                      large ? "text-xs" : "text-[10px]",
+                      "font-bold normal-case tracking-normal tabular-nums text-foreground",
+                      large ? "text-sm" : "text-xs",
                     )}
                   >
                     {viewIdx + 1}
@@ -314,8 +318,8 @@ export function TimestampCard({
                   of{" "}
                   <span
                     className={cn(
-                      "font-bold tabular-nums text-foreground",
-                      large ? "text-xs" : "text-[10px]",
+                      "font-bold normal-case tracking-normal tabular-nums text-foreground",
+                      large ? "text-sm" : "text-xs",
                     )}
                   >
                     {entries.length}
