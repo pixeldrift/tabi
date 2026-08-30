@@ -457,6 +457,15 @@ export function TaskAnalysisCard({
     });
   };
 
+  // Shared by the twirl-down's own collapse-time jump and a tap on the card
+  // body while it's already active — both want the same "back to now"
+  // destination: whichever step still needs scoring, or the last step if
+  // every one so far is already done.
+  const jumpToCurrent = () => {
+    const firstUnscored = activeStatuses.indexOf(null);
+    goTo(firstUnscored !== -1 ? firstUnscored : steps.length - 1);
+  };
+
   // Which way the full-card slide (see the AnimatePresence below) plays —
   // forward (enter from right) for Next Instance, reversed for Previous
   // Instance, so going back actually reads as going back instead of
@@ -959,6 +968,7 @@ export function TaskAnalysisCard({
           kind="task-analysis"
           isActive={isActive}
           onActivate={onActivate}
+          onTapWhileActive={jumpToCurrent}
           reorderEditing={reorderEditing}
           favorited={favorited}
           onToggleFavorite={onToggleFavorite}
@@ -984,8 +994,7 @@ export function TaskAnalysisCard({
               // Same idea as TrialCard's own twirl-down: collapsing should
               // land back on whichever step still needs scoring, not
               // wherever the stepper happened to be pointed before expanding.
-              const firstUnscored = activeStatuses.indexOf(null);
-              if (firstUnscored !== -1) goTo(firstUnscored);
+              jumpToCurrent();
             }
             setExpanded((v) => !v);
           }}

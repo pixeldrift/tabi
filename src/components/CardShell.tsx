@@ -77,6 +77,14 @@ export interface CardShellProps extends CardEditAndDrawerProps {
   dataTypeIcon?: ReactNode;
   isActive?: boolean;
   onActivate?: () => void;
+  /** Tapping the card body while it's ALREADY active calls this instead of
+   *  onActivate (which would otherwise be a same-value setActiveId no-op) —
+   *  each kind that has its own per-instance/step/trial nav wires this to
+   *  jump back to whichever one is current/first-unscored, the same target
+   *  its own twirl-down collapse already lands on. Kinds with nothing to
+   *  browse (a single value, no viewIdx) simply don't pass it, and a tap
+   *  while active does nothing, same as before this existed. */
+  onTapWhileActive?: () => void;
   /** 0–100 progress. Pass null/undefined to hide the progress bar entirely. */
   progress?: number | null;
   isComplete?: boolean;
@@ -212,6 +220,7 @@ export function CardShell({
   dataTypeIcon,
   isActive = true,
   onActivate,
+  onTapWhileActive,
   reorderEditing = false,
   favorited = false,
   onToggleFavorite,
@@ -246,7 +255,7 @@ export function CardShell({
   return (
     <article
       ref={articleRef}
-      onClick={onActivate}
+      onClick={isActive && onTapWhileActive ? onTapWhileActive : onActivate}
       className={cn(
         // Border is ALWAYS 1px — the selected look comes from an inset ring
         // (a box-shadow, not real border width) layered on top instead of an

@@ -851,6 +851,12 @@ export function IntervalCard({
   const activeGoTo = isCheckpointMode ? goToCheckpoint : goTo;
   const activeScoredCount = isCheckpointMode ? checkpointScoredCount : scoredCount;
   const activeIsComplete = isCheckpointMode ? checkpointIsComplete : isComplete;
+  // A tap on the card body while it's already active jumps back to
+  // whichever interval/checkpoint is live right now — unlike the other kinds
+  // there's no separate "unscored" target to prefer, since only the live one
+  // can ever be scored in the first place (see this card's own "locked to
+  // session time" design).
+  const jumpToCurrent = () => activeGoTo(isCheckpointMode ? currentCheckpointIndex : currentIndex);
   // The tile's own compact sub-label — just the interval range ("0-30m"),
   // not intervalLabel's own leading "1: " (redundant here: the tile's own
   // dots already show which one is being viewed) — or, for a checkpoint,
@@ -1152,6 +1158,7 @@ export function IntervalCard({
         kind="interval"
         isActive={isActive}
         onActivate={onActivate}
+        onTapWhileActive={jumpToCurrent}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

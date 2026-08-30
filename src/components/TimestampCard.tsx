@@ -183,6 +183,11 @@ export function TimestampCard({
     setViewIdx(Math.max(0, Math.min(trackCount - 1, idx)));
   };
 
+  // A tap on the card body while it's already active jumps back to the
+  // live "now" slot — this kind has no unscored concept to return to (it's
+  // a plain append-only log), so "current" is always the live slot itself.
+  const jumpToCurrent = () => goTo(liveIndex);
+
   const logNow = () => {
     if (!canRecordData) return;
     markDirty();
@@ -644,6 +649,7 @@ export function TimestampCard({
         kind="timestamp"
         isActive={isActive}
         onActivate={onActivate}
+        onTapWhileActive={jumpToCurrent}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

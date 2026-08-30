@@ -395,6 +395,15 @@ export function DurationCard({
   const isIdxRunning = (i: number) => running && runningIdx === i;
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
+  // Shared by the twirl-down's own collapse-time jump and a tap on the card
+  // body while it's already active — both want the same "back to now"
+  // destination: whichever instance hasn't been timed yet, or the most
+  // recent one if every instance so far is already done.
+  const jumpToCurrent = () => {
+    const firstUnscored = instances.findIndex((_, i) => !isActivated(i));
+    goTo(firstUnscored !== -1 ? firstUnscored : instances.length - 1);
+  };
+
   // Same drag-to-swipe pattern as TrialCard's own bubble track — real touch/
   // mouse dragging in addition to the triangle nav buttons, snapping to
   // whichever instance ends up nearest center on release.
@@ -819,6 +828,7 @@ export function DurationCard({
         kind="duration"
         isActive={isActive}
         onActivate={onActivate}
+        onTapWhileActive={jumpToCurrent}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}
@@ -838,14 +848,11 @@ export function DurationCard({
         isComplete={isComplete}
         expanded={expanded}
         onToggleExpanded={() => {
-          if (expanded) {
-            // Same idea as TrialCard/TaskAnalysisCard's own twirl-down:
-            // collapsing should land back on whichever instance hasn't been
-            // timed yet, not wherever the stepper happened to be pointed
-            // before expanding.
-            const firstUnscored = instances.findIndex((_, i) => !isActivated(i));
-            if (firstUnscored !== -1) goTo(firstUnscored);
-          }
+          // Same idea as TrialCard/TaskAnalysisCard's own twirl-down:
+          // collapsing should land back on whichever instance hasn't been
+          // timed yet, not wherever the stepper happened to be pointed
+          // before expanding.
+          if (expanded) jumpToCurrent();
           setExpanded((v) => !v);
         }}
         helperText={

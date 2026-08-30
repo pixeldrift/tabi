@@ -392,6 +392,15 @@ export function TrialCard({
 
   // Shared by both the twirl-down chevron and the title next to it — either
   // one toggling the same expanded state, the same way.
+  // Shared by the twirl-down's own collapse-time jump and a tap on the card
+  // body while it's already active — both want the same "back to now"
+  // destination: whichever trial still needs scoring, or the last trial if
+  // every one so far is already done.
+  const jumpToCurrent = () => {
+    const firstUnscored = trials.findIndex((t) => t === null);
+    goTo(firstUnscored !== -1 ? firstUnscored : maxTrials ? maxTrials - 1 : completedCount);
+  };
+
   const toggleTrialExpanded = () => {
     if (!expanded) {
       playSoundEffect("twirldown");
@@ -400,8 +409,7 @@ export function TrialCard({
       // needs scoring (the expanded list may have just been used to fill in
       // ones out of order) rather than leaving the stepper wherever it
       // happened to be pointed before expanding.
-      const firstUnscored = trials.findIndex((t) => t === null);
-      if (firstUnscored !== -1) goTo(firstUnscored);
+      jumpToCurrent();
     }
     setExpanded((v) => !v);
   };
@@ -780,7 +788,10 @@ export function TrialCard({
   return (
     <article
       ref={articleRef}
-      onClick={onActivate}
+      // Tapping the card body while it's already active jumps back to
+      // whichever trial is current, instead of onActivate's setActiveId
+      // being a same-value no-op — see jumpToCurrent's own comment.
+      onClick={isActive ? jumpToCurrent : onActivate}
       className={cn(
         // Border always 1px (ring adds the selected weight without
         // consuming layout space) — see CardShell's own version of this
