@@ -457,11 +457,6 @@ export function IntervalCard({
     });
   };
 
-  // Own root element ref — same "wrap the CardShell return in a plain div"
-  // convention Duration/Rate cards use for their own scroll-to-card jump
-  // (see useRegisterActiveTimer's elementRef) — used below so the "time to
-  // check" alert's own Now button can scroll straight back to this card.
-  const cardElRef = useRef<HTMLDivElement | null>(null);
   const { push: pushNotification, clearByDedupeKey } = useNotifications();
   // Every score button that lives on the card itself (not the alert's own —
   // see below) goes through this instead of `score` directly, so recording
@@ -537,13 +532,17 @@ export function IntervalCard({
       // it still lands in the Notifications tab, same as ScheduleView's own
       // alerts (see that file's matching `live:` gate).
       live: sessionRunning && isSessionMine,
+      // Same "goal" sourceRef every other card-linked notification uses —
+      // routes through the ordinary tab-switch-then-scroll path (see
+      // handleNotificationActivate) instead of a local scrollIntoView ref,
+      // so tapping this alert from another tab actually lands on the card
+      // instead of silently scrolling a hidden pane.
+      sourceRef: { type: "goal", id: cardKey },
       intervalCheck: {
         positiveLabel,
         negativeLabel,
         initialStatus: statuses[alertedIndex] ?? null,
         onScore: (value) => score(alertedIndex, value),
-        onScrollToCard: () =>
-          cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -671,13 +670,12 @@ export function IntervalCard({
         allowSnooze: true,
         soundOverride: "chime",
         live: sessionRunning && isSessionMine,
+        sourceRef: { type: "goal", id: cardKey },
         intervalCheck: {
           positiveLabel,
           negativeLabel,
           initialStatus: checkpointStatuses[i] ?? null,
           onScore: (value) => scoreCheckpoint(i, value),
-          onScrollToCard: () =>
-            cardElRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
         },
       });
     });
@@ -1145,7 +1143,7 @@ export function IntervalCard({
   }
 
   return (
-    <div ref={cardElRef} className="w-full max-w-md scroll-mt-32">
+    <div className="w-full max-w-md scroll-mt-32">
       <CardShell
         title={title}
         phase={phase}

@@ -257,7 +257,12 @@ export function NotificationBar() {
         transition={{ layout: NOTIFICATION_AREA_TRANSITION }}
         className="max-w-2xl mx-auto flex flex-col gap-2"
       >
-        <AnimatePresence initial={false}>
+        {/* popLayout so a dismissed row is pulled out of flow immediately
+            instead of holding its layout space through its own exit fade —
+            without it the rows below only reflow once the exit finishes,
+            reading as a fade then a sudden jerky snap shut rather than one
+            smooth collapse. */}
+        <AnimatePresence initial={false} mode="popLayout">
           {visible.map((n) => (
             <NotificationRow
               key={n.id}
@@ -525,20 +530,20 @@ function NotificationRow({
             role="button"
             tabIndex={0}
             data-tour="interval-alert-jump"
-            // Interval's own "time to check" alert has no sourceRef to
-            // activate — tapping it instead does what its old standalone
-            // "Now" button used to (jump straight to the card), rather than
-            // giving up that whole tap target to a no-op.
+            // Interval's own "time to check" alert carries a "goal" sourceRef
+            // (see IntervalCard's own push calls) same as every other
+            // card-linked notification, so tapping it does what its old
+            // standalone "Now" button used to (jump straight to the card)
+            // through the ordinary onActivate path — no special-cased ref
+            // needed here.
             onClick={() => {
               if (wasDragging.current) return;
-              if (n.intervalCheck) n.intervalCheck.onScrollToCard();
-              else onActivate();
+              onActivate();
             }}
             onKeyDown={(e) => {
               if (e.key !== "Enter" && e.key !== " ") return;
               e.preventDefault();
-              if (n.intervalCheck) n.intervalCheck.onScrollToCard();
-              else onActivate();
+              onActivate();
             }}
             className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
           >
@@ -909,7 +914,9 @@ export function NotificationsPane({
                     {label}
                   </h3>
                   <div className="space-y-2">
-                    <AnimatePresence initial={false}>{items.map(renderRow)}</AnimatePresence>
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {items.map(renderRow)}
+                    </AnimatePresence>
                   </div>
                 </div>
               );
@@ -917,7 +924,9 @@ export function NotificationsPane({
           </div>
         ) : (
           <div className="space-y-2">
-            <AnimatePresence initial={false}>{ordered.map(renderRow)}</AnimatePresence>
+            <AnimatePresence initial={false} mode="popLayout">
+              {ordered.map(renderRow)}
+            </AnimatePresence>
           </div>
         )}
       </div>

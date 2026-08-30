@@ -1498,6 +1498,23 @@ function IndexInner({
       return;
     }
     scrollActiveIntoView(activeId);
+    // A jump that also switches tabs (handleNavigateToCard) fires this in
+    // the same commit as the Data pane going from display:none back to
+    // visible — at that instant the pane's own Framer Motion layout
+    // projections haven't re-measured their tree yet (see
+    // suppressScrollRestoreRef's own comment on this exact settling
+    // window), so the immediate call above can measure the card as
+    // "already visible" against a transitional layout that then drifts
+    // once Motion's remeasurement lands, stranding the card offscreen with
+    // nothing left to correct it. One delayed re-check after that settling
+    // window closes — the same window the display-mode switch's own scroll
+    // recheck below waits out — catches whatever the immediate call missed.
+    const id = window.setTimeout(
+      () => scrollActiveIntoView(activeId),
+      CARD_MORPH_TRANSITION.duration * 1000 + 50,
+    );
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, keepActiveCardCentered]);
 
   // The effect above doesn't actually cover a display-mode switch — its own
@@ -1916,6 +1933,12 @@ function IndexInner({
   // state update on an already-settled list, not a fresh mount racing its
   // own Motion layout-measurement pass — no deferred wait needed.
   const handleNavigateToCard = (id: string) => {
+    // See suppressScrollRestoreRef's own comment — this jump both switches
+    // tabs and selects a card in the same batch, so without this the tab's
+    // own scroll-restore effect would fight the card's own scroll-into-view
+    // effect and (usually) win, landing on the tab's stale remembered
+    // position instead of the card this call is supposed to reveal.
+    suppressScrollRestoreRef.current = true;
     setActiveId(id);
     setTab("data");
   };
@@ -1980,9 +2003,22 @@ function IndexInner({
   // reliably has the last word over whatever Motion's post-layout pass did
   // a moment earlier in the same commit.
   const scrollPositionsRef = useRef<Partial<Record<StatusTab, number>>>({});
+  // Set by handleNavigateToCard right before it switches tabs — that call
+  // also changes activeId in the same batch, which drives its own "scroll
+  // the newly-active card into view" effect below. Without this, a jump
+  // that switches tabs AND selects a card in one go fires both effects in
+  // the same commit: this one's own multi-frame reapply loop kept winning
+  // the fight and snapping back to the tab's stale remembered position
+  // (typically 0, for a tab not visited yet this session), stranding the
+  // card the notification/View-Card tap was supposed to land on.
+  const suppressScrollRestoreRef = useRef(false);
   useLayoutEffect(() => {
     const el = contentRefForTab[tab].current;
     if (!el) return;
+    if (suppressScrollRestoreRef.current) {
+      suppressScrollRestoreRef.current = false;
+      return;
+    }
     const target = scrollPositionsRef.current[tab] ?? 0;
     el.scrollTop = target;
     // One synchronous set isn't enough to reliably win: the Data tab's own

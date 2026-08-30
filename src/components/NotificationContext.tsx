@@ -63,17 +63,19 @@ export interface Notification {
   // routine Interval check always uses a gentle "chime" rather
   // than whatever louder style the user may have set as their default).
   soundOverride?: AlarmSoundStyle;
-  // Present only for an Interval card's own "time to check" alert — adds 3
-  // extra buttons to the row (scroll-to-card, negative, positive) alongside
-  // the standard audio/snooze/dismiss ones. The callbacks close directly
-  // over the pushing card's own `score`/scroll-ref, so no separate lookup
-  // registry is needed; see NotificationBar's own rendering of this.
+  // Present only for an Interval card's own "time to check" alert — adds 2
+  // extra buttons to the row (negative, positive) alongside the standard
+  // audio/snooze/dismiss ones. Jumping to the card itself is handled by the
+  // ordinary sourceRef/onActivate path below, not a callback here, so it
+  // gets the same tab-switch-then-scroll behavior every other notification
+  // kind already has. The score callback closes directly over the pushing
+  // card's own `score`, so no separate lookup registry is needed; see
+  // NotificationBar's own rendering of this.
   intervalCheck?: {
     positiveLabel: string;
     negativeLabel: string;
     initialStatus: "correct" | "incorrect" | null;
     onScore: (value: "correct" | "incorrect") => void;
-    onScrollToCard: () => void;
   };
   // For a notification that's only ever meant to be a fleeting toast (e.g.
   // "you joined X's session") — still shows live/counts toward the tab
