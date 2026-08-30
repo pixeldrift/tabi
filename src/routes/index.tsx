@@ -1750,14 +1750,19 @@ function IndexInner({
     }
   }
 
-  // A fresh session starting (or a join — see requestJoin's own comment)
-  // should read as "the pane was already at the top," not as a scroll
-  // happening — entering a session is meant to open on its first card, not
-  // wherever the user happened to be scrolled to on the idle/"browsing
-  // before joining" screen. Instant (not smooth) and in a layout effect
-  // (before paint) so nothing is visibly scrolling.
+  // A fresh session starting has no history to speak of yet — reading as
+  // "the pane was already at the top" rather than as a scroll happening
+  // makes sense there, since it's meant to open on the very first card
+  // regardless of wherever the previously-ended session had left the pane
+  // scrolled to. A join is different: the exact same card list was already
+  // sitting there, scrollable, while idle/unattended — someone who'd
+  // scrolled down to check on a specific card before joining had that
+  // scroll position yanked back to the top the moment they joined, which
+  // reads as a jarring, unrequested jump rather than a natural "start" —
+  // so join no longer resets it at all. Instant (not smooth) and in a
+  // layout effect (before paint) so nothing is visibly scrolling.
   useLayoutEffect(() => {
-    if (transitionKind === "start-new" || transitionKind === "join") {
+    if (transitionKind === "start-new") {
       dataContentRef.current?.scrollTo(0, 0);
     }
   }, [transitionKind]);
