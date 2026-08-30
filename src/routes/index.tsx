@@ -1911,9 +1911,18 @@ function IndexInner({
   // was a dead click. Scrolling back to the top instead gives it a
   // purpose — the same "get back to the start of this pane" shortcut a
   // long scroll down any tab's content can otherwise strand you without.
+  // Already sitting at the top (within a few px — a smooth scroll can
+  // settle a pixel or two short of an exact 0) means that trip has
+  // nothing left to offer, so a re-tap from there jumps to the bottom
+  // instead, turning the same tap into a top<->bottom shuttle for a pane
+  // that's still worth navigating either way (the Data tab and its long
+  // card list, above all).
   const handleTabChange = (t: StatusTab) => {
     if (t === tab) {
-      contentRefForTab[t].current?.scrollTo({ top: 0, behavior: "smooth" });
+      const el = contentRefForTab[t].current;
+      if (!el) return;
+      const atTop = el.scrollTop <= 4;
+      el.scrollTo({ top: atTop ? el.scrollHeight : 0, behavior: "smooth" });
       return;
     }
     // Captured synchronously here (not left to the outgoing pane's own

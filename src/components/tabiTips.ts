@@ -30,8 +30,8 @@ export const TABI_TIPS: TabiTip[] = [
     id: "tab-scroll-top",
     tab: "data",
     selector: '[data-tour="tab-data"]',
-    title: "Jump to the top",
-    body: "Clicking on the current tab will scroll you back to the top of its contents.",
+    title: "Jump to the top (or bottom)",
+    body: "Tapping the current tab scrolls you back to the top of its contents — and tapping it again once you're already there jumps you straight to the bottom instead.",
   },
   {
     id: "drawer-width-toggle",
