@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Check, X, Link2 } from "lucide-react";
+import { Check, X, Link2, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { ListActionBadge, ListActionButton } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { IntervalIcon } from "./icons/IntervalIcon";
@@ -34,6 +35,14 @@ export type SamplingType = "whole" | "partial" | "momentary";
  *  Interval Recording, Momentary Time Sampling) live in the sampling-type
  *  picker's own helpText and this kind's info-modal description instead,
  *  so the on-card label stays a single line at its small corner size. */
+// Exploratory add-on for the tile's own dots-only nav (see the tile's own
+// comment on it): a single mini-timeline row — one tick per interval,
+// plus a tiny caret marking real elapsed time — shown above the dots.
+// Flip this on to compare it side by side against the plain dots-only
+// version before deciding whether it earns the extra row of visual noise
+// on an already-compact tile. Left off by default.
+const SHOW_INTERVAL_MINI_TIMELINE = false;
+
 const SAMPLING_TYPE_LABEL: Record<SamplingType, string> = {
   whole: "Whole Interval",
   partial: "Partial Interval",
@@ -709,6 +718,24 @@ export function IntervalCard({
     negative: `Mark ${negativeLabel} if`,
   };
 
+  // Measures the tile's own real content width for the sub-label text strip
+  // below — same reasoning as Task Analysis's own tileContentRef (see its
+  // comment): that strip's scroll-snap padding is 50% on each side, which
+  // with box-sizing: border-box already consumes the container's whole
+  // reported width, leaving nothing for a percentage to resolve against. A
+  // hardcoded guess clipped the label on any tile even a few px narrower
+  // than assumed — exactly the clipping this tile used to have with the
+  // numeric "N/total" version, which this whole redesign is replacing.
+  const tileContentRef = useRef<HTMLDivElement>(null);
+  const [tileContentWidth, setTileContentWidth] = useState(0);
+  useEffect(() => {
+    const el = tileContentRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setTileContentWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Rendered inside the timeline itself, following the "now" chevron rather
   // than sitting in the header — see IntervalTimeline's own `timerPill` prop.
   const timerPill = locked ? (
@@ -827,15 +854,20 @@ export function IntervalCard({
   const activeScoredCount = isCheckpointMode ? checkpointScoredCount : scoredCount;
   const activeIsComplete = isCheckpointMode ? checkpointIsComplete : isComplete;
   // The tile's own compact sub-label — just the interval range ("0-30m"),
-  // not intervalLabel's own leading "1: " (redundant here: the tile already
-  // shows that same step number as its own big centered digit right above
-  // this) — or, for a checkpoint, its clock time and name together, since
-  // the time alone wouldn't say what it's actually checking.
-  const activeSubLabel = isCheckpointMode
-    ? checkpoints && checkpoints[activeViewIdx]
-      ? `${displayCpTime(checkpoints[activeViewIdx].time)} · ${checkpoints[activeViewIdx].label}`
-      : ""
-    : intervalRange(activeViewIdx, intervalMin);
+  // not intervalLabel's own leading "1: " (redundant here: the tile's own
+  // dots already show which one is being viewed) — or, for a checkpoint,
+  // its clock time and name together, since the time alone wouldn't say
+  // what it's actually checking. Takes an arbitrary index (not just
+  // activeViewIdx) so the tile's own text strip can pre-render every
+  // index's own label for swiping between them, the same way Task
+  // Analysis's step-name strip renders every step rather than only the
+  // current one.
+  const subLabelFor = (idx: number) =>
+    isCheckpointMode
+      ? checkpoints && checkpoints[idx]
+        ? `${displayCpTime(checkpoints[idx].time)} · ${checkpoints[idx].label}`
+        : ""
+      : intervalRange(idx, intervalMin);
 
   // The shared timeline's own "now" fill position, in the same SEG_W (and
   // ROW_SLOT, for the expanded view's vertical bar) per-segment units its
@@ -894,7 +926,6 @@ export function IntervalCard({
         details={details}
         progress={(activeScoredCount / activeCount) * 100}
         isComplete={activeIsComplete}
-        hint={activeSubLabel}
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
             <button
@@ -936,47 +967,127 @@ export function IntervalCard({
           </div>
         }
       >
-        {/* relative inline-flex wraps just the current-index number — same
-            technique as RateCard's/FrequencyCard's own tile number: the
-            "/count" suffix hangs off it via absolute positioning instead
-            of sitting in normal flex flow, so its width doesn't shift the
-            number off the tile's true center. activeSubLabel (the "0-30m"
-            range, or a checkpoint's time+name) is MiniTileShell's own
-            `hint` now — a status line ABOUT this number, not part of it. */}
-        <div className="relative inline-flex items-center">
-          <span
-            className={cn(
-              // text-[Npx] (arbitrary) has to come before leading-none, not
-              // after — tailwind-merge treats an arbitrary text-size class as
-              // conflicting with leading-none and keeps whichever is LAST,
-              // so leading-none listed first was silently dropped from the
-              // rendered class list (see Frequency/RateCard's own fix for
-              // the same bug), leaving this number a taller-than-intended
-              // default line-height.
-              "font-display tabular-nums",
-              large ? "text-[32px]" : "text-[24px]",
-              "leading-none",
+        {/* Dots (+ large-density nav arrows) + the sub-label text — same
+            shape as Task Analysis's own step dots + step-name strip. What's
+            actually being scored (the time window, or a checkpoint's own
+            time+name) is the more useful thing to read at a glance than a
+            raw "N/total" count, and it doesn't get clipped the way the old
+            number+suffix did on a narrow tile — see subLabelFor's own
+            comment. The dots alone say where you are in the sequence,
+            same as every other kind's own tile nav. */}
+        <div ref={tileContentRef} className="w-full flex flex-col items-center gap-0.5">
+          {/* Exploratory add-on (see SHOW_INTERVAL_MINI_TIMELINE) — a
+              single tick row with a tiny caret marking real elapsed time,
+              independent of whichever interval/checkpoint is being viewed
+              below. Off by default; flip the flag to compare. */}
+          {SHOW_INTERVAL_MINI_TIMELINE && (
+            <div className={cn("relative w-full", large ? "h-2" : "h-1.5")} aria-hidden>
+              <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-stone-200" />
+              <div
+                className="absolute top-0 -translate-x-1/2 text-blue-500"
+                style={{
+                  left: `${Math.min(100, Math.max(0, (activeFillFrac / activeCount) * 100))}%`,
+                }}
+              >
+                <svg width="7" height="6" viewBox="0 0 7 6" fill="currentColor">
+                  <path d="M3.5 6 L0 0 H7 Z" />
+                </svg>
+              </div>
+            </div>
+          )}
+          <div className="relative w-full -mt-1">
+            {/* Large density only — same "pushed to the tile's own edges"
+             *  nav-arrow convention as every other kind's own tile nav;
+             *  small density relies on swiping/tapping a dot alone. */}
+            {large && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    activeGoTo(activeViewIdx - 1);
+                  }}
+                  disabled={activeViewIdx <= 0}
+                  aria-label={isCheckpointMode ? "Previous checkpoint" : "Previous interval"}
+                  className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    activeGoTo(activeViewIdx + 1);
+                  }}
+                  disabled={activeViewIdx >= activeCount - 1}
+                  aria-label={isCheckpointMode ? "Next checkpoint" : "Next interval"}
+                  className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                >
+                  <ChevronRight className="size-[18px]" strokeWidth={2.5} />
+                </button>
+              </>
             )}
-          >
-            {activeViewIdx + 1}
-          </span>
-          <span
-            className={cn(
-              "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-foreground/30",
-              large ? "-right-7" : "-right-6",
-            )}
-            aria-hidden
-          >
-            <span className={cn("font-display", large ? "text-lg" : "text-sm")}>/</span>
-            <span
-              className={cn(
-                "font-display leading-none tabular-nums text-foreground/50",
-                large ? "text-lg" : "text-sm",
-              )}
+            <SwipeStrip
+              count={activeCount}
+              current={activeViewIdx}
+              onCurrentChange={activeGoTo}
+              variant="centered"
+              className="w-full"
+              gapClassName={large ? "gap-2" : "gap-1.5"}
+              itemWrapperClassName="flex items-center justify-center"
             >
-              {activeCount}
-            </span>
-          </span>
+              {(i) => {
+                const isCurrent = i === activeViewIdx;
+                return (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      activeGoTo(i);
+                    }}
+                    className={cn(
+                      "rounded-full transition-all duration-300",
+                      isCurrent ? (large ? "size-2.5" : "size-2") : large ? "size-1.5" : "size-1",
+                      activeStatuses[i] === "correct"
+                        ? "bg-green-500"
+                        : activeStatuses[i] === "incorrect"
+                          ? "bg-red-500"
+                          : "bg-stone-300",
+                    )}
+                    style={{ opacity: isCurrent ? 1 : 0.5 }}
+                    aria-hidden
+                  />
+                );
+              }}
+            </SwipeStrip>
+          </div>
+          <SwipeStrip
+            count={activeCount}
+            current={activeViewIdx}
+            onCurrentChange={activeGoTo}
+            variant="centered"
+            className="w-full"
+            gapClassName={large ? "gap-3" : "gap-2"}
+            itemWrapperClassName="flex items-center justify-center"
+          >
+            {(i, isCenter) => (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  activeGoTo(i);
+                }}
+                className={cn(
+                  "line-clamp-2 text-center font-semibold leading-[1.15] transition-[font-size]",
+                  isCenter ? "text-foreground" : "invisible",
+                )}
+                style={{
+                  width: tileContentWidth || undefined,
+                  fontSize: isCenter ? (large ? 13 : 10) : large ? 13 : 10,
+                }}
+              >
+                {subLabelFor(i)}
+              </div>
+            )}
+          </SwipeStrip>
         </div>
       </MiniTileShell>
     );
