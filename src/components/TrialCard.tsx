@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
 import { Check, X, CircleSlash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { PercentCorrectIcon } from "./icons/PercentCorrectIcon";
@@ -256,6 +256,7 @@ export function TrialCard({
 
   const dragX = useMotionValue(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const completedCount = trials.filter((t) => t !== null).length;
   const correctCount = trials.filter((t) => t === "correct").length;
@@ -415,16 +416,34 @@ export function TrialCard({
     setExpanded((v) => !v);
   };
 
-  // Every bubble's own outer slot is a fixed BUBBLE_CENTER square (not
-  // BUBBLE, the small resting size) — see the per-bubble render below for
-  // why: the slot itself never resizes, so the growing/shrinking bubble
-  // inside it never pushes a neighboring slot and the row's own width never
-  // changes as `current` moves.
-  const stepWidth = BUBBLE_CENTER + GAP;
-  const trackOffset = useMemo(
-    () => -(current * stepWidth + BUBBLE_CENTER / 2),
-    [current, stepWidth],
-  );
+  // Bubbles sit at their own natural (small) width now, not a fixed
+  // BUBBLE_CENTER slot each — see the per-bubble render below and
+  // TaskAnalysisCard's own identical approach, which this mirrors. That
+  // means the track's real width shifts by exactly (BUBBLE_CENTER - BUBBLE)
+  // every time `current` moves, so a single fixed stepWidth can no longer
+  // derive the current bubble's exact center analytically the way it could
+  // when every slot was the same size — measuring the actual DOM position
+  // instead (rather than re-deriving that shift by hand, the same class of
+  // bug TaskAnalysisCard's own version of this already learned from once)
+  // is what keeps the offset exactly right regardless of which neighbors
+  // happen to be expanded/collapsed. stepWidth itself survives only as a
+  // rough per-step distance for turning a drag's pixel delta into a target
+  // index below — the measurement effect (keyed on `current`) is what
+  // actually lands the precise centering once that index updates.
+  const stepWidth = BUBBLE + GAP;
+  const [trackOffset, setTrackOffset] = useState(-(BUBBLE_CENTER / 2));
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const measure = () => {
+      const target = track.children[current] as HTMLElement | undefined;
+      if (target) setTrackOffset(-(target.offsetLeft + target.offsetWidth / 2));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [current]);
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const finalOffset = trackOffset + info.offset.x;
@@ -1046,6 +1065,7 @@ export function TrialCard({
                 }}
               >
                 <motion.div
+                  ref={trackRef}
                   className="absolute top-1/2 left-1/2 flex items-center"
                   style={{
                     gap: GAP,
@@ -1094,73 +1114,65 @@ export function TrialCard({
                             ? "bg-amber-50 border-amber-400/80"
                             : "";
                     return (
-                      // Fixed-size slot (always BUBBLE_CENTER, the largest a
-                      // bubble ever renders) — the actual bubble inside it
-                      // grows/shrinks with a bouncy spring, but that motion
-                      // stays entirely inside this unchanging box, so it
-                      // never pushes a neighboring slot around and the track
-                      // itself never visibly reflows/bounces as `current`
-                      // moves. Only the current bubble's own growth should
-                      // read as animated; everything else — the rest of the
-                      // row, the nav arrows outside it — should hold still.
-                      <div
+                      // Grows/shrinks in place (no fixed-size outer slot) —
+                      // same as TaskAnalysisCard's own step bubbles, which
+                      // this now matches: bubbles sit tightly packed at
+                      // their natural small width, and only the current
+                      // one's own spring-driven growth pushes its neighbors
+                      // apart, rather than every bubble reserving the
+                      // largest size up front regardless of whether it's
+                      // currently showing it.
+                      <motion.button
                         key={i}
-                        className="relative shrink-0 grid place-items-center"
-                        style={{ width: BUBBLE_CENTER, height: BUBBLE_CENTER }}
+                        onClick={() => goTo(i)}
+                        className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
+                        animate={{
+                          width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                          height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                        }}
+                        transition={{ type: "spring", stiffness: 360, damping: 28 }}
                       >
-                        <motion.button
-                          onClick={() => goTo(i)}
-                          className="relative grid place-items-center rounded-full font-medium select-none"
-                          animate={{
-                            width: isCenter ? BUBBLE_CENTER : BUBBLE,
-                            height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                          }}
-                          transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                        <div
+                          key={`${i}-${t ?? "none"}`}
+                          className={cn(
+                            "absolute inset-0 rounded-full flex items-center justify-center",
+                            isCenter ? "border-2" : "border",
+                            bg,
+                            isCenter && !t && "bg-card border-foreground/30",
+                            isCenter && centerBg,
+                            isCenter && t && "animate-bubble-hop",
+                          )}
                         >
-                          <div
-                            key={`${i}-${t ?? "none"}`}
-                            className={cn(
-                              "absolute inset-0 rounded-full flex items-center justify-center",
-                              isCenter ? "border-2" : "border",
-                              bg,
-                              isCenter && !t && "bg-card border-foreground/30",
-                              isCenter && centerBg,
-                              isCenter && t && "animate-bubble-hop",
-                            )}
-                          >
-                            {isCenter ? (
-                              <AnimatePresence mode="wait">
-                                <motion.span
-                                  key={i}
-                                  initial={{ opacity: 0, y: 6 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -6 }}
-                                  transition={{ duration: 0.25 }}
-                                  className={cn(
-                                    "font-display text-4xl leading-none tabular-nums",
-                                    centerTextColor,
-                                  )}
-                                >
-                                  {i + 1}
-                                </motion.span>
-                              </AnimatePresence>
-                            ) : (
-                              <span
-                                className={cn("text-[7px] font-medium leading-none", textColor)}
+                          {isCenter ? (
+                            <AnimatePresence mode="wait">
+                              <motion.span
+                                key={i}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.25 }}
+                                className={cn(
+                                  "font-display text-4xl leading-none tabular-nums",
+                                  centerTextColor,
+                                )}
                               >
                                 {i + 1}
-                              </span>
-                            )}
-                          </div>
-                          {minTrials !== undefined && i < minTrials && !t && (
-                            <span
-                              data-tour="trial-min-dot"
-                              className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
-                              aria-hidden
-                            />
+                              </motion.span>
+                            </AnimatePresence>
+                          ) : (
+                            <span className={cn("text-[7px] font-medium leading-none", textColor)}>
+                              {i + 1}
+                            </span>
                           )}
-                        </motion.button>
-                      </div>
+                        </div>
+                        {minTrials !== undefined && i < minTrials && !t && (
+                          <span
+                            data-tour="trial-min-dot"
+                            className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
+                            aria-hidden
+                          />
+                        )}
+                      </motion.button>
                     );
                   })}
                   {maxTrials && (
