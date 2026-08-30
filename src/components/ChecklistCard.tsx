@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -126,9 +127,17 @@ function ChecklistRow({
        *  x-height to read as centered on the text, not the whole row,
        *  which matters once a description line is showing underneath. */}
       <span className="flex w-full items-center gap-2.5">
-        <span className="grid place-items-center active:scale-95 transition-transform">
+        {/* whileTap — the same real pointerdown/up-driven scale RatingCard's
+         *  own stars use — rather than a CSS `active:scale-*` utility. Both
+         *  are pure transforms and neither should move a flex sibling in
+         *  principle, but the CSS version visibly did here (the checkbox
+         *  growing/shrinking read as pushing the label next to it), and
+         *  swapping to Motion's own tap tracking — set directly on the
+         *  element rather than riding CSS's `:active` pseudo-class — is
+         *  what actually held the label still. */}
+        <motion.span whileTap={{ scale: 0.9 }} className="grid place-items-center">
           <ChecklistBox checked={checked} />
-        </span>
+        </motion.span>
         <span
           className={cn(
             "min-w-0 flex-1 text-sm leading-snug",
