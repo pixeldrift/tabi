@@ -456,18 +456,37 @@ export function DurationCard({
               )}
             </>
           }
+          // "Instance N of M" — computed from viewIdx directly rather than
+          // read out of the SwipeStrip item closure below (its own `i` is
+          // always just the currently-shown page for this "paged" variant,
+          // i.e. viewIdx, but this needs a value before that closure even
+          // runs). MiniTileShell's own `hint` wrapper already supplies the
+          // muted/centered/sized styling; this just supplies the "Instance"/
+          // "of M" flanking text and the bolder instance number between them.
+          hint={
+            <span className="flex items-baseline justify-center gap-1 uppercase tracking-wide">
+              <span>Instance</span>
+              <span
+                className={cn(
+                  "font-display font-bold normal-case tabular-nums text-foreground",
+                  large ? "text-sm" : "text-xs",
+                )}
+              >
+                {viewIdx + 1}
+              </span>
+              <span>of {instances.length}</span>
+            </span>
+          }
         >
-          {/* w-full h-full + justify-center (own wrapper, not MiniTileShell's
-              shared justify-end children column): every other kind sharing
-              that column bottom-anchors against a real `actions` row below
-              it, which is what actually centers its content in the space
-              above — this kind has no actions row of its own (the play/
-              pause button already lives inside the pill, in `children`),
-              so without this wrapper the dots+pill+label block just sinks
-              to the tile's own bottom edge instead of landing in the
-              tile's real middle, same fix already applied to Rating's own
-              stars+hint block for the identical reason. */}
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+          {/* Just the dots + pill now — the "Instance N of M" line is
+              MiniTileShell's own `hint`, rendered below zone 3 instead of
+              inside it (see that prop's own comment). This kind has no
+              `actions` row of its own (the play/pause button already lives
+              inside the pill here), so it used to need its own h-full/
+              justify-center wrapper just to avoid sinking to the tile's own
+              bottom edge — zone 3's now-fixed height and its own centering
+              handle that without a per-card workaround. */}
+          <div className="w-full flex flex-col items-center gap-1">
             <div
               className={cn(
                 "flex flex-wrap items-center justify-center",
@@ -536,106 +555,83 @@ export function DurationCard({
                 const activated = isActivated(i);
                 const accent = running || activated;
                 return (
-                  <>
-                    <div
-                      className={cn(
-                        "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-                        large ? "h-10" : "h-[30px]",
-                        accent ? "border-blue-500" : "border-border",
-                      )}
+                  <div
+                    className={cn(
+                      "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+                      large ? "h-10" : "h-[30px]",
+                      accent ? "border-blue-500" : "border-border",
+                    )}
+                  >
+                    <TimeKeypad
+                      valueMs={instanceMs(i)}
+                      onReplace={(next) => setInstanceMs(i, next)}
+                      onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
                     >
-                      <TimeKeypad
-                        valueMs={instanceMs(i)}
-                        onReplace={(next) => setInstanceMs(i, next)}
-                        onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
-                      >
-                        {({ open }) => (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              open();
-                            }}
-                            disabled={!canRecordData}
-                            aria-label={`Edit time for instance ${i + 1}`}
-                            className={cn(
-                              // Reserves room up front for one more digit than
-                              // the common case (e.g. crossing from "9:59" to
-                              // "10:00", or gaining an hours place entirely) —
-                              // without this, the pill only grows when it
-                              // actually needs to, which reads as a sudden
-                              // jolt right as the button shifts over with it.
-                              "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
-                              large
-                                ? "px-3 text-lg min-w-[4.5rem]"
-                                : "px-2 text-[13px] min-w-[3.25rem]",
-                            )}
-                          >
-                            {formatCompactTime(instanceMs(i))}
-                          </button>
-                        )}
-                      </TimeKeypad>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleInstance(i);
-                        }}
-                        disabled={!canRecordData}
-                        aria-label={running ? "Pause this instance" : "Start this instance"}
-                        // active:scale-100: cancels the global button:active
-                        // fallback (see styles.css) — that scale shrinks this
-                        // button's own rectangle away from the pill's
-                        // rounded-full overflow-hidden clip on press,
-                        // revealing white background around it, same bug
-                        // already fixed for the session timer's own mini
-                        // pause button (see StatusBar.tsx's identical
-                        // comment). Scale instead lives on the icon-wrapping
-                        // span below.
-                        className={cn(
-                          "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
-                          large ? "w-10" : "w-[30px]",
-                        )}
-                      >
-                        <span className="grid place-items-center active:scale-95 transition-transform">
-                          {running ? (
-                            <Pause
-                              className={large ? "size-[17px]" : "size-3.5"}
-                              fill="currentColor"
-                              strokeWidth={0}
-                            />
-                          ) : (
-                            <Play
-                              className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")}
-                              fill="currentColor"
-                              strokeWidth={0}
-                            />
+                      {({ open }) => (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            open();
+                          }}
+                          disabled={!canRecordData}
+                          aria-label={`Edit time for instance ${i + 1}`}
+                          className={cn(
+                            // Reserves room up front for one more digit than
+                            // the common case (e.g. crossing from "9:59" to
+                            // "10:00", or gaining an hours place entirely) —
+                            // without this, the pill only grows when it
+                            // actually needs to, which reads as a sudden
+                            // jolt right as the button shifts over with it.
+                            "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
+                            large
+                              ? "px-3 text-lg min-w-[4.5rem]"
+                              : "px-2 text-[13px] min-w-[3.25rem]",
                           )}
-                        </span>
-                      </button>
-                    </div>
-                    <span
+                        >
+                          {formatCompactTime(instanceMs(i))}
+                        </button>
+                      )}
+                    </TimeKeypad>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleInstance(i);
+                      }}
+                      disabled={!canRecordData}
+                      aria-label={running ? "Pause this instance" : "Start this instance"}
+                      // active:scale-100: cancels the global button:active
+                      // fallback (see styles.css) — that scale shrinks this
+                      // button's own rectangle away from the pill's
+                      // rounded-full overflow-hidden clip on press,
+                      // revealing white background around it, same bug
+                      // already fixed for the session timer's own mini
+                      // pause button (see StatusBar.tsx's identical
+                      // comment). Scale instead lives on the icon-wrapping
+                      // span below.
                       className={cn(
-                        "flex items-baseline gap-1 uppercase tracking-wide text-muted-foreground",
-                        large ? "text-[11px] leading-none" : "text-[9px] leading-none",
+                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
+                        large ? "w-10" : "w-[30px]",
                       )}
                     >
-                      <span>Instance</span>
-                      {/* The instance number itself is the one thing worth a
-                        glance here — larger and bolder than the rest of the
-                        label, same emphasis idiom as Duration's own "Time X
-                        of Y" helper text in Card mode. */}
-                      <span
-                        className={cn(
-                          "font-display font-bold normal-case tabular-nums text-foreground",
-                          large ? "text-sm" : "text-xs",
+                      <span className="grid place-items-center active:scale-95 transition-transform">
+                        {running ? (
+                          <Pause
+                            className={large ? "size-[17px]" : "size-3.5"}
+                            fill="currentColor"
+                            strokeWidth={0}
+                          />
+                        ) : (
+                          <Play
+                            className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")}
+                            fill="currentColor"
+                            strokeWidth={0}
+                          />
                         )}
-                      >
-                        {i + 1}
                       </span>
-                      <span>of {instances.length}</span>
-                    </span>
-                  </>
+                    </button>
+                  </div>
                 );
               }}
             </SwipeStrip>

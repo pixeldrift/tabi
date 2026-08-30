@@ -13,9 +13,22 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
   /** Which quick-action density this tile renders at — large (2 per row,
    *  more breathing room) or small (3 per row, everything scaled down). */
   density: "large" | "small";
-  /** The tile's own main content, vertically centered in the space left
-   *  after the title — a number, a swipeable strip, stars, etc. */
+  /** The tile's own main content — a number, a swipeable strip, stars, etc.
+   *  Rendered inside a fixed-height box (see ZONE3_HEIGHT) that's the same
+   *  size on every card kind at a given density, with this centered inside
+   *  it, so the box itself lines up from tile to tile regardless of which
+   *  kind's own content happens to be shorter or taller. Keep this to just
+   *  the primary value/control — a status line about it (below) is a
+   *  separate slot precisely so its own length can't bump this box around. */
   children: ReactNode;
+  /** Small status/context line rendered directly below `children`, outside
+   *  its fixed-height box — "Tap star to score", "Instance 2 of 3", "0-30m",
+   *  "No entries yet", the like. Its own length (or wrapping to a second
+   *  line) never changes where the box above it sits, unlike when this used
+   *  to be stacked inside `children` itself. Rendered as its own small
+   *  muted/centered line — pass plain text or a short span, not a styled
+   *  block. Omit for a kind with nothing to say there. */
+  hint?: ReactNode;
   /** Bottom row of compact action buttons, rendered below `children` — kept
    *  as a separate slot (rather than just trailing content) so its gap is
    *  consistent across card kinds. */
@@ -47,6 +60,23 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
 // bare measured width (96px) with no extra padding.
 const PROGRESS_BAR_WIDTH = { large: 152, small: 96 } as const;
 
+// zone 3's own fixed height at each density. Bounded from above by the
+// tightest actual budget this column ever has to work with — a kind with
+// both an `actions` row AND a `hint` (Interval is the tightest: correct/
+// error buttons below, its own range/checkpoint text below zone 3) leaves
+// this column only ~41px (small) / ~75px (large) of real leftover space
+// after the title and actions are accounted for, regardless of what zone 3
+// itself asks for — `min-h-0` on this column lets it get compressed below
+// its children's own combined height rather than growing to fit them, so a
+// zone 3 sized any taller than that budget (minus room for the hint line
+// and the gap between them) doesn't get more room; it silently overflows
+// and starves the hint next to it down to nothing instead. Every kind's box
+// is this same height regardless of how short its own content is (that's
+// the whole point — the box lines up from tile to tile, with shorter
+// content simply centered inside it), but it has to actually fit inside
+// the tightest real case, not just the tallest CONTENT case.
+const ZONE3_HEIGHT = { large: 56, small: 26 } as const;
+
 /** Compact aspect-square counterpart to CardShell, used by every card kind
  *  when the toolbar's display mode is one of the two quick-action grids
  *  (see DataToolbarContext's DisplayMode). Each card component renders
@@ -70,6 +100,7 @@ export function MiniTileShell({
   onDetailsOpenChange,
   stickyTop = 0,
   children,
+  hint,
   actions,
   actionsFullWidth = false,
   progress,
@@ -226,19 +257,36 @@ export function MiniTileShell({
             />
           )}
 
-          {/* justify-end, not -center: `actions` below already sits a fixed
-              distance from the tile's own bottom edge regardless of title
-              height (it's a shrink-0 sibling after this flex-1 spacer, and
-              this whole column stretches to the tile's fixed aspect-square
-              height) — but centering THIS wrapper's own content within its
-              own leftover space (which shrinks as the title grows to 2-3
-              lines) let it drift a few px up or down between tiles with
-              different title lengths even though their actions rows lined
-              up perfectly. Bottom-anchoring content here too, flush against
-              actions, keeps both in the same place across every tile
-              regardless of title length. */}
-          <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-end gap-0.5">
-            {children}
+          {/* justify-center, not -end: used to bottom-anchor this whole
+              column against `actions` instead, so a taller title (which
+              shrinks this wrapper's own leftover space) couldn't drift zone
+              3 up or down relative to a shorter-titled tile's — centering
+              inside a stretchy zone 3 had the same problem in the other
+              direction. Zone 3 is a fixed height now (see ZONE3_HEIGHT), so
+              that drift can't happen regardless of how this leftover space
+              gets divided up — freeing this to center the whole [zone 3 +
+              hint] block in it instead, which is what actually keeps a
+              kind with no `actions` row (Duration, Rating, Timestamp) from
+              sinking to the tile's own bottom edge with nothing below it to
+              anchor against, no longer needing its own separate centering
+              workaround the way it used to. */}
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col items-center justify-center gap-0.5">
+            <div
+              className="w-full min-h-0 shrink-0 flex items-center justify-center"
+              style={{ height: ZONE3_HEIGHT[density] }}
+            >
+              {children}
+            </div>
+            {hint && (
+              <span
+                className={cn(
+                  "text-muted-foreground text-center truncate max-w-full",
+                  large ? "text-[11px]" : "text-[9px]",
+                )}
+              >
+                {hint}
+              </span>
+            )}
           </div>
 
           {actions && (

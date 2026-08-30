@@ -894,6 +894,7 @@ export function IntervalCard({
         details={details}
         progress={(activeScoredCount / activeCount) * 100}
         isComplete={activeIsComplete}
+        hint={activeSubLabel}
         actions={
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
             <button
@@ -935,55 +936,38 @@ export function IntervalCard({
           </div>
         }
       >
-        <div className="flex flex-col items-center gap-0">
-          {/* relative inline-flex wraps just the current-index number — same
-              technique as RateCard's/FrequencyCard's own tile number: the
-              "/count" suffix hangs off it via absolute positioning instead
-              of sitting in normal flex flow, so its width doesn't shift the
-              number off the tile's true center. */}
-          <div className="relative inline-flex items-center">
-            <span
-              className={cn(
-                "font-display leading-none tabular-nums",
-                large ? "text-[32px]" : "text-[24px]",
-              )}
-            >
-              {activeViewIdx + 1}
-            </span>
-            <span
-              className={cn(
-                "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-foreground/30",
-                large ? "-right-7" : "-right-6",
-              )}
-              aria-hidden
-            >
-              <span className={cn("font-display", large ? "text-lg" : "text-sm")}>/</span>
-              <span
-                className={cn(
-                  "font-display leading-none tabular-nums text-foreground/50",
-                  large ? "text-lg" : "text-sm",
-                )}
-              >
-                {activeCount}
-              </span>
-            </span>
-          </div>
+        {/* relative inline-flex wraps just the current-index number — same
+            technique as RateCard's/FrequencyCard's own tile number: the
+            "/count" suffix hangs off it via absolute positioning instead
+            of sitting in normal flex flow, so its width doesn't shift the
+            number off the tile's true center. activeSubLabel (the "0-30m"
+            range, or a checkpoint's time+name) is MiniTileShell's own
+            `hint` now — a status line ABOUT this number, not part of it. */}
+        <div className="relative inline-flex items-center">
           <span
             className={cn(
-              // -mt-1.5: the gap between this and the number above reads as
-              // much bigger than the layout itself accounts for (measured:
-              // 0px — this and the number's own wrapper already sit flush)
-              // — it's leading-none's own residual line-height padding
-              // inside the number's line box (a display font's ascent/
-              // descent metrics leave real empty space above/below the
-              // glyph even at line-height:1), not a margin/gap either
-              // element controls directly. Pulling this up is the only way
-              // to actually close it.
-              "-mt-1.5 text-muted-foreground tabular-nums truncate max-w-full",
-              large ? "text-[11px]" : "text-[9px]",
+              "font-display leading-none tabular-nums",
+              large ? "text-[32px]" : "text-[24px]",
             )}
           >
-            {activeSubLabel}
+            {activeViewIdx + 1}
+          </span>
+          <span
+            className={cn(
+              "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-foreground/30",
+              large ? "-right-7" : "-right-6",
+            )}
+            aria-hidden
+          >
+            <span className={cn("font-display", large ? "text-lg" : "text-sm")}>/</span>
+            <span
+              className={cn(
+                "font-display leading-none tabular-nums text-foreground/50",
+                large ? "text-lg" : "text-sm",
+              )}
+            >
+              {activeCount}
+            </span>
           </span>
         </div>
       </MiniTileShell>

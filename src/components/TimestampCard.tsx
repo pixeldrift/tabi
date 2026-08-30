@@ -282,6 +282,24 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
+        // Large density only — small density keeps the pill as the tile's
+        // whole story (see the removed span's own former comment). "Current
+        // time" once back on the live slot, "Entry X of Y" while browsing a
+        // past stamp, "No entries yet" before the first one.
+        hint={
+          large ? (
+            viewIdx < entries.length ? (
+              <>
+                Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
+                <span className="tabular-nums text-foreground">{entries.length}</span>
+              </>
+            ) : hasData ? (
+              "Current time"
+            ) : (
+              "No entries yet"
+            )
+          ) : undefined
+        }
       >
         {/* Dots (+ large-density nav arrows) sit above the pill now, not
             below it — the pill itself now actually tracks viewIdx (it
@@ -436,28 +454,6 @@ export function TimestampCard({
             </span>
           </button>
         </div>
-        {/* Hint text below the pill — large density only (small density
-            keeps this pill as the tile's whole story, matching how it
-            already was before this pass). Same convention as every other
-            kind's own tile ("Tap star to score", Interval's range text,
-            etc.): centered, muted, small. "Current time" (not "Viewing
-            current time" — see the standard view's own identical wording
-            fix) once back on the live slot, "Entry X of Y" while browsing
-            a past stamp, "No entries yet" before the first one. */}
-        {large && (
-          <span className="text-[11px] text-muted-foreground text-center truncate max-w-full">
-            {viewIdx < entries.length ? (
-              <>
-                Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
-                <span className="tabular-nums text-foreground">{entries.length}</span>
-              </>
-            ) : hasData ? (
-              "Current time"
-            ) : (
-              "No entries yet"
-            )}
-          </span>
-        )}
       </MiniTileShell>
     );
   }

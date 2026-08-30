@@ -202,61 +202,48 @@ export function RatingCard({
             )}
           </>
         }
+        hint={rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
       >
-        {/* Stars + hint text together as one block, same shape as Interval's
-            own number+hint pairing — a plain h-full/justify-center wrapper
-            (not MiniTileShell's own shared justify-end children column,
-            which bottom-anchors against a real `actions` row this kind
-            doesn't have) so the block actually centers in the tile's real
-            middle instead of sinking to the tile's own bottom edge with
-            nothing below it to anchor against. Stars used to live in
-            `actions` instead (bottom-anchored on their own, hint text
-            separately centered above them) — that kept the hint from
-            reading as crammed under the stars, but left the two visually
-            disconnected floating pieces instead of one grouped control. */}
-        <div className="w-full h-full flex flex-col items-center justify-center gap-0.5">
-          <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
-            {Array.from({ length: numStars }, (_, i) => {
-              const value = min + i + 1;
-              const filled = rating >= value;
-              return (
-                <motion.button
-                  key={value}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    pick(value);
-                  }}
-                  disabled={!canRecordData}
-                  whileTap={{ scale: 0.88 }}
-                  animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  aria-label={`Score ${value}`}
-                  aria-pressed={filled}
-                  className="shrink-0 disabled:opacity-40"
-                >
-                  <Star
-                    className={cn(
-                      large ? "size-[26px]" : "size-[19px]",
-                      STAR_CENTROID_OFFSET,
-                      filled
-                        ? "fill-blue-500 stroke-blue-600"
-                        : "fill-foreground/10 stroke-foreground/25",
-                    )}
-                    strokeWidth={1.5}
-                  />
-                </motion.button>
-              );
-            })}
-          </div>
-          <span
-            className={cn(
-              "text-muted-foreground text-center truncate max-w-full",
-              large ? "text-[11px]" : "text-[9px]",
-            )}
-          >
-            {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
-          </span>
+        {/* Just the stars — the "Tap star to score" / scored-level text is
+            MiniTileShell's own `hint` now, rendered below zone 3 instead of
+            stacked inside it (see that prop's own comment for why: this
+            kind has no `actions` row, so it used to need its own h-full/
+            justify-center workaround just to keep from sinking to the
+            tile's bottom edge — zone 3's now-fixed height and its own
+            centering handle that without a per-card wrapper here). */}
+        <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
+          {Array.from({ length: numStars }, (_, i) => {
+            const value = min + i + 1;
+            const filled = rating >= value;
+            return (
+              <motion.button
+                key={value}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  pick(value);
+                }}
+                disabled={!canRecordData}
+                whileTap={{ scale: 0.88 }}
+                animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+                aria-label={`Score ${value}`}
+                aria-pressed={filled}
+                className="shrink-0 disabled:opacity-40"
+              >
+                <Star
+                  className={cn(
+                    large ? "size-[26px]" : "size-[19px]",
+                    STAR_CENTROID_OFFSET,
+                    filled
+                      ? "fill-blue-500 stroke-blue-600"
+                      : "fill-foreground/10 stroke-foreground/25",
+                  )}
+                  strokeWidth={1.5}
+                />
+              </motion.button>
+            );
+          })}
         </div>
       </MiniTileShell>
     );

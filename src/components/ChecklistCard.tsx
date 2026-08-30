@@ -310,6 +310,7 @@ export function ChecklistCard({
             />
           </button>
         }
+        hint={large ? `${checkedCount}/${items.length} checked` : undefined}
       >
         {/* One item at a time, same idea as TaskAnalysisCard's own tile
          *  stepper — the dot row gives the overview a static fraction
@@ -403,11 +404,6 @@ export function ChecklistCard({
               )}
             </SwipeStrip>
           </div>
-          {large && (
-            <span className="text-[10px] text-muted-foreground">
-              {checkedCount}/{items.length} checked
-            </span>
-          )}
         </div>
       </MiniTileShell>
     );
