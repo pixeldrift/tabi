@@ -468,6 +468,14 @@ export function ChecklistCard({
       onWidthModeChange={onWidthModeChange}
       progress={percent}
       isComplete={checkedCount > 0}
+      helperText={
+        <span>
+          <strong className="font-semibold">
+            {checkedCount}/{items.length}
+          </strong>{" "}
+          checked · {percent}%
+        </span>
+      }
       expanded={expanded}
       onToggleExpanded={() => setExpanded((v) => !v)}
       details={

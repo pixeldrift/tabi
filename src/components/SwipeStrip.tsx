@@ -64,6 +64,24 @@ export function SwipeStrip({
   // effect below) so a premature/misfired settle can be told apart from a
   // genuine one instead of being taken at face value.
   const targetIndexRef = useRef<number | null>(null);
+  // The index handleScroll itself most recently reported via
+  // onCurrentChange — set right before that call, consumed by the
+  // `current`-driven effect below. Without this, EVERY `current` update
+  // (regardless of where it came from) re-issues a fresh programmatic
+  // `scrollToIndex`, including the one caused by the user's own live
+  // swipe/drag reporting its own position back up. That forced scroll then
+  // fights the still-in-progress native touch scroll/momentum for control
+  // of the same element, which is what actually produced this component's
+  // reported symptoms — a mid-gesture jerk/stutter that can read as
+  // "clipped," and, worse, a scroll that settles wherever the two competing
+  // animations happened to cancel out instead of on a real snap point
+  // ("stuck between" two items) even though CSS scroll-snap alone would
+  // have settled it correctly once left uncontested. Consulted only to
+  // decide whether THIS render's `current` change was self-reported; an
+  // externally-driven change (a nav-arrow tap, a dot click, another
+  // component's own `current` prop advancing) still gets the corrective
+  // scroll it needs.
+  const selfReportedIndexRef = useRef<number | null>(null);
 
   const computeClosestIndex = (el: HTMLDivElement): number => {
     if (variant === "paged") {
@@ -104,6 +122,15 @@ export function SwipeStrip({
     // was silently always "smooth", never "auto", even on true first mount.
     const behavior: ScrollBehavior = isFirstRender.current ? "auto" : "smooth";
     isFirstRender.current = false;
+    // This `current` is just handleScroll's own live report of where the
+    // user has already scrolled to — the element is already there (or the
+    // browser's own native scroll/snap is already carrying it there), so
+    // forcing another programmatic scroll on top of it would only fight
+    // that in-progress gesture. See selfReportedIndexRef's own comment.
+    if (selfReportedIndexRef.current === current) {
+      selfReportedIndexRef.current = null;
+      return;
+    }
     targetIndexRef.current = current;
     programmaticScrollRef.current = true;
     window.clearTimeout(programmaticScrollTimeoutRef.current);
@@ -151,7 +178,19 @@ export function SwipeStrip({
       const el = scrollRef.current;
       if (!el) return;
       const closest = computeClosestIndex(el);
-      if (closest !== -1 && closest !== current) onCurrentChange(closest);
+      if (closest !== -1 && closest !== current) {
+        selfReportedIndexRef.current = closest;
+        // Backstop for a caller that clamps/rejects this index (e.g.
+        // TrialCard's own goTo refusing to jump past the last completed
+        // trial) — `current` then never actually changes, so the
+        // `current`-driven effect above never runs to consume (and clear)
+        // this ref itself, which would otherwise wrongly suppress a real
+        // future correction that happens to land on the same index.
+        window.setTimeout(() => {
+          if (selfReportedIndexRef.current === closest) selfReportedIndexRef.current = null;
+        }, 50);
+        onCurrentChange(closest);
+      }
     });
   };
 

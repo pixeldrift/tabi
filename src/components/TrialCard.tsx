@@ -614,7 +614,16 @@ export function TrialCard({
               variant="centered"
               className="w-full"
               gapClassName={large ? "gap-2" : "gap-1.5"}
-              itemWrapperClassName="flex items-center justify-center"
+              // A fixed height (comfortably taller than the largest centered
+              // fontSize below, not just the smallest resting one) — the
+              // centered trial's own number scales up to 3x+ the size of its
+              // neighbors, and without a fixed box here that growth changes
+              // this ROW's own natural height as `isCenter` moves from one
+              // item to the next, shifting every trial number vertically
+              // (and, inside a tile's own fixed-height column, clipping the
+              // top of whichever one just grew) rather than the swipe
+              // staying a pure horizontal motion.
+              itemWrapperClassName={cn("flex items-center justify-center", large ? "h-12" : "h-9")}
             >
               {(i, isCenter) => {
                 const t = trials[i];

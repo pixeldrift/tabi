@@ -438,15 +438,8 @@ export function RatingCard({
             );
           })}
         </div>
-        <span className="text-xs text-muted-foreground">
-          {rating > 0 ? (
-            <>
-              Scored <strong className="font-semibold text-foreground">{rating}</strong> out of{" "}
-              {max}.
-            </>
-          ) : (
-            "Tap a star to score."
-          )}
+        <span className="text-xs text-muted-foreground text-center truncate max-w-full">
+          {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap a star to score."}
         </span>
       </div>
     </CardShell>
