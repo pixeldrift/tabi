@@ -114,14 +114,21 @@ function ChecklistRow({
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={checked}
-      className="flex w-full flex-col rounded-lg px-1 py-1 text-left transition-colors hover:bg-stone-50 disabled:pointer-events-none disabled:opacity-50"
+      // active:scale-100: cancels the global button:active scale fallback
+      // (styles.css) — otherwise the WHOLE row, label text included,
+      // shrinks on press. Only the checkbox itself should visibly react to
+      // a tap (see the icon-wrapping span below), the same split every
+      // other icon-plus-text button in this app already uses.
+      className="active:scale-100 flex w-full flex-col rounded-lg px-1 py-1 text-left transition-colors hover:bg-stone-50 disabled:pointer-events-none disabled:opacity-50"
     >
       {/* items-center (not items-start) so the box lands on the label's own
        *  line — its own line box sits close enough to that single line's
        *  x-height to read as centered on the text, not the whole row,
        *  which matters once a description line is showing underneath. */}
       <span className="flex w-full items-center gap-2.5">
-        <ChecklistBox checked={checked} />
+        <span className="grid place-items-center active:scale-95 transition-transform">
+          <ChecklistBox checked={checked} />
+        </span>
         <span
           className={cn(
             "min-w-0 flex-1 text-sm leading-snug",
@@ -211,7 +218,6 @@ export function ChecklistCard({
   };
 
   const percent = items.length > 0 ? Math.round((checkedCount / items.length) * 100) : 0;
-  const summary = `${checkedCount} of ${items.length} checked · ${percent}%`;
 
   const quickFacts = (
     <DrawerQuickFacts
@@ -496,13 +502,6 @@ export function ChecklistCard({
               onToggle={() => toggle(i)}
             />
           ))}
-          {/* The standard view's own copy of this now lives only in the
-              progress bar's helperText below (see the CardShell call)
-              — but that bar sits below the collapsed height an expanded
-              list needs, so this list keeps its own explicit summary line
-              rather than relying on a bar the reader may have scrolled
-              past. */}
-          <span className="mt-1 px-1 text-xs text-muted-foreground">{summary}</span>
         </div>
       }
     >

@@ -17,7 +17,11 @@ import { useCardSession, useSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { useNotifications } from "./NotificationContext";
 import { TimeKeypad } from "./TimeKeypad";
-import { formatTimeOfDayForDisplay, parseTimeOfDayLabel } from "./TimeOfDayKeypad";
+import {
+  formatTimeOfDayForDisplay,
+  formatTimeOfDaySecondsForDisplay,
+  parseTimeOfDayLabel,
+} from "./TimeOfDayKeypad";
 import { useSettings } from "./SettingsContext";
 import { useScheduleData } from "./ScheduleContext";
 import { cn } from "@/lib/utils";
@@ -729,8 +733,8 @@ export function IntervalCard({
       title="Current time"
       className="inline-flex items-center shrink-0 rounded-full border border-border bg-stone-100 pl-2 pr-1 py-0.5 h-5 text-[11px] font-bold tabular-nums text-muted-foreground"
     >
-      {formatTimeOfDayForDisplay(
-        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+      {formatTimeOfDaySecondsForDisplay(
+        `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`,
         use24HourTime,
       )}
     </span>
@@ -1061,7 +1065,15 @@ export function IntervalCard({
               isCheckpointMode
                 ? (i) => {
                     const cp = checkpoints?.[i];
-                    return cp ? `${displayCpTime(cp.time)} · ${cp.label}` : "";
+                    // Just the checkpoint's own time — its dose/checkpoint
+                    // name used to follow after a middot, but a name long
+                    // enough to matter (anything past a couple words) got
+                    // cut off by this row's own `truncate` well before
+                    // reaching the score buttons, always landing as a bare
+                    // "10:00a ·…" with nothing legible after it. The
+                    // standard view's own header still spells the name out
+                    // in full for whichever checkpoint is current.
+                    return cp ? displayCpTime(cp.time) : "";
                   }
                 : (i) => intervalRange(i, intervalMin)
             }

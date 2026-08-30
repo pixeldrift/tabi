@@ -236,6 +236,20 @@ export function SwipeStrip({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onPointerLeave={endDrag}
+      // touchAction: "pan-x" — this strip scrolls natively (real
+      // `overflow-x-auto`, no Framer drag involved — unlike the app's other
+      // draggable carousels, which get Framer's own automatic touch-action
+      // handling for free). Left at the browser's default "auto", a touch
+      // starting here makes the browser disambiguate between this
+      // element's own horizontal scroll and the PAGE's vertical scroll
+      // purely from the gesture's initial angle — occasionally guessing
+      // wrong, or settling on one only after a visible catch/stutter, on a
+      // diagonal-enough swipe. "pan-x" (not "pan-y") declares which native
+      // gesture this element itself claims — horizontal, since that's the
+      // only direction it actually scrolls — so any vertical component of
+      // the gesture is immediately the PAGE's to handle, never this strip's
+      // to first contest and then release.
+      style={{ touchAction: "pan-x" }}
       className={cn(
         "no-scrollbar flex items-center overflow-x-auto snap-x snap-mandatory cursor-grab active:cursor-grabbing",
         variant === "centered" && ["px-[50%]", gapClassName],
