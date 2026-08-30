@@ -406,7 +406,12 @@ export function TrialCard({
     setExpanded((v) => !v);
   };
 
-  const stepWidth = BUBBLE + GAP;
+  // Every bubble's own outer slot is a fixed BUBBLE_CENTER square (not
+  // BUBBLE, the small resting size) — see the per-bubble render below for
+  // why: the slot itself never resizes, so the growing/shrinking bubble
+  // inside it never pushes a neighboring slot and the row's own width never
+  // changes as `current` moves.
+  const stepWidth = BUBBLE_CENTER + GAP;
   const trackOffset = useMemo(
     () => -(current * stepWidth + BUBBLE_CENTER / 2),
     [current, stepWidth],
@@ -998,10 +1003,22 @@ export function TrialCard({
                 ref={containerRef}
                 className="relative h-16 overflow-visible"
                 style={{
+                  // Fixed PIXEL stops, not percentages — the triangle nav
+                  // arrows just outside this container are a constant size
+                  // regardless of how wide the card itself renders (a
+                  // percentage-based fade scaled with container width instead,
+                  // so on a narrower card the opaque zone started well short
+                  // of the arrows' own reach and a small bubble could still
+                  // be sitting there at partial opacity, peeking out around
+                  // the arrow glyph rather than being fully faded away by the
+                  // time it got there). TriangleNav sits size-12 (48px)
+                  // starting 8px outside this container's own edge, so its
+                  // own footprint reaches 40px in; 48px of fade comfortably
+                  // clears that with a small margin to spare.
                   WebkitMaskImage:
-                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                    "linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)",
                   maskImage:
-                    "linear-gradient(to right, transparent 0, black 22%, black 78%, transparent 100%)",
+                    "linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)",
                 }}
               >
                 <motion.div
@@ -1053,57 +1070,73 @@ export function TrialCard({
                             ? "bg-amber-50 border-amber-400/80"
                             : "";
                     return (
-                      <motion.button
+                      // Fixed-size slot (always BUBBLE_CENTER, the largest a
+                      // bubble ever renders) — the actual bubble inside it
+                      // grows/shrinks with a bouncy spring, but that motion
+                      // stays entirely inside this unchanging box, so it
+                      // never pushes a neighboring slot around and the track
+                      // itself never visibly reflows/bounces as `current`
+                      // moves. Only the current bubble's own growth should
+                      // read as animated; everything else — the rest of the
+                      // row, the nav arrows outside it — should hold still.
+                      <div
                         key={i}
-                        onClick={() => goTo(i)}
-                        className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
-                        animate={{
-                          width: isCenter ? BUBBLE_CENTER : BUBBLE,
-                          height: isCenter ? BUBBLE_CENTER : BUBBLE,
-                        }}
-                        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+                        className="relative shrink-0 grid place-items-center"
+                        style={{ width: BUBBLE_CENTER, height: BUBBLE_CENTER }}
                       >
-                        <div
-                          key={`${i}-${t ?? "none"}`}
-                          className={cn(
-                            "absolute inset-0 rounded-full flex items-center justify-center",
-                            isCenter ? "border-2" : "border",
-                            bg,
-                            isCenter && !t && "bg-card border-foreground/30",
-                            isCenter && centerBg,
-                            isCenter && t && "animate-bubble-hop",
-                          )}
+                        <motion.button
+                          onClick={() => goTo(i)}
+                          className="relative grid place-items-center rounded-full font-medium select-none"
+                          animate={{
+                            width: isCenter ? BUBBLE_CENTER : BUBBLE,
+                            height: isCenter ? BUBBLE_CENTER : BUBBLE,
+                          }}
+                          transition={{ type: "spring", stiffness: 360, damping: 28 }}
                         >
-                          {isCenter ? (
-                            <AnimatePresence mode="wait">
-                              <motion.span
-                                key={i}
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.25 }}
-                                className={cn(
-                                  "font-display text-4xl leading-none tabular-nums",
-                                  centerTextColor,
-                                )}
+                          <div
+                            key={`${i}-${t ?? "none"}`}
+                            className={cn(
+                              "absolute inset-0 rounded-full flex items-center justify-center",
+                              isCenter ? "border-2" : "border",
+                              bg,
+                              isCenter && !t && "bg-card border-foreground/30",
+                              isCenter && centerBg,
+                              isCenter && t && "animate-bubble-hop",
+                            )}
+                          >
+                            {isCenter ? (
+                              <AnimatePresence mode="wait">
+                                <motion.span
+                                  key={i}
+                                  initial={{ opacity: 0, y: 6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                  transition={{ duration: 0.25 }}
+                                  className={cn(
+                                    "font-display text-4xl leading-none tabular-nums",
+                                    centerTextColor,
+                                  )}
+                                >
+                                  {i + 1}
+                                </motion.span>
+                              </AnimatePresence>
+                            ) : (
+                              <span
+                                className={cn("text-[7px] font-medium leading-none", textColor)}
                               >
                                 {i + 1}
-                              </motion.span>
-                            </AnimatePresence>
-                          ) : (
-                            <span className={cn("text-[7px] font-medium leading-none", textColor)}>
-                              {i + 1}
-                            </span>
+                              </span>
+                            )}
+                          </div>
+                          {minTrials !== undefined && i < minTrials && !t && (
+                            <span
+                              data-tour="trial-min-dot"
+                              className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
+                              aria-hidden
+                            />
                           )}
-                        </div>
-                        {minTrials !== undefined && i < minTrials && !t && (
-                          <span
-                            data-tour="trial-min-dot"
-                            className="absolute -bottom-2 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
-                            aria-hidden
-                          />
-                        )}
-                      </motion.button>
+                        </motion.button>
+                      </div>
                     );
                   })}
                   {maxTrials && (

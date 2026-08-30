@@ -341,10 +341,11 @@ export function IntervalCard({
 
   // Which interval is being browsed/scored — like Task Analysis's own
   // `current` step, navigable with the triangle arrows below, independent
-  // of `currentIndex` (the real, session-time-driven "now"). Auto-follows
-  // `currentIndex` the instant it moves to a new interval (see the effect
-  // below), so browsing away is only ever temporary — the next real
-  // interval boundary snaps the view back to live.
+  // of `currentIndex` (the real, session-time-driven "now"). Used to auto-
+  // follow `currentIndex` when it moves to a new interval (see the effect
+  // below) — but only while `followLiveRef` is armed (see its own comment):
+  // browsing away on its own no longer gets undone by the next interval
+  // boundary ticking over mid-review.
   const [viewIdx, setViewIdx] = useCardState(cardKey, "viewIdx", currentIndex);
   const prevCurrentIndexRef = useRef(currentIndex);
   // Separate from prevCurrentIndexRef above — that one drives auto-follow
@@ -353,10 +354,21 @@ export function IntervalCard({
   // boundary it's already alerted for, on its own independent effect, keyed
   // to `rawIndex` (real time) rather than `currentIndex` (which lags).
   const prevAlertRawIndexRef = useRef(rawIndex);
+  // Gates the auto-follow effect below — starts armed (a fresh card opens
+  // on its own live interval and should keep tracking it), but a deliberate
+  // `goTo` away from the live interval disarms it, and it stays disarmed
+  // through however many interval boundaries tick by while browsing a past
+  // one: reviewing (or correcting) an old interval shouldn't have the view
+  // yanked back to live out from under you just because real time moved on.
+  // Scoring — an explicit "yes, I'm done here" — is what re-arms it, so the
+  // NEXT boundary crossing resumes following live again. A ref, not state:
+  // nothing ever needs to re-render off this by itself, only the one
+  // `currentIndex` effect that already re-renders on its own.
+  const followLiveRef = useRef(true);
   useEffect(() => {
     if (currentIndex !== prevCurrentIndexRef.current) {
       prevCurrentIndexRef.current = currentIndex;
-      setViewIdx(currentIndex);
+      if (followLiveRef.current) setViewIdx(currentIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
@@ -415,13 +427,19 @@ export function IntervalCard({
   const isComplete = scoredCount === displayIntervalCount;
 
   const goTo = (idx: number) => {
-    setViewIdx(Math.max(0, Math.min(idx, displayIntervalCount - 1)));
+    const clamped = Math.max(0, Math.min(idx, displayIntervalCount - 1));
+    // Landing back on the live interval by navigating there yourself counts
+    // as being caught up, same as scoring does — re-arms auto-follow rather
+    // than leaving it disarmed until a score happens to come along.
+    followLiveRef.current = clamped === currentIndex;
+    setViewIdx(clamped);
   };
 
   // Generalized to an arbitrary index (not just `viewIdx`) — the expanded
   // view lets any interval be scored or corrected directly, mirroring Task
   // Analysis's own expanded per-step editing.
   const score = (index: number, value: Exclude<IntervalStatus, null>) => {
+    followLiveRef.current = true;
     markDirty();
     setStatuses((prev) => {
       const next = [...prev];
@@ -586,16 +604,21 @@ export function IntervalCard({
     currentCheckpointIndex,
   );
   const prevCurrentCheckpointIndexRef = useRef(currentCheckpointIndex);
+  // Same auto-follow gate as the interval track's own followLiveRef above —
+  // browsing back to an earlier checkpoint shouldn't get undone the instant
+  // the day's next checkpoint comes due; only actually scoring one re-arms it.
+  const followLiveCheckpointRef = useRef(true);
   useEffect(() => {
     if (!isCheckpointMode) return;
     if (currentCheckpointIndex !== prevCurrentCheckpointIndexRef.current) {
       prevCurrentCheckpointIndexRef.current = currentCheckpointIndex;
-      setCheckpointViewIdx(currentCheckpointIndex);
+      if (followLiveCheckpointRef.current) setCheckpointViewIdx(currentCheckpointIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCheckpointIndex, isCheckpointMode]);
 
   const scoreCheckpoint = (index: number, value: Exclude<IntervalStatus, null>) => {
+    followLiveCheckpointRef.current = true;
     markDirty();
     setCheckpointStatuses((prev) => {
       const next = [...prev];
@@ -656,7 +679,9 @@ export function IntervalCard({
   const checkpointCount = checkpoints?.length ?? 0;
   const checkpointIsComplete = checkpointCount > 0 && checkpointScoredCount === checkpointCount;
   const goToCheckpoint = (idx: number) => {
-    setCheckpointViewIdx(Math.max(0, Math.min(idx, checkpointCount - 1)));
+    const clamped = Math.max(0, Math.min(idx, checkpointCount - 1));
+    followLiveCheckpointRef.current = clamped === currentCheckpointIndex;
+    setCheckpointViewIdx(clamped);
   };
 
   // One status report per card regardless of mode — whichever track is
