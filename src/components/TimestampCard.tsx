@@ -730,10 +730,7 @@ export function TimestampCard({
               </span>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  logNow();
-                }}
+                onClick={logNow}
                 disabled={!canRecordData}
                 className="btn-bevel shrink-0 inline-flex items-center gap-1.5 rounded-full h-7 px-2.5 bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-medium transition-colors active:scale-95 disabled:opacity-40"
               >
@@ -1004,17 +1001,7 @@ function TimestampSideBubble({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      // stopPropagation: see TriangleNav's own copy of this comment — same
-      // bubbling-into-onTapWhileActive risk applies to tapping a side bubble
-      // directly.
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className="absolute inset-0 grid place-items-center"
-    >
+    <button type="button" onClick={onClick} className="absolute inset-0 grid place-items-center">
       <span
         className={cn(
           "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums transition-colors",
@@ -1046,19 +1033,8 @@ function TriangleNav({
   return (
     <motion.button
       aria-label={isLeft ? "Previous entry" : "Next entry"}
-      // stopPropagation: sits inside the card's own root article, whose
-      // onClick jumps back to the live entry once the card is active (see
-      // CardShell's own onTapWhileActive) — without this, every arrow tap
-      // would also bubble up and immediately override whatever navigation
-      // the arrow itself just did.
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onDoubleClick?.();
-      }}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}

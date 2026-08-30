@@ -1111,10 +1111,7 @@ export function TaskAnalysisCard({
                               return (
                                 <motion.button
                                   key={opt.value}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setStep(i, opt.value, false, instanceIdx);
-                                  }}
+                                  onClick={() => setStep(i, opt.value, false, instanceIdx)}
                                   disabled={!canRecordData || !canScore(i, instanceIdx)}
                                   whileTap={{ scale: 0.9 }}
                                   aria-label={opt.value}
@@ -1210,13 +1207,7 @@ export function TaskAnalysisCard({
                     return (
                       <motion.button
                         key={i}
-                        // stopPropagation: see TriangleNav's own copy of
-                        // this comment — same bubbling-into-onTapWhileActive
-                        // risk applies to tapping a step bubble directly.
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          goTo(i);
-                        }}
+                        onClick={() => goTo(i)}
                         className="relative shrink-0 grid place-items-center rounded-full font-medium select-none border"
                         animate={{
                           width: isCenter ? BUBBLE_CENTER : BUBBLE,
@@ -1361,10 +1352,7 @@ export function TaskAnalysisCard({
                 return (
                   <motion.button
                     key={opt.value}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStep(activeCurrent, opt.value, true);
-                    }}
+                    onClick={() => setStep(activeCurrent, opt.value, true)}
                     disabled={!canRecordData || !canScore(activeCurrent)}
                     whileTap={{ scale: 0.96 }}
                     className={cn(
@@ -1403,19 +1391,8 @@ function TriangleNav({
   return (
     <motion.button
       aria-label={isLeft ? "Previous step" : "Next step"}
-      // stopPropagation: sits inside the card's own root article, whose
-      // onClick jumps back to the current step once the card is active
-      // (see CardShell's own onTapWhileActive) — without this, every arrow
-      // tap would also bubble up and immediately override whatever
-      // navigation the arrow itself just did.
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onDoubleClick?.();
-      }}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
