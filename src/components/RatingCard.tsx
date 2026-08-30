@@ -414,6 +414,17 @@ export function RatingCard({
       }
     >
       <div className="px-5 pt-4 pb-4 flex flex-col items-center gap-3">
+        {/* Leads the stars now, not trails them — this names what's actually
+            being ranked (the level description), which belongs above the
+            control the same way Task Analysis's own step description now
+            leads its "Step X (of Y)" nav metadata below the stars — a plain
+            hint-style status line (same convention as Duration's "Instance
+            N of M") would go there for a kind that tracks multiple scored
+            instances; Rating is a single overwritable value with nothing to
+            count, so there's nothing to show in that slot yet. */}
+        <p className="text-base font-semibold leading-tight text-center max-w-full truncate">
+          {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap a star to score."}
+        </p>
         <div className="flex items-start justify-center gap-2.5">
           {Array.from({ length: numStars }, (_, i) => {
             const value = min + i + 1;
@@ -435,9 +446,6 @@ export function RatingCard({
             );
           })}
         </div>
-        <span className="text-xs text-muted-foreground text-center truncate max-w-full">
-          {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap a star to score."}
-        </span>
       </div>
     </CardShell>
   );

@@ -1277,7 +1277,31 @@ export function TaskAnalysisCard({
                 </motion.div>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
+            {/* flex+justify-center on the row, rather than text-align:center
+             *  on the paragraph itself: a centered *line* pushes overflow
+             *  past both edges equally, and CardShell's own rounded-corner
+             *  overflow-hidden then clips the beginning of a too-long word
+             *  along with the end. Centering the *box* instead means a
+             *  short line (which fits, so the box shrinks to its content)
+             *  still reads as centered, but a long line's box gets capped
+             *  at max-w-full — leaving nothing left to center around — so
+             *  it truncates from its natural (left) start, losing only the
+             *  tail. Leads the "Step X (of Y)" line below it, not the other
+             *  way around — this is the actual thing being scored, the same
+             *  "descriptor before nav metadata" convention RatingCard's own
+             *  standard view now uses for its level description. */}
+            <div className="px-3 flex justify-center items-center gap-1.5">
+              <StepPlanBadge level={stepPlan?.[activeCurrent]} />
+              <p className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
+                {steps[activeCurrent]}
+              </p>
+            </div>
+
+            {/* Plain metadata font/weight convention — uppercase, tracking-wide,
+                muted, with only the CURRENT step number (not the total) bold
+                and a size up — same treatment as Duration's "Instance N of M",
+                Timestamp's "Entry N of M", and Checklist's "X/Y". */}
+            <div className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] uppercase tracking-wider text-muted-foreground">
               <span
                 title={chainingDirection === "backward" ? "Backward chaining" : "Forward chaining"}
                 className="inline-flex shrink-0"
@@ -1289,26 +1313,12 @@ export function TaskAnalysisCard({
                 )}
               </span>
               <span>
-                Step <span className="font-semibold text-foreground">{activeCurrent + 1}</span> (of{" "}
-                {steps.length})
+                Step{" "}
+                <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">
+                  {activeCurrent + 1}
+                </span>{" "}
+                (of {steps.length})
               </span>
-            </div>
-
-            {/* flex+justify-center on the row, rather than text-align:center
-             *  on the paragraph itself: a centered *line* pushes overflow
-             *  past both edges equally, and CardShell's own rounded-corner
-             *  overflow-hidden then clips the beginning of a too-long word
-             *  along with the end. Centering the *box* instead means a
-             *  short line (which fits, so the box shrinks to its content)
-             *  still reads as centered, but a long line's box gets capped
-             *  at max-w-full — leaving nothing left to center around — so
-             *  it truncates from its natural (left) start, losing only the
-             *  tail. */}
-            <div className="mt-2 px-3 flex justify-center items-center gap-1.5">
-              <StepPlanBadge level={stepPlan?.[activeCurrent]} />
-              <p className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
-                {steps[activeCurrent]}
-              </p>
             </div>
 
             <div className="mt-3 flex justify-center gap-1 px-2">
