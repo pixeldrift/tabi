@@ -456,186 +456,192 @@ export function DurationCard({
               )}
             </>
           }
-          // "Instance N of M" — computed from viewIdx directly rather than
-          // read out of the SwipeStrip item closure below (its own `i` is
-          // always just the currently-shown page for this "paged" variant,
-          // i.e. viewIdx, but this needs a value before that closure even
-          // runs). MiniTileShell's own `hint` wrapper already supplies the
-          // muted/centered/sized styling; this just supplies the "Instance"/
-          // "of M" flanking text and the bolder instance number between them.
-          hint={
-            <span className="flex items-baseline justify-center gap-1 uppercase tracking-wide">
-              <span>Instance</span>
+          // Dots + "Instance N of M" together now stand in for this kind's
+          // own actions row (it has no real buttons of its own — play/pause
+          // already lives inside the pill in zone 3). Fixed to the exact
+          // same height as Frequency/Rate's own actions row (their real
+          // size-[42px]/size-7 buttons) with this shorter content centered
+          // inside it, rather than sized to its own (much shorter) natural
+          // height — MiniTileShell centers the [zone 3 + hint] column in
+          // whatever leftover space is left ABOVE `actions`, so an actions
+          // row shorter than every other kind's own left Duration with MORE
+          // leftover space than they get, centering zone 3 (and the pill
+          // inside it) further down the tile than Frequency/Rate's own
+          // zone-3 number — matching this row's height to theirs is what
+          // actually lines the pill up with it, not just moving the pill
+          // into zone 3 on its own.
+          actions={
+            <div
+              className={cn("flex items-center justify-center gap-1.5", large ? "h-[42px]" : "h-7")}
+            >
+              <div
+                className={cn(
+                  "flex flex-wrap items-center justify-center",
+                  large ? "gap-1.5" : "gap-1",
+                )}
+                aria-hidden
+              >
+                {instances.map((ms, i) => {
+                  const isCurrent = i === viewIdx;
+                  return (
+                    <motion.span
+                      key={i}
+                      layout="position"
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className={cn(
+                        "rounded-full shrink-0 transition-[width,height,background-color]",
+                        isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
+                        // Color reflects this instance's own data/running
+                        // state only — being the "current" (viewed) instance
+                        // no longer forces blue on its own; a fresh,
+                        // not-yet-started instance stays gray even while
+                        // it's the one in view.
+                        isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
+                      )}
+                    />
+                  );
+                })}
+                {/* Preview of the next instance, before it formally exists —
+                  appears once the last real instance has data or is running,
+                  hinting "one more is coming" (matching toggleInstance's own
+                  auto-advance-on-pause behavior). Smaller and plain gray,
+                  and not interactive, so it doesn't read as a real,
+                  clickable instance yet. */}
+                <AnimatePresence>
+                  {isActivated(instances.length - 1) && (
+                    <motion.span
+                      key="preview"
+                      layout="position"
+                      initial={{ opacity: 0, scale: 0.4 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.4 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className={cn(
+                        "rounded-full shrink-0 bg-stone-300",
+                        large ? "size-1" : "size-[3px]",
+                      )}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
               <span
                 className={cn(
-                  "font-display font-bold normal-case tabular-nums text-foreground",
-                  large ? "text-sm" : "text-xs",
+                  "flex items-baseline gap-1 uppercase tracking-wide text-muted-foreground",
+                  large ? "text-[11px] leading-none" : "text-[9px] leading-none",
                 )}
               >
-                {viewIdx + 1}
+                <span>Instance</span>
+                <span
+                  className={cn(
+                    "font-display font-bold normal-case tabular-nums text-foreground",
+                    large ? "text-sm" : "text-xs",
+                  )}
+                >
+                  {viewIdx + 1}
+                </span>
+                <span>of {instances.length}</span>
               </span>
-              <span>of {instances.length}</span>
-            </span>
+            </div>
           }
         >
-          {/* Just the dots + pill now — the "Instance N of M" line is
-              MiniTileShell's own `hint`, rendered below zone 3 instead of
-              inside it (see that prop's own comment). This kind has no
-              `actions` row of its own (the play/pause button already lives
-              inside the pill here), so it used to need its own h-full/
-              justify-center wrapper just to avoid sinking to the tile's own
-              bottom edge — zone 3's now-fixed height and its own centering
-              handle that without a per-card workaround. */}
-          <div className="w-full flex flex-col items-center gap-1">
-            <div
-              className={cn(
-                "flex flex-wrap items-center justify-center",
-                large ? "gap-1.5" : "gap-1",
-              )}
-              aria-hidden
-            >
-              {instances.map((ms, i) => {
-                const isCurrent = i === viewIdx;
-                return (
-                  <motion.span
-                    key={i}
-                    layout="position"
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    className={cn(
-                      "rounded-full shrink-0 transition-[width,height,background-color]",
-                      isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
-                      // Color reflects this instance's own data/running state
-                      // only — being the "current" (viewed) instance no longer
-                      // forces blue on its own; a fresh, not-yet-started
-                      // instance stays gray even while it's the one in view.
-                      isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
+          {/* Just the pill now, alone in zone 3 — same sole-content
+              treatment as Frequency/Rate's own tile number, so it lands at
+              the exact same centered position theirs does (see the actions
+              block above for where the dots + "Instance N of M" line that
+              used to sit above it moved to). */}
+          <SwipeStrip
+            count={instances.length}
+            current={viewIdx}
+            onCurrentChange={goTo}
+            variant="paged"
+            className="w-full"
+            itemWrapperClassName="w-full flex items-center justify-center"
+          >
+            {(i) => {
+              const running = isIdxRunning(i);
+              const activated = isActivated(i);
+              const accent = running || activated;
+              return (
+                <div
+                  className={cn(
+                    "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+                    large ? "h-10" : "h-[30px]",
+                    accent ? "border-blue-500" : "border-border",
+                  )}
+                >
+                  <TimeKeypad
+                    valueMs={instanceMs(i)}
+                    onReplace={(next) => setInstanceMs(i, next)}
+                    onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
+                  >
+                    {({ open }) => (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          open();
+                        }}
+                        disabled={!canRecordData}
+                        aria-label={`Edit time for instance ${i + 1}`}
+                        className={cn(
+                          // Reserves room up front for one more digit than
+                          // the common case (e.g. crossing from "9:59" to
+                          // "10:00", or gaining an hours place entirely) —
+                          // without this, the pill only grows when it
+                          // actually needs to, which reads as a sudden
+                          // jolt right as the button shifts over with it.
+                          "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
+                          large
+                            ? "px-3 text-lg min-w-[4.5rem]"
+                            : "px-2 text-[13px] min-w-[3.25rem]",
+                        )}
+                      >
+                        {formatCompactTime(instanceMs(i))}
+                      </button>
                     )}
-                  />
-                );
-              })}
-              {/* Preview of the next instance, before it formally exists —
-                appears once the last real instance has data or is running,
-                hinting "one more is coming" (matching toggleInstance's own
-                auto-advance-on-pause behavior). Smaller and plain gray, and
-                not interactive, so it doesn't read as a real, clickable
-                instance yet. */}
-              <AnimatePresence>
-                {isActivated(instances.length - 1) && (
-                  <motion.span
-                    key="preview"
-                    layout="position"
-                    initial={{ opacity: 0, scale: 0.4 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.4 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  </TimeKeypad>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleInstance(i);
+                    }}
+                    disabled={!canRecordData}
+                    aria-label={running ? "Pause this instance" : "Start this instance"}
+                    // active:scale-100: cancels the global button:active
+                    // fallback (see styles.css) — that scale shrinks this
+                    // button's own rectangle away from the pill's
+                    // rounded-full overflow-hidden clip on press,
+                    // revealing white background around it, same bug
+                    // already fixed for the session timer's own mini
+                    // pause button (see StatusBar.tsx's identical
+                    // comment). Scale instead lives on the icon-wrapping
+                    // span below.
                     className={cn(
-                      "rounded-full shrink-0 bg-stone-300",
-                      large ? "size-1" : "size-[3px]",
-                    )}
-                  />
-                )}
-              </AnimatePresence>
-            </div>
-            {/* No h-full here — unlike the wrapper above, this stays sized to
-              its own content: that "old version" put h-full directly on
-              this strip, whose own item wrapper then top-pinned the pill/
-              label within that now-tall box instead of the wrapper above
-              centering the dots-row + strip together as one natural-height
-              block, the actual fix. */}
-            <SwipeStrip
-              count={instances.length}
-              current={viewIdx}
-              onCurrentChange={goTo}
-              variant="paged"
-              className="w-full"
-              itemWrapperClassName="w-full flex flex-col items-center gap-1"
-            >
-              {(i) => {
-                const running = isIdxRunning(i);
-                const activated = isActivated(i);
-                const accent = running || activated;
-                return (
-                  <div
-                    className={cn(
-                      "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-                      large ? "h-10" : "h-[30px]",
-                      accent ? "border-blue-500" : "border-border",
+                      "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
+                      large ? "w-10" : "w-[30px]",
                     )}
                   >
-                    <TimeKeypad
-                      valueMs={instanceMs(i)}
-                      onReplace={(next) => setInstanceMs(i, next)}
-                      onAdd={(delta) => setInstanceMs(i, instanceMs(i) + delta)}
-                    >
-                      {({ open }) => (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            open();
-                          }}
-                          disabled={!canRecordData}
-                          aria-label={`Edit time for instance ${i + 1}`}
-                          className={cn(
-                            // Reserves room up front for one more digit than
-                            // the common case (e.g. crossing from "9:59" to
-                            // "10:00", or gaining an hours place entirely) —
-                            // without this, the pill only grows when it
-                            // actually needs to, which reads as a sudden
-                            // jolt right as the button shifts over with it.
-                            "flex items-center justify-center font-bold tabular-nums cursor-text disabled:cursor-not-allowed",
-                            large
-                              ? "px-3 text-lg min-w-[4.5rem]"
-                              : "px-2 text-[13px] min-w-[3.25rem]",
-                          )}
-                        >
-                          {formatCompactTime(instanceMs(i))}
-                        </button>
+                    <span className="grid place-items-center active:scale-95 transition-transform">
+                      {running ? (
+                        <Pause
+                          className={large ? "size-[17px]" : "size-3.5"}
+                          fill="currentColor"
+                          strokeWidth={0}
+                        />
+                      ) : (
+                        <Play
+                          className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")}
+                          fill="currentColor"
+                          strokeWidth={0}
+                        />
                       )}
-                    </TimeKeypad>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleInstance(i);
-                      }}
-                      disabled={!canRecordData}
-                      aria-label={running ? "Pause this instance" : "Start this instance"}
-                      // active:scale-100: cancels the global button:active
-                      // fallback (see styles.css) — that scale shrinks this
-                      // button's own rectangle away from the pill's
-                      // rounded-full overflow-hidden clip on press,
-                      // revealing white background around it, same bug
-                      // already fixed for the session timer's own mini
-                      // pause button (see StatusBar.tsx's identical
-                      // comment). Scale instead lives on the icon-wrapping
-                      // span below.
-                      className={cn(
-                        "grid place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
-                        large ? "w-10" : "w-[30px]",
-                      )}
-                    >
-                      <span className="grid place-items-center active:scale-95 transition-transform">
-                        {running ? (
-                          <Pause
-                            className={large ? "size-[17px]" : "size-3.5"}
-                            fill="currentColor"
-                            strokeWidth={0}
-                          />
-                        ) : (
-                          <Play
-                            className={cn(large ? "size-[17px]" : "size-3.5", "translate-x-px")}
-                            fill="currentColor"
-                            strokeWidth={0}
-                          />
-                        )}
-                      </span>
-                    </button>
-                  </div>
-                );
-              }}
-            </SwipeStrip>
-          </div>
+                    </span>
+                  </button>
+                </div>
+              );
+            }}
+          </SwipeStrip>
         </MiniTileShell>
       </div>
     );
