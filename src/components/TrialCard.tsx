@@ -632,13 +632,40 @@ export function TrialCard({
                       e.stopPropagation();
                       goTo(i);
                     }}
-                    className={cn(
-                      "font-display font-bold tabular-nums transition-[font-size] leading-none",
-                      color,
-                    )}
-                    style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
+                    // relative + full-height/width: same "trial-min-dot"
+                    // required-and-not-yet-scored marker the standard view's
+                    // own bubble strip already shows below each number (see
+                    // its own comment) — this tile-mode strip just never
+                    // carried it over. Anchored to this item's own fixed-size
+                    // slot (itemWrapperClassName's h-12/h-9), not the number
+                    // glyph itself, so the dot sits level across every item
+                    // regardless of which one is centered and momentarily
+                    // rendering 3x larger.
+                    className="relative h-full flex items-center justify-center"
                   >
-                    {i + 1}
+                    <span
+                      className={cn(
+                        "font-display font-bold tabular-nums transition-[font-size] leading-none",
+                        color,
+                      )}
+                      style={{ fontSize: isCenter ? (large ? 38 : 28) : large ? 13 : 10 }}
+                    >
+                      {i + 1}
+                    </span>
+                    {minTrials !== undefined && i < minTrials && !t && (
+                      // bottom-0, not a negative inset — this item's own box
+                      // is inside SwipeStrip's native `overflow-x-auto`
+                      // scroller, which (per spec — setting only overflow-x
+                      // forces overflow-y to compute as `auto` too, not
+                      // `visible`) silently clips anything overflowing this
+                      // box's own bottom edge instead of letting it show past
+                      // it the way the standard view's bigger, dedicated
+                      // bubble square allows.
+                      <span
+                        className="absolute bottom-0 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
+                        aria-hidden
+                      />
+                    )}
                   </div>
                 );
               }}

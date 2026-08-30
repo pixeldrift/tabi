@@ -148,6 +148,24 @@ export function SwipeStrip({
     const el = scrollRef.current;
     if (!el) return;
     const onScrollEnd = () => {
+      // Only ever second-guess a scroll THIS component itself kicked off —
+      // programmaticScrollRef is only true while one of those is actually in
+      // flight. Without this guard, a genuine user swipe's own scrollend
+      // (nothing programmatic involved at all) still ran the check below
+      // against targetIndexRef's last value — which the `current`-driven
+      // effect's self-reported early-return path (see its own comment)
+      // deliberately never updates, since no correction was ever needed for
+      // it. That stale target just sat there from whenever `current` had
+      // last changed via a NON-self-reported path (initial mount, a nav
+      // arrow, another swipe strip driving the same shared `current`) —
+      // and the instant a real swipe's own scrollend fired, this unguarded
+      // check compared the swipe's genuine new position against that stale
+      // leftover value, found them different (as they always would be), and
+      // "corrected" the strip straight back to it. That's what actually
+      // produced the reported "swiping to an earlier one snaps right back"
+      // bug — nothing about the swipe itself was wrong; this handler was
+      // reacting to scroll settles it had no business reacting to.
+      if (!programmaticScrollRef.current) return;
       // CSS scroll-snap can end an in-flight smooth scroll early — e.g. a
       // layout shift mid-animation (a sibling ResizeObserver update, a
       // width still settling right after mount) makes the browser treat

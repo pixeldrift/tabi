@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from "motion/react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
@@ -513,55 +513,90 @@ export function DurationCard({
               why that still lines it up with Frequency/Rate's own number
               despite the dots sitting above it here. */}
           <div className="w-full flex flex-col items-center gap-1">
-            <div
-              className={cn(
-                "flex flex-wrap items-center justify-center",
-                large ? "gap-1.5" : "gap-1",
+            <div className="relative w-full flex items-center justify-center">
+              {/* Large density only — same "pushed to the tile's own edges"
+               *  nav-arrow convention as every other kind's own tile nav;
+               *  small density relies on swiping/tapping a dot alone. This
+               *  kind's own dots row used to be the one exception with no
+               *  arrows at all — an oversight, not a deliberate difference. */}
+              {large && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(viewIdx - 1);
+                    }}
+                    disabled={viewIdx <= 0}
+                    aria-label="Previous instance"
+                    className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(viewIdx + 1);
+                    }}
+                    disabled={viewIdx >= instances.length - 1}
+                    aria-label="Next instance"
+                    className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                  >
+                    <ChevronRight className="size-[18px]" strokeWidth={2.5} />
+                  </button>
+                </>
               )}
-              aria-hidden
-            >
-              {instances.map((ms, i) => {
-                const isCurrent = i === viewIdx;
-                return (
-                  <motion.span
-                    key={i}
-                    layout="position"
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    className={cn(
-                      "rounded-full shrink-0 transition-[width,height,background-color]",
-                      isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
-                      // Color reflects this instance's own data/running state
-                      // only — being the "current" (viewed) instance no
-                      // longer forces blue on its own; a fresh, not-yet-
-                      // started instance stays gray even while it's the one
-                      // in view.
-                      isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
-                    )}
-                  />
-                );
-              })}
-              {/* Preview of the next instance, before it formally exists —
+              <div
+                className={cn(
+                  "flex flex-wrap items-center justify-center",
+                  large ? "gap-1.5" : "gap-1",
+                )}
+                aria-hidden
+              >
+                {instances.map((ms, i) => {
+                  const isCurrent = i === viewIdx;
+                  return (
+                    <motion.span
+                      key={i}
+                      layout="position"
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className={cn(
+                        "rounded-full shrink-0 transition-[width,height,background-color]",
+                        isCurrent ? (large ? "size-2" : "size-1.5") : large ? "size-1.5" : "size-1",
+                        // Color reflects this instance's own data/running state
+                        // only — being the "current" (viewed) instance no
+                        // longer forces blue on its own; a fresh, not-yet-
+                        // started instance stays gray even while it's the one
+                        // in view.
+                        isIdxRunning(i) ? "bg-blue-500" : ms > 0 ? "bg-blue-200" : "bg-stone-300",
+                      )}
+                    />
+                  );
+                })}
+                {/* Preview of the next instance, before it formally exists —
                 appears once the last real instance has data or is running,
                 hinting "one more is coming" (matching toggleInstance's own
                 auto-advance-on-pause behavior). Smaller and plain gray, and
                 not interactive, so it doesn't read as a real, clickable
                 instance yet. */}
-              <AnimatePresence>
-                {isActivated(instances.length - 1) && (
-                  <motion.span
-                    key="preview"
-                    layout="position"
-                    initial={{ opacity: 0, scale: 0.4 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.4 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    className={cn(
-                      "rounded-full shrink-0 bg-stone-300",
-                      large ? "size-1" : "size-[3px]",
-                    )}
-                  />
-                )}
-              </AnimatePresence>
+                <AnimatePresence>
+                  {isActivated(instances.length - 1) && (
+                    <motion.span
+                      key="preview"
+                      layout="position"
+                      initial={{ opacity: 0, scale: 0.4 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.4 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className={cn(
+                        "rounded-full shrink-0 bg-stone-300",
+                        large ? "size-1" : "size-[3px]",
+                      )}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
             <SwipeStrip
               count={instances.length}
