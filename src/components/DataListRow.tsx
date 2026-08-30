@@ -173,42 +173,31 @@ export function DataListRow({
       </div>
 
       {/* Floated (not part of the header's flex flow) so it stays put at
-        the row's right edge regardless of whether the title above it
-        wraps to one line or two — the icon sits at a constant offset from
-        the row's top regardless of wrapping (items-start, never
-        re-centers), so anchoring here the same way keeps the actions
-        cluster exactly where a one-line row would put it instead of
-        sliding down to stay centered in a now-taller two-line row. Only
-        the row's bottom edge should move when the title wraps.
-        A sibling of the overflow-hidden clip wrapper above (not a child of
-        it) — same fix CardShell.tsx already applies to its own outer
-        border/shadow (see that comment): a button's .btn-bevel shadow
-        reaches outward from its own box, and sitting this close to the
-        row's own rounded-xl corner meant the clip wrapper's rounded shape
-        was slicing into that shadow instead of letting it fade naturally.
-        h-[34px] (measured: a one-line row's own real height) rather than
-        the header row's own h-4 icon size — that mismatch was the actual
-        bug in a prior pass here: items-center inside a 16px-tall box only
-        *looked* like it centered a kind's 28px-tall button row (h-7,
-        the shared height ListActionButton/ListActionBadge/ListActionSlide
-        all use) because top-2's own offset happened to average out for
-        that one specific height, while the measured gap above/below it
-        (3px) came out three times smaller than the right inset (9px) —
-        not the "nudge to compensate for .btn-bevel's shadow" this used to
-        chase, just an anchor box sized for the wrong content. Sizing the
-        anchor to the row's own one-line height instead makes items-center
-        genuinely center whichever kind's own actions height (28px button
-        row, 20px star row, or anything else) within it, top-0 (not top-2)
-        because the anchor box itself now already accounts for the
-        vertical space a one-line row provides. Kept as a fixed height
-        (not inset-y-0 spanning the row) so a two-line-title row's now
-        taller bottom edge doesn't pull this back into re-centering across
-        the whole row — only the row's bottom edge should move when the
-        title wraps, same as before. right-0.5 (2px, not right-2's 8px)
-        is what actually lands the right gap at the same ~3px the vertical
-        centering above now produces for a 28px control. */}
+        the row's right edge regardless of whether the title above it wraps
+        to one line or two. A sibling of the overflow-hidden clip wrapper
+        above (not a child of it) — same fix CardShell.tsx already applies
+        to its own outer border/shadow (see that comment): a button's
+        .btn-bevel shadow reaches outward from its own box, and sitting this
+        close to the row's own rounded-xl corner meant the clip wrapper's
+        rounded shape was slicing into that shadow instead of letting it
+        fade naturally.
+        inset-y-0 (spanning the row's full real height, whatever that turns
+        out to be) + items-center, not a fixed height anchored to the top —
+        a fixed one-line-tall anchor kept the buttons pinned near the top
+        the instant a longer title wrapped to two lines, leaving a visibly
+        empty gap below them that the top/right insets didn't have, which
+        is the actual "uneven on three sides" a fixed fixed-height anchor
+        produces on anything but a one-line row. Spanning the true height
+        and centering within it keeps the gap equal on every side
+        regardless of how many lines the title wraps to, at the cost of the
+        buttons themselves shifting down slightly on a two-line row — the
+        correct tradeoff, since "centered" is what "even on all sides"
+        actually means. right-0.5 (2px, not right-2's 8px) is what lands
+        the right gap at the same ~3px this centering produces vertically
+        for a 28px control (ListActionButton/ListActionBadge/ListActionSlide's
+        shared height). */}
       {showActions && (
-        <div className="absolute z-10 top-0 right-0.5 h-[34px] flex items-center">{actions}</div>
+        <div className="absolute z-10 inset-y-0 right-0.5 flex items-center">{actions}</div>
       )}
 
       {isActive && (
