@@ -260,7 +260,29 @@ export function CardShell({
   return (
     <article
       ref={articleRef}
-      onClick={isActive && onTapWhileActive ? onTapWhileActive : onActivate}
+      // Not a blanket dispatch: onActivate needs to keep firing for a tap
+      // ANYWHERE on an inactive card — including directly on a nav arrow or
+      // score button, which should both select the card and do its own
+      // thing in one tap, the same as it always has. onTapWhileActive only
+      // wants blank-space taps, though — bubbling up from a control that
+      // already ran its own handler (goTo, setResult, ...) would otherwise
+      // immediately override whatever that control just did. Checking the
+      // real click target here (rather than each control calling
+      // stopPropagation) is what lets both of those coexist without the
+      // card's own interactive content needing to know anything about
+      // whichever of the two behaviors is currently live.
+      onClick={(e) => {
+        if (isActive && onTapWhileActive) {
+          const target = e.target as HTMLElement;
+          const hitControl =
+            target !== e.currentTarget &&
+            target.closest("button, [role='button'], a, input, textarea, select");
+          if (hitControl) return;
+          onTapWhileActive();
+          return;
+        }
+        onActivate?.();
+      }}
       className={cn(
         // Border is ALWAYS 1px — the selected look comes from an inset ring
         // (a box-shadow, not real border width) layered on top instead of an

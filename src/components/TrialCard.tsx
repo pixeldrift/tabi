@@ -809,10 +809,26 @@ export function TrialCard({
   return (
     <article
       ref={articleRef}
-      // Tapping the card body while it's already active jumps back to
-      // whichever trial is current, instead of onActivate's setActiveId
-      // being a same-value no-op — see jumpToCurrent's own comment.
-      onClick={isActive ? jumpToCurrent : onActivate}
+      // Not a blanket dispatch — see CardShell's own identical version of
+      // this comment. onActivate needs to keep firing for a tap ANYWHERE on
+      // an inactive card (including directly on a nav arrow or score
+      // button, which should both select the card and do its own thing in
+      // one tap), while jumpToCurrent should only fire for a tap on blank
+      // card space once already active — bubbling up from a control that
+      // already ran its own handler would otherwise immediately override
+      // whatever that control just did.
+      onClick={(e) => {
+        if (isActive) {
+          const target = e.target as HTMLElement;
+          const hitControl =
+            target !== e.currentTarget &&
+            target.closest("button, [role='button'], a, input, textarea, select");
+          if (hitControl) return;
+          jumpToCurrent();
+          return;
+        }
+        onActivate?.();
+      }}
       className={cn(
         // Border always 1px (ring adds the selected weight without
         // consuming layout space) — see CardShell's own version of this
@@ -1444,10 +1460,11 @@ function PromptLevelButton({
         <motion.button
           ref={anchorRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
+          // No stopPropagation — this is the "Error" scoring button's own
+          // prompt-level variant, and tapping it on a not-yet-active card
+          // should select the card in the same tap, same as the plain
+          // "Error" button does.
+          onClick={() => setOpen((o) => !o)}
           disabled={disabled}
           whileTap={{ scale: 0.94 }}
           animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}

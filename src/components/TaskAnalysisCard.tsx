@@ -1456,10 +1456,11 @@ function TaskAnalysisPromptLevelButton({
         <motion.button
           ref={anchorRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
+          // No stopPropagation — this is the "Prompted" scoring button's
+          // own level-picker variant, and tapping it on a not-yet-active
+          // card should select the card in the same tap, same as the
+          // plain scoring buttons beside it.
+          onClick={() => setOpen((o) => !o)}
           disabled={disabled}
           whileTap={{ scale: 0.96 }}
           className={cn(
@@ -1561,10 +1562,9 @@ export function ListTaskAnalysisPromptLevelButton({
         <button
           ref={anchorRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
+          // No stopPropagation — see TaskAnalysisPromptLevelButton's own
+          // copy of this comment.
+          onClick={() => setOpen((o) => !o)}
           disabled={disabled}
           aria-label="Prompted"
           aria-haspopup

@@ -1128,10 +1128,11 @@ function CenterPill({
             {({ open }) => (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  open();
-                }}
+                // No stopPropagation — editing this instance's time is a
+                // real interaction with it, and tapping it on a not-yet-
+                // active card should select the card in the same tap,
+                // same as the toggle button beside it.
+                onClick={() => open()}
                 disabled={disabled}
                 className={cn(
                   "font-display text-2xl tabular-nums leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
@@ -1157,10 +1158,10 @@ function CenterPill({
       </div>
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
+        // No stopPropagation — starting/pausing this instance is the card's
+        // own primary data-entry action, and tapping it on a not-yet-active
+        // card should select the card in the same tap.
+        onClick={onToggle}
         disabled={disabled}
         aria-label={running ? "Pause this instance" : "Start this instance"}
         // active:scale-100: same fix as this button's own tile/list-mode

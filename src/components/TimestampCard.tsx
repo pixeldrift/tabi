@@ -701,10 +701,10 @@ export function TimestampCard({
                   {({ open }) => (
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        open();
-                      }}
+                      // No stopPropagation — editing an entry's time is a
+                      // real interaction with this card, and tapping it on
+                      // a not-yet-active card should select the card too.
+                      onClick={() => open()}
                       disabled={!canRecordData}
                       aria-label={`Edit time for entry ${i + 1}`}
                       className="flex-1 text-left tabular-nums text-sm text-foreground/80 transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-foreground/80"
@@ -950,10 +950,10 @@ function TimestampCenterPill({
                   {({ open }) => (
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        open();
-                      }}
+                      // No stopPropagation — editing this entry's time is a
+                      // real interaction with this card, and tapping it on
+                      // a not-yet-active card should select the card too.
+                      onClick={() => open()}
                       disabled={disabled}
                       aria-label={`Edit time for entry ${index + 1}`}
                       className="font-display text-xl tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -969,10 +969,10 @@ function TimestampCenterPill({
       </div>
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onLog();
-        }}
+        // No stopPropagation — logging is this card's own primary
+        // data-entry action, and tapping it on a not-yet-active card
+        // should select the card in the same tap.
+        onClick={onLog}
         disabled={disabled}
         aria-label="Log timestamp now"
         // active:scale-100: same fix as this button's own tile/list-mode
