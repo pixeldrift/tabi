@@ -569,9 +569,9 @@ export function TrialCard({
                 }}
                 disabled={current === 0}
                 aria-label="Previous trial"
-                className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
               </button>
               <button
                 type="button"
@@ -584,9 +584,9 @@ export function TrialCard({
                   (maxTrials ? current >= maxTrials - 1 : false)
                 }
                 aria-label="Next trial"
-                className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-[18px]" strokeWidth={2.5} />
               </button>
             </>
           )}

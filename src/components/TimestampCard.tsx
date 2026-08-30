@@ -303,8 +303,24 @@ export function TimestampCard({
             >
               {viewIdx < entries.length ? (
                 <>
-                  Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
-                  <span className="tabular-nums text-foreground">{entries.length}</span>
+                  Entry{" "}
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums text-foreground",
+                      large ? "text-xs" : "text-[10px]",
+                    )}
+                  >
+                    {viewIdx + 1}
+                  </span>{" "}
+                  of{" "}
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums text-foreground",
+                      large ? "text-xs" : "text-[10px]",
+                    )}
+                  >
+                    {entries.length}
+                  </span>
                 </>
               ) : hasData ? (
                 "Current time"
@@ -340,9 +356,9 @@ export function TimestampCard({
                     }}
                     disabled={viewIdx <= 0}
                     aria-label="Previous entry"
-                    className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                    className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                   >
-                    <ChevronLeft className="size-4" />
+                    <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
                   </button>
                   <button
                     type="button"
@@ -352,9 +368,9 @@ export function TimestampCard({
                     }}
                     disabled={viewIdx >= trackCount - 1}
                     aria-label="Next entry"
-                    className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                    className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                   >
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className="size-[18px]" strokeWidth={2.5} />
                   </button>
                 </>
               )}
@@ -607,7 +623,7 @@ export function TimestampCard({
         helperText={
           <span>
             Logged{" "}
-            <span className="normal-case tracking-normal tabular-nums text-foreground">
+            <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
               {entries.length}
             </span>
           </span>
@@ -764,11 +780,11 @@ export function TimestampCard({
             {viewIdx < entries.length ? (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground text-center">
                 Entry{" "}
-                <span className="normal-case tracking-normal tabular-nums text-foreground">
+                <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
                   {viewIdx + 1}
                 </span>{" "}
                 of{" "}
-                <span className="normal-case tracking-normal tabular-nums text-foreground">
+                <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
                   {entries.length}
                 </span>
               </span>

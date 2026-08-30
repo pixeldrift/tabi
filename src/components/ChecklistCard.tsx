@@ -287,14 +287,20 @@ export function ChecklistCard({
              *  3 (see the removed `hint` prop's own former value). Sits
              *  right next to the button it's summarizing instead of its own
              *  row, the same way a form field's inline count sits beside
-             *  the control it describes rather than as separate help text. */}
+             *  the control it describes rather than as separate help text.
+             *  The checked count (the number worth noticing at a glance) is
+             *  bold and a size up from "/total" — same universal emphasis
+             *  every other kind's own "X of Y"/"X/Y" metadata uses. */}
             <span
               className={cn(
-                "text-muted-foreground tabular-nums",
-                large ? "text-xs" : "text-[10px]",
+                "flex items-baseline text-muted-foreground tabular-nums",
+                large ? "text-[10px]" : "text-[9px]",
               )}
             >
-              {checkedCount}/{items.length}
+              <span className={cn("font-bold text-foreground", large ? "text-xs" : "text-[10px]")}>
+                {checkedCount}
+              </span>
+              /{items.length}
             </span>
             <button
               type="button"
@@ -355,9 +361,9 @@ export function ChecklistCard({
                   }}
                   disabled={current === 0}
                   aria-label="Previous item"
-                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                 >
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
                 </button>
                 <button
                   type="button"
@@ -367,9 +373,9 @@ export function ChecklistCard({
                   }}
                   disabled={current >= items.length - 1}
                   aria-label="Next item"
-                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                 >
-                  <ChevronRight className="size-4" />
+                  <ChevronRight className="size-[18px]" strokeWidth={2.5} />
                 </button>
               </>
             )}
@@ -495,10 +501,8 @@ export function ChecklistCard({
       isComplete={checkedCount > 0}
       helperText={
         <span>
-          <strong className="font-semibold">
-            {checkedCount}/{items.length}
-          </strong>{" "}
-          checked · {percent}%
+          <strong className="font-bold text-sm text-foreground">{checkedCount}</strong>
+          <span className="font-semibold">/{items.length}</span> checked · {percent}%
         </span>
       }
       expanded={expanded}

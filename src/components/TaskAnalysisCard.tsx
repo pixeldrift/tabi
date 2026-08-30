@@ -721,9 +721,9 @@ export function TaskAnalysisCard({
                   }}
                   disabled={activeCurrent === 0}
                   aria-label="Previous step"
-                  className="absolute -left-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                 >
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
                 </button>
                 <button
                   type="button"
@@ -733,9 +733,9 @@ export function TaskAnalysisCard({
                   }}
                   disabled={activeCurrent >= steps.length - 1}
                   aria-label="Next step"
-                  className="absolute -right-2 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full text-foreground/50 transition-colors hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
                 >
-                  <ChevronRight className="size-4" />
+                  <ChevronRight className="size-[18px]" strokeWidth={2.5} />
                 </button>
               </>
             )}
@@ -993,9 +993,8 @@ export function TaskAnalysisCard({
             isComplete ? (
               <span>
                 All steps scored ·{" "}
-                <strong className="font-semibold">
-                  {independent}/{steps.length} independent
-                </strong>
+                <strong className="font-bold text-sm text-foreground">{independent}</strong>
+                <span className="font-semibold">/{steps.length} independent</span>
               </span>
             ) : (
               <span>
@@ -1290,7 +1289,8 @@ export function TaskAnalysisCard({
                 )}
               </span>
               <span>
-                Step {activeCurrent + 1} (of {steps.length})
+                Step <span className="font-semibold text-foreground">{activeCurrent + 1}</span> (of{" "}
+                {steps.length})
               </span>
             </div>
 

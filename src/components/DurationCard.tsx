@@ -486,10 +486,14 @@ export function DurationCard({
                     "X/Y"). font-display is reserved for the data itself —
                     the title, and the actual value being recorded (a count,
                     a duration, a rating) — not for text that's just
-                    describing where you are in the data. */}
+                    describing where you are in the data. Bold + a larger
+                    size than the surrounding words is a separate, universal
+                    convention (see every one of those same kinds' own
+                    matching span) — it's the one number in this row worth
+                    singling out at a glance, plain weight and family aside. */}
                 <span
                   className={cn(
-                    "normal-case tracking-normal tabular-nums text-foreground",
+                    "font-bold normal-case tracking-normal tabular-nums text-foreground",
                     large ? "text-sm" : "text-xs",
                   )}
                 >
@@ -1013,11 +1017,11 @@ export function DurationCard({
           >
             <span>
               Instance{" "}
-              <span className="normal-case tracking-normal tabular-nums text-foreground">
+              <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
                 {viewIdx + 1}
               </span>{" "}
               of{" "}
-              <span className="normal-case tracking-normal tabular-nums text-foreground">
+              <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
                 {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
               </span>
               {" | Total: "}
