@@ -809,6 +809,10 @@ export function TrialCard({
   return (
     <article
       ref={articleRef}
+      // Only present once this card is actually the one tapping blank space
+      // would jump-to-current on — see the tabi-tips entry pointing at this,
+      // and CardShell's own identical attribute.
+      data-tour={isActive ? "active-card-tap-return" : undefined}
       // Not a blanket dispatch — see CardShell's own identical version of
       // this comment. onActivate needs to keep firing for a tap ANYWHERE on
       // an inactive card (including directly on a nav arrow or score

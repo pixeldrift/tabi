@@ -240,6 +240,7 @@ export function MiniTileShell({
                   }}
                   aria-label="Switch to standard view"
                   title="Switch to standard view"
+                  data-tour="grid-expand-to-standard"
                   // Shares reorderEditing's own top-right corner slot rather
                   // than an absolutely-positioned overlay of its own — the
                   // two are mutually exclusive (this only ever shows when
