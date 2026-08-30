@@ -446,7 +446,12 @@ export function TimestampCard({
                   <div className={cn("flex-1 grid place-items-center", large ? "px-3" : "px-2")}>
                     {isLivePage ? (
                       <motion.span
-                        animate={{ scale: flash ? 1.16 : 1 }}
+                        // Scales DOWN on log, not up — reads as the time
+                        // itself getting pressed into the page, matching a
+                        // real button press, rather than popping outward.
+                        // Same direction/magnitude everywhere this flash
+                        // hop appears (see TimestampCenterPill's own copy).
+                        animate={{ scale: flash ? 0.88 : 1 }}
                         transition={{ duration: 0.18, ease: "easeOut" }}
                         style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                         className={cn(
@@ -823,14 +828,13 @@ export function TimestampCard({
                 </span>
               </span>
             ) : hasData ? (
-              // Same flash-driven scale hop TimestampCenterPill's own live
-              // time uses (see its comment) — a beat of feedback right as
-              // this label appears (viewIdx lands back on the live slot the
-              // instant a log commits) that a new entry actually landed,
-              // not just a plain label swap.
-              <motion.span
-                animate={{ scale: flash ? 1.16 : 1 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+              // Color-flash only, matching its own "Entry X of Y"/"No
+              // entries yet" siblings — the scale hop belongs on the actual
+              // time digits (see TimestampCenterPill's own comment), not on
+              // this status text about them. This used to carry the same
+              // scale animation, which put the visible "press" feedback on
+              // the metadata label instead of the value it's describing.
+              <span
                 style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                 className={cn(
                   "text-[11px] uppercase tracking-wider",
@@ -838,7 +842,7 @@ export function TimestampCard({
                 )}
               >
                 Current time
-              </motion.span>
+              </span>
             ) : (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 No entries yet
@@ -909,7 +913,12 @@ function TimestampCenterPill({
             >
               {isLive ? (
                 <motion.span
-                  animate={{ scale: flash ? 1.16 : 1 }}
+                  // Scales DOWN on log, not up — see the tile pill's own
+                  // identical comment on why (reads as a press into the
+                  // page). This is the actual time value the flash is
+                  // reporting on; the status label below it ("Current
+                  // time") only gets the color flash, not this scale.
+                  animate={{ scale: flash ? 0.88 : 1 }}
                   transition={{ duration: 0.18, ease: "easeOut" }}
                   style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                   className={cn(
