@@ -259,7 +259,6 @@ export function TimestampCard({
 
   if (tileDensity) {
     const large = tileDensity === "large";
-    const viewingLive = viewIdx === liveIndex;
     return (
       <MiniTileShell
         title={title}
@@ -418,83 +417,118 @@ export function TimestampCard({
             than a smaller size of its own, so the two read as the same
             kind of control at a glance. Drops the am/pm letter
             (formatTileClockTime) to keep the row narrow enough at this
-            size — the full-size pill keeps it. */}
-          <div
-            className={cn(
-              "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
-              large ? "h-10" : "h-7",
-              flash && viewingLive ? "border-blue-400" : "border-border",
-            )}
-            style={{ transition: flash && viewingLive ? "none" : "border-color 700ms ease-out" }}
+            size — the full-size pill keeps it. Wrapped in its own
+            SwipeStrip (same "paged" pattern as Duration's own pill) so the
+            whole pill is a swipe target, not just the tiny dots above it —
+            each page renders its OWN index's content (`i`, not `viewIdx`),
+            since SwipeStrip pre-renders every page for a smooth swipe. */}
+          <SwipeStrip
+            count={trackCount}
+            current={viewIdx}
+            onCurrentChange={goTo}
+            variant="paged"
+            className="w-full"
+            itemWrapperClassName="w-full flex items-center justify-center"
           >
-            <div
-              className={cn("flex-1 grid place-items-center leading-none", large ? "px-3" : "px-2")}
-            >
-              {viewingLive ? (
-                <motion.span
-                  animate={{ scale: flash ? 1.16 : 1 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+            {(i) => {
+              const isLivePage = i === liveIndex;
+              return (
+                <div
                   className={cn(
-                    "font-display tabular-nums leading-none",
-                    large ? "text-lg" : "text-[11px]",
-                    flash ? "text-blue-600" : "text-stone-400",
+                    "flex items-stretch rounded-full overflow-hidden border-2 bg-white transition-colors",
+                    large ? "h-10" : "h-7",
+                    flash && isLivePage ? "border-blue-400" : "border-border",
                   )}
+                  style={{
+                    transition: flash && isLivePage ? "none" : "border-color 700ms ease-out",
+                  }}
                 >
-                  {formatTileClockTime(now, use24HourTime)}
-                </motion.span>
-              ) : (
-                <TimeOfDayKeypad
-                  value={to24hs(entries[viewIdx])}
-                  onChange={(next) => updateEntryTime(viewIdx, next)}
-                  onAdd={(delta) => addToEntryTime(viewIdx, delta)}
-                  withSeconds
-                >
-                  {({ open }) => (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        open();
-                      }}
-                      disabled={!canRecordData}
-                      aria-label={`Edit time for entry ${viewIdx + 1}`}
-                      className={cn(
-                        "font-display tabular-nums leading-none text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                        large ? "text-lg" : "text-[11px]",
-                      )}
-                    >
-                      {formatTileClockTime(entries[viewIdx], use24HourTime)}
-                    </button>
-                  )}
-                </TimeOfDayKeypad>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                logNow();
-              }}
-              disabled={!canRecordData}
-              aria-label="Log timestamp now"
-              // active:scale-100: cancels the global button:active fallback
-              // (styles.css) — that scale shrinks this button's own
-              // rectangle away from the pill's rounded-full overflow-hidden
-              // clip on press, revealing white background around it, same
-              // bug already fixed for the session timer's own mini pause
-              // button (see StatusBar.tsx). Scale instead lives on the
-              // icon-wrapping span below.
-              className={cn(
-                "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
-                large ? "w-10" : "w-7",
-              )}
-            >
-              <span className="grid place-items-center active:scale-95 transition-transform">
-                <Stamp className={large ? "size-[17px]" : "size-3.5"} />
-              </span>
-            </button>
-          </div>
+                  <div className={cn("flex-1 grid place-items-center", large ? "px-3" : "px-2")}>
+                    {isLivePage ? (
+                      <motion.span
+                        animate={{ scale: flash ? 1.16 : 1 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                        className={cn(
+                          // text-size has to come before leading-none, not
+                          // after — tailwind-merge treats an arbitrary (and,
+                          // per its own config, even a named) text-size
+                          // class as conflicting with leading-none and keeps
+                          // whichever is LAST, so leading-none listed first
+                          // was silently dropped from the rendered class
+                          // list at BOTH densities (see Frequency/Rate/
+                          // IntervalCard's own fix for the same bug) —
+                          // harmless at large density's own bigger pill, but
+                          // the resulting default line-height's extra
+                          // padding visibly pushed the small pill's own
+                          // shorter text off center.
+                          "font-display tabular-nums",
+                          large ? "text-lg" : "text-[11px]",
+                          "leading-none",
+                          flash ? "text-blue-600" : "text-stone-400",
+                        )}
+                      >
+                        {formatTileClockTime(now, use24HourTime)}
+                      </motion.span>
+                    ) : (
+                      <TimeOfDayKeypad
+                        value={to24hs(entries[i])}
+                        onChange={(next) => updateEntryTime(i, next)}
+                        onAdd={(delta) => addToEntryTime(i, delta)}
+                        withSeconds
+                      >
+                        {({ open }) => (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              open();
+                            }}
+                            disabled={!canRecordData}
+                            aria-label={`Edit time for entry ${i + 1}`}
+                            className={cn(
+                              // Same leading-none-vs-text-size ordering fix
+                              // as the live clock span above.
+                              "font-display tabular-nums text-foreground transition-colors hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed",
+                              large ? "text-lg" : "text-[11px]",
+                              "leading-none",
+                            )}
+                          >
+                            {formatTileClockTime(entries[i], use24HourTime)}
+                          </button>
+                        )}
+                      </TimeOfDayKeypad>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      logNow();
+                    }}
+                    disabled={!canRecordData}
+                    aria-label="Log timestamp now"
+                    // active:scale-100: cancels the global button:active
+                    // fallback (styles.css) — that scale shrinks this
+                    // button's own rectangle away from the pill's
+                    // rounded-full overflow-hidden clip on press, revealing
+                    // white background around it, same bug already fixed
+                    // for the session timer's own mini pause button (see
+                    // StatusBar.tsx). Scale instead lives on the
+                    // icon-wrapping span below.
+                    className={cn(
+                      "grid shrink-0 place-items-center text-white transition-colors bg-blue-500 hover:bg-blue-600 active:bg-blue-600 active:scale-100 disabled:opacity-40",
+                      large ? "w-10" : "w-7",
+                    )}
+                  >
+                    <span className="grid place-items-center active:scale-95 transition-transform">
+                      <Stamp className={large ? "size-[17px]" : "size-3.5"} />
+                    </span>
+                  </button>
+                </div>
+              );
+            }}
+          </SwipeStrip>
         </div>
       </MiniTileShell>
     );
