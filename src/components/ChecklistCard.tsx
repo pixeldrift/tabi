@@ -40,6 +40,11 @@ export interface ChecklistCardProps extends CardEditAndDrawerProps {
  *  also mounted elsewhere. Indexes past the persisted array's own current
  *  length (e.g. an item added after this session's first check) read as
  *  unchecked rather than throwing. */
+
+// Same duration FrequencyCard's own tally flash uses (see ChecklistRow's
+// own comment on why this mirrors that mechanism).
+const FLASH_DURATION_MS = 500;
+
 export function useChecklistChip(cardKey: string, items: ChecklistItem[]) {
   const [checked, setChecked] = useCardState<boolean[]>(cardKey, "checked", () =>
     items.map(() => false),
@@ -109,6 +114,30 @@ function ChecklistRow({
   showDescription: boolean;
   onToggle: () => void;
 }) {
+  // Same "snap to solid color, then ease back" mechanism FrequencyCard's own
+  // tally uses (see its own comment) — the label flashes primary blue the
+  // instant this item is checked/unchecked, then eases back to its normal
+  // color, instead of scaling. Detected off `checked` actually changing
+  // (not the click handler itself) so it fires the same way regardless of
+  // which of this row's three call sites (standard view, expanded view, the
+  // list-mode popover) triggered it.
+  const [flash, setFlash] = useState(false);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const prevCheckedRef = useRef(checked);
+  useEffect(() => {
+    if (prevCheckedRef.current === checked) return;
+    prevCheckedRef.current = checked;
+    setFlash(true);
+    if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
+    flashTimeoutRef.current = window.setTimeout(() => setFlash(false), FLASH_DURATION_MS);
+  }, [checked]);
+  useEffect(
+    () => () => {
+      if (flashTimeoutRef.current !== null) window.clearTimeout(flashTimeoutRef.current);
+    },
+    [],
+  );
+
   return (
     <button
       type="button"
@@ -139,9 +168,10 @@ function ChecklistRow({
           <ChecklistBox checked={checked} />
         </motion.span>
         <span
+          style={{ transition: flash ? "none" : "color 700ms ease-out" }}
           className={cn(
             "min-w-0 flex-1 text-sm leading-snug",
-            checked ? "text-foreground" : "text-foreground/80",
+            flash ? "text-blue-600" : checked ? "text-foreground" : "text-foreground/80",
           )}
         >
           {item.label}
