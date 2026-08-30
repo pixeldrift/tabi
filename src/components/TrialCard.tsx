@@ -975,7 +975,10 @@ export function TrialCard({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => applyResult(i, "incorrect", false)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          applyResult(i, "incorrect", false);
+                        }}
                         disabled={!canRecordData}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
@@ -990,7 +993,10 @@ export function TrialCard({
                     {noResponse && (
                       <button
                         type="button"
-                        onClick={() => applyResult(i, "no-response", false)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          applyResult(i, "no-response", false);
+                        }}
                         disabled={!canRecordData}
                         className={cn(
                           "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
@@ -1005,7 +1011,10 @@ export function TrialCard({
                     )}
                     <button
                       type="button"
-                      onClick={() => applyResult(i, "correct", false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        applyResult(i, "correct", false);
+                      }}
                       disabled={!canRecordData}
                       className={cn(
                         "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40",
@@ -1124,7 +1133,13 @@ export function TrialCard({
                       // currently showing it.
                       <motion.button
                         key={i}
-                        onClick={() => goTo(i)}
+                        // stopPropagation: see TriangleNav's own copy of
+                        // this comment — same bubbling-into-jumpToCurrent
+                        // risk applies to tapping a bubble directly.
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goTo(i);
+                        }}
                         className="relative shrink-0 grid place-items-center rounded-full font-medium select-none"
                         animate={{
                           width: isCenter ? BUBBLE_CENTER : BUBBLE,
@@ -1314,8 +1329,19 @@ function TriangleNav({
   return (
     <motion.button
       aria-label={isLeft ? "Previous trial" : "Next trial"}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      // stopPropagation: this sits inside the card's own root article, whose
+      // onClick jumps back to the current trial once the card is active (see
+      // that article's own onClick) — without this, every arrow tap would
+      // also bubble up and immediately override whatever navigation the
+      // arrow itself just did.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.();
+      }}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
@@ -1391,7 +1417,14 @@ function ActionButton({
   const { icon: Icon, label, classes, selectedClasses } = ACTION_BUTTON_STYLES[variant];
   return (
     <motion.button
-      onClick={onClick}
+      // stopPropagation: see TriangleNav's own copy of this comment — sits
+      // inside the card's own root article, whose onClick jumps back to the
+      // current trial once active, which would otherwise immediately follow
+      // (and read as undoing) every score tap.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={disabled}
       whileTap={{ scale: 0.94 }}
       animate={selected ? { scale: [1, 1.06, 1] } : { scale: 1 }}

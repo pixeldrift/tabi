@@ -1994,8 +1994,19 @@ function TriangleNav({
   return (
     <motion.button
       aria-label={isLeft ? "Previous interval" : "Next interval"}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      // stopPropagation: sits inside the card's own root article, whose
+      // onClick jumps back to the live interval once the card is active
+      // (see CardShell's own onTapWhileActive) — without this, every arrow
+      // tap would also bubble up and immediately override whatever
+      // navigation the arrow itself just did.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.();
+      }}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
@@ -2055,7 +2066,12 @@ function ScoreButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      // stopPropagation: see TriangleNav's own copy of this comment — same
+      // bubbling-into-onTapWhileActive risk applies to scoring taps.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={disabled}
       className={cn(
         "btn-bevel flex-1 min-w-0 h-10 rounded-full border-2 flex items-center justify-center gap-1.5 px-2 transition-colors disabled:opacity-40",
@@ -2092,7 +2108,12 @@ function RowScoreButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      // stopPropagation: see TriangleNav's own copy of this comment — same
+      // bubbling-into-onTapWhileActive risk applies to scoring taps.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={disabled}
       className={cn(
         "h-7 rounded-full border-2 flex items-center justify-center gap-1 px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-40 shrink-0",

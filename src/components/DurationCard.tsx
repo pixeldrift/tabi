@@ -943,7 +943,10 @@ export function DurationCard({
                   </TimeKeypad>
                   <button
                     type="button"
-                    onClick={() => toggleInstance(i)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleInstance(i);
+                    }}
                     disabled={!canRecordData}
                     aria-label={isRunning ? "Pause this instance" : "Start this instance"}
                     // active:scale-100: same fix as this button's own
@@ -1195,7 +1198,17 @@ function SideBubble({
   pulseStyle: { animationDuration: string; animationDelay: string };
 }) {
   return (
-    <button type="button" onClick={onClick} className="absolute inset-0 grid place-items-center">
+    <button
+      type="button"
+      // stopPropagation: see TriangleNav's own copy of this comment — same
+      // bubbling-into-onTapWhileActive risk applies to tapping a side bubble
+      // directly.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="absolute inset-0 grid place-items-center"
+    >
       <span
         className={cn(
           "grid place-items-center size-full rounded-full border text-[9px] font-medium tabular-nums",
@@ -1236,8 +1249,19 @@ function TriangleNav({
   return (
     <motion.button
       aria-label={isLeft ? "Previous instance" : "Next instance"}
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      // stopPropagation: sits inside the card's own root article, whose
+      // onClick jumps back to the current instance once the card is active
+      // (see CardShell's own onTapWhileActive) — without this, every arrow
+      // tap would also bubble up and immediately override whatever
+      // navigation the arrow itself just did.
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.();
+      }}
       disabled={disabled}
       whileTap={{ scale: 0.82 }}
       whileHover={{ scale: 1.08 }}
