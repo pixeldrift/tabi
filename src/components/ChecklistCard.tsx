@@ -282,35 +282,49 @@ export function ChecklistCard({
           </>
         }
         actions={
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              checkCurrentAndAdvance();
-            }}
-            disabled={!canRecordData}
-            aria-label={checked[current] ? "Uncheck item" : "Check item"}
-            className={cn(
-              "shrink-0 rounded-[9px] grid place-items-center border-2 transition-colors disabled:opacity-40",
-              large ? "size-10" : "size-7",
-              checked[current]
-                ? "btn-bevel bg-blue-500 border-blue-600 text-white"
-                : // Same "not yet scored" treatment as ChecklistBox.
-                  "border-stone-300 bg-white hover:bg-stone-50",
-            )}
-          >
-            {/* Same faint always-on checkmark as ChecklistBox — a hint this
-             *  is a real checkbox, not a decorative square. */}
-            <Check
+          <div className="flex items-center gap-1.5">
+            {/* Plain "x/y" — no "checked" label, no separate line below zone
+             *  3 (see the removed `hint` prop's own former value). Sits
+             *  right next to the button it's summarizing instead of its own
+             *  row, the same way a form field's inline count sits beside
+             *  the control it describes rather than as separate help text. */}
+            <span
               className={cn(
-                large ? "size-[19px]" : "size-3.5",
-                !checked[current] && "text-stone-400",
+                "text-muted-foreground tabular-nums",
+                large ? "text-xs" : "text-[10px]",
               )}
-              strokeWidth={3}
-            />
-          </button>
+            >
+              {checkedCount}/{items.length}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                checkCurrentAndAdvance();
+              }}
+              disabled={!canRecordData}
+              aria-label={checked[current] ? "Uncheck item" : "Check item"}
+              className={cn(
+                "shrink-0 rounded-[9px] grid place-items-center border-2 transition-colors disabled:opacity-40",
+                large ? "size-10" : "size-7",
+                checked[current]
+                  ? "btn-bevel bg-blue-500 border-blue-600 text-white"
+                  : // Same "not yet scored" treatment as ChecklistBox.
+                    "border-stone-300 bg-white hover:bg-stone-50",
+              )}
+            >
+              {/* Same faint always-on checkmark as ChecklistBox — a hint
+               *  this is a real checkbox, not a decorative square. */}
+              <Check
+                className={cn(
+                  large ? "size-[19px]" : "size-3.5",
+                  !checked[current] && "text-stone-400",
+                )}
+                strokeWidth={3}
+              />
+            </button>
+          </div>
         }
-        hint={large ? `${checkedCount}/${items.length} checked` : undefined}
       >
         {/* One item at a time, same idea as TaskAnalysisCard's own tile
          *  stepper — the dot row gives the overview a static fraction

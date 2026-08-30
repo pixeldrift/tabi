@@ -946,8 +946,16 @@ export function IntervalCard({
         <div className="relative inline-flex items-center">
           <span
             className={cn(
-              "font-display leading-none tabular-nums",
+              // text-[Npx] (arbitrary) has to come before leading-none, not
+              // after — tailwind-merge treats an arbitrary text-size class as
+              // conflicting with leading-none and keeps whichever is LAST,
+              // so leading-none listed first was silently dropped from the
+              // rendered class list (see Frequency/RateCard's own fix for
+              // the same bug), leaving this number a taller-than-intended
+              // default line-height.
+              "font-display tabular-nums",
               large ? "text-[32px]" : "text-[24px]",
+              "leading-none",
             )}
           >
             {activeViewIdx + 1}

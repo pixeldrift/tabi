@@ -202,48 +202,58 @@ export function RatingCard({
             )}
           </>
         }
-        hint={rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
       >
-        {/* Just the stars — the "Tap star to score" / scored-level text is
-            MiniTileShell's own `hint` now, rendered below zone 3 instead of
-            stacked inside it (see that prop's own comment for why: this
-            kind has no `actions` row, so it used to need its own h-full/
-            justify-center workaround just to keep from sinking to the
-            tile's bottom edge — zone 3's now-fixed height and its own
-            centering handle that without a per-card wrapper here). */}
-        <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
-          {Array.from({ length: numStars }, (_, i) => {
-            const value = min + i + 1;
-            const filled = rating >= value;
-            return (
-              <motion.button
-                key={value}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  pick(value);
-                }}
-                disabled={!canRecordData}
-                whileTap={{ scale: 0.88 }}
-                animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
-                transition={{ duration: 0.3 }}
-                aria-label={`Score ${value}`}
-                aria-pressed={filled}
-                className="shrink-0 disabled:opacity-40"
-              >
-                <Star
-                  className={cn(
-                    large ? "size-[26px]" : "size-[19px]",
-                    STAR_CENTROID_OFFSET,
-                    filled
-                      ? "fill-blue-500 stroke-blue-600"
-                      : "fill-foreground/10 stroke-foreground/25",
-                  )}
-                  strokeWidth={1.5}
-                />
-              </motion.button>
-            );
-          })}
+        {/* Label ABOVE the stars, not MiniTileShell's own `hint` slot below
+            zone 3 — a real finger tapping one of the (large, bottom-row)
+            stars sits right over where that slot renders, so the very text
+            telling you what you just scored would be the first thing your
+            own hand covers. Both live inside zone 3 together instead, text
+            first: still one fixed-height, centered block like every other
+            kind's zone 3, just ordered so the label reads before the touch
+            lands rather than under it. */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span
+            className={cn(
+              "text-muted-foreground text-center truncate max-w-full",
+              large ? "text-[11px]" : "text-[9px]",
+            )}
+          >
+            {rating > 0 ? shortRatingLabel(levelDescriptions?.[rating - 1]) : "Tap star to score"}
+          </span>
+          <div className={cn("flex items-center", large ? "gap-1.5" : "gap-1")}>
+            {Array.from({ length: numStars }, (_, i) => {
+              const value = min + i + 1;
+              const filled = rating >= value;
+              return (
+                <motion.button
+                  key={value}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    pick(value);
+                  }}
+                  disabled={!canRecordData}
+                  whileTap={{ scale: 0.88 }}
+                  animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  aria-label={`Score ${value}`}
+                  aria-pressed={filled}
+                  className="shrink-0 disabled:opacity-40"
+                >
+                  <Star
+                    className={cn(
+                      large ? "size-[26px]" : "size-[19px]",
+                      STAR_CENTROID_OFFSET,
+                      filled
+                        ? "fill-blue-500 stroke-blue-600"
+                        : "fill-foreground/10 stroke-foreground/25",
+                    )}
+                    strokeWidth={1.5}
+                  />
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
       </MiniTileShell>
     );

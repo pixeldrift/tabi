@@ -267,8 +267,17 @@ export function FrequencyCard({
                     transition={{ type: "spring", stiffness: 520, damping: 24, mass: 0.7 }}
                     style={{ transition: flash ? "none" : "color 700ms ease-out" }}
                     className={cn(
-                      "block font-display leading-none tabular-nums",
+                      // text-[Npx] (arbitrary) has to come before leading-none
+                      // here, not after — tailwind-merge treats an arbitrary
+                      // text-size class as conflicting with leading-none and
+                      // keeps whichever is LAST, so leading-none listed first
+                      // was silently dropped from the rendered class list,
+                      // leaving this number a taller-than-intended default
+                      // line-height and throwing off its vertical centering
+                      // against Trial/Rate's own tile number.
+                      "block font-display tabular-nums",
                       large ? "text-[38px]" : "text-[28px]",
+                      "leading-none",
                       flash ? "text-blue-600" : "text-foreground",
                     )}
                   >
