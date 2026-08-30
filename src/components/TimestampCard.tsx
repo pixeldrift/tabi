@@ -282,23 +282,37 @@ export function TimestampCard({
         widthMode={widthMode}
         onWidthModeChange={onWidthModeChange}
         details={details}
-        // Large density only — small density keeps the pill as the tile's
-        // whole story (see the removed span's own former comment). "Current
-        // time" once back on the live slot, "Entry X of Y" while browsing a
-        // past stamp, "No entries yet" before the first one.
-        hint={
-          large ? (
-            viewIdx < entries.length ? (
-              <>
-                Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
-                <span className="tabular-nums text-foreground">{entries.length}</span>
-              </>
-            ) : hasData ? (
-              "Current time"
-            ) : (
-              "No entries yet"
-            )
-          ) : undefined
+        // Same treatment as DurationCard's own "Instance N of M" — this
+        // kind has no real action buttons either (Log Now already lives in
+        // the pill), so this status text stands in for the actions row,
+        // fixed to Frequency/Rate's own actions-row height (their real
+        // size-[42px]/size-7 buttons) with this shorter text centered
+        // inside it. Without that height match, this column had MORE
+        // leftover space above it than Frequency/Rate get, centering zone 3
+        // (and the pill inside it) further down the tile than theirs —
+        // exactly the bug DurationCard's own fix (see its comment) already
+        // covers. "Current time" on the live slot, "Entry X of Y" while
+        // browsing a past stamp, "No entries yet" before the first one.
+        actions={
+          <div className={cn("flex items-center justify-center", large ? "h-[42px]" : "h-7")}>
+            <span
+              className={cn(
+                "text-muted-foreground text-center truncate max-w-full",
+                large ? "text-[11px]" : "text-[9px]",
+              )}
+            >
+              {viewIdx < entries.length ? (
+                <>
+                  Entry <span className="tabular-nums text-foreground">{viewIdx + 1}</span> of{" "}
+                  <span className="tabular-nums text-foreground">{entries.length}</span>
+                </>
+              ) : hasData ? (
+                "Current time"
+              ) : (
+                "No entries yet"
+              )}
+            </span>
+          </div>
         }
       >
         {/* Dots (+ large-density nav arrows) sit above the pill now, not
