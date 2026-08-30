@@ -496,9 +496,12 @@ export function ChecklistCard({
               onToggle={() => toggle(i)}
             />
           ))}
-          {/* Same "x of y checked · z%" summary the standard view's own
-              item list ends with — expanding to read each item's own
-              description shouldn't cost you this at-a-glance total. */}
+          {/* The standard view's own copy of this now lives only in the
+              progress bar's helperText below (see the CardShell call)
+              — but that bar sits below the collapsed height an expanded
+              list needs, so this list keeps its own explicit summary line
+              rather than relying on a bar the reader may have scrolled
+              past. */}
           <span className="mt-1 px-1 text-xs text-muted-foreground">{summary}</span>
         </div>
       }
@@ -514,7 +517,6 @@ export function ChecklistCard({
             onToggle={() => toggle(i)}
           />
         ))}
-        <span className="mt-1 px-1 text-xs text-muted-foreground">{summary}</span>
       </div>
     </CardShell>
   );

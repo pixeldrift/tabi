@@ -333,7 +333,7 @@ function ScaleStarBadge({ value }: { value: number }) {
       <svg viewBox="0 0 24 24" className="absolute inset-0 fill-blue-100 stroke-blue-300">
         <path d={ROUNDED_STAR_PATH} strokeWidth={1.5} strokeLinejoin="round" />
       </svg>
-      <span className="relative text-[10px] font-bold text-blue-700 tabular-nums leading-none">
+      <span className="relative translate-y-0.5 text-[10px] font-bold text-blue-700 tabular-nums leading-none">
         {value}
       </span>
     </span>
