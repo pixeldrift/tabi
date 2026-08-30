@@ -269,6 +269,7 @@ export function TaskAnalysisCard({
   promptLevels,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -603,6 +604,7 @@ export function TaskAnalysisCard({
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
+        onExpandToStandard={onExpandToStandard}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

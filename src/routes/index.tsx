@@ -1185,21 +1185,29 @@ function getOrderedCards(
 // splits the leftover space evenly above and below. Centering by hand here
 // instead lets the clamp below keep a card taller than the container from
 // having its own top (title) pushed up out of view.
-function scrollActiveCardIntoView(el: HTMLElement, container: HTMLElement) {
+function scrollActiveCardIntoView(
+  el: HTMLElement,
+  container: HTMLElement,
+  behavior: ScrollBehavior = "smooth",
+) {
   const containerRect = container.getBoundingClientRect();
   const rect = el.getBoundingClientRect();
   const desiredCenterY = containerRect.top + container.clientHeight / 2;
   const currentCenterY = rect.top + rect.height / 2;
   const maxDelta = rect.top - containerRect.top;
   const delta = Math.min(currentCenterY - desiredCenterY, maxDelta);
-  container.scrollBy({ top: delta, behavior: "smooth" });
+  container.scrollBy({ top: delta, behavior });
 }
 
 // The default (setting off) counterpart to scrollActiveCardIntoView above —
 // only the minimum nudge needed to bring a partially-hidden card fully on
 // screen, not a forced recenter. A no-op if the card's already fully
 // visible within the container.
-function scrollCardFullyIntoView(el: HTMLElement, container: HTMLElement) {
+function scrollCardFullyIntoView(
+  el: HTMLElement,
+  container: HTMLElement,
+  behavior: ScrollBehavior = "smooth",
+) {
   const containerRect = container.getBoundingClientRect();
   const rect = el.getBoundingClientRect();
   const visibleTop = containerRect.top;
@@ -1209,9 +1217,9 @@ function scrollCardFullyIntoView(el: HTMLElement, container: HTMLElement) {
   // satisfy both edges, so just lead with the top (matches how a browser's
   // own "nearest" falls back when the target doesn't fit either).
   if (rect.height > visibleBottom - visibleTop || rect.top < visibleTop) {
-    container.scrollBy({ top: rect.top - visibleTop, behavior: "smooth" });
+    container.scrollBy({ top: rect.top - visibleTop, behavior });
   } else if (rect.bottom > visibleBottom) {
-    container.scrollBy({ top: rect.bottom - visibleBottom, behavior: "smooth" });
+    container.scrollBy({ top: rect.bottom - visibleBottom, behavior });
   }
 }
 
@@ -1527,16 +1535,54 @@ function IndexInner({
   // so this doesn't fight that anchor's own scroll compensation while it's
   // still running.
   useEffect(() => {
-    const id = window.setTimeout(
-      () => {
-        const el = cardRefs.current.get(activeId);
-        const container = dataContentRef.current;
-        if (!el || !container) return;
-        if (keepActiveCardCentered) scrollActiveCardIntoView(el, container);
-        else scrollCardFullyIntoView(el, container);
-      },
-      CARD_MORPH_TRANSITION.duration * 1000 + 50,
-    );
+    // This, the position-anchor effect below, and the suppressCardLayout
+    // unsuppend timer above all target the same CARD_MORPH_TRANSITION-based
+    // duration, on the assumption all three finish in step — but this one's
+    // a plain setTimeout, the anchor's own loop is rAF-clocked, and
+    // suppressCardLayout flipping back on re-enables each card wrapper's own
+    // `layout="position"` FLIP, which can itself keep reflowing content for
+    // another transition's worth of time. If this runs before the anchor's
+    // cleanup, the anchor's temporary bottom padding is still holding the
+    // card exactly where it was, so the "already visible" check below
+    // trivially passes and this does nothing — then that cleanup removes the
+    // padding and the browser clamps scrollTop to the container's now much
+    // shorter real content, with nothing left to correct the drift; and even
+    // once that's accounted for, layout re-enabling on other cards can still
+    // shift things again right after this already ran. Polling
+    // anchorActiveRef (rather than trusting the shared duration) guarantees
+    // this always runs strictly after the anchor's own cleanup, and
+    // reapplying a couple more times over the following stretch — the same
+    // "keep correcting for a short window" idea the tab-restore layout
+    // effect elsewhere in this file already uses for an analogous race —
+    // catches whatever the FLIP settling disturbs afterward.
+    let id: number;
+    let reapplyCount = 0;
+    // Instant, not smooth: a `smooth` scrollBy computes its target distance
+    // once and lets the browser animate there over the next few hundred ms
+    // on its own — exactly the width of the window still-settling FLIP
+    // layout on other cards keeps reflowing in, silently invalidating that
+    // target mid-flight and leaving the animation arriving somewhere that
+    // was only correct at the moment it was computed. An instant jump
+    // recomputes and lands fresh on every one of these reapply passes
+    // instead, so drift from an already-superseded target can't accumulate
+    // between them.
+    const correct = () => {
+      const el = cardRefs.current.get(activeId);
+      const container = dataContentRef.current;
+      if (!el || !container) return;
+      if (keepActiveCardCentered) scrollActiveCardIntoView(el, container, "instant");
+      else scrollCardFullyIntoView(el, container, "instant");
+    };
+    const attempt = () => {
+      if (anchorActiveRef.current) {
+        id = window.setTimeout(attempt, 50);
+        return;
+      }
+      correct();
+      reapplyCount++;
+      if (reapplyCount < 6) id = window.setTimeout(attempt, 150);
+    };
+    id = window.setTimeout(attempt, CARD_MORPH_TRANSITION.duration * 1000 + 50);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayMode]);
@@ -1586,6 +1632,12 @@ function IndexInner({
   const activeTopRef = useRef<number | null>(null);
   const prevDisplayModeRef = useRef(displayMode);
   const anchorRafRef = useRef(0);
+  // True for exactly as long as the tick loop below is actively holding the
+  // active card's on-screen position — read by the "bring fully into view"
+  // recheck effect further down so it can wait its own turn instead of
+  // racing this rAF loop's independently-clocked finish (see that effect's
+  // own comment for why the two stepping on each other was the actual bug).
+  const anchorActiveRef = useRef(false);
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
     const container = dataContentRef.current;
@@ -1595,6 +1647,7 @@ function IndexInner({
 
     if (isModeSwitch && activeTopRef.current !== null) {
       cancelAnimationFrame(anchorRafRef.current);
+      anchorActiveRef.current = true;
       // Guarantees the container has enough scroll slack to actually apply
       // scrollBy deltas mid-morph, before the reflowing content below has
       // grown to fill it on its own — padding on the scrolling element
@@ -1618,6 +1671,7 @@ function IndexInner({
           anchorRafRef.current = requestAnimationFrame(tick);
         } else {
           container.style.paddingBottom = prevPaddingBottom;
+          anchorActiveRef.current = false;
         }
       };
       anchorRafRef.current = requestAnimationFrame(tick);
@@ -2379,6 +2433,7 @@ function IndexInner({
                     order={order}
                     setOrder={setOrder}
                     displayMode={displayMode}
+                    setDisplayMode={setDisplayMode}
                     suppressCardLayout={suppressCardLayout}
                     drawerOpen={drawerOpen}
                     drawerSlideOpen={drawerSlideOpen}
@@ -2504,6 +2559,7 @@ function renderCard(
     slideFrom?: "left" | "right" | null;
     widthMode?: "normal" | "full";
     onWidthModeChange?: (mode: "normal" | "full") => void;
+    onExpandToStandard: () => void;
   },
 ): React.ReactNode {
   switch (card.kind) {
@@ -2895,6 +2951,7 @@ const DataCardList = memo(function DataCardList({
   toggleHidden,
   setOrder,
   displayMode,
+  setDisplayMode,
   suppressCardLayout,
   drawerOpen,
   drawerSlideOpen,
@@ -2959,6 +3016,10 @@ const DataCardList = memo(function DataCardList({
   order: string[];
   setOrder: (ids: string[]) => void;
   displayMode: DisplayMode;
+  /** Used only by each grid tile's own top-right "switch to standard view"
+   *  shortcut (see renderOne's onExpandToStandard) — everything else about
+   *  rendering the list only ever reads displayMode, never sets it. */
+  setDisplayMode: (mode: DisplayMode) => void;
   suppressCardLayout: boolean;
   /** Drives the tile reflow (see `stackToLeftColumn` below) the instant the
    *  user asks to open the drawer. */
@@ -3053,6 +3114,14 @@ const DataCardList = memo(function DataCardList({
       onActivate: () => {
         setSlideFrom(null);
         setActiveId(card.id);
+      },
+      // Tile-mode-only shortcut (see MiniTileShell's own onExpandToStandard
+      // prop) — a plain state update on an already-settled list, same as
+      // handleNavigateToCard, so no deferred wait is needed here either.
+      onExpandToStandard: () => {
+        setSlideFrom(null);
+        setActiveId(card.id);
+        setDisplayMode("card");
       },
       detailsOpen: card.id === activeId && tab === "data" && drawerSlideOpen,
       onDetailsOpenChange: onDrawerOpenChange,

@@ -64,6 +64,11 @@ export interface CardEditAndDrawerProps {
    *  page through cards at that size. */
   widthMode?: "normal" | "full";
   onWidthModeChange?: (mode: "normal" | "full") => void;
+  /** Tile-mode-only shortcut (see MiniTileShell's own prop) — declared here
+   *  too so every card kind's props type picks it up automatically the same
+   *  way as every other shared edit/drawer prop, even though CardShell
+   *  itself (the non-tile standard view) has no use for it. */
+  onExpandToStandard?: () => void;
 }
 
 export interface CardShellProps extends CardEditAndDrawerProps {

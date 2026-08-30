@@ -108,6 +108,7 @@ export function TimestampCard({
   description,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -270,6 +271,7 @@ export function TimestampCard({
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
+        onExpandToStandard={onExpandToStandard}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

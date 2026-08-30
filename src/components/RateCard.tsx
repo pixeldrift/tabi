@@ -65,6 +65,7 @@ export function RateCard({
   minDurationSec,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -223,6 +224,7 @@ export function RateCard({
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
+          onExpandToStandard={onExpandToStandard}
           reorderEditing={reorderEditing}
           favorited={favorited}
           onToggleFavorite={onToggleFavorite}

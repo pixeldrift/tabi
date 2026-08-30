@@ -63,6 +63,7 @@ export function FrequencyCard({
   behaviorRole,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -153,6 +154,7 @@ export function FrequencyCard({
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
+        onExpandToStandard={onExpandToStandard}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

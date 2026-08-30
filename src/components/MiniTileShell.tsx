@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { GripVertical, Bookmark, EyeOff } from "lucide-react";
+import { GripVertical, Bookmark, EyeOff, ChevronsLeftRight } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -48,6 +48,12 @@ export interface MiniTileShellProps extends CardEditAndDrawerProps {
    *  CardShell for the same reason). */
   progress?: number | null;
   isComplete?: boolean;
+  /** Small top-right shortcut to standard view — jumps the toolbar's own
+   *  display mode to "card" and makes this the active card in one tap,
+   *  rather than needing the toolbar's own segmented control plus a second
+   *  tap to reselect whichever tile you actually meant. Omit to hide the
+   *  button entirely (nothing currently does). */
+  onExpandToStandard?: () => void;
 }
 
 // Fixed per-density widths (rather than each card measuring its own actions
@@ -110,6 +116,7 @@ export function MiniTileShell({
   slideFrom,
   widthMode,
   onWidthModeChange,
+  onExpandToStandard,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
   const large = density === "large";
@@ -214,7 +221,7 @@ export function MiniTileShell({
             >
               {renderBreakableTitle(title)}
             </h2>
-            {reorderEditing && (
+            {reorderEditing ? (
               <MiniEditControls
                 favorited={favorited}
                 onToggleFavorite={onToggleFavorite ?? (() => {})}
@@ -223,6 +230,27 @@ export function MiniTileShell({
                 dragControls={dragControls}
                 large={large}
               />
+            ) : (
+              onExpandToStandard && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExpandToStandard();
+                  }}
+                  aria-label="Switch to standard view"
+                  title="Switch to standard view"
+                  // Shares reorderEditing's own top-right corner slot rather
+                  // than an absolutely-positioned overlay of its own — the
+                  // two are mutually exclusive (this only ever shows when
+                  // that isn't), so there's nothing to collide with. -rotate-45
+                  // turns the chevrons' resting left-right "< >" pose into a
+                  // diagonal expand/maximize glyph pointing away from center.
+                  className="shrink-0 -mr-0.5 -mt-0.5 grid place-items-center rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <ChevronsLeftRight className={cn("-rotate-45", large ? "size-3.5" : "size-3")} />
+                </button>
+              )
             )}
           </div>
 

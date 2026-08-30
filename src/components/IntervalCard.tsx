@@ -269,6 +269,7 @@ export function IntervalCard({
   checkpoints,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -912,6 +913,7 @@ export function IntervalCard({
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
+        onExpandToStandard={onExpandToStandard}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

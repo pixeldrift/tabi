@@ -205,6 +205,7 @@ export function DurationCard({
   behaviorRole,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing,
   favorited,
   onToggleFavorite,
@@ -424,6 +425,7 @@ export function DurationCard({
           density={tileDensity}
           isActive={isActive}
           onActivate={onActivate}
+          onExpandToStandard={onExpandToStandard}
           reorderEditing={reorderEditing}
           favorited={favorited}
           onToggleFavorite={onToggleFavorite}

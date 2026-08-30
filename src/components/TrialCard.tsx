@@ -187,6 +187,7 @@ export function TrialCard({
   maxTrials,
   isActive = true,
   onActivate,
+  onExpandToStandard,
   reorderEditing = false,
   favorited = false,
   onToggleFavorite,
@@ -442,6 +443,7 @@ export function TrialCard({
         density={tileDensity}
         isActive={isActive}
         onActivate={onActivate}
+        onExpandToStandard={onExpandToStandard}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}
