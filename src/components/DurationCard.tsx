@@ -477,9 +477,19 @@ export function DurationCard({
                 )}
               >
                 <span>Instance</span>
+                {/* normal-case tracking-normal tabular-nums text-foreground,
+                    no font-display — same plain metadata treatment as this
+                    exact "Instance N of M" text in the standard view's own
+                    status row below (see its own span), and as every other
+                    kind's own navigation/count metadata (Task Analysis's
+                    "Step X of Y", Timestamp's "Entry X of Y", Checklist's
+                    "X/Y"). font-display is reserved for the data itself —
+                    the title, and the actual value being recorded (a count,
+                    a duration, a rating) — not for text that's just
+                    describing where you are in the data. */}
                 <span
                   className={cn(
-                    "font-display font-bold normal-case tabular-nums text-foreground",
+                    "normal-case tracking-normal tabular-nums text-foreground",
                     large ? "text-sm" : "text-xs",
                   )}
                 >
