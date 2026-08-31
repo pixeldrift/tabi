@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Plus, Trash2, ImageOff, Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Camera, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
@@ -496,7 +496,15 @@ export function ProductCard({
               thumbSize,
             )}
           >
-            <ImageOff className={cn("text-stone-300", large ? "size-6" : "size-4")} />
+            {/* Same faded camera + plus pairing as the standard view's own
+             *  Add Photo box (see AddPhotoTile), just without its text
+             *  label — there's no room for it at this size, and the pairing
+             *  alone already reads as "add a photo" rather than a generic
+             *  broken-image glyph. */}
+            <span className="flex items-center gap-0.5 text-stone-300">
+              <Camera className={large ? "size-6" : "size-4"} strokeWidth={1.75} />
+              <Plus className={large ? "size-3" : "size-2.5"} strokeWidth={2.5} />
+            </span>
           </button>
         )}
         {hiddenInput}
