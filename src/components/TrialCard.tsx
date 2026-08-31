@@ -22,6 +22,7 @@ import { PhaseInfoLabel, DataTypeInfoLabel } from "./KindInfoLabels";
 import { ListActionBadge, ListActionButton, ListActionSlide } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { ExpandableArea, type CardEditAndDrawerProps } from "./CardShell";
+import { useActivePulse } from "./ActivePulseContext";
 import { useCardSession } from "./SessionContext";
 import { useReportCardStatus } from "./DataToolbarContext";
 import { renderBreakableTitle } from "./BreakableTitle";
@@ -222,6 +223,7 @@ export function TrialCard({
   onWidthModeChange,
 }: TrialCardProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const { pulseActive, pulseGen } = useActivePulse();
   const cardKey = id ?? title;
   // Keyed by trial index rather than a parallel array — entries just don't
   // exist for trials that aren't "incorrect" (or don't have a level yet),
@@ -1320,6 +1322,15 @@ export function TrialCard({
           </div>
         )}
       </div>
+      {/* Rendered as a real child of this card's own root — see CardShell's
+          identical comment on ActivePulseContext for why. */}
+      {isActive && pulseActive && (
+        <div
+          key={pulseGen}
+          className="absolute inset-0 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
+          aria-hidden
+        />
+      )}
     </article>
   );
 }

@@ -1298,7 +1298,13 @@ const NOW_CHEVRON_PATH = "M3 2 Q1 2 1 4 V16 Q1 18 3 18 L13 11.5 Q15 10 13 8.5 Z"
 // edge, the same idiom as Percent Correct's own draggable trial-bubble
 // strip.
 const SEG_W = 64;
-const BAR_H = 10;
+// Halved from 10 — BAR_ROW_H/BAR_INSET/SAMPLING_DOT_SIZE below are all
+// unaffected (none hardcode this value), so the dot size and the scored-
+// interval highlight stripe (a fixed 3px/w-[3px] in both the horizontal
+// and expanded vertical bars) stay exactly as they were; only the bar's
+// own visible thickness shrinks, re-centered within its same-size row via
+// BAR_INSET automatically absorbing the difference.
+const BAR_H = 5;
 // The sampling-type row sits between the bubble row and the elapsed-time
 // bar. Whole/Partial render a bracket there — a sideways curly brace
 // ("{" on its side: a single point at top, straight arms spreading down

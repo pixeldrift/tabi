@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { CardEditControls } from "./CardEditControls";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import { type CardEditAndDrawerProps } from "./CardShell";
+import { useActivePulse } from "./ActivePulseContext";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { DataTypeInfoLabel } from "./KindInfoLabels";
 import type { CardKind } from "./DataToolbarContext";
@@ -68,6 +69,7 @@ export function DataListRow({
   details,
 }: DataListRowProps) {
   const rowRef = useRef<HTMLElement | null>(null);
+  const { pulseActive, pulseGen } = useActivePulse();
   const showActions = actions && !reorderEditing;
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
@@ -213,6 +215,15 @@ export function DataListRow({
           cardRef={rowRef}
           widthMode={widthMode}
           onWidthModeChange={onWidthModeChange}
+        />
+      )}
+      {/* Rendered as a real child of this row's own root — see CardShell's
+          identical comment on ActivePulseContext for why. */}
+      {isActive && pulseActive && (
+        <div
+          key={pulseGen}
+          className="absolute inset-0 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
+          aria-hidden
         />
       )}
     </article>

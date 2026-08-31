@@ -9,6 +9,7 @@ import type { TeachingProcedure } from "./TeachingProcedureAccordion";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { PhaseInfoLabel, DataTypeInfoLabel } from "./KindInfoLabels";
 import type { CardKind } from "./DataToolbarContext";
+import { useActivePulse } from "./ActivePulseContext";
 import { cn } from "@/lib/utils";
 
 /** Shared by every card kind so the toolbar's edit mode (reorder/favorite/
@@ -243,6 +244,7 @@ export function CardShell({
   onWidthModeChange,
 }: CardShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const { pulseActive, pulseGen } = useActivePulse();
   const hasExpandedView = Boolean(onToggleExpanded && expandedView);
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
@@ -453,6 +455,17 @@ export function CardShell({
           </div>
         )}
       </div>
+      {/* Rendered as a real child of this card's own root — not a separate
+          `position: fixed` overlay measured/positioned from outside (see
+          ActivePulseContext's own comment) — so it moves, resizes, and
+          scrolls with the card for free, with nothing to keep in sync. */}
+      {isActive && pulseActive && (
+        <div
+          key={pulseGen}
+          className="absolute inset-0 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
+          aria-hidden
+        />
+      )}
     </article>
   );
 }

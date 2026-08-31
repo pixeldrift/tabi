@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { GripVertical, Bookmark, EyeOff, ChevronsLeftRight } from "lucide-react";
 import { DataDetailsDrawer } from "./DataDetailsDrawer";
 import type { CardEditAndDrawerProps } from "./CardShell";
+import { useActivePulse } from "./ActivePulseContext";
 import { renderBreakableTitle } from "./BreakableTitle";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,7 @@ export function MiniTileShell({
   onExpandToStandard,
 }: MiniTileShellProps) {
   const articleRef = useRef<HTMLElement | null>(null);
+  const { pulseActive, pulseGen } = useActivePulse();
   const large = density === "large";
   const showProgress = typeof progress === "number";
   const pct = showProgress ? Math.min(100, Math.max(0, progress!)) : 0;
@@ -355,6 +357,21 @@ export function MiniTileShell({
           </div>
         )}
       </div>
+      {/* Rendered as a real child of this tile's own root — see CardShell's
+          identical comment on ActivePulseContext for why. Matches this
+          root's own density-specific rounding above (rounded-[18px]/
+          rounded-[14px]), not a plain rounded-xl — a tile's corners are a
+          different radius than a card's. */}
+      {isActive && pulseActive && (
+        <div
+          key={pulseGen}
+          className={cn(
+            "absolute inset-0 pointer-events-none border-blue-500 animate-now-pulse",
+            large ? "rounded-[18px]" : "rounded-[14px]",
+          )}
+          aria-hidden
+        />
+      )}
     </article>
   );
 }

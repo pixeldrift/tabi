@@ -53,6 +53,7 @@ import { TourProvider } from "@/components/TourContext";
 import { TourOverlay } from "@/components/TourOverlay";
 import { TipProvider } from "@/components/TipContext";
 import { TipOverlay } from "@/components/TipOverlay";
+import { ActivePulseProvider } from "@/components/ActivePulseContext";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import type { TeachingProcedure } from "@/components/TeachingProcedureAccordion";
 import { playSoundEffect } from "@/lib/soundEffects";
@@ -1640,37 +1641,31 @@ function IndexInner({
   }, [suppressCardLayout]);
 
   // Border pulse on the active card whenever the display mode switches —
-  // same idea, same `animate-now-pulse` CSS animation, as the schedule's
-  // own flash on its "Now" button (see ScheduleView's flashRowId/flashGen).
-  // A measured, `position: fixed` overlay rather than a prop threaded
-  // through every one of the nine card-kind components. Deliberately NOT
-  // measured until AFTER the anchor effect right below finishes
-  // scrollBy()-ing the container to hold the active card's on-screen
-  // position steady for the whole morph, and after MorphContent's own
-  // crossfade settles to its real height (mid-crossfade briefly reports a
-  // taller in-between size while old and new content overlap) — measuring
-  // any earlier than that produced a `position: fixed` overlay that
-  // silently went stale the moment the anchor's own scroll continued
-  // underneath it, or that locked in a transiently-too-tall reading. No
-  // need to keep tracking once the card has actually stopped moving,
-  // unlike the tour/tip spotlight's own continuous-tracking
-  // useSpotlightTargetRect (a settled tour target can still get pushed
-  // around later by something else on the page; this pulse's own target
-  // stops moving for good the instant the mode-switch morph itself ends).
-  const [pulseRect, setPulseRect] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  const [pulseKey, setPulseKey] = useState(0);
-  const pulseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
-  useEffect(() => {
-    if (pulseKey === 0) return;
-    const t = setTimeout(() => setPulseRect(null), 1300);
-    return () => clearTimeout(t);
-  }, [pulseKey]);
-  useEffect(() => () => clearTimeout(pulseTimeoutRef.current), []);
+  // see ActivePulseContext's own comment for the full shape/rationale
+  // (a context each card-kind's leaf render target reads directly, rather
+  // than a measured `position: fixed` overlay this component would have
+  // to keep positioned itself). This is just the trigger: pulseActive
+  // flips true for a fixed window, pulseGen bumps once per switch to
+  // restart the CSS animation. Deliberately not flipped true until AFTER
+  // the anchor effect right below finishes scrollBy()-ing the container to
+  // hold the active card's on-screen position steady for the whole morph —
+  // a card rendering its own pulse as a real child sidesteps any risk of
+  // drifting out of alignment with a `position: fixed` overlay, but
+  // starting the pulse mid-morph would still have looked like it was
+  // playing on top of a card that hadn't finished settling into its new
+  // spot yet.
+  const [pulseActive, setPulseActive] = useState(false);
+  const [pulseGen, setPulseGen] = useState(0);
+  const pulseStartTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
+  const pulseEndTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      clearTimeout(pulseStartTimeoutRef.current);
+      clearTimeout(pulseEndTimeoutRef.current);
+    },
+    [],
+  );
+  const pulseContextValue = useMemo(() => ({ pulseActive, pulseGen }), [pulseActive, pulseGen]);
 
   const activeTopRef = useRef<number | null>(null);
   const prevDisplayModeRef = useRef(displayMode);
@@ -1684,13 +1679,12 @@ function IndexInner({
   // No dependency array — see this effect's own long comment above for why
   // it deliberately needs to run after every render, not just on
   // activeId/displayMode changes. The pulse trigger added below is safe
-  // despite that: setPulseRect/setPulseKey only ever fire later, from
+  // despite that: setPulseActive/setPulseGen only ever fire later, from
   // inside a setTimeout callback, never synchronously inside this effect
   // itself — by the time either one actually runs and triggers a
   // re-render, isModeSwitch's own ref update above has long since made
   // the very next run of this effect see isModeSwitch as false again, so
   // it can't loop.
-
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
     const container = dataContentRef.current;
@@ -1705,14 +1699,13 @@ function IndexInner({
       // otherwise (e.g. the very first switch this page load) there's no
       // scroll settling to wait for, so this fires on the next tick
       // instead of stalling a whole extra durationMs for nothing.
-      clearTimeout(pulseTimeoutRef.current);
-      pulseTimeoutRef.current = setTimeout(
+      clearTimeout(pulseStartTimeoutRef.current);
+      clearTimeout(pulseEndTimeoutRef.current);
+      pulseStartTimeoutRef.current = setTimeout(
         () => {
-          const settledEl = cardRefs.current.get(activeId);
-          if (!settledEl) return;
-          const r = settledEl.getBoundingClientRect();
-          setPulseRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-          setPulseKey((k) => k + 1);
+          setPulseGen((g) => g + 1);
+          setPulseActive(true);
+          pulseEndTimeoutRef.current = setTimeout(() => setPulseActive(false), 1300);
         },
         activeTopRef.current !== null ? durationMs : 0,
       );
@@ -2486,70 +2479,41 @@ function IndexInner({
                   snapping instantly or crossfading the whole list as one
                   flat unit — that requires the wrapper to persist across
                   the switch, which an outer keyed remount here would break. */}
-                  <DataCardList
-                    cardsGen={cardsGen}
-                    cardsAnimKind={cardsAnimKind}
-                    transitionHidden={cardsHidden}
-                    suppressEntranceAnimation={suppressEntranceAnimation}
-                    onCardsExitComplete={handleCardsExitComplete}
-                    endActionOverlay={endActionOverlay}
-                    visibleCards={visibleCards}
-                    activeId={activeId}
-                    setActiveId={setActiveId}
-                    cardRefs={cardRefs}
-                    editMode={editMode}
-                    favorites={favorites}
-                    toggleFavorite={toggleFavorite}
-                    hidden={hidden}
-                    toggleHidden={toggleHidden}
-                    order={order}
-                    setOrder={setOrder}
-                    displayMode={displayMode}
-                    setDisplayMode={setDisplayMode}
-                    suppressCardLayout={suppressCardLayout}
-                    drawerOpen={drawerOpen}
-                    drawerSlideOpen={drawerSlideOpen}
-                    onDrawerOpenChange={setDrawerOpen}
-                    drawerWidthMode={drawerWidthMode}
-                    onDrawerWidthModeChange={setDrawerWidthMode}
-                    stickyTop={stickyTop}
-                    toolbarHeight={toolbarHeight}
-                    tab={tab}
-                  />
+                  <ActivePulseProvider value={pulseContextValue}>
+                    <DataCardList
+                      cardsGen={cardsGen}
+                      cardsAnimKind={cardsAnimKind}
+                      transitionHidden={cardsHidden}
+                      suppressEntranceAnimation={suppressEntranceAnimation}
+                      onCardsExitComplete={handleCardsExitComplete}
+                      endActionOverlay={endActionOverlay}
+                      visibleCards={visibleCards}
+                      activeId={activeId}
+                      setActiveId={setActiveId}
+                      cardRefs={cardRefs}
+                      editMode={editMode}
+                      favorites={favorites}
+                      toggleFavorite={toggleFavorite}
+                      hidden={hidden}
+                      toggleHidden={toggleHidden}
+                      order={order}
+                      setOrder={setOrder}
+                      displayMode={displayMode}
+                      setDisplayMode={setDisplayMode}
+                      suppressCardLayout={suppressCardLayout}
+                      drawerOpen={drawerOpen}
+                      drawerSlideOpen={drawerSlideOpen}
+                      onDrawerOpenChange={setDrawerOpen}
+                      drawerWidthMode={drawerWidthMode}
+                      onDrawerWidthModeChange={setDrawerWidthMode}
+                      stickyTop={stickyTop}
+                      toolbarHeight={toolbarHeight}
+                      tab={tab}
+                    />
+                  </ActivePulseProvider>
                 </div>
               </div>
             </section>
-
-            {/* Border pulse on the active card when the display mode
-                switches — see pulseRect's own comment above for why this
-                waits until after the switch's own scroll/crossfade settles
-                to measure. Fixed (not absolute) since the measured rect is
-                viewport-relative, matching a real getBoundingClientRect()
-                read; the border itself, not a background or shadow, is
-                what needs to sit exactly on top of the card's own edge
-                regardless of which of the four card-kind components
-                rendered it. rounded-xl, not a measured border-radius —
-                cardRefs holds each card's own unstyled outer wrapper (see
-                setCardRef), not its actual rounded article/row underneath,
-                and every one of those roots uses this exact same radius
-                regardless of kind or density. key={pulseKey}, not a stable
-                key: remounting a fresh element on every trigger is what
-                makes animate-now-pulse's CSS animation actually restart
-                from 0% instead of no-opping on an already-mounted,
-                already-"played" one. */}
-            {pulseRect && (
-              <div
-                key={pulseKey}
-                className="fixed z-40 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
-                style={{
-                  top: pulseRect.top,
-                  left: pulseRect.left,
-                  width: pulseRect.width,
-                  height: pulseRect.height,
-                }}
-                aria-hidden
-              />
-            )}
 
             <section
               ref={infoContentRef}
