@@ -8,6 +8,7 @@ import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { IntervalIcon } from "@/components/icons/IntervalIcon";
 import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
+import { ProductIcon } from "@/components/icons/ProductIcon";
 import type { CardKind } from "@/components/DataToolbarContext";
 
 export interface DataTypeInfo {
@@ -77,6 +78,12 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     icon: createElement(Stamp),
     description:
       "Logs the exact date and time something happened — a simple, ongoing record of moments, not a count, duration, or interval check.",
+  },
+  product: {
+    label: "Product",
+    icon: createElement(ProductIcon),
+    description:
+      "Collects photos of a tangible work sample a client produced, like a completed worksheet or drawing, rather than a count, duration, or rating. Good for keeping visual evidence of permanent products alongside the rest of a session's data.",
   },
 };
 

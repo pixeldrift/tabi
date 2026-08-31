@@ -26,6 +26,7 @@ import { DurationIcon } from "@/components/icons/DurationIcon";
 import { TaskAnalysisIcon } from "@/components/icons/TaskAnalysisIcon";
 import { IntervalIcon } from "@/components/icons/IntervalIcon";
 import { ChecklistIcon } from "@/components/icons/ChecklistIcon";
+import { ProductIcon } from "@/components/icons/ProductIcon";
 import { FilterIcon } from "@/components/icons/FilterIcon";
 import { useDataToolbar, DISPLAY_MODES, type CardKind } from "./DataToolbarContext";
 import { useSettings } from "./SettingsContext";
@@ -47,6 +48,7 @@ export const KIND_META: Record<
   interval: { label: "Interval", icon: (p) => <IntervalIcon {...p} /> },
   checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },
   timestamp: { label: "Timestamp", icon: (p) => <Stamp {...p} /> },
+  product: { label: "Product", icon: (p) => <ProductIcon {...p} /> },
 };
 
 // Fades the collapsing button group's own trailing (right) edge — the one

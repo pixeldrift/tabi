@@ -25,7 +25,8 @@ export type CardKind =
   | "rating"
   | "interval"
   | "checklist"
-  | "timestamp";
+  | "timestamp"
+  | "product";
 
 export type DisplayMode = "list" | "card" | "grid-large" | "grid-small";
 

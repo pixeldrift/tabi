@@ -112,6 +112,7 @@ import { EmailIcon } from "./EmailIcon";
 import { PhoneIcon } from "./PhoneIcon";
 import { RequestEditIcon } from "./RequestEditIcon";
 import { ChecklistIcon } from "./ChecklistIcon";
+import { ProductIcon } from "./ProductIcon";
 import { HandshakeIcon } from "./HandshakeIcon";
 import { ApproveEditIcon } from "./ApproveEditIcon";
 import { ForwardChainingIcon } from "./ForwardChainingIcon";
@@ -172,6 +173,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Checklist", "Checklist card kind", ChecklistIcon),
       lucide("Star", "Score card kind + score selector", Star),
       lucide("Stamp", "Timestamp card kind", Stamp),
+      custom("Product", "Permanent Product card kind", ProductIcon),
     ],
   },
   {

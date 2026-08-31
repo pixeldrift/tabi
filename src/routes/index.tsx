@@ -21,6 +21,7 @@ import { RatingCard } from "@/components/RatingCard";
 import { IntervalCard } from "@/components/IntervalCard";
 import { TimestampCard } from "@/components/TimestampCard";
 import { ChecklistCard } from "@/components/ChecklistCard";
+import { ProductCard } from "@/components/ProductCard";
 import { ScheduleView } from "@/components/ScheduleView";
 import {
   SessionProvider,
@@ -195,6 +196,12 @@ export type CardConfig = {
     }
   | {
       kind: "timestamp";
+      title: string;
+      phase: string;
+      description: string;
+    }
+  | {
+      kind: "product";
       title: string;
       phase: string;
       description: string;
@@ -1052,6 +1059,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
   "interval",
   "checklist",
   "timestamp",
+  "product",
 ];
 
 // Clinical progression order, not the cards' own declaration order — the
@@ -1076,6 +1084,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   interval: "Interval",
   checklist: "Checklist",
   timestamp: "Timestamp",
+  product: "Product",
 };
 
 const CUSTOM_CARDS_STORAGE_KEY = "aba-daba-custom-cards-v1";
@@ -2733,6 +2742,15 @@ function renderCard(
     case "timestamp":
       return (
         <TimestampCard
+          title={card.title}
+          phase={card.phase}
+          description={card.description}
+          {...common}
+        />
+      );
+    case "product":
+      return (
+        <ProductCard
           title={card.title}
           phase={card.phase}
           description={card.description}

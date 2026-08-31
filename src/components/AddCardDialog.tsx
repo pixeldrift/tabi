@@ -42,6 +42,7 @@ const KIND_ORDER: CardKind[] = [
   "interval",
   "checklist",
   "timestamp",
+  "product",
 ];
 
 // Same order PROMPT_LEVEL_ICONS declares them in (least to most intrusive) —
@@ -219,6 +220,9 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
   // and description (collected generically before this switch even runs)
   // are all it needs.
   timestamp: [],
+  // Same as Timestamp — a Product card just logs photos as they're added
+  // during a session; there's nothing about it to configure up front.
+  product: [],
 };
 
 /** Slide+fade variants for the two-step wizard body. `direction` (passed in
@@ -429,6 +433,8 @@ function buildCardConfig(
       };
     }
     case "timestamp":
+      return { id, kind, title, phase, description };
+    case "product":
       return { id, kind, title, phase, description };
   }
 }

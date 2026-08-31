@@ -11,6 +11,7 @@ import { useFrequencyChip } from "./FrequencyCard";
 import { useRatingChip, ListRatingButton } from "./RatingCard";
 import { useTaskAnalysisChip, ListTaskAnalysisPromptLevelButton } from "./TaskAnalysisCard";
 import { useChecklistChip, ListChecklistButton } from "./ChecklistCard";
+import { useProductChip, ListProductButton } from "./ProductCard";
 import { cn } from "@/lib/utils";
 import type { CardConfig } from "@/routes/index";
 
@@ -108,6 +109,10 @@ export function BookmarkChip({ card, mounted, active, onSelect, onJumpToCard }: 
           onSelect={onSelect}
           onJumpToCard={onJumpToCard}
         />
+      );
+    case "product":
+      return (
+        <ProductChip card={card} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard} />
       );
   }
 }
@@ -508,6 +513,25 @@ function TimestampChip({
         disabled={!canRecordData}
         ariaLabel="Log now"
         onClick={logNow}
+      />
+    </ChipShell>
+  );
+}
+
+function ProductChip({
+  card,
+  active,
+  onSelect,
+  onJumpToCard,
+}: { card: Extract<CardConfig, { kind: "product" }> } & ChipSelectionProps) {
+  const { entries, addFiles, removeEntry, canRecordData } = useProductChip(card.id);
+  return (
+    <ChipShell title={card.title} active={active} onSelect={onSelect} onJumpToCard={onJumpToCard}>
+      <ListProductButton
+        entries={entries}
+        disabled={!canRecordData}
+        onFiles={addFiles}
+        onDelete={removeEntry}
       />
     </ChipShell>
   );
