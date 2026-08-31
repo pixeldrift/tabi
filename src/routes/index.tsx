@@ -1194,8 +1194,18 @@ function scrollActiveCardIntoView(
   const rect = el.getBoundingClientRect();
   const desiredCenterY = containerRect.top + container.clientHeight / 2;
   const currentCenterY = rect.top + rect.height / 2;
-  const maxDelta = rect.top - containerRect.top;
-  const delta = Math.min(currentCenterY - desiredCenterY, maxDelta);
+  let delta = currentCenterY - desiredCenterY;
+  // The clamp below only matters for a card TALLER than the container —
+  // perfectly centering one would push its own top (title) above the
+  // visible area, which the clamp trades off against instead. Applying it
+  // unconditionally clamped every ORDINARY card's delta down to how far
+  // its own top already sat below the container's top edge, which is
+  // almost always less than the actual distance needed to reach center —
+  // the card landed on screen, just short of centered, not fully in view.
+  if (rect.height > container.clientHeight) {
+    const maxDelta = rect.top - containerRect.top;
+    delta = Math.min(delta, maxDelta);
+  }
   container.scrollBy({ top: delta, behavior });
 }
 
@@ -1629,6 +1639,28 @@ function IndexInner({
     return () => clearTimeout(t);
   }, [suppressCardLayout]);
 
+  // Border pulse on the active card whenever the display mode switches —
+  // same idea, same `animate-now-pulse` CSS animation, as the schedule's
+  // own flash on its "Now" button (see ScheduleView's flashRowId/flashGen).
+  // A measured, `position: fixed` overlay rather than a prop threaded
+  // through every one of the nine card-kind components: the active card's
+  // own on-screen position is already held steady for the whole morph by
+  // the anchor effect right below, so one rect measured at the instant the
+  // switch is detected stays accurate for this pulse's whole (much
+  // shorter) duration without needing to track the card continuously.
+  const [pulseRect, setPulseRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [pulseGen, setPulseGen] = useState(0);
+  useEffect(() => {
+    if (pulseGen === 0) return;
+    const t = setTimeout(() => setPulseRect(null), 1300);
+    return () => clearTimeout(t);
+  }, [pulseGen]);
+
   const activeTopRef = useRef<number | null>(null);
   const prevDisplayModeRef = useRef(displayMode);
   const anchorRafRef = useRef(0);
@@ -1638,12 +1670,26 @@ function IndexInner({
   // racing this rAF loop's independently-clocked finish (see that effect's
   // own comment for why the two stepping on each other was the actual bug).
   const anchorActiveRef = useRef(false);
+  // No dependency array — see this effect's own long comment above for why
+  // it deliberately needs to run after every render, not just on
+  // activeId/displayMode changes. The pulse trigger added below is safe
+  // despite that: it only calls setPulseRect/setPulseGen from inside the
+  // isModeSwitch branch, which the ref update on the very next line makes
+  // false again on the re-render that state change causes, so it can't
+  // loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
     const container = dataContentRef.current;
     if (!el || !container) return;
     const isModeSwitch = prevDisplayModeRef.current !== displayMode;
     prevDisplayModeRef.current = displayMode;
+
+    if (isModeSwitch) {
+      const r = el.getBoundingClientRect();
+      setPulseRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      setPulseGen((g) => g + 1);
+    }
 
     if (isModeSwitch && activeTopRef.current !== null) {
       cancelAnimationFrame(anchorRafRef.current);
@@ -2447,6 +2493,31 @@ function IndexInner({
                 </div>
               </div>
             </section>
+
+            {/* Border pulse on the active card when the display mode
+                switches — see pulseRect/pulseGen's own comment above. Fixed
+                (not absolute) since the measured rect is viewport-relative,
+                matching a real getBoundingClientRect() read; the border
+                itself, not a background or shadow, is what needs to sit
+                exactly on top of the card's own edge regardless of which of
+                the four card-kind components rendered it. rounded-xl, not a
+                measured border-radius — cardRefs holds each card's own
+                unstyled outer wrapper (see setCardRef), not its actual
+                rounded article/row underneath, and every one of those roots
+                uses this exact same radius regardless of kind or density. */}
+            {pulseRect && (
+              <div
+                key={`mode-switch-pulse-${pulseGen}`}
+                className="fixed z-40 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
+                style={{
+                  top: pulseRect.top,
+                  left: pulseRect.left,
+                  width: pulseRect.width,
+                  height: pulseRect.height,
+                }}
+                aria-hidden
+              />
+            )}
 
             <section
               ref={infoContentRef}

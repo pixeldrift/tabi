@@ -132,6 +132,17 @@ function StepPlanBadge({ level }: { level: StepPlanLevel | null | undefined }) {
   );
 }
 
+/** Same icon OPTIONS above already maps each status to for its own scoring
+ *  button — shown small under the center bubble's own step number once it's
+ *  scored, mirroring Percent Correct's TrialResultIcon and Interval's
+ *  IntervalStatusIcon on their own bubbles. */
+function StepStatusIcon({ status, className }: { status: StepStatus; className?: string }) {
+  const option = OPTIONS.find((o) => o.value === status);
+  if (!option) return null;
+  const Icon = option.icon;
+  return <Icon className={className} strokeWidth={option.strokeWidth} />;
+}
+
 // Solid dot color for a step's status — used by the tile's prev/next status
 // indicator (unlike OPTIONS' classes above, which style a full button).
 function statusDotColor(status: StepStatus) {
@@ -396,13 +407,25 @@ export function TaskAnalysisCard({
       return next;
     });
     if (advance && !isToggleOff) {
-      window.setTimeout(() => {
-        setCurrent((prev) => {
-          const next = prev.slice();
-          next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
-          return next;
-        });
-      }, 260);
+      // Scoring the LAST step of the instance currently being viewed is the
+      // same "that one's obviously done" signal Duration's own timer-stop
+      // gets — same 260ms beat as any other advance, but landing on
+      // nextInstance() (browse to an already-existing later instance, or
+      // create a fresh one) instead of clamping in place at the last step
+      // forever. Scoped to instanceIdx === viewIdx so scoring some other
+      // instance's last step from the expanded all-instances list doesn't
+      // yank the view away to a instance the tech never asked to see.
+      if (idx === steps.length - 1 && instanceIdx === viewIdx) {
+        window.setTimeout(() => nextInstance(), 260);
+      } else {
+        window.setTimeout(() => {
+          setCurrent((prev) => {
+            const next = prev.slice();
+            next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
+            return next;
+          });
+        }, 260);
+      }
     }
   };
 
@@ -440,13 +463,19 @@ export function TaskAnalysisCard({
       return next;
     });
     if (advance && !isToggleOff) {
-      window.setTimeout(() => {
-        setCurrent((prev) => {
-          const next = prev.slice();
-          next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
-          return next;
-        });
-      }, 260);
+      // Same "last step done -> move on to the next instance" treatment as
+      // setStep's own identical block above.
+      if (idx === steps.length - 1 && instanceIdx === viewIdx) {
+        window.setTimeout(() => nextInstance(), 260);
+      } else {
+        window.setTimeout(() => {
+          setCurrent((prev) => {
+            const next = prev.slice();
+            next[instanceIdx] = Math.min((next[instanceIdx] ?? 0) + 1, steps.length - 1);
+            return next;
+          });
+        }, 260);
+      }
     }
   };
 
@@ -673,10 +702,11 @@ export function TaskAnalysisCard({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setStep(activeCurrent, opt.value, true);
-                  }}
+                  // No stopPropagation — scoring a step is this tile's own
+                  // primary data-entry action, same as the standard view's
+                  // own identical button; tapping it on a not-yet-active
+                  // tile should select the tile in the same tap.
+                  onClick={() => setStep(activeCurrent, opt.value, true)}
                   disabled={!canRecordData || !canScore(activeCurrent)}
                   aria-label={opt.label}
                   className={cn(
@@ -1228,12 +1258,25 @@ export function TaskAnalysisCard({
                         >
                           <span
                             className={cn(
-                              isCenter
-                                ? "font-display text-2xl leading-none tabular-nums"
-                                : "text-[7px] leading-none",
+                              "flex flex-col items-center justify-center",
+                              isCenter && "gap-px",
                             )}
                           >
-                            {i + 1}
+                            <span
+                              className={cn(
+                                isCenter
+                                  ? cn(
+                                      "font-display leading-none tabular-nums",
+                                      status ? "text-xl" : "text-2xl",
+                                    )
+                                  : "text-[7px] leading-none",
+                              )}
+                            >
+                              {i + 1}
+                            </span>
+                            {isCenter && status && (
+                              <StepStatusIcon status={status} className="size-3" />
+                            )}
                           </span>
                         </span>
                       </motion.button>

@@ -491,10 +491,12 @@ export function TimestampCard({
                         {({ open }) => (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              open();
-                            }}
+                            // No stopPropagation — editing this entry's time
+                            // is a real interaction with it, same as the
+                            // standard view's own identical button; tapping
+                            // it on a not-yet-active tile should select the
+                            // tile in the same tap.
+                            onClick={open}
                             disabled={!canRecordData}
                             aria-label={`Edit time for entry ${i + 1}`}
                             className={cn(
@@ -513,10 +515,10 @@ export function TimestampCard({
                   </div>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      logNow();
-                    }}
+                    // No stopPropagation — logging is this tile's own
+                    // primary data-entry action, same as the standard
+                    // view's own identical button.
+                    onClick={logNow}
                     disabled={!canRecordData}
                     aria-label="Log timestamp now"
                     // active:scale-100: cancels the global button:active
@@ -585,9 +587,22 @@ export function TimestampCard({
               )}
             >
               {viewingLive ? (
-                <span className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] text-stone-400">
+                // Same flash-driven scale-down + color-snap every other
+                // "current time" display in this file plays on log (see
+                // TimestampCenterPill's own identical treatment) — this list
+                // row's own value used to just sit there through a log with
+                // nothing to show for it.
+                <motion.span
+                  animate={{ scale: flash ? 0.88 : 1 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  style={{ transition: flash ? "none" : "color 700ms ease-out" }}
+                  className={cn(
+                    "flex items-center justify-center px-1.5 text-[12px] font-bold tabular-nums min-w-[5.5rem]",
+                    flash ? "text-blue-600" : "text-stone-400",
+                  )}
+                >
                   {formatClockTime(now, use24HourTime)}
-                </span>
+                </motion.span>
               ) : (
                 <TimeOfDayKeypad
                   value={to24hs(entries[viewIdx])}
@@ -604,7 +619,7 @@ export function TimestampCard({
                       }}
                       disabled={!canRecordData}
                       aria-label={`Edit time for entry ${viewIdx + 1}`}
-                      className="flex items-center justify-center px-2 text-[12px] font-bold tabular-nums min-w-[5.5rem] cursor-text disabled:cursor-not-allowed"
+                      className="flex items-center justify-center px-1.5 text-[12px] font-bold tabular-nums min-w-[5.5rem] cursor-text disabled:cursor-not-allowed"
                     >
                       {formatClockTime(entries[viewIdx], use24HourTime)}
                     </button>

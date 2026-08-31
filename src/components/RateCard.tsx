@@ -271,10 +271,10 @@ export function RateCard({
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  dec();
-                }}
+                // No stopPropagation — tallying is this tile's own primary
+                // data-entry action; tapping it on a not-yet-active tile
+                // should select the tile in the same tap.
+                onClick={dec}
                 disabled={!canRecordData || count === 0}
                 aria-label="Decrement"
                 className={cn(
@@ -286,10 +286,8 @@ export function RateCard({
               </button>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inc();
-                }}
+                // No stopPropagation — see the Decrement button above.
+                onClick={inc}
                 disabled={!canRecordData}
                 aria-label="Increment"
                 className={cn(
@@ -317,10 +315,10 @@ export function RateCard({
               {({ isEditing, open }) => (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    open();
-                  }}
+                  // No stopPropagation — editing the count directly is a
+                  // real interaction with this tile's own data, same as the
+                  // increment/decrement buttons beside it.
+                  onClick={open}
                   disabled={!canRecordData}
                   className="relative cursor-text disabled:cursor-not-allowed"
                   aria-label={`Current tally is ${count}. Tap to edit.`}

@@ -230,10 +230,10 @@ export function RatingCard({
                 <motion.button
                   key={value}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    pick(value);
-                  }}
+                  // No stopPropagation — scoring is this tile's own primary
+                  // data-entry action, same as the standard view's own
+                  // identical star.
+                  onClick={() => pick(value)}
                   disabled={!canRecordData}
                   whileTap={{ scale: 0.88 }}
                   animate={filled ? { scale: [1, 1.14, 1] } : { scale: 1 }}

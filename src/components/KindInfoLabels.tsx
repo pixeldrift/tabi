@@ -101,7 +101,12 @@ export function DataTypeInfoLabel({
         <DrawerInfoModal
           open={open}
           onOpenChange={setOpen}
-          icon={info.icon}
+          // The passed-in `icon`, not `info.icon` — for most kinds they're
+          // the same, but Interval passes its own per-sampling-type variant
+          // (Whole/Partial/Momentary), and info.icon here is only ever the
+          // one generic icon keyed by CardKind, which would silently
+          // override that back to a plain clock for every variant.
+          icon={icon}
           kindLabel="Data Type"
           title={label}
           description={info.description}

@@ -212,6 +212,15 @@ function samplingIndicatorStrokeColor(status: IntervalStatus) {
   return "text-stone-300";
 }
 
+/** Same Check/X the scoring buttons themselves use, shown small under the
+ *  current bubble's own number once it's scored — see Percent Correct's
+ *  identical TrialResultIcon for the same idea on that card's bubble. */
+function IntervalStatusIcon({ status, className }: { status: IntervalStatus; className?: string }) {
+  if (status === "correct") return <Check className={className} strokeWidth={3} />;
+  if (status === "incorrect") return <X className={className} strokeWidth={3} />;
+  return null;
+}
+
 /** Everything the bookmark bar's Interval chip needs. `elapsed` (like
  *  Rate's own denominator) ticks automatically whenever the session is
  *  running via the real IntervalCard's own `subscribeTick` effect — this
@@ -930,10 +939,10 @@ export function IntervalCard({
           <div className={cn("flex items-center justify-center", large ? "gap-2.5" : "gap-1.5")}>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                activeScoreFromCard(activeViewIdx, "incorrect");
-              }}
+              // No stopPropagation — scoring this interval/checkpoint is
+              // this tile's own primary data-entry action, same as the
+              // standard view's own identical button.
+              onClick={() => activeScoreFromCard(activeViewIdx, "incorrect")}
               disabled={!canRecordData}
               aria-label={negativeLabel}
               className={cn(
@@ -948,10 +957,8 @@ export function IntervalCard({
             </button>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                activeScoreFromCard(activeViewIdx, "correct");
-              }}
+              // No stopPropagation — see the "incorrect" button above.
+              onClick={() => activeScoreFromCard(activeViewIdx, "correct")}
               disabled={!canRecordData}
               aria-label={positiveLabel}
               className={cn(
@@ -1338,7 +1345,10 @@ const BUBBLE = 24;
 // dot on other cards' quick-glance strips) — so it needs its own row height
 // tall enough to fit without clipping (bubbles are bottom-anchored, so the
 // bigger one simply grows upward).
-const BUBBLE_CURRENT = 40;
+// Bumped from 40 to fit a small scored/unscored icon under the number once
+// this interval has a status (see IntervalTimeline's own bubble render) —
+// 40 was sized for the number alone.
+const BUBBLE_CURRENT = 46;
 const BUBBLE_ROW_H = BUBBLE_CURRENT;
 // Matches IntervalTimeline's own leading `pt-0.5` before the bubble row —
 // trimmed down from the interval label above so the bigger current bubble
@@ -1457,7 +1467,7 @@ function IntervalTimeline({
                 <motion.div
                   className={cn(
                     "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
-                    isCurrent ? "border-2 text-sm" : "border text-[11px]",
+                    isCurrent ? "flex-col gap-px border-2 text-sm" : "border text-[11px]",
                     bg,
                     text,
                     fade,
@@ -1469,6 +1479,9 @@ function IntervalTimeline({
                   transition={{ type: "spring", stiffness: 360, damping: 28 }}
                 >
                   {i + 1}
+                  {isCurrent && (
+                    <IntervalStatusIcon status={statuses[i]} className={cn("size-2.5", text)} />
+                  )}
                 </motion.div>
               </div>
             );

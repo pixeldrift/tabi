@@ -121,6 +121,20 @@ function ChecklistRow({
   // (not the click handler itself) so it fires the same way regardless of
   // which of this row's three call sites (standard view, expanded view, the
   // list-mode popover) triggered it.
+  // Drives the box's own scale pop below — tracked at the row level (the
+  // real tap target, see this component's own doc comment) rather than
+  // Motion's own `whileTap`, which only engages when the pointer lands on
+  // the exact motion element itself. RatingCard's stars don't have this
+  // problem because each star fully IS its own motion.button, so the tap
+  // target and the animated element are the same node; here the tap target
+  // is the whole row (so a tap on the label, not just the tiny box, still
+  // toggles it) while only the box itself should visibly shrink — a tap
+  // landing on the label never reaches the box's own pointer listeners, so
+  // whileTap silently never fires for most real-world taps. Tracking press
+  // state up here and driving the box with a plain `animate` prop instead
+  // decouples "what detects the tap" from "what animates," matching the
+  // pop RatingCard's own tap-then-release cycle plays every time.
+  const [pressed, setPressed] = useState(false);
   const [flash, setFlash] = useState(false);
   const flashTimeoutRef = useRef<number | null>(null);
   const prevCheckedRef = useRef(checked);
@@ -142,6 +156,10 @@ function ChecklistRow({
     <button
       type="button"
       onClick={onToggle}
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
       disabled={disabled}
       aria-pressed={checked}
       // active:scale-100: cancels the global button:active scale fallback
@@ -156,15 +174,20 @@ function ChecklistRow({
        *  x-height to read as centered on the text, not the whole row,
        *  which matters once a description line is showing underneath. */}
       <span className="flex w-full items-center gap-2.5">
-        {/* whileTap — the same real pointerdown/up-driven scale RatingCard's
-         *  own stars use — rather than a CSS `active:scale-*` utility. Both
-         *  are pure transforms and neither should move a flex sibling in
-         *  principle, but the CSS version visibly did here (the checkbox
-         *  growing/shrinking read as pushing the label next to it), and
-         *  swapping to Motion's own tap tracking — set directly on the
-         *  element rather than riding CSS's `:active` pseudo-class — is
-         *  what actually held the label still. */}
-        <motion.span whileTap={{ scale: 0.9 }} className="grid place-items-center">
+        {/* `animate`, not `whileTap` — whileTap only engages when the
+         *  pointer lands on this exact element, but the real tap target is
+         *  the whole row above (so tapping the label still toggles it), and
+         *  most real taps land there rather than on this small box. Driving
+         *  the scale off the row's own pressed state (tracked above) instead
+         *  is what makes this box pop on every tap, not just the rare one
+         *  that happens to land precisely on it — the same real pointerdown/
+         *  up-driven scale RatingCard's own stars get for free, since each
+         *  star's tap target and animated element are the same node there. */}
+        <motion.span
+          animate={{ scale: pressed ? 0.9 : 1 }}
+          transition={{ duration: 0.1 }}
+          className="grid place-items-center"
+        >
           <ChecklistBox checked={checked} />
         </motion.span>
         <span
@@ -336,10 +359,10 @@ export function ChecklistCard({
             </span>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                checkCurrentAndAdvance();
-              }}
+              // No stopPropagation — checking this item is this tile's own
+              // primary data-entry action, same as the standard view's own
+              // identical control.
+              onClick={checkCurrentAndAdvance}
               disabled={!canRecordData}
               aria-label={checked[current] ? "Uncheck item" : "Check item"}
               className={cn(

@@ -636,10 +636,12 @@ export function DurationCard({
                       {({ open }) => (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            open();
-                          }}
+                          // No stopPropagation — editing this instance's
+                          // time is a real interaction with it, same as the
+                          // standard view's own identical button; tapping it
+                          // on a not-yet-active tile should select the tile
+                          // in the same tap.
+                          onClick={open}
                           disabled={!canRecordData}
                           aria-label={`Edit time for instance ${i + 1}`}
                           className={cn(
@@ -661,10 +663,10 @@ export function DurationCard({
                     </TimeKeypad>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleInstance(i);
-                      }}
+                      // No stopPropagation — starting/pausing this instance
+                      // is the tile's own primary data-entry action, same as
+                      // the standard view's own identical button.
+                      onClick={() => toggleInstance(i)}
                       disabled={!canRecordData}
                       aria-label={running ? "Pause this instance" : "Start this instance"}
                       // active:scale-100: cancels the global button:active

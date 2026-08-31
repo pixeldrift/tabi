@@ -300,6 +300,22 @@
   * {
     border-color: var(--color-border);
   }
+  html {
+    /* Backstop for the details drawer's own horizontal swipe-to-close/
+       resize gesture (DataDetailsDrawer's onPan/onPanEnd handlers) leaking
+       into the page itself — most noticeable in grid density, where the
+       drawer panel and every tile's own SwipeStrip (a real, natively
+       horizontally-scrollable region) sit close together on screen. That
+       gesture is entirely JS-driven rather than a native `drag`, so any
+       part of it the browser decides it owns instead (an edge case in how
+       touch-action resolves through the page's own layout-animated
+       ancestors) previously showed up as the whole page panning/bouncing
+       sideways instead of just the one panel moving. Scoped to the x axis
+       only — vertical overscroll (the session tab's own pull-to-refresh-
+       style bounce) is untouched.
+    */
+    overscroll-behavior-x: none;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

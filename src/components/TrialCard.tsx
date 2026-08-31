@@ -79,6 +79,17 @@ const BUBBLE = 18; // small bubble diameter
 const BUBBLE_CENTER = 56; // center bubble diameter
 const GAP = 6; // tighter spacing
 
+/** Same Check/X/CircleSlash2 glyphs the action buttons below the bubble
+ *  track already use for these three outcomes — shown small underneath the
+ *  center bubble's own number once it's scored, so the trial's outcome
+ *  reads at a glance without needing to check the action row's own color. */
+function TrialResultIcon({ result, className }: { result: TrialResult; className?: string }) {
+  if (result === "correct") return <Check className={className} strokeWidth={3} />;
+  if (result === "incorrect") return <X className={className} strokeWidth={3} />;
+  if (result === "no-response") return <CircleSlash2 className={className} strokeWidth={2.5} />;
+  return null;
+}
+
 /** Everything the bookmark bar's Trial chip needs, independent of whether
  *  the real TrialCard is currently mounted anywhere — reads/writes the same
  *  useCardState-backed `trials`/`promptLevel`/`current` slots TrialCard
@@ -524,10 +535,10 @@ export function TrialCard({
             ) : (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setResult("incorrect");
-                }}
+                // No stopPropagation — scoring is this tile's own primary
+                // data-entry action, same as the standard view's own
+                // identical button.
+                onClick={() => setResult("incorrect")}
                 disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                 aria-label="Error"
                 className={cn(
@@ -544,10 +555,8 @@ export function TrialCard({
             {noResponse && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setResult("no-response");
-                }}
+                // No stopPropagation — see the "Error" button above.
+                onClick={() => setResult("no-response")}
                 disabled={!canRecordData || (isMaxReached && trials[current] === null)}
                 aria-label="No Response"
                 className={cn(
@@ -563,10 +572,8 @@ export function TrialCard({
             )}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setResult("correct");
-              }}
+              // No stopPropagation — see the "Error" button above.
+              onClick={() => setResult("correct")}
               disabled={!canRecordData || (isMaxReached && trials[current] === null)}
               aria-label="Correct"
               className={cn(
@@ -680,16 +687,21 @@ export function TrialCard({
                       {i + 1}
                     </span>
                     {minTrials !== undefined && i < minTrials && !t && (
-                      // bottom-0, not a negative inset — this item's own box
-                      // is inside SwipeStrip's native `overflow-x-auto`
-                      // scroller, which (per spec — setting only overflow-x
-                      // forces overflow-y to compute as `auto` too, not
-                      // `visible`) silently clips anything overflowing this
-                      // box's own bottom edge instead of letting it show past
-                      // it the way the standard view's bigger, dedicated
-                      // bubble square allows.
+                      // A small fixed offset from the box's own bottom edge
+                      // (not bottom-0) — hugging the RESTING number's own
+                      // baseline instead of the full h-12/h-9 slot's true
+                      // bottom, which sat far enough below the (much
+                      // smaller) resting number to read as its own separate
+                      // row, indistinguishable from a genuine nav-dot strip.
+                      // Still can't go negative (a negative inset, like the
+                      // standard view's own `-bottom-2`, gets clipped by
+                      // SwipeStrip's native `overflow-x-auto` scroller,
+                      // which per spec forces overflow-y to `auto` too).
                       <span
-                        className="absolute bottom-0 left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35"
+                        className={cn(
+                          "absolute left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35",
+                          large ? "bottom-[14px]" : "bottom-[10px]",
+                        )}
                         aria-hidden
                       />
                     )}
@@ -1139,21 +1151,33 @@ export function TrialCard({
                           )}
                         >
                           {isCenter ? (
-                            <AnimatePresence mode="wait">
-                              <motion.span
-                                key={i}
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.25 }}
-                                className={cn(
-                                  "font-display text-4xl leading-none tabular-nums",
-                                  centerTextColor,
-                                )}
-                              >
-                                {i + 1}
-                              </motion.span>
-                            </AnimatePresence>
+                            <div className="flex flex-col items-center justify-center gap-px">
+                              <AnimatePresence mode="wait">
+                                <motion.span
+                                  key={i}
+                                  initial={{ opacity: 0, y: 6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                  transition={{ duration: 0.25 }}
+                                  className={cn(
+                                    "font-display leading-none tabular-nums",
+                                    t ? "text-3xl" : "text-4xl",
+                                    centerTextColor,
+                                  )}
+                                >
+                                  {i + 1}
+                                </motion.span>
+                              </AnimatePresence>
+                              {/* Small enough to sit inside the same circle
+                                  as the number above it rather than needing
+                                  a bigger bubble to fit both — the number
+                                  itself shrinks slightly (text-3xl, not
+                                  text-4xl) once scored to make room. */}
+                              <TrialResultIcon
+                                result={t}
+                                className={cn("size-3", centerTextColor)}
+                              />
+                            </div>
                           ) : (
                             <span className={cn("text-[7px] font-medium leading-none", textColor)}>
                               {i + 1}
@@ -1181,9 +1205,21 @@ export function TrialCard({
               </div>
             </div>
 
-            {/* Helper text under bubbles */}
-            <div className="text-center text-xs text-muted-foreground">
-              Trial {current + 1} (of {target} {maxTrials ? "max" : "required"})
+            {/* Helper text under bubbles — same metadata treatment as
+                Duration's "Instance N of M" and Task Analysis's "Step N of
+                M" (see their own comment on it): all-caps/tracking-wide/
+                muted, alt font, with only the numbers bold and back to
+                normal case/tracking/size. */}
+            <div className="text-center text-[11px] font-display uppercase tracking-wider text-muted-foreground">
+              Trial{" "}
+              <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">
+                {current + 1}
+              </span>{" "}
+              (of{" "}
+              <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">
+                {target}
+              </span>{" "}
+              {maxTrials ? "max" : "required"})
             </div>
           </div>
 
@@ -1712,10 +1748,12 @@ export function ListPromptLevelButton({
         <button
           ref={anchorRef}
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
+          // No stopPropagation — this is the "Error" scoring button's own
+          // level-picker variant used in list/tile mode, and tapping it on
+          // a not-yet-active card/tile should select it in the same tap,
+          // same as the plain "Error" button does (see PromptLevelButton's
+          // own identical comment for the standard-view version of this).
+          onClick={() => setOpen((o) => !o)}
           disabled={disabled}
           aria-label="Error"
           aria-haspopup
