@@ -72,6 +72,7 @@ import {
   ClipboardX,
   PanelBottomClose,
   PanelBottomOpen,
+  GraduationCap,
 } from "lucide-react";
 import { PercentCorrectIcon } from "./PercentCorrectIcon";
 import { FrequencyIcon } from "./FrequencyIcon";
@@ -183,7 +184,8 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Baseline", "Phase indicator (drawer quick facts)", BaselineIcon),
       custom("Intervention", "Phase indicator (drawer quick facts)", InterventionIcon),
       custom("Maintenance", "Phase indicator (drawer quick facts)", MaintenanceIcon),
-      custom("Fading", "Not yet wired up — added for future use", FadingIcon),
+      custom("Fading", "Phase indicator (drawer quick facts)", FadingIcon),
+      lucide("GraduationCap", "Mastered phase indicator (drawer quick facts)", GraduationCap),
       custom("Pairing", "Not yet wired up — added for future use", PairingIcon),
       custom("Antecedent", "Not yet wired up — added for future use", AntecedentIcon),
       custom("Function", "Not yet wired up — added for future use", FunctionIcon),

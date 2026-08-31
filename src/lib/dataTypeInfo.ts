@@ -116,8 +116,10 @@ export interface PhaseInfo {
  *  sync. */
 // Ordered to match the typical progression of an ABA treatment plan —
 // Baseline and Probing establish where a client starts, Intervention
-// actively teaches, Fading backs supports off, and Maintenance checks the
-// result holds — rather than alphabetically or by whenever each was added.
+// actively teaches, Fading backs supports off, Maintenance checks the
+// result holds, and Mastered marks the goal as done and graduated out of
+// the rotation entirely — rather than alphabetically or by whenever each
+// was added.
 export const PHASE_INFO: Record<string, PhaseInfo> = {
   Baseline: {
     description:
@@ -138,5 +140,9 @@ export const PHASE_INFO: Record<string, PhaseInfo> = {
   Maintenance: {
     description:
       "A behavior has been successfully modified, but is still reinforced occasionally to make sure that it remains permanent.",
+  },
+  Mastered: {
+    description:
+      "The goal has been met at full criteria and held independently — active teaching and tracking on it are done. Distinct from Maintenance, which still checks in occasionally to confirm a result holds; a mastered goal has graduated out of the rotation entirely.",
   },
 };

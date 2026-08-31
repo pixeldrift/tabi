@@ -305,7 +305,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
     id: "giggles-laughs",
     kind: "frequency",
     title: "Giggles/laughs during therapist-led play",
-    phase: "Intervention",
+    phase: "Fading",
     description: "Tally each instance the learner giggles or laughs during therapist-led play.",
     minCount: 5,
     teachingProcedure: {
@@ -468,7 +468,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
     id: "tolerates-sitting-social-group",
     kind: "duration",
     title: "Tolerates sitting in social group",
-    phase: "Maintenance",
+    phase: "Mastered",
     description:
       "Track each interval the learner remains seated with the social group. Start a new instance when they rejoin.",
     minDurationSec: 60,
@@ -808,6 +808,33 @@ const BUILT_IN_CARDS: CardConfig[] = [
         "Score based on what you actually observed, not what you expect to see as pairing develops — a low count early on is expected and useful information, not something to inflate.",
     },
   },
+  {
+    id: "traces-name-within-lines",
+    kind: "product",
+    title: "Traces name within lines",
+    phase: "Fading",
+    description:
+      "Add a photo of the completed worksheet each time the learner traces their name, showing whether the tracing stayed within the printed guide lines.",
+    teachingProcedure: {
+      goal: "Phineas will trace his first name staying within the printed guide lines on 4 of 5 consecutive worksheets, with prompting faded to a model-only start.",
+      rationale:
+        "Name-writing is a foundational pre-writing/self-identification skill needed for school readiness; a photographed work sample gives the team a permanent, reviewable record of line control over time instead of relying on a same-session judgment call.",
+      procedure:
+        "Present the tracing worksheet and a model of his name written above the guide lines. Prompting has faded to the model alone — no hand-over-hand or verbal step-by-step guidance during this phase. Once he finishes, snap a photo of the completed worksheet before it's set aside so the sample is preserved.",
+      sd: "The blank tracing worksheet placed in front of him, with the name model already printed at the top.",
+      measurement: {
+        markCorrect:
+          "The traced letters stay within the printed guide lines for at least 4 of the 5 letters in his name, judged from the photographed worksheet.",
+        markError:
+          "Tracing strays outside the guide lines for more than 1 letter, or a letter is skipped or illegible.",
+      },
+      correction:
+        "Point to the model and the next untraced letter without physically guiding his hand — a return to hand-over-hand would be a step back from where fading has already gotten him.",
+      materials: "Printed name-tracing worksheet with dotted guide lines, pencil or marker.",
+      instructionalNotes:
+        "Unlike a scored trial, there's no correct/error tally shown on the card itself — review the photographed worksheets directly to judge line control, the same way a real work sample would be reviewed.",
+    },
+  },
 ];
 
 // How long into a session before the demo fires its one illustrative
@@ -1066,7 +1093,7 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
 // filter popover's Phase chips should read left-to-right the way a plan
 // actually moves through them. Any phase not in this list (typos, future
 // additions) sorts after, alphabetically, rather than silently vanishing.
-const PHASE_ORDER = ["Probing", "Baseline", "Intervention", "Maintenance"];
+const PHASE_ORDER = ["Probing", "Baseline", "Intervention", "Fading", "Maintenance", "Mastered"];
 
 // Search-only label per kind — each kind's own FULL name (mirrors
 // DATA_TYPE_INFO's own `label`, kept as a separate plain-string copy here
