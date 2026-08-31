@@ -1643,52 +1643,34 @@ function IndexInner({
   // same idea, same `animate-now-pulse` CSS animation, as the schedule's
   // own flash on its "Now" button (see ScheduleView's flashRowId/flashGen).
   // A measured, `position: fixed` overlay rather than a prop threaded
-  // through every one of the nine card-kind components. NOT a one-shot
-  // rect snapshot taken the instant the switch is detected — the anchor
-  // effect right below actively scrollBy()'s the container for the whole
-  // morph duration to hold the active card's on-screen position steady,
-  // and (before that settles) MorphContent's own crossfade can briefly
-  // report a taller in-between size while old and new content overlap.
-  // Either one on its own already made a single snapshot stale — a
-  // `position: fixed` overlay doesn't move with the container's own
-  // scroll the way the real (in-flow) card does, and a size read mid-
-  // crossfade isn't the real settled size — so this instead keeps
-  // re-measuring on a rAF loop for the pulse's whole duration, the same
-  // continuous-tracking idiom the tour/tip spotlight's own
-  // useSpotlightTargetRect uses for an identical "target still settling"
-  // problem. Positions are written straight to the DOM node via a ref
-  // (pulseElRef), not React state, so this doesn't re-render on every
-  // frame — pulseKey (a plain trigger/remount counter) is the only actual
-  // state, bumped once per switch.
-  const pulseElRef = useRef<HTMLDivElement | null>(null);
-  const pulseRafRef = useRef(0);
+  // through every one of the nine card-kind components. Deliberately NOT
+  // measured until AFTER the anchor effect right below finishes
+  // scrollBy()-ing the container to hold the active card's on-screen
+  // position steady for the whole morph, and after MorphContent's own
+  // crossfade settles to its real height (mid-crossfade briefly reports a
+  // taller in-between size while old and new content overlap) — measuring
+  // any earlier than that produced a `position: fixed` overlay that
+  // silently went stale the moment the anchor's own scroll continued
+  // underneath it, or that locked in a transiently-too-tall reading. No
+  // need to keep tracking once the card has actually stopped moving,
+  // unlike the tour/tip spotlight's own continuous-tracking
+  // useSpotlightTargetRect (a settled tour target can still get pushed
+  // around later by something else on the page; this pulse's own target
+  // stops moving for good the instant the mode-switch morph itself ends).
+  const [pulseRect, setPulseRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [pulseKey, setPulseKey] = useState(0);
-  // Layout effect, not a plain effect — the very first measurement (below,
-  // called directly rather than deferred to the first rAF frame) needs to
-  // land before paint, or the freshly (re)mounted pulse element would flash
-  // unpositioned at its CSS default for one frame.
-  useLayoutEffect(() => {
+  const pulseTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
+  useEffect(() => {
     if (pulseKey === 0) return;
-    const PULSE_TRACK_MS = 1300; // covers animate-now-pulse's own 0.6s x2
-    const start = performance.now();
-    const tick = () => {
-      const el = cardRefs.current.get(activeId);
-      const pulseEl = pulseElRef.current;
-      if (el && pulseEl) {
-        const r = el.getBoundingClientRect();
-        pulseEl.style.top = `${r.top}px`;
-        pulseEl.style.left = `${r.left}px`;
-        pulseEl.style.width = `${r.width}px`;
-        pulseEl.style.height = `${r.height}px`;
-      }
-      if (performance.now() - start < PULSE_TRACK_MS) {
-        pulseRafRef.current = requestAnimationFrame(tick);
-      }
-    };
-    tick();
-    return () => cancelAnimationFrame(pulseRafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const t = setTimeout(() => setPulseRect(null), 1300);
+    return () => clearTimeout(t);
   }, [pulseKey]);
+  useEffect(() => () => clearTimeout(pulseTimeoutRef.current), []);
 
   const activeTopRef = useRef<number | null>(null);
   const prevDisplayModeRef = useRef(displayMode);
@@ -1702,19 +1684,38 @@ function IndexInner({
   // No dependency array — see this effect's own long comment above for why
   // it deliberately needs to run after every render, not just on
   // activeId/displayMode changes. The pulse trigger added below is safe
-  // despite that: it only calls setPulseKey from inside the isModeSwitch
-  // branch, which the ref update on the very next line makes false again
-  // on the re-render that state change causes, so it can't loop.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // despite that: setPulseRect/setPulseKey only ever fire later, from
+  // inside a setTimeout callback, never synchronously inside this effect
+  // itself — by the time either one actually runs and triggers a
+  // re-render, isModeSwitch's own ref update above has long since made
+  // the very next run of this effect see isModeSwitch as false again, so
+  // it can't loop.
+
   useLayoutEffect(() => {
     const el = cardRefs.current.get(activeId);
     const container = dataContentRef.current;
     if (!el || !container) return;
     const isModeSwitch = prevDisplayModeRef.current !== displayMode;
     prevDisplayModeRef.current = displayMode;
+    const durationMs = CARD_MORPH_TRANSITION.duration * 1000 + 50;
 
     if (isModeSwitch) {
-      setPulseKey((k) => k + 1);
+      // Only actually waits for the anchor loop below when it's going to
+      // run at all (activeTopRef.current !== null — see its own guard);
+      // otherwise (e.g. the very first switch this page load) there's no
+      // scroll settling to wait for, so this fires on the next tick
+      // instead of stalling a whole extra durationMs for nothing.
+      clearTimeout(pulseTimeoutRef.current);
+      pulseTimeoutRef.current = setTimeout(
+        () => {
+          const settledEl = cardRefs.current.get(activeId);
+          if (!settledEl) return;
+          const r = settledEl.getBoundingClientRect();
+          setPulseRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+          setPulseKey((k) => k + 1);
+        },
+        activeTopRef.current !== null ? durationMs : 0,
+      );
     }
 
     if (isModeSwitch && activeTopRef.current !== null) {
@@ -1733,7 +1734,6 @@ function IndexInner({
 
       let anchorTop = el.getBoundingClientRect().top;
       const start = performance.now();
-      const durationMs = CARD_MORPH_TRANSITION.duration * 1000 + 50;
       const tick = (now: number) => {
         const newTop = el.getBoundingClientRect().top;
         const delta = newTop - anchorTop;
@@ -2521,27 +2521,32 @@ function IndexInner({
             </section>
 
             {/* Border pulse on the active card when the display mode
-                switches — see pulseKey's own comment above for why this
-                tracks continuously on a rAF loop instead of positioning
-                from one snapshot. Fixed (not absolute) since the tracked
-                rect is viewport-relative, matching a real
-                getBoundingClientRect() read; the border itself, not a
-                background or shadow, is what needs to sit exactly on top
-                of the card's own edge regardless of which of the four
-                card-kind components rendered it. rounded-xl, not a
-                measured border-radius — cardRefs holds each card's own
-                unstyled outer wrapper (see setCardRef), not its actual
-                rounded article/row underneath, and every one of those roots
-                uses this exact same radius regardless of kind or density.
-                key={pulseKey}, not a stable key: remounting a fresh element
-                on every trigger is what makes animate-now-pulse's CSS
-                animation actually restart from 0% instead of no-opping on
-                an already-mounted, already-"played" one. */}
-            {pulseKey > 0 && (
+                switches — see pulseRect's own comment above for why this
+                waits until after the switch's own scroll/crossfade settles
+                to measure. Fixed (not absolute) since the measured rect is
+                viewport-relative, matching a real getBoundingClientRect()
+                read; the border itself, not a background or shadow, is
+                what needs to sit exactly on top of the card's own edge
+                regardless of which of the four card-kind components
+                rendered it. rounded-xl, not a measured border-radius —
+                cardRefs holds each card's own unstyled outer wrapper (see
+                setCardRef), not its actual rounded article/row underneath,
+                and every one of those roots uses this exact same radius
+                regardless of kind or density. key={pulseKey}, not a stable
+                key: remounting a fresh element on every trigger is what
+                makes animate-now-pulse's CSS animation actually restart
+                from 0% instead of no-opping on an already-mounted,
+                already-"played" one. */}
+            {pulseRect && (
               <div
                 key={pulseKey}
-                ref={pulseElRef}
                 className="fixed z-40 rounded-xl pointer-events-none border-blue-500 animate-now-pulse"
+                style={{
+                  top: pulseRect.top,
+                  left: pulseRect.left,
+                  width: pulseRect.width,
+                  height: pulseRect.height,
+                }}
                 aria-hidden
               />
             )}

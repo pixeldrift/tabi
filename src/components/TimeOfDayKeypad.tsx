@@ -230,7 +230,20 @@ export function TimeOfDayKeypad({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
-        <span ref={anchorRef}>{children({ isEditing: open, open: () => setOpen(true) })}</span>
+        {/* flex + h-full — see TimeKeypad/NumberKeypad's identical comment:
+            an unstyled inline span otherwise computes its own line-box
+            height from its ambient (inherited) font metrics rather than its
+            actual button child's, baseline-aligning that child inside the
+            gap — invisible most places, but visibly low once a parent
+            (Timestamp's own grid-tile pill) centers this whole span within
+            a fixed-height row via place-items-center, since the span's own
+            padded-out height threw that centering off. A flex container
+            sizes to its child's real content instead, and keeps this
+            trigger filling the anchor span's full height whenever a parent
+            stretches the span (items-stretch), matching those siblings. */}
+        <span ref={anchorRef} className="flex h-full">
+          {children({ isEditing: open, open: () => setOpen(true) })}
+        </span>
       </PopoverAnchor>
       <PopoverContent
         side="top"
