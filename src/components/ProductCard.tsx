@@ -157,7 +157,12 @@ function AddPhotoTile({
       disabled={disabled}
       aria-label="Add photo"
       className={cn(
-        "grid shrink-0 place-items-center gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 text-stone-400 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500 disabled:pointer-events-none disabled:opacity-40",
+        // flex-col + justify-center, not `grid place-items-center` — a grid
+        // container's implicit rows pack to the top by default (place-items
+        // only centers each item within its OWN row, not the row group as a
+        // whole), which left the icon+label block sitting high in the box
+        // instead of centered in it.
+        "flex shrink-0 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 text-stone-400 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500 disabled:pointer-events-none disabled:opacity-40",
         size,
       )}
     >
@@ -165,7 +170,7 @@ function AddPhotoTile({
        *  illustration of "this box is for a photo" regardless of hover,
        *  rather than joining the Plus/label row's own blue hover highlight
        *  (the row underneath it is the actual actionable cue). */}
-      <Camera className="size-6 text-stone-300" strokeWidth={1.75} />
+      <Camera className="size-9 text-stone-300" strokeWidth={1.5} />
       <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide">
         <Plus className="size-3" strokeWidth={2.5} />
         Add Photo
