@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Plus, Trash2, ImageOff } from "lucide-react";
+import { Plus, Trash2, ImageOff, Camera, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CardShell, type CardEditAndDrawerProps } from "./CardShell";
 import { DataListRow } from "./DataListRow";
 import { MiniTileShell } from "./MiniTileShell";
+import { SwipeStrip } from "./SwipeStrip";
 import { ListActionBadge } from "./ListRowActions";
 import { useCardState, useResetGuard } from "./CardDataStore";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
@@ -160,7 +161,15 @@ function AddPhotoTile({
         size,
       )}
     >
-      <Plus className="size-5" strokeWidth={2.5} />
+      {/* Fixed stone-300, not inherited currentColor — stays a quiet
+       *  illustration of "this box is for a photo" regardless of hover,
+       *  rather than joining the Plus/label row's own blue hover highlight
+       *  (the row underneath it is the actual actionable cue). */}
+      <Camera className="size-6 text-stone-300" strokeWidth={1.75} />
+      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide">
+        <Plus className="size-3" strokeWidth={2.5} />
+        Add Photo
+      </span>
     </button>
   );
 }
@@ -254,6 +263,11 @@ export function ProductCard({
   const { entries, addFiles, removeEntry, clear, canRecordData } = useProductChip(cardKey);
   const [expanded, setExpanded] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  // Which photo the grid tile's own swipeable gallery is showing — newest
+  // first (see displayEntries below), same "current" idea as ChecklistCard/
+  // TimestampCard's own tile stepper, just paging through photos instead of
+  // items or timestamps.
+  const [tileIndex, setTileIndex] = useCardState(cardKey, "tileIndex", 0);
   const { resetSignal } = useCardSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -263,8 +277,17 @@ export function ProductCard({
     markResetHandled();
     clear();
     setViewingId(null);
+    setTileIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReset]);
+
+  // Newest first, matching the standard view's own grid order — swiping the
+  // tile browses backward through history from whatever was just added.
+  const displayEntries = [...entries].reverse();
+  const tileCurrent = Math.min(tileIndex, Math.max(0, displayEntries.length - 1));
+  const goToTile = (idx: number) => {
+    setTileIndex(Math.max(0, Math.min(idx, displayEntries.length - 1)));
+  };
 
   const hasData = entries.length > 0;
   useReportCardStatus(cardKey, hasData, hasData, {
@@ -275,7 +298,6 @@ export function ProductCard({
   });
 
   const viewingEntry = entries.find((e) => e.id === viewingId) ?? null;
-  const mostRecent = entries.length > 0 ? entries[entries.length - 1] : null;
 
   const openPicker = () => fileInputRef.current?.click();
 
@@ -378,24 +400,100 @@ export function ProductCard({
           </div>
         }
       >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (mostRecent) setViewingId(mostRecent.id);
-          }}
-          aria-label={mostRecent ? "View most recent photo" : "No photos yet"}
-          className={cn(
-            "grid shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-stone-100",
-            thumbSize,
-          )}
-        >
-          {mostRecent ? (
-            <img src={mostRecent.dataUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
+        {displayEntries.length > 0 ? (
+          // Same dots(+large-only nav arrows)-above/paged-content-below
+          // shape every other kind's own tile stepper already uses (see
+          // ChecklistCard/TimestampCard) — swipes, dot taps, and the arrows
+          // all drive the same tileCurrent/goToTile pair, so whichever one
+          // last moved it, the other two stay in agreement.
+          <div className="w-full flex flex-col items-center gap-1">
+            <div className="relative w-full flex items-center justify-center gap-1.5">
+              {large && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToTile(tileCurrent - 1);
+                    }}
+                    disabled={tileCurrent <= 0}
+                    aria-label="Previous photo"
+                    className="absolute -left-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft className="size-[18px]" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToTile(tileCurrent + 1);
+                    }}
+                    disabled={tileCurrent >= displayEntries.length - 1}
+                    aria-label="Next photo"
+                    className="absolute -right-2 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full text-blue-500 transition-colors hover:text-blue-600 disabled:text-foreground/30 disabled:pointer-events-none"
+                  >
+                    <ChevronRight className="size-[18px]" strokeWidth={2.5} />
+                  </button>
+                </>
+              )}
+              {displayEntries.map((_, i) => (
+                <span
+                  key={i}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToTile(i);
+                  }}
+                  className={cn(
+                    "rounded-full transition-all duration-300",
+                    i === tileCurrent
+                      ? cn(large ? "size-2" : "size-1.5", "bg-blue-500")
+                      : cn(large ? "size-1.5" : "size-1", "bg-stone-300"),
+                  )}
+                  aria-hidden
+                />
+              ))}
+            </div>
+            <SwipeStrip
+              count={displayEntries.length}
+              current={tileCurrent}
+              onCurrentChange={goToTile}
+              variant="paged"
+              className="w-full"
+              itemWrapperClassName="w-full flex items-center justify-center"
+            >
+              {(i) => {
+                const entry = displayEntries[i];
+                return (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingId(entry.id);
+                    }}
+                    aria-label={`View photo ${i + 1} of ${displayEntries.length}`}
+                    className={cn(
+                      "grid shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-stone-100",
+                      thumbSize,
+                    )}
+                  >
+                    <img src={entry.dataUrl} alt="" className="h-full w-full object-cover" />
+                  </button>
+                );
+              }}
+            </SwipeStrip>
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-label="No photos yet"
+            className={cn(
+              "grid shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-stone-100",
+              thumbSize,
+            )}
+          >
             <ImageOff className={cn("text-stone-300", large ? "size-6" : "size-4")} />
-          )}
-        </button>
+          </button>
+        )}
         {hiddenInput}
         {lightbox}
       </MiniTileShell>
