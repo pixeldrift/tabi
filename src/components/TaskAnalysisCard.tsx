@@ -696,7 +696,7 @@ export function TaskAnalysisCard({
             <DrawerQuickFacts
               icon={<TaskAnalysisIcon />}
               kind="task-analysis"
-              dataTypeLabel="Task analysis"
+              dataTypeLabel="Task"
               phase={phase}
               stats={[
                 {
@@ -923,7 +923,7 @@ export function TaskAnalysisCard({
         title={title}
         dataTypeIcon={<TaskAnalysisIcon />}
         kind="task-analysis"
-        dataTypeLabel="Task Analysis"
+        dataTypeLabel="Task"
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -947,7 +947,7 @@ export function TaskAnalysisCard({
             <DrawerQuickFacts
               icon={<TaskAnalysisIcon />}
               kind="task-analysis"
-              dataTypeLabel="Task analysis"
+              dataTypeLabel="Task"
               phase={phase}
               stats={[
                 {
@@ -1035,7 +1035,7 @@ export function TaskAnalysisCard({
         <CardShell
           title={title}
           phase={phase}
-          dataType="Task Analysis"
+          dataType="Task"
           dataTypeIcon={<TaskAnalysisIcon />}
           kind="task-analysis"
           isActive={isActive}
@@ -1088,7 +1088,7 @@ export function TaskAnalysisCard({
               <DrawerQuickFacts
                 icon={<TaskAnalysisIcon />}
                 kind="task-analysis"
-                dataTypeLabel="Task analysis"
+                dataTypeLabel="Task"
                 phase={phase}
                 stats={[
                   {

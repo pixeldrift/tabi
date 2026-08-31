@@ -193,7 +193,7 @@ export function TrialCard({
   id,
   title,
   phase = "Intervention",
-  dataType = "Percent Correct",
+  dataType = "Percent",
   description = "Record whether the learner performed the target behavior independently during this trial.",
   minTrials,
   maxTrials,

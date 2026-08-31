@@ -39,11 +39,11 @@ export const KIND_META: Record<
   CardKind,
   { label: string; icon: (props: { className?: string }) => React.ReactNode }
 > = {
-  trial: { label: "Percent Correct", icon: (p) => <PercentCorrectIcon {...p} /> },
+  trial: { label: "Percent", icon: (p) => <PercentCorrectIcon {...p} /> },
   frequency: { label: "Frequency", icon: (p) => <FrequencyIcon {...p} /> },
   rate: { label: "Rate", icon: (p) => <RateIcon {...p} /> },
   duration: { label: "Duration", icon: (p) => <DurationIcon {...p} /> },
-  "task-analysis": { label: "Task Analysis", icon: (p) => <TaskAnalysisIcon {...p} /> },
+  "task-analysis": { label: "Task", icon: (p) => <TaskAnalysisIcon {...p} /> },
   rating: { label: "Score", icon: (p) => <Star {...p} /> },
   interval: { label: "Interval", icon: (p) => <IntervalIcon {...p} /> },
   checklist: { label: "Checklist", icon: (p) => <ChecklistIcon {...p} /> },

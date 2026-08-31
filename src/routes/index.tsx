@@ -1068,12 +1068,14 @@ const CARD_KINDS_IN_ORDER: CardKind[] = [
 // additions) sorts after, alphabetically, rather than silently vanishing.
 const PHASE_ORDER = ["Probing", "Baseline", "Intervention", "Maintenance"];
 
-// Search-only label per kind — mirrors DataToolbar's own KIND_META labels
-// (kept as a separate, plain-string copy here rather than importing that
-// file's version, since that one's tied to its icon renderers) so
-// searching "task analysis" or "percent correct" matches what the kind
-// filter chips actually call it, not the internal "task-analysis"/"trial"
-// slug.
+// Search-only label per kind — each kind's own FULL name (mirrors
+// DATA_TYPE_INFO's own `label`, kept as a separate plain-string copy here
+// rather than importing it, since pulling in that module's icon elements
+// too would be needless for a search haystack) rather than the short name
+// the kind's own filter chip/card header shows (DataToolbar's KIND_META),
+// so searching "task analysis" or "percent correct" still finds a card
+// even though its chip just says "Task" or "Percent" — and neither ever
+// matches the internal "task-analysis"/"trial" slug on its own.
 const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   trial: "Percent Correct",
   frequency: "Frequency",
@@ -1084,7 +1086,7 @@ const SEARCH_KIND_LABELS: Record<CardKind, string> = {
   interval: "Interval",
   checklist: "Checklist",
   timestamp: "Timestamp",
-  product: "Product",
+  product: "Permanent Work Product",
 };
 
 const CUSTOM_CARDS_STORAGE_KEY = "aba-daba-custom-cards-v1";
@@ -2644,7 +2646,7 @@ function renderCard(
         <TrialCard
           title={card.title}
           phase={card.phase}
-          dataType="Percent Correct"
+          dataType="Percent"
           description={card.description}
           minTrials={card.minTrials}
           maxTrials={card.maxTrials}

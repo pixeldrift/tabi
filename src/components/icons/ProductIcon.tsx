@@ -1,6 +1,6 @@
 import Icon from "./svg/product.svg?react";
 
-/** Permanent Product — a worksheet/work-sample outline with a traced
+/** Permanent Work Product — a worksheet/work-sample outline with a traced
  *  (dashed-stroke) capital A inside, the "traces name within lines"
  *  example this kind exists for. The dash reads clearly at the sizes this
  *  shows large (the header/info-modal icon); at tiny corner-label sizes it

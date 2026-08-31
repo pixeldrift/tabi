@@ -173,7 +173,7 @@ export const ICON_GROUPS: IconGroup[] = [
       custom("Checklist", "Checklist card kind", ChecklistIcon),
       lucide("Star", "Score card kind + score selector", Star),
       lucide("Stamp", "Timestamp card kind", Stamp),
-      custom("Product", "Permanent Product card kind", ProductIcon),
+      custom("Product", "Permanent Work Product card kind", ProductIcon),
     ],
   },
   {

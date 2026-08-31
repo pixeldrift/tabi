@@ -61,7 +61,11 @@ export function PhaseInfoLabel({
 /** Data-type label shown in a card's own header, a list row's leading
  *  icon, or the drawer's quick facts — same idea as PhaseInfoLabel above.
  *  `showLabel={false}` (DataListRow's bare-icon case) still gets a title/
- *  aria-label so the value is discoverable without the visible text. */
+ *  aria-label so the value is discoverable without the visible text.
+ *  `label` is the short, card-facing name (what's actually displayed here);
+ *  the modal it opens always titles itself with the kind's own full name
+ *  from DATA_TYPE_INFO instead, so a compact card can say "Task" while
+ *  tapping it still explains itself as "Task Analysis". */
 export function DataTypeInfoLabel({
   kind,
   label,
@@ -108,7 +112,9 @@ export function DataTypeInfoLabel({
           // override that back to a plain clock for every variant.
           icon={icon}
           kindLabel="Data Type"
-          title={label}
+          // info.label (full name), not the short `label` this button
+          // itself displays — see this function's own doc comment.
+          title={info.label}
           description={info.description}
         />
       )}
