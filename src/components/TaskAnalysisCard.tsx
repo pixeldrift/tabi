@@ -21,6 +21,7 @@ import { BackwardChainingIcon } from "./icons/BackwardChainingIcon";
 import { TimeChevronIcon } from "./icons/TimeChevronIcon";
 import { TeachingProcedureAccordion } from "./TeachingProcedureAccordion";
 import { DrawerQuickFacts } from "./DrawerQuickFacts";
+import { DrawerInfoModal } from "./DrawerInfoModal";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 import { UNSPECIFIED_LEVEL, PROMPT_LEVEL_ICONS } from "@/lib/promptLevels";
@@ -129,6 +130,47 @@ function StepPlanBadge({ level }: { level: StepPlanLevel | null | undefined }) {
     >
       <Icon className="size-4.5" strokeWidth={isIndependent ? 2.5 : 1.75} />
     </span>
+  );
+}
+
+const CHAINING_DIRECTION_INFO: Record<"forward" | "backward", string> = {
+  forward:
+    "Teaches the steps in their natural order, starting with the first one. Once a step is mastered, teaching moves on to the next, with the therapist still assisting with every step after it. Good for tasks where the early steps are simplest, or where getting started is the hardest part.",
+  backward:
+    "Teaches the steps in reverse order, starting with the LAST one — the therapist completes every earlier step for the client, who only independently finishes the final step (and gets reinforced right as the task is done). Once mastered, teaching moves backward to the next-to-last step, and so on. Good for tasks where finishing is the most naturally rewarding moment.",
+};
+
+/** Chaining-direction icon shown in the step caption below the bubble
+ *  track — same "tap the icon to learn what this means" pattern as
+ *  PhaseInfoLabel/DataTypeInfoLabel (see KindInfoLabels.tsx), just scoped
+ *  to this one kind rather than shared, since chaining direction is a
+ *  Task Analysis-only concept. */
+function ChainingDirectionLabel({ direction }: { direction: "forward" | "backward" }) {
+  const [open, setOpen] = useState(false);
+  const label = direction === "backward" ? "Backward" : "Forward";
+  const Icon = direction === "backward" ? BackwardChainingIcon : ForwardChainingIcon;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        aria-label={`${label} chaining`}
+        className="inline-flex shrink-0"
+      >
+        <Icon className="size-3.5" />
+      </button>
+      <DrawerInfoModal
+        open={open}
+        onOpenChange={setOpen}
+        icon={<Icon />}
+        kindLabel="Chaining"
+        title={label}
+        description={CHAINING_DIRECTION_INFO[direction]}
+      />
+    </>
   );
 }
 
@@ -1353,16 +1395,7 @@ export function TaskAnalysisCard({
                 and a size up — same treatment as Duration's "Instance N of M",
                 Timestamp's "Entry N of M", and Checklist's "X/Y". */}
             <div className="mt-2 flex items-center justify-center gap-1 text-center text-[11px] uppercase tracking-wider text-muted-foreground">
-              <span
-                title={chainingDirection === "backward" ? "Backward chaining" : "Forward chaining"}
-                className="inline-flex shrink-0"
-              >
-                {chainingDirection === "backward" ? (
-                  <BackwardChainingIcon className="size-3.5" />
-                ) : (
-                  <ForwardChainingIcon className="size-3.5" />
-                )}
-              </span>
+              <ChainingDirectionLabel direction={chainingDirection} />
               <span>
                 Step{" "}
                 <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">

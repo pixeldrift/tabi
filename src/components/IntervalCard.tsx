@@ -1467,7 +1467,7 @@ function IntervalTimeline({
                 <motion.div
                   className={cn(
                     "rounded-full flex items-center justify-center font-display font-bold tabular-nums transition-colors duration-200",
-                    isCurrent ? "flex-col gap-px border-2 text-sm" : "border text-[11px]",
+                    isCurrent ? "flex-col border-2 text-lg" : "border text-[11px]",
                     bg,
                     text,
                     fade,

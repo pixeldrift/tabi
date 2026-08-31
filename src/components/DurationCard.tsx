@@ -1061,13 +1061,10 @@ export function DurationCard({
           >
             <span>
               Instance{" "}
-              <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
+              <span className="font-semibold normal-case tracking-normal tabular-nums text-sm text-foreground">
                 {viewIdx + 1}
               </span>{" "}
-              of{" "}
-              <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
-                {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
-              </span>
+              of {instances.filter((v, i) => v > 0 || (running && runningIdx === i)).length}
               {" | Total: "}
               <strong className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
                 {formatShortTime(totalMs)}

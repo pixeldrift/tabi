@@ -317,15 +317,7 @@ export function TimestampCard({
                   >
                     {viewIdx + 1}
                   </span>{" "}
-                  of{" "}
-                  <span
-                    className={cn(
-                      "font-bold normal-case tracking-normal tabular-nums text-foreground",
-                      large ? "text-sm" : "text-xs",
-                    )}
-                  >
-                    {entries.length}
-                  </span>
+                  of {entries.length}
                 </>
               ) : hasData ? (
                 "Current time"
@@ -840,13 +832,10 @@ export function TimestampCard({
             {viewIdx < entries.length ? (
               <span className="text-[11px] uppercase tracking-wider text-muted-foreground text-center">
                 Entry{" "}
-                <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
+                <span className="font-semibold normal-case tracking-normal tabular-nums text-sm text-foreground">
                   {viewIdx + 1}
                 </span>{" "}
-                of{" "}
-                <span className="font-semibold normal-case tracking-normal tabular-nums text-foreground">
-                  {entries.length}
-                </span>
+                of {entries.length}
               </span>
             ) : hasData ? (
               // Color-flash only, matching its own "Entry X of Y"/"No

@@ -1151,7 +1151,7 @@ export function TrialCard({
                           )}
                         >
                           {isCenter ? (
-                            <div className="flex flex-col items-center justify-center gap-px">
+                            <div className="flex flex-col items-center justify-center">
                               <AnimatePresence mode="wait">
                                 <motion.span
                                   key={i}
@@ -1161,18 +1161,17 @@ export function TrialCard({
                                   transition={{ duration: 0.25 }}
                                   className={cn(
                                     "font-display leading-none tabular-nums",
-                                    t ? "text-3xl" : "text-4xl",
+                                    "text-4xl",
                                     centerTextColor,
                                   )}
                                 >
                                   {i + 1}
                                 </motion.span>
                               </AnimatePresence>
-                              {/* Small enough to sit inside the same circle
-                                  as the number above it rather than needing
-                                  a bigger bubble to fit both — the number
-                                  itself shrinks slightly (text-3xl, not
-                                  text-4xl) once scored to make room. */}
+                              {/* No gap, and the number no longer shrinks
+                                  when scored — the icon is small enough to
+                                  sit right under it inside the same circle
+                                  without needing either concession. */}
                               <TrialResultIcon
                                 result={t}
                                 className={cn("size-3", centerTextColor)}
@@ -1208,18 +1207,15 @@ export function TrialCard({
             {/* Helper text under bubbles — same metadata treatment as
                 Duration's "Instance N of M" and Task Analysis's "Step N of
                 M" (see their own comment on it): all-caps/tracking-wide/
-                muted, alt font, with only the numbers bold and back to
-                normal case/tracking/size. */}
+                muted, alt font, with only the ONE current/primary number
+                bold and back to normal case/tracking/size — target/max
+                stays plain, same weight as the surrounding words. */}
             <div className="text-center text-[11px] font-display uppercase tracking-wider text-muted-foreground">
               Trial{" "}
               <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">
                 {current + 1}
               </span>{" "}
-              (of{" "}
-              <span className="font-bold normal-case tracking-normal tabular-nums text-sm text-foreground">
-                {target}
-              </span>{" "}
-              {maxTrials ? "max" : "required"})
+              (of {target} {maxTrials ? "max" : "required"})
             </div>
           </div>
 
