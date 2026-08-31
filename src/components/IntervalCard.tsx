@@ -1853,15 +1853,19 @@ function IntervalExpandedView({
             </div>
           </div>
           <div
-            className="relative shrink-0 rounded-full bg-stone-200 overflow-hidden"
-            // BAR_ROW_H (not BAR_H's own 10px thickness) — wider than the
-            // visible bar so the momentary dot below (deliberately bigger
-            // than the bar, see SAMPLING_DOT_SIZE's own comment) has room
-            // to poke out past its edges instead of being clipped by this
-            // container's own overflow-hidden, the same fix as the standard
-            // view's own horizontal bar (see BAR_INSET's comment there).
-            // Pulled left out of the row's own gap-3 (12px), and further by
-            // BAR_INSET, so the chevron's tip — which only pokes
+            className="relative shrink-0"
+            // BAR_ROW_H (not BAR_H's own thickness) — wider than the visible
+            // bar so the momentary dot below (deliberately bigger than the
+            // bar, see SAMPLING_DOT_SIZE's own comment) has room to poke out
+            // past its edges instead of being clipped, the same fix as the
+            // standard view's own horizontal bar (see BAR_INSET's comment
+            // there). Plain/transparent itself now — the visible gray+fill
+            // bar below is its own separate, correctly BAR_H-thin inset
+            // child, not this whole row painted bg-stone-200 (which used to
+            // leave the gray background the full, wider row width even
+            // after BAR_H shrank, since only the fill was ever inset to
+            // match it). Pulled left out of the row's own gap-3 (12px), and
+            // further by BAR_INSET, so the chevron's tip — which only pokes
             // CHEVRON_OVERLAP_PX past the gutter's own edge — reaches the
             // visible bar's own (inset) left edge exactly, not this wider
             // container's edge, the same overlap amount as the standard
@@ -1873,10 +1877,15 @@ function IntervalExpandedView({
             }}
           >
             <div
-              className="absolute bg-blue-200 transition-[height]"
-              style={{ top: 0, left: BAR_INSET, right: BAR_INSET, height: fillPx }}
-              aria-hidden
-            />
+              className="absolute rounded-full overflow-hidden bg-stone-200"
+              style={{ top: 0, left: BAR_INSET, right: BAR_INSET, height: totalTrackHeight }}
+            >
+              <div
+                className="absolute bg-blue-200 transition-[height]"
+                style={{ top: 0, left: 0, right: 0, height: fillPx }}
+                aria-hidden
+              />
+            </div>
             {Array.from({ length: intervalCount - 1 }, (_, i) => (
               <div
                 key={i}
