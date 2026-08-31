@@ -396,10 +396,9 @@ export function DurationCard({
   const isIdxRunning = (i: number) => running && runningIdx === i;
   const isActivated = (i: number) => instances[i] > 0 || isIdxRunning(i);
 
-  // Shared by the twirl-down's own collapse-time jump and a tap on the card
-  // body while it's already active — both want the same "back to now"
-  // destination: whichever instance hasn't been timed yet, or the most
-  // recent one if every instance so far is already done.
+  // The twirl-down's own collapse-time jump — lands on whichever instance
+  // hasn't been timed yet, or the most recent one if every instance so far
+  // is already done.
   const jumpToCurrent = () => {
     const firstUnscored = instances.findIndex((_, i) => !isActivated(i));
     goTo(firstUnscored !== -1 ? firstUnscored : instances.length - 1);
@@ -830,7 +829,6 @@ export function DurationCard({
         kind="duration"
         isActive={isActive}
         onActivate={onActivate}
-        onTapWhileActive={jumpToCurrent}
         reorderEditing={reorderEditing}
         favorited={favorited}
         onToggleFavorite={onToggleFavorite}

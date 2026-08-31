@@ -308,11 +308,4 @@ export const TABI_TIPS: TabiTip[] = [
     title: "Jump to the full card",
     body: "Tap the small expand icon on a grid tile to switch straight to that card's standard view, without having to change your view mode for the whole list.",
   },
-  {
-    id: "active-card-tap-return",
-    tab: "data",
-    selector: '[data-tour="active-card-tap-return"]',
-    title: "Tap back to where you left off",
-    body: "Browsed away to check an earlier trial or instance? Tap anywhere on the blank space of your selected card to jump straight back to the current one.",
-  },
 ];

@@ -458,10 +458,8 @@ export function TaskAnalysisCard({
     });
   };
 
-  // Shared by the twirl-down's own collapse-time jump and a tap on the card
-  // body while it's already active — both want the same "back to now"
-  // destination: whichever step still needs scoring, or the last step if
-  // every one so far is already done.
+  // The twirl-down's own collapse-time jump — lands on whichever step still
+  // needs scoring, or the last step if every one so far is already done.
   const jumpToCurrent = () => {
     const firstUnscored = activeStatuses.indexOf(null);
     goTo(firstUnscored !== -1 ? firstUnscored : steps.length - 1);
@@ -970,7 +968,6 @@ export function TaskAnalysisCard({
           kind="task-analysis"
           isActive={isActive}
           onActivate={onActivate}
-          onTapWhileActive={jumpToCurrent}
           reorderEditing={reorderEditing}
           favorited={favorited}
           onToggleFavorite={onToggleFavorite}

@@ -394,10 +394,8 @@ export function TrialCard({
 
   // Shared by both the twirl-down chevron and the title next to it — either
   // one toggling the same expanded state, the same way.
-  // Shared by the twirl-down's own collapse-time jump and a tap on the card
-  // body while it's already active — both want the same "back to now"
-  // destination: whichever trial still needs scoring, or the last trial if
-  // every one so far is already done.
+  // The twirl-down's own collapse-time jump — lands on whichever trial
+  // still needs scoring, or the last trial if every one so far is done.
   const jumpToCurrent = () => {
     const firstUnscored = trials.findIndex((t) => t === null);
     goTo(firstUnscored !== -1 ? firstUnscored : maxTrials ? maxTrials - 1 : completedCount);
@@ -809,30 +807,7 @@ export function TrialCard({
   return (
     <article
       ref={articleRef}
-      // Only present once this card is actually the one tapping blank space
-      // would jump-to-current on — see the tabi-tips entry pointing at this,
-      // and CardShell's own identical attribute.
-      data-tour={isActive ? "active-card-tap-return" : undefined}
-      // Not a blanket dispatch — see CardShell's own identical version of
-      // this comment. onActivate needs to keep firing for a tap ANYWHERE on
-      // an inactive card (including directly on a nav arrow or score
-      // button, which should both select the card and do its own thing in
-      // one tap), while jumpToCurrent should only fire for a tap on blank
-      // card space once already active — bubbling up from a control that
-      // already ran its own handler would otherwise immediately override
-      // whatever that control just did.
-      onClick={(e) => {
-        if (isActive) {
-          const target = e.target as HTMLElement;
-          const hitControl =
-            target !== e.currentTarget &&
-            target.closest("button, [role='button'], a, input, textarea, select");
-          if (hitControl) return;
-          jumpToCurrent();
-          return;
-        }
-        onActivate?.();
-      }}
+      onClick={onActivate}
       className={cn(
         // Border always 1px (ring adds the selected weight without
         // consuming layout space) — see CardShell's own version of this
