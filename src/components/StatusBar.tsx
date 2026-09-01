@@ -890,6 +890,38 @@ export function StatusBar({
     };
   }, [activeTab]);
 
+  // Where to split the cat-ears bottom border (below) around the active
+  // tab. This is a DIFFERENT seam than tabBlend above — that one covers the
+  // content pane's own border-t, which for the Data tab sits a whole
+  // DataToolbar's height below the tabs (dataToolbar renders as a sibling
+  // after data-status-bar, see its own comment), not immediately under
+  // them. This measures the tab row itself, so "immediately under the
+  // tabs" stays immediately under the tabs regardless of what any given
+  // tab's own content below it looks like. offsetLeft/offsetWidth (not
+  // getBoundingClientRect) since this positions relative to the row via
+  // ordinary `absolute`, not `fixed` — the row sits well inside
+  // data-status-bar's own box, so there's no overflow-hidden to escape.
+  const tabsRowRef = useRef<HTMLDivElement>(null);
+  const [activeTabRowRect, setActiveTabRowRect] = useState<{ left: number; width: number } | null>(
+    null,
+  );
+  useLayoutEffect(() => {
+    const rowEl = tabsRowRef.current;
+    const tabEl = tabButtonRefs.current.get(activeTab);
+    if (!rowEl || !tabEl) return;
+    const measure = () => {
+      setActiveTabRowRect({ left: tabEl.offsetLeft, width: tabEl.offsetWidth });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(rowEl);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [activeTab]);
+
   return (
     <>
       {/* Single shared container for the header proper (title, box,
@@ -1102,7 +1134,11 @@ export function StatusBar({
                 role="tablist"
                 aria-label="Session sections"
               >
-                <div className="relative flex items-end gap-0.5 sm:gap-1 -ml-3" data-tour="tab-bar">
+                <div
+                  ref={tabsRowRef}
+                  className="relative flex items-end gap-0.5 sm:gap-1 -ml-3"
+                  data-tour="tab-bar"
+                >
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
@@ -1125,11 +1161,7 @@ export function StatusBar({
                           // rounded-t-sm (down from -md, originally -lg) so the
                           // ear-less corner rounding reads consistently with the
                           // SVG ear shape's own much smaller corner-join radius
-                          // below, rather than clashing between tabs — matters
-                          // more now that the top-of-bar border (further down)
-                          // runs straight across every tab's corner, where a
-                          // bigger radius would leave a visible gap between the
-                          // flat line and the fill curving away underneath it.
+                          // below, rather than clashing between tabs.
                           "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-sm border border-b-0 transition-[color,background-color,opacity] duration-300",
                           isActive
                             ? cn(
@@ -1238,22 +1270,25 @@ export function StatusBar({
                       </button>
                     );
                   })}
-                  {catEarsEnabled && (
-                    // Continues the active tab's own ear-shape border across the
-                    // rest of the bar, so the flat "shoulder" reads as one
-                    // unbroken line the ears rise out of rather than a border
-                    // that only exists under the active tab. Painted after (on
-                    // top of) the tab buttons so it stays fully opaque over the
-                    // inactive tabs' own translucent bg-stone-200/70 fill rather
-                    // than getting tinted by it; harmless where it re-traces the
-                    // active tab's own already-matching flat shoulder. Plain CSS
-                    // border rather than another SVG — it's just a straight
-                    // line, no curve to reproduce — sized to the same 2px as
-                    // the ear path's strokeWidth.
-                    <div
-                      className="pointer-events-none absolute inset-x-0 top-0 border-t-2 border-border sm:hidden"
-                      aria-hidden="true"
-                    />
+                  {catEarsEnabled && activeTabRowRect && (
+                    // Continues the ears' own 2px border-border stroke
+                    // immediately under the rest of the row, flanking the
+                    // active tab (which stays open at the bottom, same as
+                    // always — no border under it) rather than drawing one
+                    // continuous line the active tab would then need a
+                    // separate mechanism to interrupt.
+                    <>
+                      <div
+                        className="pointer-events-none absolute bottom-0 border-b-2 border-border sm:hidden"
+                        style={{ left: 0, width: activeTabRowRect.left }}
+                        aria-hidden="true"
+                      />
+                      <div
+                        className="pointer-events-none absolute bottom-0 right-0 border-b-2 border-border sm:hidden"
+                        style={{ left: activeTabRowRect.left + activeTabRowRect.width }}
+                        aria-hidden="true"
+                      />
+                    </>
                   )}
                   <ActiveDurationIndicator
                     timers={runningTimers}
