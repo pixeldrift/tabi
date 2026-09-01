@@ -1401,6 +1401,11 @@ function IndexInner({
   // meeting where the tab bar ends. StatusBar's own tabBlend covers this
   // same seam under whichever tab is active (see its comment) — this only
   // ever paints visibly for the other tabs and the gaps between them.
+  // Used by the info/schedule/notifications/settings panes only — the Data
+  // pane's own content sits below the whole DataToolbar, not directly
+  // under the tabs, so it keeps its plain default border instead and
+  // DataToolbar carries this same treatment on its own top edge (see its
+  // own comment).
   const tabSeamBorderClass = catEarsEnabled
     ? "border-t-2 border-border sm:border-t sm:border-stone-200"
     : "border-t border-stone-200";
@@ -2445,8 +2450,7 @@ function IndexInner({
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto -mt-px pt-0",
-                tabSeamBorderClass,
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
                 tab !== "data" && "hidden",
               )}
             >

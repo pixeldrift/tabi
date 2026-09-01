@@ -95,7 +95,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
     cycleBehaviorFilter,
     clearFilters,
   } = useDataToolbar();
-  const { bookmarkBarVisible, setBookmarkBarVisible } = useSettings();
+  const { bookmarkBarVisible, setBookmarkBarVisible, catEarsEnabled } = useSettings();
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterContentRef = useRef<HTMLDivElement>(null);
@@ -213,7 +213,18 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
       // every reflow for free, the same way it already does within any
       // other single sticky element.
       data-toolbar
-      className="z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70"
+      className={cn(
+        "z-[60] ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] overflow-x-hidden bg-background border-b border-border/70",
+        // Mobile-only, matching the cat ears themselves — this toolbar sits
+        // directly under the tab row (data-status-bar's own bottom, right
+        // where StatusBar's tabBlend patch already blends the active tab
+        // into whatever's beneath it), so it needs the SAME top border the
+        // other four tabs' own content panes carry (see tabSeamBorderClass
+        // in routes/index.tsx) — otherwise the Data tab is the one place
+        // that border doesn't show up until below this whole toolbar,
+        // where its content pane's own border-t actually lives.
+        catEarsEnabled && "border-t-2 border-border sm:border-t-0",
+      )}
     >
       {/* Named separately from data-toolbar above — this is just the row's
        *  own box (its py-1.5/px-4 padding, not the banner below), so
