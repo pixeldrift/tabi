@@ -15,7 +15,11 @@ const LOOP_FRAMES = [...TAIL_SWISH_FRAMES, TAIL_SWISH_FRAMES[0]];
 export function TailSwish({
   className,
   strokeWidth = 7,
-  durationSec = 2.4,
+  // No frame-delay metadata survived from the original GIF (only the traced
+  // PNG frames did) — 2.4s was a guess at a pleasant idle pace, not derived
+  // from the source's real timing. Requested at ~1/4 that speed, so this is
+  // 4x that guess rather than 4x anything measured.
+  durationSec = 9.6,
 }: {
   className?: string;
   /** In the tail's own ~290x152 viewBox units, not screen pixels — scales
