@@ -250,8 +250,9 @@ export interface DataDetailsDrawerProps {
 
 /** A single shared, non-modal details panel — mounted only by whichever card
  *  is currently active (see CardShell) — rendered via portal so its `fixed`
- *  positioning isn't trapped by a transformed ancestor (Reorder.Item/motion
- *  layout tracking elsewhere in the card list). The pull tab and arrow are
+ *  positioning isn't trapped by a transformed ancestor (dnd-kit's own drag
+ *  transform in edit mode, Motion's layout tracking elsewhere in the card
+ *  list). The pull tab and arrow are
  *  children of the same animated element, so they slide and reposition
  *  together with the panel instead of living separately in the toolbar. */
 export function DataDetailsDrawer({

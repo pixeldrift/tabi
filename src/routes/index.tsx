@@ -9,7 +9,18 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { DragHandleProps } from "@/components/CardEditControls";
 import { Upload, Trash2 } from "lucide-react";
 import { ClientInfoPane } from "@/components/ClientInfoPane";
 import { TrialCard } from "@/components/TrialCard";
@@ -2672,7 +2683,7 @@ function renderCard(
     onToggleFavorite: () => void;
     cardHidden: boolean;
     onToggleHidden: () => void;
-    dragControls?: DragControls;
+    dragControls?: DragHandleProps;
     /** Set for the two quick-action grid modes — swaps each card's own
      *  full-size markup for a compact aspect-square tile rendering the
      *  same underlying state, rather than mounting a separate component
@@ -3133,7 +3144,7 @@ const DataCardList = memo(function DataCardList({
    *  the full exit duration first) — the "no session running" banner needs
    *  this later, truer signal instead, or it shows up while the old cards
    *  are still very visibly on screen. Not called for editMode's own render
-   *  path (a separate `Reorder.Group`, no AnimatePresence at all) or for
+   *  path (a separate dnd-kit `DndContext`, no AnimatePresence at all) or for
    *  the very first page load if cards start out already hidden (nothing
    *  ever exits, so nothing to call this for) — IndexInner's own default
    *  for whatever this drives already accounts for both. */
@@ -3185,6 +3196,15 @@ const DataCardList = memo(function DataCardList({
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
   };
+
+  // Called unconditionally (rules of hooks) even though only the editMode
+  // branch below ever uses it. A small activation distance means a plain
+  // tap on the drag handle (rather than an actual drag) never fires a
+  // spurious reorder — matches the handle-only drag start editMode already
+  // relied on with Motion's `dragListener={false}` + `dragControls.start`.
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
 
   // Which side the newly-active card's drawer content should slide in
   // from — set only by the prev/next arrows themselves (see goToPrevCard/
@@ -3238,7 +3258,7 @@ const DataCardList = memo(function DataCardList({
   const stackToLeftColumn =
     drawerOpen && (displayMode === "grid-large" || displayMode === "grid-small");
 
-  const renderOne = (card: CardConfig, dragControls?: DragControls) =>
+  const renderOne = (card: CardConfig, dragControls?: DragHandleProps) =>
     renderCard(card, displayMode, {
       id: card.id,
       // Gated on `tab === "data"`, not just `card.id === activeId` — every
@@ -3304,33 +3324,56 @@ const DataCardList = memo(function DataCardList({
       slideFrom: card.id === activeId ? slideFrom : null,
     });
 
-  // Edit mode is its own render path — drag-to-reorder (via Motion's
-  // Reorder) plus per-card favorite/hide affordances (now rendered right in
-  // each card's own header, see CardEditControls) don't need to coordinate
-  // with the session-lifecycle animations below, since editing and a
-  // start-new/discard/submit transition don't realistically overlap.
+  // Edit mode is its own render path — drag-to-reorder (via dnd-kit) plus
+  // per-card favorite/hide affordances (rendered right in each card's own
+  // header, see CardEditControls) don't need to coordinate with the
+  // session-lifecycle animations below, since editing and a start-new/
+  // discard/submit transition don't realistically overlap.
+  //
+  // dnd-kit, not Motion's own Reorder, specifically because Reorder only
+  // ever compares a dragged item's position along ONE axis (`axis="y"`) to
+  // its neighbors in list order — correct for a single column, but with no
+  // notion of "the next row" vs "the next column" it has nothing sensible
+  // to do once cards wrap into a grid (grid-large/grid-small, and card mode
+  // itself at sm:grid-cols-2+), which is exactly the overlapping/stuck
+  // dragging users were hitting. dnd-kit's sortable grid strategy hit-tests
+  // the dragged item's actual rect against every other item's rect, so it
+  // reorders correctly regardless of how many columns wrap. It only takes
+  // over the drag GESTURE and index math (onDragEnd below still just calls
+  // the same setOrder every other reorder path already used) — every card's
+  // own visual transition is still Motion, both here (EditableCardItem's
+  // transform, set from dnd-kit's own transform/transition) and in the
+  // non-edit-mode render path below, which is untouched.
   if (editMode) {
+    const visibleIds = visibleCards.map((c) => c.id);
+    const handleDragEnd = (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = visibleIds.indexOf(String(active.id));
+      const newIndex = visibleIds.indexOf(String(over.id));
+      if (oldIndex === -1 || newIndex === -1) return;
+      setOrder(arrayMove(visibleIds, oldIndex, newIndex));
+    };
     return (
-      <Reorder.Group
-        axis="y"
-        values={visibleCards.map((c) => c.id)}
-        onReorder={setOrder}
-        className={cn("grid w-full", gridClasses)}
-      >
-        {visibleCards.map((card, index) => (
-          <EditableCardItem
-            key={card.id}
-            card={card}
-            isFirst={index === 0}
-            isHidden={hidden.has(card.id)}
-            setCardRef={setCardRef}
-            renderOne={renderOne}
-            displayMode={displayMode}
-            suppressCardLayout={suppressCardLayout}
-            stackToLeftColumn={stackToLeftColumn}
-          />
-        ))}
-      </Reorder.Group>
+      <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={visibleIds} strategy={rectSortingStrategy}>
+          <div className={cn("grid w-full", gridClasses)}>
+            {visibleCards.map((card, index) => (
+              <EditableCardItem
+                key={card.id}
+                card={card}
+                isFirst={index === 0}
+                isHidden={hidden.has(card.id)}
+                setCardRef={setCardRef}
+                renderOne={renderOne}
+                displayMode={displayMode}
+                suppressCardLayout={suppressCardLayout}
+                stackToLeftColumn={stackToLeftColumn}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     );
   }
 
@@ -3387,8 +3430,8 @@ const DataCardList = memo(function DataCardList({
 });
 
 // A real component (not just an inline callback in DataCardList's .map)
-// because `useDragControls` must be called consistently on every render —
-// the number of visible cards changes as filters/search narrow the list, so
+// because `useSortable` must be called consistently on every render — the
+// number of visible cards changes as filters/search narrow the list, so
 // calling it directly inside the loop would violate the rules of hooks.
 function EditableCardItem({
   card,
@@ -3404,25 +3447,50 @@ function EditableCardItem({
   isFirst: boolean;
   isHidden: boolean;
   setCardRef: (id: string) => (el: HTMLElement | null) => void;
-  renderOne: (card: CardConfig, dragControls?: DragControls) => React.ReactNode;
+  renderOne: (card: CardConfig, dragControls?: DragHandleProps) => React.ReactNode;
   displayMode: DisplayMode;
   suppressCardLayout: boolean;
   stackToLeftColumn: boolean;
 }) {
-  const dragControls = useDragControls();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: card.id,
+    // Mirrors CARD_MORPH_TRANSITION (the same "settle" easing every other
+    // reflow in this file uses) so a grid's own drag-triggered reshuffle
+    // doesn't read as a different animation system from everything else —
+    // null (rather than a duration:0 transition) during a display-mode
+    // morph specifically, matching Reorder's own old `duration: 0` escape
+    // hatch here, since dnd-kit treats a transition prop of `{duration:0}`
+    // the same as any other transition (still fires a 0-length one), while
+    // `null` skips animating this item's position for that commit outright.
+    transition: suppressCardLayout
+      ? null
+      : { duration: CARD_MORPH_TRANSITION.duration * 1000, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+  });
+  const dragHandleProps: DragHandleProps = { attributes, listeners, setActivatorNodeRef };
+
   return (
-    <Reorder.Item
-      value={card.id}
-      layout="position"
-      transition={{ layout: suppressCardLayout ? { duration: 0 } : CARD_MORPH_TRANSITION }}
-      ref={setCardRef(card.id)}
+    <div
+      ref={(el) => {
+        setNodeRef(el);
+        setCardRef(card.id)(el);
+      }}
       data-tour={isFirst ? "first-card" : undefined}
-      dragListener={false}
-      dragControls={dragControls}
-      className={cn("w-full", isHidden && "opacity-40")}
-      style={stackToLeftColumn ? { gridColumn: 1 } : undefined}
+      className={cn("w-full", isHidden && "opacity-40", isDragging && "relative z-10")}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        ...(stackToLeftColumn ? { gridColumn: 1 } : undefined),
+      }}
     >
-      <MorphContent displayMode={displayMode}>{renderOne(card, dragControls)}</MorphContent>
-    </Reorder.Item>
+      <MorphContent displayMode={displayMode}>{renderOne(card, dragHandleProps)}</MorphContent>
+    </div>
   );
 }

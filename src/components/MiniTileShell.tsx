@@ -148,9 +148,11 @@ export function MiniTileShell({
           ? cn(
               // Same GPU-layer pin as CardShell's own isActive branch (see
               // its comment, and DataListRow's copy of it) — this tile sits
-              // under the same per-card Reorder.Item's `layout="position"`
-              // projection, so its shadow is just as prone to getting
-              // clipped/unclipped by session ticks without it.
+              // under the same per-card transform-based repositioning
+              // (Motion's `layout="position"` projection outside edit mode,
+              // dnd-kit's own drag transform inside it), so its shadow is
+              // just as prone to getting clipped/unclipped by session ticks
+              // without it.
               "will-change-transform",
               "border border-blue-400/80 ring-2 ring-inset ring-blue-400/80 shadow-[0_6px_18px_-6px_rgba(0,0,0,0.25)]",
             )
@@ -430,6 +432,7 @@ function MiniEditControls({
         </button>
       </div>
       <span
+        ref={dragControls?.setActivatorNodeRef}
         // -mr-0.5: the grip glyph's own dot columns read as sitting a hair
         // further from the tile's right edge than the title's left margin,
         // even though the two touch-target boxes are mathematically
@@ -439,11 +442,9 @@ function MiniEditControls({
           "-mr-0.5 cursor-grab touch-none select-none grid place-items-center rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing",
           size,
         )}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          dragControls?.start(e);
-        }}
         aria-label="Drag to reorder"
+        {...dragControls?.attributes}
+        {...dragControls?.listeners}
       >
         <GripVertical className={icon} />
       </span>

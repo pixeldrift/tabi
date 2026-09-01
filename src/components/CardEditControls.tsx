@@ -1,17 +1,26 @@
 import { GripVertical, Bookmark, EyeOff } from "lucide-react";
-import type { DragControls } from "motion/react";
+import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
+
+/** dnd-kit's own per-card drag-handle wiring (from useSortable) — spread
+ *  onto this handle specifically, never the card's own root element, so the
+ *  rest of the card (buttons, the number pad, etc.) stays clickable while in
+ *  edit mode. setActivatorNodeRef points dnd-kit's keyboard/ARIA handling at
+ *  this handle rather than the sortable item's own root, since they're two
+ *  different DOM nodes here. */
+export interface DragHandleProps {
+  attributes: DraggableAttributes;
+  listeners: DraggableSyntheticListeners;
+  setActivatorNodeRef: (element: HTMLElement | null) => void;
+}
 
 export interface CardEditControlsProps {
   favorited: boolean;
   onToggleFavorite: () => void;
   cardHidden: boolean;
   onToggleHidden: () => void;
-  /** Starts the Reorder.Item drag from this handle specifically — the item
-   *  itself uses `dragListener={false}` so the rest of the card (buttons,
-   *  the number pad, etc.) stays clickable while in edit mode. */
-  dragControls?: DragControls;
+  dragControls?: DragHandleProps;
 }
 
 /** Replaces the phase/data-type label and details button in a card's header
@@ -64,15 +73,11 @@ export function CardEditControls({
           "edge of the card" control rather than a third icon grouped in
           with them. */}
       <span
+        ref={dragControls?.setActivatorNodeRef}
         className="cursor-grab touch-none select-none ml-2.5 -mr-1.5 grid place-items-center size-6 rounded-full text-stone-400 hover:text-stone-600 active:cursor-grabbing"
-        onPointerDown={(e) => {
-          // Without this, a mouse-based (non-touch) drag also kicks off the
-          // browser's native text-selection drag as the pointer crosses
-          // over other cards' text while reordering.
-          e.preventDefault();
-          dragControls?.start(e);
-        }}
         aria-label="Drag to reorder"
+        {...dragControls?.attributes}
+        {...dragControls?.listeners}
       >
         <GripVertical className="size-4" />
       </span>

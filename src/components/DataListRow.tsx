@@ -93,11 +93,13 @@ export function DataListRow({
           ? cn(
               // Same GPU-layer pin as CardShell's own isActive branch (see
               // its comment) — this row sits under the exact same per-card
-              // Reorder.Item's `layout="position"` projection (re-triggered
-              // on every running-session tick), so its shadow is just as
-              // prone to getting clipped/unclipped by the same repaint
-              // invalidation-rect issue. Never got this fix originally
-              // because list mode didn't exist yet when #151 landed.
+              // transform-based repositioning (Motion's `layout="position"`
+              // projection outside edit mode, re-triggered on every
+              // running-session tick; dnd-kit's own drag transform inside
+              // it), so its shadow is just as prone to getting clipped/
+              // unclipped by the same repaint invalidation-rect issue. Never
+              // got this fix originally because list mode didn't exist yet
+              // when #151 landed.
               "will-change-transform",
               "border border-blue-400/80 ring-1 ring-inset ring-blue-400/80 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.18)]",
             )
