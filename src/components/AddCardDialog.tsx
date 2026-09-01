@@ -115,12 +115,6 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       required: true,
       helpText: "Completion threshold.",
     },
-    {
-      key: "behaviorRole",
-      label: "Interfering behavior",
-      type: "switch",
-      helpText: "A reduction goal. Zero instances counts as complete data, not missing data.",
-    },
   ],
   rate: [
     {
@@ -136,12 +130,6 @@ const KIND_FIELD_SCHEMAS: Record<CardKind, FieldSchema[]> = {
       label: "Minimum duration (seconds)",
       type: "number",
       helpText: 'Required cumulative duration before this is "complete."',
-    },
-    {
-      key: "behaviorRole",
-      label: "Interfering behavior",
-      type: "switch",
-      helpText: "A reduction goal. Zero duration counts as complete data, not missing data.",
     },
   ],
   "task-analysis": [
@@ -429,13 +417,14 @@ function buildCardConfig(
         title,
         phase,
         description,
+        behaviorRole,
         items,
       };
     }
     case "timestamp":
-      return { id, kind, title, phase, description };
+      return { id, kind, title, phase, description, behaviorRole };
     case "product":
-      return { id, kind, title, phase, description };
+      return { id, kind, title, phase, description, behaviorRole };
   }
 }
 
@@ -1255,6 +1244,32 @@ export function AddCardDialog({
                             // exaggerated on this taller, multi-row box.
                             className="flex w-full rounded-lg border border-input bg-white px-3 py-2 text-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                             placeholder="Score correct if…"
+                          />
+                        </div>
+                        {/* Common to every kind, not a per-kind schema field
+                        (unlike its old Frequency/Duration-only spot) — the
+                        Data tab's target/interfering filter reads this off
+                        any card regardless of kind, so any kind should be
+                        able to set it here. Frequency and Duration cards
+                        additionally use it to change their own completion
+                        math (zero already counts as complete data); the
+                        other kinds only pick up the filter/label behavior. */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <label className="text-sm font-medium">
+                              Interfering behavior / reduction goal
+                            </label>
+                            <p className="text-xs text-muted-foreground/80 mt-0.5">
+                              Tags this as a behavior to reduce instead of a skill to build — drives
+                              the Data tab's target/behavior filter.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={Boolean(content.behaviorRole)}
+                            onCheckedChange={(checked) =>
+                              setContent((prev) => ({ ...prev, behaviorRole: checked }))
+                            }
+                            className="shrink-0"
                           />
                         </div>
                       </div>

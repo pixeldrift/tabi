@@ -61,7 +61,7 @@ factored onto a shared type today:
 | `title` | `string` | yes | The goal/behavior name. |
 | `phase` | `string` | yes | Free text, not an enum — but the app ships with 6 recognized values that get an explanatory info-modal, same mechanism as §1's data-type modal (see table below); anything else just shows the plain string with no extra icon/copy. A creation form should offer those 6 as suggestions/defaults, not hard-restrict input to them. |
 | `description` | `string` | yes | Short "what to tally/score" instruction — shown as its own row in the details drawer, always visible even on a card with no full `teachingProcedure` filled in yet. |
-| `behaviorRole` | `"interfering"` \| omitted | no | Marks a reduction goal (something you want to see *less* of) instead of the default acquisition goal. Drives the "target vs. interfering" toolbar filter for every kind, but **only `frequency` and `duration` cards currently read it for anything else** — see §6 gap. |
+| `behaviorRole` | `"interfering"` \| omitted | no | Marks a reduction goal (something you want to see *less* of) instead of the default acquisition goal. Drives the "target vs. interfering" toolbar filter for every kind. Only `frequency` and `duration` cards additionally read it for their own completion math (zero already counts as complete data) — see §6 for why that stays scoped to those two. |
 | `teachingProcedure` | `TeachingProcedure` object \| omitted | no | See §3. Optional — a card can have just a `description` and nothing else if the full procedure isn't authored yet. |
 
 ### Recognized phases
@@ -306,13 +306,16 @@ fixing before leaning on the form more heavily, or before a new kind makes
 one of them harder to ignore.
 
 - **`behaviorRole` is declared on every `CardConfig` variant but only
-  `frequency` and `duration` actually wire it into their component** (it's
-  what drives the "zero already counts as complete" rule in §4). A creation
-  form offering "interfering behavior" as a toggle for, say, a Trial card
-  would set a field that only affects search/filtering, not that card's own
-  completion logic — worth deciding whether to (a) restrict the toggle to
-  Frequency/Duration only, or (b) actually wire the other 8 kinds up to
-  respect it the same way.
+  `frequency` and `duration` actually wire it into their component's own
+  completion logic** (the "zero already counts as complete" rule in §4).
+  Resolved as option (a) from this doc's earlier draft: AddCardDialog now
+  offers the "Interfering behavior / reduction goal" toggle as a common
+  field (§2, §9) for every kind, not just Frequency/Duration, since the
+  target/interfering toolbar filter already reads it off any kind — but
+  only Frequency and Duration cards' own completion math actually changes
+  when it's set. Option (b) — wiring the other 8 kinds' own completion
+  logic to respect it too — is still open if a real reduction-goal use case
+  for, say, a Rating or Checklist card ever comes up.
 - **`locked` is a "TEMPORARY test hook"** on both Rate and Interval,
   by its own code comment — decide whether it graduates into a real,
   documented feature (manual time entry) or gets dropped before the
@@ -382,9 +385,9 @@ list text input, fill in that kind's own §5 fields via a generic
 `buildCardConfig` assembles the final `CardConfig` object. It does not yet
 collect a full `teachingProcedure` (§3) — a card made this way ships with
 just `title`/`phase`/`description` and no rationale/procedure/SD/etc. until
-someone adds those by hand — and §6's open questions (`behaviorRole`
-wiring, `locked`'s fate) remain genuinely open, not resolved by the form
-shipping.
+someone adds those by hand. The form does now offer `behaviorRole` (§2) as
+a common toggle for every kind (see §6), resolving that particular gap;
+`locked`'s fate remains genuinely open.
 
 **Adding a new `kind` end-to-end today** means touching every one of these
 (TypeScript's exhaustiveness checking on the `CardKind`-keyed maps/switches
