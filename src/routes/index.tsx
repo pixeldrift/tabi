@@ -1392,7 +1392,18 @@ function IndexInner({
   // toolbar's own `top` can shift for reasons (status bar height changing)
   // that a resize observer on the toolbar itself wouldn't catch.
   const toolbarHeight = useElementHeight("[data-toolbar]");
-  const { keepActiveCardCentered, tourHintsEnabled, tourCompleted, defaultTab } = useSettings();
+  const { keepActiveCardCentered, tourHintsEnabled, tourCompleted, defaultTab, catEarsEnabled } =
+    useSettings();
+  // Mobile-only, matching the cat ears themselves (sm:hidden) — upgrades
+  // the content pane's own top border from the ordinary 1px border-stone-
+  // 200 to the same 2px border-border stroke the ears use, so the two read
+  // as one continuous outline rather than two different border styles
+  // meeting where the tab bar ends. StatusBar's own tabBlend covers this
+  // same seam under whichever tab is active (see its comment) — this only
+  // ever paints visibly for the other tabs and the gaps between them.
+  const tabSeamBorderClass = catEarsEnabled
+    ? "border-t-2 border-border sm:border-t sm:border-stone-200"
+    : "border-t border-stone-200";
   // Settings loads its persisted value asynchronously (see SettingsProvider),
   // so the very first render here still sees the pre-hydration default. Once
   // it lands, adopt it — but only until the user actually navigates away
@@ -2434,7 +2445,8 @@ function IndexInner({
                 scrollPositionsRef.current.data = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 -mt-px pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto -mt-px pt-0",
+                tabSeamBorderClass,
                 tab !== "data" && "hidden",
               )}
             >
@@ -2559,7 +2571,8 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                tabSeamBorderClass,
                 tab !== "info" && "hidden",
               )}
             >
@@ -2583,7 +2596,8 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                tabSeamBorderClass,
                 tab !== "schedule" && "hidden",
               )}
             >
@@ -2600,7 +2614,8 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                tabSeamBorderClass,
                 tab !== "notifications" && "hidden",
               )}
             >
@@ -2613,7 +2628,8 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto border-t border-stone-200 pt-0",
+                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                tabSeamBorderClass,
                 tab !== "settings" && "hidden",
               )}
             >

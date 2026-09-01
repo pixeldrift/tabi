@@ -890,38 +890,6 @@ export function StatusBar({
     };
   }, [activeTab]);
 
-  // Where to split the cat-ears bottom border (below) around the active
-  // tab. This is a DIFFERENT seam than tabBlend above — that one covers the
-  // content pane's own border-t, which for the Data tab sits a whole
-  // DataToolbar's height below the tabs (dataToolbar renders as a sibling
-  // after data-status-bar, see its own comment), not immediately under
-  // them. This measures the tab row itself, so "immediately under the
-  // tabs" stays immediately under the tabs regardless of what any given
-  // tab's own content below it looks like. offsetLeft/offsetWidth (not
-  // getBoundingClientRect) since this positions relative to the row via
-  // ordinary `absolute`, not `fixed` — the row sits well inside
-  // data-status-bar's own box, so there's no overflow-hidden to escape.
-  const tabsRowRef = useRef<HTMLDivElement>(null);
-  const [activeTabRowRect, setActiveTabRowRect] = useState<{ left: number; width: number } | null>(
-    null,
-  );
-  useLayoutEffect(() => {
-    const rowEl = tabsRowRef.current;
-    const tabEl = tabButtonRefs.current.get(activeTab);
-    if (!rowEl || !tabEl) return;
-    const measure = () => {
-      setActiveTabRowRect({ left: tabEl.offsetLeft, width: tabEl.offsetWidth });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(rowEl);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [activeTab]);
-
   return (
     <>
       {/* Single shared container for the header proper (title, box,
@@ -1134,11 +1102,7 @@ export function StatusBar({
                 role="tablist"
                 aria-label="Session sections"
               >
-                <div
-                  ref={tabsRowRef}
-                  className="relative flex items-end gap-0.5 sm:gap-1 -ml-3"
-                  data-tour="tab-bar"
-                >
+                <div className="flex items-end gap-0.5 sm:gap-1 -ml-3" data-tour="tab-bar">
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
@@ -1270,26 +1234,6 @@ export function StatusBar({
                       </button>
                     );
                   })}
-                  {catEarsEnabled && activeTabRowRect && (
-                    // Continues the ears' own 2px border-border stroke
-                    // immediately under the rest of the row, flanking the
-                    // active tab (which stays open at the bottom, same as
-                    // always — no border under it) rather than drawing one
-                    // continuous line the active tab would then need a
-                    // separate mechanism to interrupt.
-                    <>
-                      <div
-                        className="pointer-events-none absolute bottom-0 border-b-2 border-border sm:hidden"
-                        style={{ left: 0, width: activeTabRowRect.left }}
-                        aria-hidden="true"
-                      />
-                      <div
-                        className="pointer-events-none absolute bottom-0 right-0 border-b-2 border-border sm:hidden"
-                        style={{ left: activeTabRowRect.left + activeTabRowRect.width }}
-                        aria-hidden="true"
-                      />
-                    </>
-                  )}
                   <ActiveDurationIndicator
                     timers={runningTimers}
                     activeTab={activeTab}
@@ -1577,11 +1521,20 @@ export function StatusBar({
       {/* Blends the content pane's own border-t (routes/index.tsx) under
           whichever tab is active — see the tabBlend effect above for why
           this has to live outside data-status-bar's overflow-hidden rather
-          than as a child of the active tab itself. */}
+          than as a child of the active tab itself. h-0.5 (2px) rather than
+          the default h-px when cat ears are on — that border is 2px there
+          too (matching the ears' own stroke, see tabSeamBorderClass in
+          routes/index.tsx), so a 1px patch only covered half of it,
+          leaving a thin sliver visible under the active tab. sm: drops
+          back to h-px alongside the border's own sm:border-t reverting to
+          1px on desktop, where ears never show. */}
       {tabBlend && (
         <div
           aria-hidden
-          className="fixed z-40 h-px bg-background pointer-events-none"
+          className={cn(
+            "fixed z-40 bg-background pointer-events-none",
+            catEarsEnabled ? "h-0.5 sm:h-px" : "h-px",
+          )}
           style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
         />
       )}
