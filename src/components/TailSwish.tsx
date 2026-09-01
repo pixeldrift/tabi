@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { TAIL_SWISH_FRAMES, TAIL_SWISH_VIEWBOX } from "@/lib/tailSwishFrames";
+import { TAIL_SWISH_FRAMES, TAIL_SWISH_TIMES, TAIL_SWISH_VIEWBOX } from "@/lib/tailSwishFrames";
 import { cn } from "@/lib/utils";
 
 // Frame 0 repeated on the end closes the loop — the traced GIF's own last
@@ -59,7 +59,22 @@ export function TailSwish({
         // the 16 frames — each frame boundary reads as a brief pause/step
         // rather than one continuous motion. Constant velocity between
         // frames is what actually blends them smoothly.
-        transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
+        //
+        // times: without this, Motion splits the duration into 16 equal
+        // slices — one per frame — regardless of how far any given frame
+        // actually moved. The source swish naturally slows near both ends
+        // of its arc (like a pendulum), so two of those slices cover ~5x
+        // less distance than the rest yet got the same amount of time,
+        // which read as the whole loop pausing at both extremes. These
+        // times (see their own comment in tailSwishFrames.ts) are that
+        // same per-segment distance normalized instead, so time is spent
+        // where the tail is actually moving.
+        transition={{
+          duration: durationSec,
+          repeat: Infinity,
+          ease: "linear",
+          times: TAIL_SWISH_TIMES,
+        }}
         stroke="currentColor"
         strokeWidth={strokeWidth}
         strokeLinecap="round"

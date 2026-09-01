@@ -7,6 +7,22 @@
 // Point 0 (the M) is always the tail's own anchor/base end; the far end is the tip.
 export const TAIL_SWISH_VIEWBOX = "4.0 3.0 290.0 152.0";
 
+// The 16 source frames don't cover equal visual distance from one to the
+// next — like a real pendulum, the swish naturally slows near the two ends
+// of its arc and moves fastest through the middle. Two segments (the
+// reversal points at each extreme) cover roughly 1/5 the distance of a
+// typical middle segment. An even time-per-frame split (Motion's default
+// for a plain array of keyframes) gives those slow segments the exact same
+// time slice as the fast ones, which reads as the whole loop visibly
+// pausing at both ends. These are that same per-segment distance,
+// normalized to cumulative fractions of the total (0 to 1) — pass as
+// `transition.times` alongside the `d` keyframes so each segment's time
+// budget matches how far it actually has to move, not a fixed 1/16th share.
+export const TAIL_SWISH_TIMES: number[] = [
+  0.0, 0.0574, 0.0949, 0.1373, 0.2199, 0.3099, 0.3976, 0.4804, 0.4986, 0.5544, 0.5934, 0.6339,
+  0.7206, 0.8076, 0.8958, 0.9818, 1.0,
+];
+
 export const TAIL_SWISH_FRAMES: string[] = [
   "M151.00,153.00 C149.19,152.19 143.70,149.62 140.12,148.12 C136.54,146.62 132.89,145.54 129.52,144.00 C126.15,142.46 123.15,140.73 119.90,138.90 C116.65,137.07 113.30,135.26 110.03,133.00 C106.77,130.74 103.49,127.81 100.32,125.32 C97.14,122.82 93.75,120.59 91.00,118.03 C88.25,115.48 86.29,112.68 83.79,110.00 C81.29,107.32 78.13,104.87 76.00,101.96 C73.87,99.06 72.50,96.19 71.00,92.55 C69.50,88.91 68.17,84.15 67.00,80.14 C65.83,76.13 64.50,72.77 64.00,68.48 C63.50,64.19 63.50,58.89 64.00,54.41 C64.50,49.93 66.00,45.39 67.00,41.58 C68.00,37.78 69.00,34.68 70.00,31.58 C71.00,28.49 72.50,24.43 73.00,23.00",
   "M150.00,154.00 C149.10,152.44 146.79,147.29 144.61,144.61 C142.43,141.93 139.93,140.03 136.93,137.93 C133.93,135.83 130.17,133.65 126.59,132.00 C123.02,130.35 119.31,129.00 115.46,128.00 C111.61,127.00 107.55,126.50 103.50,126.00 C99.44,125.50 95.17,125.17 91.12,125.00 C87.06,124.83 83.14,125.33 79.15,125.00 C75.17,124.67 71.01,123.83 67.19,123.00 C63.37,122.17 59.65,121.56 56.23,120.00 C52.80,118.44 49.62,116.08 46.65,113.65 C43.68,111.22 40.84,108.51 38.43,105.43 C36.03,102.36 33.79,98.73 32.22,95.22 C30.64,91.70 29.70,88.22 29.00,84.34 C28.30,80.47 27.83,76.02 28.00,71.96 C28.17,67.91 29.67,61.99 30.00,60.00",

@@ -1249,7 +1249,16 @@ export function StatusBar({
                   />
                   <PresenceIndicator otherStaffIds={otherPresentStaffIds} />
                   <TabBarTailSwish
-                    hidden={runningTimers.length > 0 || otherPresentStaffIds.length > 0}
+                    // isMineAndRunning (not plain isRunning) — this needs to
+                    // agree with the same "am I actually in and driving this
+                    // session" condition the mini pill itself collapses to
+                    // (see its own comment), not just whether a session
+                    // happens to be running for someone else.
+                    hidden={
+                      !isMineAndRunning ||
+                      runningTimers.length > 0 ||
+                      otherPresentStaffIds.length > 0
+                    }
                   />
                 </div>
 
