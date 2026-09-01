@@ -287,25 +287,8 @@ checked off. See git history for what's already shipped.
         the current tech's own display name until appointments get a real
         `staffId`/`providerId` field. Fine for this prototype's single
         hardcoded current user; worth fixing before real multi-user auth.
-- [ ] 🟢 Give the Schedule tab its own icon, distinct from a real calendar —
-      it currently uses `CalendarDays` (`StatusBar.tsx`, `NotificationBar.tsx`,
-      `iconRegistry.tsx`), which should stay reserved for the actual full
-      calendar item above rather than get spent on today's single
-      recurring weekday rotation. Candidates: lucide's plain `Sun`, lucide's
-      `Sunrise` (reads as "start of day," arguably fits a daily rotation
-      even better), or a custom sun-rays-plus-clock-hands hybrid explicitly
-      combining "daily" and "schedule." Needs a look at actual size before
-      picking — the hybrid's hands read as clutter rather than a clock at
-      typical tab-icon sizes in a first pass.
 - [ ] 🟢 A small idle animation on the app's logo (an eye blink or similar) —
       a charm touch, not tied to any state change
-- [ ] 🟡 Distinguish the Rate and Duration data-type icons more clearly — the
-      two currently look similar and are hard to tell apart at small sizes.
-      Rate's own function is closer to Frequency's ("a tally per time") than
-      to Duration's ("how long something lasted"), so its icon should lean
-      that direction — e.g. a stopwatch combined with a number sign somehow
-      (a split face reading as both? a small number sign in place of hands?).
-      Needs actual visual iteration/approval, not a blind swap
 
 ### 🗄️ Long-term Roadmap - Potential Future Features
 
