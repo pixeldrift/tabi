@@ -873,13 +873,14 @@ export function StatusBar({
     const measure = () => {
       const barRect = barEl.getBoundingClientRect();
       const tabRect = tabEl.getBoundingClientRect();
-      // ±2px past the tab's own edges: the ear SVG's side walls sit right on
-      // the tab's own left/right boundary, and their stroke (overflow-
-      // visible, see the svg's own comment) bleeds a px or so past it — a
-      // patch sized to exactly tabRect.width left that sliver uncovered
-      // right at the bottom corners, the one place it's most visible next
-      // to the border it's supposed to blend into.
-      setTabBlend({ top: barRect.bottom, left: tabRect.left - 2, width: tabRect.width + 4 });
+      // Inset 2px from each edge — the ear SVG's side walls render with
+      // their own ~2px of ink starting exactly at the tab's own left/right
+      // edge (not straddling it), so a patch sized to the full tabRect
+      // erased the border under the walls themselves, leaving a gap
+      // instead of a joint. Insetting leaves the border showing through
+      // right where each wall is, so it reads as one continuous outline
+      // turning the corner rather than a wall floating above a gap.
+      setTabBlend({ top: barRect.bottom, left: tabRect.left + 2, width: tabRect.width - 4 });
     };
     measure();
     // A ResizeObserver on the bar itself (not the tab) catches every case
