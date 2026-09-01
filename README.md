@@ -385,5 +385,32 @@ and scheduling items below all need to respect that split.
       never happened), rather than exposing any "un-submit"/reopen action
       on the RBT side. Deprioritized to the bottom of this list — this demo
       isn't focused on supervisor/BCBA-side functions
+- [ ] **Room utilization / assignment** — a dedicated view combining a room
+      list with whichever clients or activities are currently assigned to
+      each one, plus a schedule alongside it navigable by time of day and
+      day of week (the same kind of navigation the Schedule tab already
+      has, applied per-room instead of per-client)
+  - **Assignment tool**: a list of the day's appointments a user can drag
+    onto either the room list directly or onto a floor plan — a linked view
+    of that same list, where dropping a client on a floor-plan region
+    assigns them to whatever room that region represents
+  - **Floor plan editor (admin-side)**: draw shapes over an uploaded floor
+    plan image to define each room's clickable region. End users only ever
+    see the finished map — a shape's region is what doubles as both its
+    click target and its highlighted drop zone during assignment; the
+    drawing/editing tool itself is admin-only
+  - Beyond hand-drawn shapes, allow uploading a layered file (Illustrator,
+    SVG, or Photoshop) and mapping its existing layers directly to regions/
+    click zones, instead of requiring every region to be redrawn by hand on
+    top of a flattened image
+  - **Room properties beyond name** — a location on the floor plan, plus a
+    set of amenities/characteristics (e.g. designated safety/crisis room,
+    adjustable lighting, no windows). These can then be flagged as
+    requirements on a client, so available rooms can be visually filtered
+    or highlighted against what a given client actually needs when
+    assigning them
+  - Reference: a similar layered-floor-plan assignment concept was
+    prototyped for conference-room scheduling in another project — worth
+    revisiting that prior art before designing this from scratch
 
 _Roadmap last updated: 2026-09-01_
