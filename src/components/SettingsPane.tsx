@@ -18,6 +18,7 @@ import { SectionJumpBar } from "@/components/SectionJumpBar";
 import { useTour } from "./TourContext";
 import { useTip } from "./TipContext";
 import { AddCardDialog } from "./AddCardDialog";
+import { TailSwish } from "./TailSwish";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -230,6 +231,15 @@ export function SettingsPane({
               onCheckedChange={setCatEarsEnabled}
               className="shrink-0"
             />
+          </div>
+
+          {/* Preview only — a path-morphed tail swish (see TailSwish.tsx),
+          not wired to anything yet. Parked here since it's the other
+          cat-themed flourish, not because this is its final home; still
+          deciding where it actually belongs. */}
+          <div className="mt-3 flex items-center gap-2 text-muted-foreground/60">
+            <TailSwish className="w-16 h-8 shrink-0" />
+            <p className="text-xs">Tail swish — new, still finding its spot.</p>
           </div>
 
           <div className="mt-5 flex items-center justify-between gap-3">
