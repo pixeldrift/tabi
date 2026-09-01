@@ -33,6 +33,7 @@ import {
 import { InfoIcon } from "./icons/InfoIcon";
 import { DailyIcon } from "./icons/DailyIcon";
 import { PersonPill, staffName } from "./StaffDirectory";
+import { TailSwish } from "./TailSwish";
 import {
   markInitialLayoutSettled,
   useInitialLayoutSettled,
@@ -1247,6 +1248,9 @@ export function StatusBar({
                     onTabChange={onTabChange}
                   />
                   <PresenceIndicator otherStaffIds={otherPresentStaffIds} />
+                  <TabBarTailSwish
+                    hidden={runningTimers.length > 0 || otherPresentStaffIds.length > 0}
+                  />
                 </div>
 
                 <AnimatePresence initial={false}>
@@ -2005,6 +2009,43 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
               </div>
             </PopoverContent>
           </Popover>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Sits in the same tab-bar slot ActiveDurationIndicator/PresenceIndicator
+ *  occupy, showing only when neither of them has anything to show — a
+ *  running timer or another present staff member both take priority over
+ *  pure decoration. The row is `items-end` (see the tab-bar div's own
+ *  className), so a child taller than its tab/icon siblings naturally
+ *  pokes up above their shared baseline with no absolute positioning
+ *  needed — the same mechanism the cat-ear tab shape itself relies on. */
+function TabBarTailSwish({ hidden }: { hidden: boolean }) {
+  return (
+    <AnimatePresence>
+      {!hidden && (
+        <motion.div
+          key="tab-bar-tail"
+          // Slides down out of the slot (not just fades) when a timer/
+          // presence icon needs the space — reads as the tail retreating
+          // out of the way rather than just vanishing in place.
+          initial={{ y: 32, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 32, opacity: 0 }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          className="flex items-end px-1 py-1.5 sm:py-2 text-foreground/35"
+        >
+          <TailSwish
+            className="w-12 h-8"
+            strokeWidth={18}
+            // Anchors the tail's own base to the bottom of its box (see
+            // TailSwish's own comment) instead of vertically centering it
+            // with dead space above — the base is what should read as
+            // flush with the tab row's shared baseline.
+            preserveAspectRatio="xMidYMax meet"
+          />
         </motion.div>
       )}
     </AnimatePresence>

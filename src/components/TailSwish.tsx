@@ -20,6 +20,13 @@ export function TailSwish({
   // from the source's real timing. Requested at ~1/4 that speed, so this is
   // 4x that guess rather than 4x anything measured.
   durationSec = 9.6,
+  // The traced viewBox is landscape (~290x152 — the source swish reads
+  // wider than tall), so a box narrower/taller than that ratio leaves
+  // padding on two sides under the default "meet, centered" fit. Callers
+  // fitting this into a short, bottom-anchored slot (e.g. poking up from a
+  // tab bar) want that padding pushed to the top instead, so the tail's own
+  // base — not empty space — sits flush with the box's bottom edge.
+  preserveAspectRatio = "xMidYMid meet",
 }: {
   className?: string;
   /** In the tail's own ~290x152 viewBox units, not screen pixels — scales
@@ -27,9 +34,16 @@ export function TailSwish({
   strokeWidth?: number;
   /** Seconds for one full swish cycle (both directions), looped forever. */
   durationSec?: number;
+  preserveAspectRatio?: string;
 }) {
   return (
-    <svg viewBox={TAIL_SWISH_VIEWBOX} fill="none" className={className} aria-hidden>
+    <svg
+      viewBox={TAIL_SWISH_VIEWBOX}
+      fill="none"
+      className={className}
+      preserveAspectRatio={preserveAspectRatio}
+      aria-hidden
+    >
       <motion.path
         initial={{ d: LOOP_FRAMES[0] }}
         animate={{ d: LOOP_FRAMES }}
