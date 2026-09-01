@@ -29,6 +29,23 @@ function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
   return d;
 }
 
+// Rooms are really assigned per client per day by whoever schedules the
+// clinic's rooms — there's no real per-day assignment data to read here, so
+// this just picks one of a fixed pool and holds it for the demo, the same
+// "randomize once per mount" idiom as randomDemoTime above.
+const ASSIGNED_ROOM_COUNT = 10;
+function randomDemoRoom(): string {
+  return `Room ${1 + Math.floor(Math.random() * ASSIGNED_ROOM_COUNT)}`;
+}
+
+/** The token ScheduleView's own location data (and its "Assigned Room" entry
+ *  in the LOCATIONS picklist) stores in place of a literal room name —
+ *  resolved to the real assigned room only at display time (see
+ *  ScheduleView's own resolveLocation), so a schedule item stays pointed at
+ *  "whichever room I'm in today" rather than freezing today's answer into
+ *  its own data. */
+export const ASSIGNED_ROOM_TOKEN = "Assigned Room";
+
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 export type Day = (typeof DAYS)[number];
 
@@ -97,6 +114,11 @@ interface ScheduleContextValue {
    *  real `new Date()` read independently in two places could (and did). */
   now: Date;
   bumpTime: () => void;
+  /** Today's real room for whichever schedule item stores ASSIGNED_ROOM_
+   *  TOKEN as its location — randomized once per mount the same way `now`
+   *  is (see randomDemoRoom above), standing in for the real per-client
+   *  daily room assignment this app has no actual data source for yet. */
+  assignedRoom: string;
 }
 
 const ScheduleContext = createContext<ScheduleContextValue | null>(null);
@@ -117,6 +139,13 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     setNow(randomDemoTime(dayStartTime, dayEndTime));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Same deterministic-then-randomized-on-mount idiom as `now` above, for
+  // the same reason: an SSR/first-render value that can't disagree with the
+  // client, corrected before paint so nothing flashes.
+  const [assignedRoom, setAssignedRoom] = useState("Room 1");
+  useLayoutEffect(() => {
+    setAssignedRoom(randomDemoRoom());
+  }, []);
   const bumpTime = () => {
     setNow((prev) => {
       const d = new Date(prev);
@@ -126,7 +155,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   };
   return (
     <ScheduleContext.Provider
-      value={{ phineasAppointments, setPhineasAppointments, now, bumpTime }}
+      value={{ phineasAppointments, setPhineasAppointments, now, bumpTime, assignedRoom }}
     >
       {children}
     </ScheduleContext.Provider>

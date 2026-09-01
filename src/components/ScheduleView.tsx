@@ -61,6 +61,7 @@ import {
   useScheduleData,
   PHINEAS_APPTS,
   DAYS,
+  ASSIGNED_ROOM_TOKEN,
   type Day,
   type AlertMode,
   type AlertSettings,
@@ -77,7 +78,7 @@ import {
 } from "./ScheduleView.animations";
 
 const LOCATIONS = [
-  "Treatment Room",
+  ASSIGNED_ROOM_TOKEN,
   "Kitchen",
   "Classroom",
   "Big Gym",
@@ -128,7 +129,7 @@ const ACTIVITY_ICONS: Record<string, string> = {
 };
 
 const LOCATION_ICONS: Record<string, string> = {
-  "Treatment Room": "🚪",
+  [ASSIGNED_ROOM_TOKEN]: "🚪",
   Kitchen: "🍽️",
   Classroom: "📚",
   "Big Gym": "🏀",
@@ -137,6 +138,18 @@ const LOCATION_ICONS: Record<string, string> = {
   "Learner Bathroom": "🚽",
   "Solo Bathroom": "🚽",
 };
+
+// A schedule item's own `location` field can hold ASSIGNED_ROOM_TOKEN
+// instead of a literal room name — this resolves it to today's real
+// assigned room (see ScheduleContext's own comment on why that value is
+// simulated) for anywhere the location is actually shown to someone,
+// leaving the underlying data pointed at "whichever room I'm in today"
+// rather than freezing today's answer into it. The icon lookup doesn't
+// need this — ASSIGNED_ROOM_TOKEN already has its own entry in
+// LOCATION_ICONS above, so it resolves to the same door icon either way.
+function resolveLocation(location: string, assignedRoom: string): string {
+  return location === ASSIGNED_ROOM_TOKEN ? assignedRoom : location;
+}
 
 const APPOINTMENT_TYPES = [
   "Speech Therapy",
@@ -233,7 +246,7 @@ const GROUP_A: ScheduleItem[] = [
     start: "08:30",
     end: "09:15",
     activity: "Discreet Trials",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
   {
@@ -265,7 +278,7 @@ const GROUP_A: ScheduleItem[] = [
     start: "11:30",
     end: "12:15",
     activity: "Sensory Play",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "off",
   },
   {
@@ -321,7 +334,7 @@ const GROUP_A: ScheduleItem[] = [
     start: "17:30",
     end: "18:00",
     activity: "Pack Up/Dismissal",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
@@ -348,7 +361,7 @@ const GROUP_B: ScheduleItem[] = [
     start: "09:30",
     end: "10:30",
     activity: "Discreet Trials",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
   {
@@ -420,7 +433,7 @@ const GROUP_B: ScheduleItem[] = [
     start: "17:15",
     end: "18:00",
     activity: "Pack Up/Dismissal",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
@@ -439,7 +452,7 @@ const GROUP_C: ScheduleItem[] = [
     start: "08:30",
     end: "09:30",
     activity: "Sensory Play",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "off",
   },
   {
@@ -487,7 +500,7 @@ const GROUP_C: ScheduleItem[] = [
     start: "13:45",
     end: "14:45",
     activity: "Discreet Trials",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
   {
@@ -519,7 +532,7 @@ const GROUP_C: ScheduleItem[] = [
     start: "17:15",
     end: "18:00",
     activity: "Pack Up/Dismissal",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
@@ -534,7 +547,7 @@ const PHINEAS: ScheduleItem[] = [
     start: "10:00",
     end: "10:20",
     activity: "Arrive/Pairing",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "visual",
   },
   {
@@ -550,7 +563,7 @@ const PHINEAS: ScheduleItem[] = [
     start: "10:30",
     end: "11:15",
     activity: "Discreet Trials",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
   {
@@ -638,7 +651,7 @@ const PHINEAS: ScheduleItem[] = [
     start: "17:30",
     end: "18:00",
     activity: "Pack Up/Dismissal",
-    location: "Treatment Room",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
@@ -749,7 +762,7 @@ export function ScheduleView({
   // IntervalCard's checkpoint-mode alerts so they read the exact same
   // simulated demo clock instead of a second, independently-real one that
   // could disagree with it. See that context's own comment.
-  const { now, bumpTime, setPhineasAppointments } = useScheduleData();
+  const { now, bumpTime, setPhineasAppointments, assignedRoom } = useScheduleData();
   // See randomizeSchedules' own comment for why this can't just be a random
   // draw straight in this lazy initializer.
   const [schedules, setSchedules] = useState<Schedule[]>(PRESETS);
@@ -848,7 +861,7 @@ export function ScheduleView({
           dedupeKey: `alert-now:${it.id}:${dayKey}`,
           kind: "alert-now",
           title: `${it.customName ?? it.activity}`,
-          body: it.location,
+          body: resolveLocation(it.location, assignedRoom),
           icon: alertCfg.mode === "audio" ? "bell-chime" : "bell",
           autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
           allowSnooze: alertCfg.allowSnooze,
@@ -872,7 +885,7 @@ export function ScheduleView({
             // an always-current "In X minutes" / "Now" / "X minutes ago" —
             // this title just needs to name the activity.
             title: it.customName ?? it.activity,
-            body: it.location,
+            body: resolveLocation(it.location, assignedRoom),
             icon: priming.mode === "audio" ? "bell-chime" : "bell",
             autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
             allowSnooze: priming.allowSnooze,
@@ -928,7 +941,16 @@ export function ScheduleView({
         }
       }
     }
-  }, [nowMin, items, active.appointments, now, pushNotification, notificationPrefs, inSession]);
+  }, [
+    nowMin,
+    items,
+    active.appointments,
+    now,
+    pushNotification,
+    notificationPrefs,
+    inSession,
+    assignedRoom,
+  ]);
 
   const updateActive = (mut: (items: ScheduleItem[]) => ScheduleItem[]) => {
     setSchedules((prev) =>
@@ -1988,7 +2010,7 @@ export function ScheduleView({
                       </span>
                     )}
                     <ScrubText
-                      text={it.location}
+                      text={resolveLocation(it.location, assignedRoom)}
                       className="text-xs flex-1 leading-tight"
                       style={textHalo(rowHaloColor)}
                     />
