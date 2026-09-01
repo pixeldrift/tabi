@@ -246,9 +246,15 @@ export function NotificationBar() {
     // between the header above and the tabs row below with nothing in it.
     // Bottom padding specifically keeps an alert's own bottom edge from
     // touching the mini session pill that lands directly below this.
+    // transition-[padding]/duration/ease below match NOTIFICATION_AREA_
+    // TRANSITION (350ms, Tailwind's ease-in-out is the same cubic-bezier)
+    // — the inner motion.div's own `layout` animates the rows collapsing,
+    // but this plain div's padding was a bare conditional class with no
+    // transition of its own, so it snapped instantly at the 0-vs-1-alert
+    // boundary instead of settling in step with everything inside it.
     <div
       className={cn(
-        "px-3 overflow-x-hidden pointer-events-none ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen",
+        "px-3 overflow-x-hidden pointer-events-none ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen transition-[padding-top,padding-bottom] duration-[350ms] ease-in-out",
         visible.length > 0 && "pt-2 pb-2",
       )}
     >
