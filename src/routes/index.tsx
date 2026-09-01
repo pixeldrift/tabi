@@ -2575,7 +2575,7 @@ function IndexInner({
                 scrollPositionsRef.current.info = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                "flex-1 w-full overflow-y-auto px-3 pb-16 max-w-5xl mx-auto pt-0",
                 tabSeamBorderClass,
                 tab !== "info" && "hidden",
               )}
@@ -2600,7 +2600,7 @@ function IndexInner({
                 scrollPositionsRef.current.schedule = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                "flex-1 w-full overflow-y-auto px-3 pb-16 max-w-5xl mx-auto pt-0",
                 tabSeamBorderClass,
                 tab !== "schedule" && "hidden",
               )}
@@ -2618,7 +2618,7 @@ function IndexInner({
                 scrollPositionsRef.current.notifications = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                "flex-1 w-full overflow-y-auto px-3 pb-16 max-w-5xl mx-auto pt-0",
                 tabSeamBorderClass,
                 tab !== "notifications" && "hidden",
               )}
@@ -2632,7 +2632,7 @@ function IndexInner({
                 scrollPositionsRef.current.settings = e.currentTarget.scrollTop;
               }}
               className={cn(
-                "flex-1 w-full overflow-y-auto px-5 pb-16 max-w-5xl mx-auto pt-0",
+                "flex-1 w-full overflow-y-auto px-3 pb-16 max-w-5xl mx-auto pt-0",
                 tabSeamBorderClass,
                 tab !== "settings" && "hidden",
               )}
