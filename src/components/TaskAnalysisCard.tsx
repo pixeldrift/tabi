@@ -1307,10 +1307,7 @@ export function TaskAnalysisCard({
                             <span
                               className={cn(
                                 isCenter
-                                  ? cn(
-                                      "font-display leading-none tabular-nums",
-                                      status ? "text-xl" : "text-2xl",
-                                    )
+                                  ? "font-display leading-none tabular-nums text-4xl"
                                   : "text-[7px] leading-none",
                               )}
                             >
