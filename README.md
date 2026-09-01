@@ -229,7 +229,11 @@ checked off. See git history for what's already shipped.
       Surface handoffs ("Transfer session to [person]"), make it clear who's
       recording data vs. who's submitting it, and let a tech see their
       appointment ending with another tech taking over. Needs a clear
-      distinction between "appointment" and "session"
+      distinction between "appointment" and "session". **Deliberately
+      decoupled from the smaller "dim/hide what isn't yours" and "client
+      handoff" item below** — a real calendar is as large a lift as today's
+      whole Schedule feature, and shouldn't block a much cheaper near-term
+      win
 - [ ] 🔴 Admin text-editing page — a helper page, linked from Settings, where
       every piece of descriptive prose in the app (anything beyond a plain
       label/title — helper text, placeholders, empty-state copy, tooltips,
@@ -238,10 +242,61 @@ checked off. See git history for what's already shipped.
 - [ ] 🟡 Notifications tab cleanup — a badge for new/unread notifications,
       the ability to clear just one type at a time instead of all-or-nothing,
       and a simplified set of notification types overall
-- [ ] 🟡 Transfers between techs, arrivals, and departures shown directly on
-      the Schedule (not just clinical appointments), each able to carry its
-      own alert — related to, but more specific than, the full calendar/
-      handoff integration item below
+- [ ] 🟡 Dim/hide what isn't yours on the Schedule, and surface client
+      handoffs — a scoped-down alternative to the full calendar item above,
+      buildable entirely on today's data model:
+      - **Dim non-relevant rows by default.** Anything on the Schedule
+        outside the current tech's own appointment window(s) for the day
+        (items *and* other staff's appointments) renders dimmed instead of
+        full-strength — same idea as clinic hours trimming everything
+        before/after the configured day bounds, just per-tech instead of
+        per-clinic. E.g. a client from 10:00-3:00 means everything outside
+        that window reads as "not yours right now" at a glance, without
+        losing the surrounding context entirely.
+      - **A Settings toggle to hide instead of dim** (Schedule section,
+        same `<Switch>` pattern as the Data section's toggles) — flips the
+        above from "dimmed but visible" to fully trimmed from view, mirroring
+        how clinic-hours edge space already disappears outside edit mode.
+      - **Client handoffs** (e.g. a 10:00-3:00 client actually splits
+        10:00-12:00 you / 12:00-3:00 another tech) need a real design
+        decision, since `Appointment` (`ScheduleContext.tsx`) requires a
+        `start`/`end` span — there's no such thing as a zero-duration
+        appointment today. Options, roughly in order of preference:
+        1. **Recommended:** keep it one appointment, add an optional
+           `handoff?: { at: string; toProvider: string; alertCfg?: AlertSettings }`
+           on it. No new zero-duration entity at all — the bar just renders
+           split at `at` (normal before, dimmed after, reusing the exact
+           dimming rule above with no special case), a small hand-off glyph
+           marks the split, and the existing alert-firing effect
+           (`ScheduleView.tsx`, the one that already watches `nowMin`
+           crossing an appointment's start) gains one more time to watch.
+        2. A dedicated zero-duration `HandoffMarker` type, separate from
+           `Appointment`, rendered as its own pin/flag on the timeline
+           instead of a bar. Cleaner semantics, but teaches the renderer an
+           entirely new marker concept for one feature.
+        3. Reuse `Appointment` as-is with `start === end` — the least new
+           code, but bakes a "sometimes a span, sometimes an instant"
+           ambiguity into the one type most likely to need to map cleanly
+           onto real calendar events later.
+      - Either way, firing the alert reuses the existing mechanism as-is
+        (`NotificationContext`'s `push()`, a new `"handoff"`
+        `NotificationKind`) — no new alert infrastructure needed, just a
+        new trigger time and notification kind.
+      - **Caveat:** `Appointment.provider` is a free-text display name, not
+        a staff ID — "is this appointment mine" has to string-match against
+        the current tech's own display name until appointments get a real
+        `staffId`/`providerId` field. Fine for this prototype's single
+        hardcoded current user; worth fixing before real multi-user auth.
+- [ ] 🟢 Give the Schedule tab its own icon, distinct from a real calendar —
+      it currently uses `CalendarDays` (`StatusBar.tsx`, `NotificationBar.tsx`,
+      `iconRegistry.tsx`), which should stay reserved for the actual full
+      calendar item above rather than get spent on today's single
+      recurring weekday rotation. Candidates: lucide's plain `Sun`, lucide's
+      `Sunrise` (reads as "start of day," arguably fits a daily rotation
+      even better), or a custom sun-rays-plus-clock-hands hybrid explicitly
+      combining "daily" and "schedule." Needs a look at actual size before
+      picking — the hybrid's hands read as clutter rather than a clock at
+      typical tab-icon sizes in a first pass.
 - [ ] 🟢 A small idle animation on the app's logo (an eye blink or similar) —
       a charm touch, not tied to any state change
 - [ ] 🟡 Distinguish the Rate and Duration data-type icons more clearly — the
