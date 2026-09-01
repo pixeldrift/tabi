@@ -1253,12 +1253,12 @@ export function StatusBar({
                     // agree with the same "am I actually in and driving this
                     // session" condition the mini pill itself collapses to
                     // (see its own comment), not just whether a session
-                    // happens to be running for someone else.
-                    hidden={
-                      !isMineAndRunning ||
-                      runningTimers.length > 0 ||
-                      otherPresentStaffIds.length > 0
-                    }
+                    // happens to be running for someone else. Kept separate
+                    // from iconOccupied below (see TabBarTailSwish's own
+                    // comment on why) — leaving/entering the session should
+                    // never itself wait on the icon-reappear delay.
+                    inSession={isMineAndRunning}
+                    iconOccupied={runningTimers.length > 0 || otherPresentStaffIds.length > 0}
                   />
                 </div>
 
@@ -2031,7 +2031,45 @@ function PresenceIndicator({ otherStaffIds }: { otherStaffIds: string[] }) {
  *  className), so a child taller than its tab/icon siblings naturally
  *  pokes up above their shared baseline with no absolute positioning
  *  needed — the same mechanism the cat-ear tab shape itself relies on. */
-function TabBarTailSwish({ hidden }: { hidden: boolean }) {
+function TabBarTailSwish({
+  inSession,
+  iconOccupied,
+}: {
+  /** Whether to show the tail AT ALL — leaving/entering the session shows
+   *  or hides it immediately, same as the mini pill it sits beside. */
+  inSession: boolean;
+  /** Whether ActiveDurationIndicator/PresenceIndicator currently has
+   *  something to show in this same slot. Deliberately a separate prop
+   *  from `inSession`, not folded into one combined "hidden" flag — only
+   *  THIS clearing needs the reappear delay below (there's an outgoing
+   *  icon to wait out); a plain session resume has nothing to wait for
+   *  and should show the tail immediately, not on the same delay.
+   */
+  iconOccupied: boolean;
+}) {
+  // Hiding for this reason is immediate (the tail loses the slot the
+  // instant something else needs it), but un-hiding waits for the outgoing
+  // Timer/Presence icon to actually finish leaving first — without this,
+  // `iconOccupied` flips to false the same render `runningTimers`/
+  // `otherPresentStaffIds` empties out, which is well before its sibling is
+  // actually gone: PresenceIndicator starts its own 250ms exit right then,
+  // but ActiveDurationIndicator sits on `timers` for a further 300ms grace
+  // window (see its own comment) before it even STARTS its 250ms exit.
+  // 550ms covers the slower of the two (the timer case) so the tail never
+  // starts sliding in until whichever icon was showing has actually,
+  // visibly cleared the slot.
+  const [delayedIconOccupied, setDelayedIconOccupied] = useState(iconOccupied);
+  useEffect(() => {
+    if (iconOccupied) {
+      setDelayedIconOccupied(true);
+      return;
+    }
+    const id = window.setTimeout(() => setDelayedIconOccupied(false), 550);
+    return () => window.clearTimeout(id);
+  }, [iconOccupied]);
+
+  const hidden = !inSession || delayedIconOccupied;
+
   return (
     <AnimatePresence>
       {!hidden && (
