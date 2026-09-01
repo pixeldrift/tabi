@@ -1159,15 +1159,20 @@ export function StatusBar({
                           // either side at y=25 (the "normal, unraised" top edge — see the
                           // wrapper's own -top-2.5 comment for why 25 is that level) rather
                           // than rising from the tab's own corners the way the old
-                          // straight-triangle ears did. Still plain straight-line segments,
-                          // not the reference's own bezier tip curves — at this icon's real
-                          // rendered size (a handful of pixels tall) the curve's own control-
-                          // point deltas came out sub-pixel and just looked like a boxy
-                          // notch; stroke-linejoin="round" below does the same corner-
-                          // softening job the old triangle ears already relied on, and reads
-                          // fine at this scale where a true curve doesn't. Open path (no
-                          // segment back across the bottom) mirrors this tab's own
-                          // border-b-0.
+                          // straight-triangle ears did. Each shoulder rises straight to its
+                          // peak in one segment — an earlier pass added an extra waypoint
+                          // partway up each side (approximating the reference's own curved
+                          // wall-to-peak rounding as two line segments instead of one), but
+                          // that read as a second, unwanted bump outside the real ear tip,
+                          // so those two outermost points are dropped. Still plain
+                          // straight-line segments, not the reference's own bezier tip
+                          // curves — at this icon's real rendered size (a handful of pixels
+                          // tall) the curve's own control-point deltas came out sub-pixel
+                          // and just looked like a boxy notch; stroke-linejoin="round"
+                          // below does the same corner-softening job the old triangle ears
+                          // already relied on, and reads fine at this scale where a true
+                          // curve doesn't. Open path (no segment back across the bottom)
+                          // mirrors this tab's own border-b-0.
                           <div
                             // -top-2.5 (10px): unlike the old corner-flush triangles (which
                             // needed no headroom beyond a hairline nick — a sharp corner
@@ -1196,7 +1201,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,25 L20,25 L20,1.24 L25.08,0 L31.13,3.56 L68.87,3.56 L74.93,0 L80,1.24 L80,25 L100,25 L100,100"
+                                d="M0,100 L0,25 L20,25 L25.08,0 L31.13,3.56 L68.87,3.56 L74.93,0 L80,25 L100,25 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={2}
                                 strokeLinejoin="round"
