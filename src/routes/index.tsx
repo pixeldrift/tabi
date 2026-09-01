@@ -1279,9 +1279,16 @@ const DISPLAY_MODE_GRID_CLASSES: Record<DisplayMode, string> = {
   card: "grid-cols-1 sm:grid-cols-2 gap-3",
   // Quick-action tiles are deliberately mobile-first multi-column (unlike
   // list/card's single column on narrow viewports) — the whole point is
-  // fitting several at once on a phone screen, not just at sm+.
-  "grid-large": "grid-cols-2 gap-2",
-  "grid-small": "grid-cols-3 gap-1.5",
+  // fitting several at once on a phone screen, not just at sm+. A tile's
+  // size is entirely its grid track's width (aspect-square, see
+  // MiniTileShell), so on an iPad the content column (max-w-5xl, much wider
+  // than a phone) stretches these same 2/3 columns into tiles nearly twice
+  // the intended size. sm: doubles the column count there — same cutoff
+  // card mode already uses to mean "wider than a phone" — which halves each
+  // tile's width/height back down instead of leaving mobile's own count
+  // untouched below that breakpoint.
+  "grid-large": "grid-cols-2 sm:grid-cols-4 gap-2",
+  "grid-small": "grid-cols-3 sm:grid-cols-6 gap-1.5",
 };
 
 function IndexInner({
