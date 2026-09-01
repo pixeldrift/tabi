@@ -32,8 +32,11 @@ function randomDemoTime(dayStartTime: string, dayEndTime: string): Date {
 // Rooms are really assigned per client per day by whoever schedules the
 // clinic's rooms — there's no real per-day assignment data to read here, so
 // this just picks one of a fixed pool and holds it for the demo, the same
-// "randomize once per mount" idiom as randomDemoTime above.
-const ASSIGNED_ROOM_COUNT = 10;
+// "randomize once per mount" idiom as randomDemoTime above. Exported so
+// ScheduleView's own building-wide room list (the floor plan, "see all
+// rooms") can enumerate the same Room 1..N pool this draws from, instead of
+// a second hardcoded count that could drift out of sync with it.
+export const ASSIGNED_ROOM_COUNT = 10;
 function randomDemoRoom(): string {
   return `Room ${1 + Math.floor(Math.random() * ASSIGNED_ROOM_COUNT)}`;
 }

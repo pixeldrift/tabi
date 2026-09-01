@@ -64,6 +64,7 @@ import {
   PHINEAS_APPTS,
   DAYS,
   ASSIGNED_ROOM_TOKEN,
+  ASSIGNED_ROOM_COUNT,
   type Day,
   type AlertMode,
   type AlertSettings,
@@ -89,6 +90,17 @@ const LOCATIONS = [
   "Learner Bathroom",
   "Solo Bathroom",
 ] as const;
+
+// The building's full room directory for BuildingFloorPlan/AllRoomsDialog —
+// every numbered treatment room in the assignment pool (see
+// ASSIGNED_ROOM_COUNT's own comment) plus every named common area from
+// LOCATIONS above (skipping its own first entry, ASSIGNED_ROOM_TOKEN — that
+// one's a placeholder for "whichever numbered room," not a room of its own,
+// and the numbered rooms below already cover the real ones it could resolve
+// to).
+const TREATMENT_ROOMS = Array.from({ length: ASSIGNED_ROOM_COUNT }, (_, i) => `Room ${i + 1}`);
+const COMMON_AREAS = LOCATIONS.slice(1);
+const ALL_ROOMS = [...TREATMENT_ROOMS, ...COMMON_AREAS];
 
 const ACTIVITIES = [
   "Arrive/Pairing",
@@ -140,6 +152,14 @@ const LOCATION_ICONS: Record<string, string> = {
   "Learner Bathroom": "🚽",
   "Solo Bathroom": "🚽",
 };
+
+/** Same door icon as ASSIGNED_ROOM_TOKEN for any already-*resolved* numbered
+ *  room ("Room 5", not the token itself) — LOCATION_ICONS has no entry for
+ *  those since there are 10 of them and they're all the same kind of space,
+ *  unlike the named common areas which each get their own icon above. */
+function locationIcon(name: string): string {
+  return LOCATION_ICONS[name] ?? (TREATMENT_ROOMS.includes(name) ? "🚪" : "📍");
+}
 
 // A schedule item's own `location` field can hold ASSIGNED_ROOM_TOKEN
 // instead of a literal room name — this resolves it to today's real
@@ -809,9 +829,13 @@ export function ScheduleView({
   const [creatingNew, setCreatingNew] = useState<{ start: string; end: string } | null>(null);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [creatingAppt, setCreatingAppt] = useState(false);
-  // Which assigned room's info modal is open, if any — set from the tappable
-  // room text in the schedule row below (see RoomInfoDialog).
+  // Which room's info modal is open, if any — set from a tappable location
+  // in the schedule row below, or by picking one from AllRoomsDialog (see
+  // both). Mutually exclusive with allRoomsOpen below: opening one closes
+  // the other rather than stacking, so "back" out of a room's own info
+  // always lands on the directory it was opened from, not a pile of dialogs.
   const [roomInfoOpen, setRoomInfoOpen] = useState<string | null>(null);
+  const [allRoomsOpen, setAllRoomsOpen] = useState(false);
   const [newSchedOpen, setNewSchedOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmItemDelete, setConfirmItemDelete] = useState<ScheduleItem | null>(null);
@@ -2025,30 +2049,25 @@ export function ScheduleView({
                         {LOCATION_ICONS[it.location] ?? "📍"}
                       </span>
                     )}
-                    {it.location === ASSIGNED_ROOM_TOKEN ? (
-                      // Only the assigned-room text links out — it's the one
-                      // location value that's literally "a room number" a
-                      // therapist might not recognize; the other locations
-                      // (Kitchen, Big Gym, etc.) are already self-explanatory
-                      // named areas, not a room number needing a lookup.
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRoomInfoOpen(assignedRoom);
-                        }}
-                        className="text-xs flex-1 min-w-0 text-left leading-tight underline decoration-dotted underline-offset-2 text-blue-700"
-                        style={textHalo(rowHaloColor)}
-                      >
-                        <ScrubText text={assignedRoom} className="text-xs leading-tight" />
-                      </button>
-                    ) : (
+                    {/* Every location links out now, not just the assigned
+                    room — Kitchen/Big Gym/etc. are self-explanatory, but a
+                    tap here still opens the same building directory a
+                    therapist unfamiliar with this clinic would want for any
+                    of them, not only the numbered rooms. */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRoomInfoOpen(resolveLocation(it.location, assignedRoom));
+                      }}
+                      className="text-xs flex-1 min-w-0 text-left leading-tight underline decoration-dotted underline-offset-2 text-blue-700"
+                      style={textHalo(rowHaloColor)}
+                    >
                       <ScrubText
                         text={resolveLocation(it.location, assignedRoom)}
-                        className="text-xs flex-1 leading-tight"
-                        style={textHalo(rowHaloColor)}
+                        className="text-xs leading-tight"
                       />
-                    )}
+                    </button>
                   </div>
                   <div className="flex items-start justify-center gap-0.5 -mt-1">
                     {editMode ? (
@@ -2241,7 +2260,26 @@ export function ScheduleView({
         }}
       />
 
-      <RoomInfoDialog room={roomInfoOpen} onClose={() => setRoomInfoOpen(null)} />
+      <RoomInfoDialog
+        room={roomInfoOpen}
+        onClose={() => setRoomInfoOpen(null)}
+        onSeeAllRooms={() => {
+          setRoomInfoOpen(null);
+          setAllRoomsOpen(true);
+        }}
+        items={items}
+        assignedRoom={assignedRoom}
+        use24HourTime={use24HourTime}
+      />
+
+      <AllRoomsDialog
+        open={allRoomsOpen}
+        onClose={() => setAllRoomsOpen(false)}
+        onPickRoom={(room) => {
+          setAllRoomsOpen(false);
+          setRoomInfoOpen(room);
+        }}
+      />
 
       <AppointmentDialog
         open={!!editingAppt || creatingAppt}
@@ -2412,85 +2450,139 @@ function ConfirmDialog({
   );
 }
 
-// Simple schematic top-down layout — not an actual floor plan of any real
-// room (this app has no per-room layout data), just a generic wayfinding
-// sketch (door, table, seating) so the shape reads as "a room" rather than
-// a literal diagram someone might expect to match the real space exactly.
-function RoomFloorPlanSketch({ room }: { room: string }) {
+// A schematic directory-style floor plan — not an actual architectural
+// layout (this app has no real per-room position data), just the building's
+// rooms grouped into their two wings (numbered treatment rooms vs. named
+// common areas) and grid-arranged like adjoining rooms sharing walls, which
+// reads as "a floor plan" without needing hand-placed coordinates for each
+// one. `highlight` is a resolved room/area name (never ASSIGNED_ROOM_TOKEN
+// itself) — whichever cell matches it renders as the current room.
+function BuildingFloorPlan({ highlight }: { highlight: string }) {
   return (
-    <svg viewBox="0 0 200 140" className="w-full h-auto" aria-hidden>
-      <rect
-        x="4"
-        y="4"
-        width="192"
-        height="132"
-        rx="4"
-        fill="var(--color-now-chevron-muted, #f5f5f4)"
-        fillOpacity="0.4"
-        stroke="currentColor"
-        strokeOpacity="0.4"
-        strokeWidth="2"
-      />
-      {/* door notch, bottom-left */}
-      <rect x="20" y="128" width="28" height="8" fill="white" />
-      <path
-        d="M 20 136 L 20 108 A 28 28 0 0 1 48 136"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1.5"
-      />
-      {/* table + chairs, centered */}
-      <rect
-        x="76"
-        y="52"
-        width="48"
-        height="30"
-        rx="3"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.55"
-        strokeWidth="2"
-      />
-      <circle cx="70" cy="60" r="6" fill="currentColor" fillOpacity="0.3" />
-      <circle cx="70" cy="76" r="6" fill="currentColor" fillOpacity="0.3" />
-      <circle cx="130" cy="60" r="6" fill="currentColor" fillOpacity="0.3" />
-      <circle cx="130" cy="76" r="6" fill="currentColor" fillOpacity="0.3" />
-      <text
-        x="100"
-        y="24"
-        textAnchor="middle"
-        fontSize="13"
-        fontWeight="600"
-        fill="currentColor"
-        fillOpacity="0.6"
-      >
-        {room}
-      </text>
-    </svg>
+    <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+        Treatment Rooms
+      </p>
+      <div className="grid grid-cols-5 gap-1 mb-3">
+        {TREATMENT_ROOMS.map((r) => (
+          <FloorPlanCell
+            key={r}
+            icon={locationIcon(r)}
+            label={r.replace("Room ", "")}
+            highlighted={r === highlight}
+          />
+        ))}
+      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+        Common Areas
+      </p>
+      <div className="grid grid-cols-4 gap-1">
+        {COMMON_AREAS.map((r) => (
+          <FloorPlanCell key={r} icon={locationIcon(r)} label={r} highlighted={r === highlight} />
+        ))}
+      </div>
+    </div>
   );
 }
 
-function RoomInfoDialog({ room, onClose }: { room: string | null; onClose: () => void }) {
+function FloorPlanCell({
+  icon,
+  label,
+  highlighted,
+}: {
+  icon: string;
+  label: string;
+  highlighted: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-0.5 rounded-sm border px-1 py-1.5 text-center leading-tight",
+        highlighted
+          ? "border-blue-400 bg-blue-100 text-blue-700 ring-2 ring-blue-300"
+          : "border-stone-200 bg-white text-stone-500",
+      )}
+    >
+      <span className="text-xs leading-none">{icon}</span>
+      <span className="text-[9px] font-medium">{label}</span>
+    </div>
+  );
+}
+
+function RoomInfoDialog({
+  room,
+  onClose,
+  onSeeAllRooms,
+  items,
+  assignedRoom,
+  use24HourTime,
+}: {
+  room: string | null;
+  onClose: () => void;
+  onSeeAllRooms: () => void;
+  /** The active schedule's own items — filtered below to whichever ones
+   *  resolve to `room`, so the dialog can show what's actually happening
+   *  there today rather than just naming the space. */
+  items: ScheduleItem[];
+  assignedRoom: string;
+  use24HourTime: boolean;
+}) {
+  const activitiesHere = room
+    ? items
+        .filter((it) => resolveLocation(it.location, assignedRoom) === room)
+        .sort((a, b) => toMin(a.start) - toMin(b.start))
+    : [];
+
   return (
     <Dialog open={room !== null} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm text-stone-700">
         <DialogHeader>
-          <DialogTitle>{room}</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            <span aria-hidden>{room && locationIcon(room)}</span>
+            {room}
+          </DialogTitle>
           <DialogDescription>
             {CLINIC_INFO.name} &middot; {CLINIC_INFO.branch}
           </DialogDescription>
         </DialogHeader>
-        {room && (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-stone-500">
-            <RoomFloorPlanSketch room={room} />
-          </div>
-        )}
+        {room && <BuildingFloorPlan highlight={room} />}
         <div className="flex items-start gap-2 text-sm">
           <MapPin className="size-4 shrink-0 mt-0.5 text-stone-400" />
           <span>{CLINIC_INFO.address}</span>
         </div>
-        <DialogFooter>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+            Today's Activities Here
+          </p>
+          {activitiesHere.length > 0 ? (
+            <ul className="flex flex-col gap-1">
+              {activitiesHere.map((it) => (
+                <li key={it.id} className="flex items-center gap-2 text-sm">
+                  <span className="text-xs tabular-nums text-stone-400 shrink-0 w-12">
+                    {fmt12(it.start, use24HourTime)}
+                  </span>
+                  <span className="truncate">
+                    {it.activity === "Custom" ? (it.customName ?? "Custom") : it.activity}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground/70">
+              Nothing on today's schedule is in this room.
+            </p>
+          )}
+        </div>
+        {/* Row, not stacked, even at narrow widths — same override as the
+            other side-by-side dialog footers in this file. */}
+        <DialogFooter className="flex-row justify-between gap-2 space-x-0">
+          <Button
+            variant="outline"
+            className="rounded-full border-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={onSeeAllRooms}
+          >
+            See All Rooms
+          </Button>
           <Button
             className="rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white"
             onClick={onClose}
@@ -2500,6 +2592,64 @@ function RoomInfoDialog({ room, onClose }: { room: string | null; onClose: () =>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AllRoomsDialog({
+  open,
+  onClose,
+  onPickRoom,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPickRoom: (room: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm text-stone-700">
+        <DialogHeader>
+          <DialogTitle>All Rooms</DialogTitle>
+          <DialogDescription>
+            {CLINIC_INFO.name} &middot; {CLINIC_INFO.branch}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto -mx-6 px-6">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+            Treatment Rooms
+          </p>
+          <ul className="flex flex-col gap-0.5 mb-4">
+            {TREATMENT_ROOMS.map((r) => (
+              <AllRoomsRow key={r} room={r} onPick={onPickRoom} />
+            ))}
+          </ul>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
+            Common Areas
+          </p>
+          <ul className="flex flex-col gap-0.5">
+            {COMMON_AREAS.map((r) => (
+              <AllRoomsRow key={r} room={r} onPick={onPickRoom} />
+            ))}
+          </ul>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AllRoomsRow({ room, onPick }: { room: string; onPick: (room: string) => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onPick(room)}
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-stone-100 transition-colors"
+      >
+        <span className="text-sm leading-none shrink-0" aria-hidden>
+          {locationIcon(room)}
+        </span>
+        <span className="flex-1 min-w-0 truncate">{room}</span>
+      </button>
+    </li>
   );
 }
 
