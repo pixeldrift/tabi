@@ -1150,29 +1150,28 @@ export function StatusBar({
                           // an SVG path is the only way to get a single outline around the
                           // whole silhouette. Percentage viewBox + non-scaling-stroke keeps
                           // the border a constant width regardless of this tab's own size.
-                          // Geometry traced from the logo's own reference ear shape (see
-                          // Ears_Tab.svg — its flat "wing" shoulders either side were just
-                          // that file's own mockup tab bar for scale reference, not part of
-                          // the shape itself, so only the two peaks + valley between them
-                          // are reproduced here), repositioned to sit centered over the
-                          // middle 60% of the tab (x=20 to x=80) with flat shoulders on
-                          // either side at y=25 (the "normal, unraised" top edge — see the
-                          // wrapper's own -top-2.5 comment for why 25 is that level) rather
-                          // than rising from the tab's own corners the way the old
-                          // straight-triangle ears did. Each shoulder rises straight to its
-                          // peak in one segment — an earlier pass added an extra waypoint
-                          // partway up each side (approximating the reference's own curved
-                          // wall-to-peak rounding as two line segments instead of one), but
-                          // that read as a second, unwanted bump outside the real ear tip,
-                          // so those two outermost points are dropped. Still plain
-                          // straight-line segments, not the reference's own bezier tip
-                          // curves — at this icon's real rendered size (a handful of pixels
-                          // tall) the curve's own control-point deltas came out sub-pixel
-                          // and just looked like a boxy notch; stroke-linejoin="round"
-                          // below does the same corner-softening job the old triangle ears
-                          // already relied on, and reads fine at this scale where a true
-                          // curve doesn't. Open path (no segment back across the bottom)
-                          // mirrors this tab's own border-b-0.
+                          // Geometry pixel-traced from the reference mockup JPG (each
+                          // ear's outline sampled column-by-column, decimated to ~13
+                          // points per side) rather than hand-authored — the earlier
+                          // hand-built versions (a symmetric valley-notch, then a
+                          // corner-to-corner bump) both missed the reference's actual
+                          // silhouette: no valley — the top stays flat between the ears —
+                          // and each ear itself is asymmetric (a short rise from the wall
+                          // straight into the peak, then a longer, shallower curve back
+                          // down to the flat top), which reads as a proper curl rather
+                          // than a symmetric bump. Plain straight-line segments rather
+                          // than bezier curves — with ~13 points per side the polyline
+                          // already reads as smooth once stroke-linejoin="round" (below)
+                          // softens each vertex, without the sub-pixel-control-point
+                          // problem a single bezier hit at this icon's tiny real size.
+                          // Coordinates are scaled so the reference's own wall-to-wall
+                          // width maps to this path's full 0-100, and its flat-top level
+                          // maps to y=25 (see the wrapper's own -top-2.5 comment for why
+                          // 25 is "normal, unraised" here) — note the curve's wall end
+                          // sits above y=25 already (the reference has no flat vertical
+                          // run before the ear starts), so the peaks rise almost the full
+                          // curve height directly from each corner. Open path (no segment
+                          // back across the bottom) mirrors this tab's own border-b-0.
                           <div
                             // -top-2.5 (10px): unlike the old corner-flush triangles (which
                             // needed no headroom beyond a hairline nick — a sharp corner
@@ -1201,7 +1200,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,25 L20,25 L25.08,0 L31.13,3.56 L68.87,3.56 L74.93,0 L80,25 L100,25 L100,100"
+                                d="M0,100 L0,19.58 L0.49,18.1 L2.46,16.13 L4.43,14.66 L6.4,14.16 L8.37,14.16 L10.34,14.66 L12.32,16.13 L14.29,18.1 L16.26,20.07 L18.23,22.04 L20.2,24.01 L22.17,25 L77.34,25 L79.31,24.51 L81.28,23.03 L83.25,21.06 L85.22,19.09 L87.19,17.12 L89.16,15.64 L91.13,14.66 L93.1,14.16 L95.07,14.66 L97.04,15.64 L99.01,17.12 L100,18.6 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={2}
                                 strokeLinejoin="round"
