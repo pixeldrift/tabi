@@ -1150,22 +1150,34 @@ export function StatusBar({
                           // an SVG path is the only way to get a single outline around the
                           // whole silhouette. Percentage viewBox + non-scaling-stroke keeps
                           // the border a constant width regardless of this tab's own size.
-                          // Each ear is a plain straight-sided triangle — like the tab's own
-                          // corner rotated up into a point, not a curved hook — with every
-                          // vertex (both tips and the two valley corners) getting the same
-                          // soft rounding from stroke-linejoin="round" rather than the path
-                          // data itself (a slightly thicker stroke here is what makes that
-                          // rounding read as more than a hairline nick). A wide flat run
-                          // between the two ears' inner edges — wider than the ears
-                          // themselves are — keeps the tips small and the two ears reading
-                          // as a minor detail on top of the tab, not the dominant shape.
-                          // Ears rise straight from x=0/x=100 — flush with the tab's own
-                          // left/right edges, continuing that edge upward rather than
-                          // sitting inset from it. Open path (no segment back across the
-                          // bottom) mirrors this tab's own border-b-0.
+                          // Geometry traced from the logo's own reference ear shape (see
+                          // Ears_Tab.svg — its flat "wing" shoulders either side were just
+                          // that file's own mockup tab bar for scale reference, not part of
+                          // the shape itself, so only the two peaks + valley between them
+                          // are reproduced here), repositioned to sit centered over the
+                          // middle 60% of the tab (x=20 to x=80) with flat shoulders on
+                          // either side at y=25 (the "normal, unraised" top edge — see the
+                          // wrapper's own -top-2.5 comment for why 25 is that level) rather
+                          // than rising from the tab's own corners the way the old
+                          // straight-triangle ears did. Still plain straight-line segments,
+                          // not the reference's own bezier tip curves — at this icon's real
+                          // rendered size (a handful of pixels tall) the curve's own control-
+                          // point deltas came out sub-pixel and just looked like a boxy
+                          // notch; stroke-linejoin="round" below does the same corner-
+                          // softening job the old triangle ears already relied on, and reads
+                          // fine at this scale where a true curve doesn't. Open path (no
+                          // segment back across the bottom) mirrors this tab's own
+                          // border-b-0.
                           <div
-                            // -top-1 (4px, down from an earlier 8px try) — kept low so the
-                            // ears read as a small flourish rather than a tall spike.
+                            // -top-2.5 (10px): unlike the old corner-flush triangles (which
+                            // needed no headroom beyond a hairline nick — a sharp corner
+                            // reads as a corner at any height), these curved, centered peaks
+                            // need real vertical room for the curve itself to read as
+                            // rounded rather than squashed flat. y=25 in the viewBox below
+                            // is calibrated to this exact offset (10px extension over a
+                            // ~30px-tall mobile tab ≈ 25% of the extended box) as "the real
+                            // button edge, unraised" — the shoulders sit there so they meet
+                            // the tab's own corners with no visible seam.
                             //
                             // The absolute positioning lives on this plain div, not the
                             // svg directly — an <svg> is a replaced element, and a replaced
@@ -1175,7 +1187,7 @@ export function StatusBar({
                             // gap the way a normal block does. That silently produced a
                             // fixed square box unrelated to this tab's real size. A plain
                             // div stretches correctly, and the svg then just fills it.
-                            className="pointer-events-none absolute inset-x-0 -top-1 bottom-0 sm:hidden"
+                            className="pointer-events-none absolute inset-x-0 -top-2.5 bottom-0 sm:hidden"
                             aria-hidden="true"
                           >
                             <svg
@@ -1184,7 +1196,7 @@ export function StatusBar({
                               preserveAspectRatio="none"
                             >
                               <path
-                                d="M0,100 L0,0 L30,16 L70,16 L100,0 L100,100"
+                                d="M0,100 L0,25 L20,25 L20,1.24 L25.08,0 L31.13,3.56 L68.87,3.56 L74.93,0 L80,1.24 L80,25 L100,25 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
                                 strokeWidth={2}
                                 strokeLinejoin="round"
