@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { TAIL_SWISH_FRAMES, TAIL_SWISH_VIEWBOX } from "@/lib/tailSwishFrames";
+import { cn } from "@/lib/utils";
 
 // Frame 0 repeated on the end closes the loop — the traced GIF's own last
 // frame doesn't quite land back on its first, so without this the loop
@@ -40,14 +41,25 @@ export function TailSwish({
     <svg
       viewBox={TAIL_SWISH_VIEWBOX}
       fill="none"
-      className={className}
+      // The viewBox is fit to the traced centerline itself, with no margin
+      // for strokeWidth — at a thick stroke, the round cap at the curve's
+      // widest swings pokes past that boundary, and an <svg> clips to its
+      // own viewBox by default. overflow-visible (same fix the cat-ear tab
+      // shape's own side walls needed, for the same reason) lets that
+      // sliver actually render instead of getting cut off.
+      className={cn("overflow-visible", className)}
       preserveAspectRatio={preserveAspectRatio}
       aria-hidden
     >
       <motion.path
         initial={{ d: LOOP_FRAMES[0] }}
         animate={{ d: LOOP_FRAMES }}
-        transition={{ duration: durationSec, repeat: Infinity, ease: "easeInOut" }}
+        // linear, not easeInOut: keyframe easing applies per-segment, so
+        // easeInOut decelerates into and re-accelerates out of EVERY one of
+        // the 16 frames — each frame boundary reads as a brief pause/step
+        // rather than one continuous motion. Constant velocity between
+        // frames is what actually blends them smoothly.
+        transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
         stroke="currentColor"
         strokeWidth={strokeWidth}
         strokeLinecap="round"

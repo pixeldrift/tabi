@@ -2035,7 +2035,12 @@ function TabBarTailSwish({ hidden }: { hidden: boolean }) {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 32, opacity: 0 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          className="flex items-end px-1 py-1.5 sm:py-2 text-foreground/35"
+          // No vertical padding, unlike the tab/icon siblings' own py-1.5
+          // sm:py-2 — those pad a small icon away from the shared bottom
+          // edge on purpose, but the tail is supposed to read as attached
+          // to the bar it's poking up from, so its own base needs to sit
+          // flush against that edge instead of floating above it.
+          className="flex items-end px-1 text-foreground/35"
         >
           <TailSwish
             className="w-12 h-8"
