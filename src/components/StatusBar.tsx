@@ -1102,7 +1102,7 @@ export function StatusBar({
                 role="tablist"
                 aria-label="Session sections"
               >
-                <div className="flex items-end gap-0.5 sm:gap-1 -ml-3" data-tour="tab-bar">
+                <div className="relative flex items-end gap-0.5 sm:gap-1 -ml-3" data-tour="tab-bar">
                   {TABS.map((t) => {
                     const Icon = t.icon;
                     const isActive = t.id === activeTab;
@@ -1122,10 +1122,15 @@ export function StatusBar({
                         data-tour={`tab-${t.id}`}
                         onClick={() => onTabChange(t.id)}
                         className={cn(
-                          // rounded-t-md (down from -lg) so the ear-less corner rounding
-                          // reads consistently with the SVG ear shape's own much smaller
-                          // corner-join radius below, rather than clashing between tabs.
-                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-md border border-b-0 transition-[color,background-color,opacity] duration-300",
+                          // rounded-t-sm (down from -md, originally -lg) so the
+                          // ear-less corner rounding reads consistently with the
+                          // SVG ear shape's own much smaller corner-join radius
+                          // below, rather than clashing between tabs — matters
+                          // more now that the top-of-bar border (further down)
+                          // runs straight across every tab's corner, where a
+                          // bigger radius would leave a visible gap between the
+                          // flat line and the fill curving away underneath it.
+                          "relative flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-t-sm border border-b-0 transition-[color,background-color,opacity] duration-300",
                           isActive
                             ? cn(
                                 "text-foreground font-medium",
@@ -1233,6 +1238,23 @@ export function StatusBar({
                       </button>
                     );
                   })}
+                  {catEarsEnabled && (
+                    // Continues the active tab's own ear-shape border across the
+                    // rest of the bar, so the flat "shoulder" reads as one
+                    // unbroken line the ears rise out of rather than a border
+                    // that only exists under the active tab. Painted after (on
+                    // top of) the tab buttons so it stays fully opaque over the
+                    // inactive tabs' own translucent bg-stone-200/70 fill rather
+                    // than getting tinted by it; harmless where it re-traces the
+                    // active tab's own already-matching flat shoulder. Plain CSS
+                    // border rather than another SVG — it's just a straight
+                    // line, no curve to reproduce — sized to the same 2px as
+                    // the ear path's strokeWidth.
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 border-t-2 border-border sm:hidden"
+                      aria-hidden="true"
+                    />
+                  )}
                   <ActiveDurationIndicator
                     timers={runningTimers}
                     activeTab={activeTab}
