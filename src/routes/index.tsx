@@ -243,7 +243,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
     id: "requests-preferred-item",
     kind: "trial",
     title: "Requests preferred item",
-    phase: "Baseline",
+    phase: "Mastered",
     description:
       "Score correct if the learner independently requests using a full phrase within 5 seconds of the item being visible. Score No Response if the learner does not attempt within the window.",
     minTrials: 8,
