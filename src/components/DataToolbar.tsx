@@ -517,16 +517,21 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
                 // that, regardless of the viewport meta tag's own scale limits
                 // in current iOS versions. Desktop/tablet (sm+) doesn't have
                 // that behavior, so it reverts to the toolbar's own compact size.
-                className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-6 text-base sm:text-xs placeholder:text-stone-400 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
+                className="w-full h-7 rounded-full border border-border bg-white pl-7 pr-7 text-base sm:text-xs placeholder:text-stone-400 shadow-[inset_0_2px_5px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
               />
               {searchQuery && (
+                // size-6 (up from size-4) — the old target was barely bigger
+                // than its own icon and hard to actually land a tap on. A
+                // filled gray circle (not just a bare icon) both grows the
+                // hit area and makes it read as its own tappable control,
+                // not just decoration next to the text.
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 grid place-items-center size-4 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 grid place-items-center size-6 rounded-full bg-stone-200/70 text-stone-500 hover:bg-stone-300 hover:text-stone-700 transition-colors"
                 >
-                  <X className="size-3" />
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
