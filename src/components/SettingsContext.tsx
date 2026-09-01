@@ -74,10 +74,9 @@ const DEFAULT_USE_24_HOUR_TIME = false;
 
 const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
 
-// A fun Easter egg, off by default like the tour/tip auto-shows above —
-// this is a "discover it in Settings" flourish, not something that should
-// just appear unasked on a fresh load.
-const DEFAULT_CAT_EARS_ENABLED = false;
+// A little branded flourish on the active mobile tab, on by default now
+// that the shape/border work is finished.
+const DEFAULT_CAT_EARS_ENABLED = true;
 
 // The guided welcome tour (TourContext.tsx). `tourHintsEnabled` defaults
 // off — auto-launching on a fresh load isn't needed when both WelcomeScreen's
