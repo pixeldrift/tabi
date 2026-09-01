@@ -1,34 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24">
-  <!-- Generator: Adobe Illustrator 30.0.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 123)  -->
-  <defs>
-    <style>
-      .st0 {
-        fill: none;
-        stroke: #000;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 2px;
-      }
-    </style>
-  </defs>
-  <circle class="st0" cx="12" cy="12" r="6.04"/>
-  <line class="st0" x1="12" y1="12" x2="12" y2="8.95"/>
-  <line class="st0" x1="12" y1="12" x2="13.73" y2="12.87"/>
-  <g>
-    <line class="st0" x1="12" y1="3.69" x2="12" y2="2.48"/>
-    <line class="st0" x1="12" y1="21.52" x2="12" y2="20.31"/>
-  </g>
-  <g>
-    <line class="st0" x1="20.31" y1="12" x2="21.52" y2="12"/>
-    <line class="st0" x1="2.48" y1="12" x2="3.69" y2="12"/>
-  </g>
-  <g>
-    <line class="st0" x1="17.87" y1="17.87" x2="18.74" y2="18.74"/>
-    <line class="st0" x1="5.26" y1="5.26" x2="6.13" y2="6.13"/>
-  </g>
-  <g>
-    <line class="st0" x1="17.87" y1="6.13" x2="18.74" y2="5.26"/>
-    <line class="st0" x1="5.26" y1="18.74" x2="6.13" y2="17.87"/>
-  </g>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="6.04" />
+  <line x1="12" y1="12" x2="12" y2="8.95" />
+  <line x1="12" y1="12" x2="13.73" y2="12.87" />
+  <line x1="12" y1="3.69" x2="12" y2="2.48" />
+  <line x1="12" y1="21.52" x2="12" y2="20.31" />
+  <line x1="20.31" y1="12" x2="21.52" y2="12" />
+  <line x1="2.48" y1="12" x2="3.69" y2="12" />
+  <line x1="17.87" y1="17.87" x2="18.74" y2="18.74" />
+  <line x1="5.26" y1="5.26" x2="6.13" y2="6.13" />
+  <line x1="17.87" y1="6.13" x2="18.74" y2="5.26" />
+  <line x1="5.26" y1="18.74" x2="6.13" y2="17.87" />
 </svg>

@@ -14,7 +14,6 @@ import {
   Target,
   MessageSquare,
   Megaphone,
-  CalendarDays,
   Group,
   X,
   Check,
@@ -37,6 +36,7 @@ import {
 import { playAlarmSound } from "@/lib/alarmSounds";
 import { RequestEditIcon } from "./icons/RequestEditIcon";
 import { ApproveEditIcon } from "./icons/ApproveEditIcon";
+import { DailyIcon } from "./icons/DailyIcon";
 import { displayName } from "./StaffDirectory";
 import { useStickyCompact } from "@/hooks/use-sticky-compact";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,7 @@ const CATEGORY_ICON: Record<NotificationCategory, ComponentType<{ className?: st
   "program-changes": Target,
   messages: MessageSquare,
   edits: RequestEditIcon,
-  schedule: CalendarDays,
+  schedule: DailyIcon,
 };
 
 // Swipe tuning — TODO: surface in user settings.

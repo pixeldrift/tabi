@@ -114,6 +114,7 @@ import { PhoneIcon } from "./PhoneIcon";
 import { RequestEditIcon } from "./RequestEditIcon";
 import { ChecklistIcon } from "./ChecklistIcon";
 import { ProductIcon } from "./ProductIcon";
+import { DailyIcon } from "./DailyIcon";
 import { HandshakeIcon } from "./HandshakeIcon";
 import { ApproveEditIcon } from "./ApproveEditIcon";
 import { ForwardChainingIcon } from "./ForwardChainingIcon";
@@ -304,7 +305,12 @@ export const ICON_GROUPS: IconGroup[] = [
     group: "Navigation & misc",
     icons: [
       lucide("ClipboardList", "Data tab", ClipboardList),
-      lucide("CalendarDays", "Schedule tab", CalendarDays),
+      custom("Daily", "Schedule tab (today's rotation, not a real calendar)", DailyIcon),
+      lucide(
+        "CalendarDays",
+        "Not yet wired up — reserved for a future full calendar view",
+        CalendarDays,
+      ),
       lucide("User", "Client profile", User),
       custom("Info", "Info tab / helper tooltips", InfoIcon),
       custom("Smiley", "Show/hide icons toggle", SmileyIcon),

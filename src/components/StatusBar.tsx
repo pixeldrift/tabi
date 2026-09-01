@@ -13,7 +13,6 @@ import {
   Pause,
   Timer,
   ClipboardList,
-  CalendarDays,
   Bell,
   Check,
   Trash2,
@@ -32,6 +31,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
+import { DailyIcon } from "./icons/DailyIcon";
 import { PersonPill, staffName } from "./StaffDirectory";
 import {
   markInitialLayoutSettled,
@@ -108,7 +108,7 @@ export const TABS: { id: StatusTab; label: string; icon: ComponentType<{ classNa
   [
     { id: "info", label: "Client Info", icon: InfoIcon },
     { id: "data", label: "Data", icon: ClipboardList },
-    { id: "schedule", label: "Schedule", icon: CalendarDays },
+    { id: "schedule", label: "Schedule", icon: DailyIcon },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
