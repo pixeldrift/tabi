@@ -88,6 +88,8 @@ export function SettingsPane({
     setKeepActiveCardCentered,
     catEarsEnabled,
     setCatEarsEnabled,
+    tailSwishEnabled,
+    setTailSwishEnabled,
     use24HourTime,
     setUse24HourTime,
     dayStart,
@@ -228,6 +230,24 @@ export function SettingsPane({
               id="catEarsEnabled"
               checked={catEarsEnabled}
               onCheckedChange={setCatEarsEnabled}
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <label htmlFor="tailSwishEnabled" className="text-sm font-medium">
+                Show tail swish
+              </label>
+              <p className="text-xs text-muted-foreground/80 mt-0.5">
+                A little tail pokes up from the tab bar while you're in a running session, swishing
+                idly until a running timer or someone else joining needs that space instead.
+              </p>
+            </div>
+            <Switch
+              id="tailSwishEnabled"
+              checked={tailSwishEnabled}
+              onCheckedChange={setTailSwishEnabled}
               className="shrink-0"
             />
           </div>

@@ -301,7 +301,7 @@ export function StatusBar({
     previousSessionMs,
     previousSessionEndedAt,
   } = useSession();
-  const { catEarsEnabled } = useSettings();
+  const { catEarsEnabled, tailSwishEnabled } = useSettings();
 
   // See use-initial-layout-settle's own comment — this box's demo-only
   // "Previous Session" row growing the box shortly after mount is real,
@@ -1253,11 +1253,12 @@ export function StatusBar({
                     // agree with the same "am I actually in and driving this
                     // session" condition the mini pill itself collapses to
                     // (see its own comment), not just whether a session
-                    // happens to be running for someone else. Kept separate
-                    // from iconOccupied below (see TabBarTailSwish's own
-                    // comment on why) — leaving/entering the session should
-                    // never itself wait on the icon-reappear delay.
-                    inSession={isMineAndRunning}
+                    // happens to be running for someone else. tailSwishEnabled
+                    // folds in here too rather than as a separate condition —
+                    // switching the setting off should hide it immediately,
+                    // same as leaving the session, not wait on the
+                    // icon-reappear delay below either.
+                    inSession={isMineAndRunning && tailSwishEnabled}
                     iconOccupied={runningTimers.length > 0 || otherPresentStaffIds.length > 0}
                   />
                 </div>

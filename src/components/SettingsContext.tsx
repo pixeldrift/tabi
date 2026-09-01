@@ -78,6 +78,11 @@ const DEFAULT_BOOKMARK_BAR_VISIBLE = true;
 // that the shape/border work is finished.
 const DEFAULT_CAT_EARS_ENABLED = true;
 
+// The tail-swish idle animation poking up from the tab bar (StatusBar's own
+// TabBarTailSwish) — on by default alongside the ears now that its own
+// shape/timing work is finished, same reasoning as DEFAULT_CAT_EARS_ENABLED.
+const DEFAULT_TAIL_SWISH_ENABLED = true;
+
 // The guided welcome tour (TourContext.tsx). `tourHintsEnabled` defaults
 // off — auto-launching on a fresh load isn't needed when both WelcomeScreen's
 // "Preview guided tour" button and Settings' own "Replay welcome tour" button
@@ -168,6 +173,12 @@ interface SettingsContextValue {
    *  fit for the same treatment — see StatusBar's own tab bar). */
   catEarsEnabled: boolean;
   setCatEarsEnabled: (v: boolean) => void;
+  /** Idle tail-swish animation poking up from the tab bar while a session
+   *  is running and mine (see StatusBar's own TabBarTailSwish). Same
+   *  "little branded flourish, mobile-agnostic" spirit as catEarsEnabled,
+   *  just its own separate toggle since the two are independent effects. */
+  tailSwishEnabled: boolean;
+  setTailSwishEnabled: (v: boolean) => void;
   /** When true, every on-screen clock/appointment/checkpoint display reads
    *  as plain 24h "HH:MM" instead of the default compact 12h "10:00a"
    *  convention, and the time-entry keypads stop guessing AM/PM (a typed
@@ -241,6 +252,7 @@ interface StoredShape {
   keepActiveCardCentered: boolean;
   bookmarkBarVisible: boolean;
   catEarsEnabled: boolean;
+  tailSwishEnabled: boolean;
   use24HourTime: boolean;
   dayStart: string;
   dayEnd: string;
@@ -268,6 +280,7 @@ function loadStored(): StoredShape {
     keepActiveCardCentered: DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
     bookmarkBarVisible: DEFAULT_BOOKMARK_BAR_VISIBLE,
     catEarsEnabled: DEFAULT_CAT_EARS_ENABLED,
+    tailSwishEnabled: DEFAULT_TAIL_SWISH_ENABLED,
     use24HourTime: DEFAULT_USE_24_HOUR_TIME,
     dayStart: DEFAULT_DAY_START,
     dayEnd: DEFAULT_DAY_END,
@@ -291,6 +304,7 @@ function loadStored(): StoredShape {
       keepActiveCardCentered: parsed.keepActiveCardCentered ?? DEFAULT_KEEP_ACTIVE_CARD_CENTERED,
       bookmarkBarVisible: parsed.bookmarkBarVisible ?? DEFAULT_BOOKMARK_BAR_VISIBLE,
       catEarsEnabled: parsed.catEarsEnabled ?? DEFAULT_CAT_EARS_ENABLED,
+      tailSwishEnabled: parsed.tailSwishEnabled ?? DEFAULT_TAIL_SWISH_ENABLED,
       use24HourTime: parsed.use24HourTime ?? DEFAULT_USE_24_HOUR_TIME,
       dayStart: parsed.dayStart ?? DEFAULT_DAY_START,
       dayEnd: parsed.dayEnd ?? DEFAULT_DAY_END,
@@ -329,6 +343,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
   const [bookmarkBarVisible, setBookmarkBarVisible] = useState(DEFAULT_BOOKMARK_BAR_VISIBLE);
   const [catEarsEnabled, setCatEarsEnabled] = useState(DEFAULT_CAT_EARS_ENABLED);
+  const [tailSwishEnabled, setTailSwishEnabled] = useState(DEFAULT_TAIL_SWISH_ENABLED);
   const [use24HourTime, setUse24HourTime] = useState(DEFAULT_USE_24_HOUR_TIME);
   const [dayStart, setDayStart] = useState(DEFAULT_DAY_START);
   const [dayEnd, setDayEnd] = useState(DEFAULT_DAY_END);
@@ -348,6 +363,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(stored.keepActiveCardCentered);
     setBookmarkBarVisible(stored.bookmarkBarVisible);
     setCatEarsEnabled(stored.catEarsEnabled);
+    setTailSwishEnabled(stored.tailSwishEnabled);
     setUse24HourTime(stored.use24HourTime);
     setDayStart(stored.dayStart);
     setDayEnd(stored.dayEnd);
@@ -372,6 +388,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       bookmarkBarVisible,
       catEarsEnabled,
+      tailSwishEnabled,
       use24HourTime,
       dayStart,
       dayEnd,
@@ -391,6 +408,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     keepActiveCardCentered,
     bookmarkBarVisible,
     catEarsEnabled,
+    tailSwishEnabled,
     use24HourTime,
     dayStart,
     dayEnd,
@@ -419,6 +437,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setKeepActiveCardCentered(DEFAULT_KEEP_ACTIVE_CARD_CENTERED);
     setBookmarkBarVisible(DEFAULT_BOOKMARK_BAR_VISIBLE);
     setCatEarsEnabled(DEFAULT_CAT_EARS_ENABLED);
+    setTailSwishEnabled(DEFAULT_TAIL_SWISH_ENABLED);
     setUse24HourTime(DEFAULT_USE_24_HOUR_TIME);
     setDayStart(DEFAULT_DAY_START);
     setDayEnd(DEFAULT_DAY_END);
@@ -453,6 +472,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setBookmarkBarVisible,
       catEarsEnabled,
       setCatEarsEnabled,
+      tailSwishEnabled,
+      setTailSwishEnabled,
       use24HourTime,
       setUse24HourTime,
       dayStart,
@@ -484,6 +505,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keepActiveCardCentered,
       bookmarkBarVisible,
       catEarsEnabled,
+      tailSwishEnabled,
       use24HourTime,
       dayStart,
       dayEnd,
