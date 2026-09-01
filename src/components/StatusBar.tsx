@@ -873,14 +873,14 @@ export function StatusBar({
     const measure = () => {
       const barRect = barEl.getBoundingClientRect();
       const tabRect = tabEl.getBoundingClientRect();
-      // Inset 2px from each edge — the ear SVG's side walls render with
-      // their own ~2px of ink starting exactly at the tab's own left/right
+      // Inset 1px from each edge — the ear SVG's side walls render with
+      // their own ~1px of ink starting exactly at the tab's own left/right
       // edge (not straddling it), so a patch sized to the full tabRect
       // erased the border under the walls themselves, leaving a gap
       // instead of a joint. Insetting leaves the border showing through
       // right where each wall is, so it reads as one continuous outline
       // turning the corner rather than a wall floating above a gap.
-      setTabBlend({ top: barRect.bottom, left: tabRect.left + 2, width: tabRect.width - 4 });
+      setTabBlend({ top: barRect.bottom, left: tabRect.left + 1, width: tabRect.width - 2 });
     };
     measure();
     // A ResizeObserver on the bar itself (not the tab) catches every case
@@ -1216,7 +1216,7 @@ export function StatusBar({
                               <path
                                 d="M0,100 L0,19.58 L0.49,18.1 L2.46,16.13 L4.43,14.66 L6.4,14.16 L8.37,14.16 L10.34,14.66 L12.32,16.13 L14.29,18.1 L16.26,20.07 L18.23,22.04 L20.2,24.01 L22.17,25 L77.34,25 L79.31,24.51 L81.28,23.03 L83.25,21.06 L85.22,19.09 L87.19,17.12 L89.16,15.64 L91.13,14.66 L93.1,14.16 L95.07,14.66 L97.04,15.64 L99.01,17.12 L100,18.6 L100,100"
                                 style={{ fill: "var(--background)", stroke: "var(--border)" }}
-                                strokeWidth={2}
+                                strokeWidth={1}
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
                                 vectorEffect="non-scaling-stroke"
@@ -1528,15 +1528,15 @@ export function StatusBar({
       {/* Blends the content pane's own border-t (routes/index.tsx) under
           whichever tab is active — see the tabBlend effect above for why
           this has to live outside data-status-bar's overflow-hidden rather
-          than as a child of the active tab itself. h-1 (4px) rather than
-          the default h-px when cat ears are on — that border is only 2px
-          there (matching the ears' own stroke, see tabSeamBorderClass in
+          than as a child of the active tab itself. h-0.5 (2px) rather than
+          the default h-px when cat ears are on — the border there is only
+          1px (matching the ears' own stroke, see tabSeamBorderClass in
           routes/index.tsx), but the active tab's own box already sits a
           px or so past data-status-bar's own overflow-hidden edge (a
           pre-existing rounding quirk — extending the ear SVG itself
           further down to compensate does nothing, since anything past
           that edge is clipped before it can render). Doubling the patch
-          rather than just matching the 2px covers that slop without
+          rather than just matching the 1px covers that slop without
           needing to chase its exact size. sm: drops back to h-px
           alongside the border's own sm:border-t reverting to 1px on
           desktop, where ears never show. */}
@@ -1545,7 +1545,7 @@ export function StatusBar({
           aria-hidden
           className={cn(
             "fixed z-40 bg-background pointer-events-none",
-            catEarsEnabled ? "h-1 sm:h-px" : "h-px",
+            catEarsEnabled ? "h-0.5 sm:h-px" : "h-px",
           )}
           style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
         />

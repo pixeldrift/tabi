@@ -223,7 +223,7 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
         // in routes/index.tsx) — otherwise the Data tab is the one place
         // that border doesn't show up until below this whole toolbar,
         // where its content pane's own border-t actually lives.
-        catEarsEnabled && "border-t-2 border-border sm:border-t-0",
+        catEarsEnabled && "border-t border-border sm:border-t-0",
       )}
     >
       {/* Named separately from data-toolbar above — this is just the row's

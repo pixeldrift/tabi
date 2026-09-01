@@ -1394,20 +1394,20 @@ function IndexInner({
   const toolbarHeight = useElementHeight("[data-toolbar]");
   const { keepActiveCardCentered, tourHintsEnabled, tourCompleted, defaultTab, catEarsEnabled } =
     useSettings();
-  // Mobile-only, matching the cat ears themselves (sm:hidden) — upgrades
-  // the content pane's own top border from the ordinary 1px border-stone-
-  // 200 to the same 2px border-border stroke the ears use, so the two read
-  // as one continuous outline rather than two different border styles
-  // meeting where the tab bar ends. StatusBar's own tabBlend covers this
-  // same seam under whichever tab is active (see its comment) — this only
-  // ever paints visibly for the other tabs and the gaps between them.
+  // Mobile-only, matching the cat ears themselves (sm:hidden) — recolors
+  // the content pane's own 1px top border from the ordinary border-stone-
+  // 200 to the same border-border the ears use, so the two read as one
+  // continuous outline rather than two different border colors meeting
+  // where the tab bar ends. StatusBar's own tabBlend covers this same seam
+  // under whichever tab is active (see its comment) — this only ever
+  // paints visibly for the other tabs and the gaps between them.
   // Used by the info/schedule/notifications/settings panes only — the Data
   // pane's own content sits below the whole DataToolbar, not directly
   // under the tabs, so it keeps its plain default border instead and
   // DataToolbar carries this same treatment on its own top edge (see its
   // own comment).
   const tabSeamBorderClass = catEarsEnabled
-    ? "border-t-2 border-border sm:border-t sm:border-stone-200"
+    ? "border-t border-border sm:border-t sm:border-stone-200"
     : "border-t border-stone-200";
   // Settings loads its persisted value asynchronously (see SettingsProvider),
   // so the very first render here still sees the pre-hydration default. Once
