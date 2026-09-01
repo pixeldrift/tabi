@@ -24,7 +24,7 @@ fixed-at-creation, same as a WordPress post type.
 |---|---|---|---|---|
 | `trial` | Percent Correct | Percent | `PercentCorrectIcon` | Tracks correct vs. incorrect responses across a set of discrete trials, then reports the percentage answered correctly. Best for skills with a clear right or wrong answer. |
 | `frequency` | Frequency | Frequency | `FrequencyIcon` | Counts how many times a behavior occurs during an observation period. Best for behaviors with a clear, quick start and end. |
-| `rate` | Rate | Rate | `RateIcon` | Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate (count per minute), so sessions of different lengths stay comparable. |
+| `rate` | Rate | Rate | `RateIcon` | Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate (count per hour), so sessions of different lengths stay comparable. |
 | `duration` | Duration | Duration | `DurationIcon` | Times how long a behavior lasts, from start to finish, using a built-in stopwatch per instance. |
 | `task-analysis` | Task Analysis | Task | `TaskAnalysisIcon` | Breaks a multi-step skill into its individual steps, then tracks each step's own level of independence. |
 | `rating` | Score | Score | `Star` (filled, lucide) | Captures a subjective rating on a fixed scale for something that isn't a simple count. |

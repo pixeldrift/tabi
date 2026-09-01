@@ -43,7 +43,7 @@ export function useRateChip(cardKey: string) {
   const [count, setCount] = useCardState(cardKey, "count", 0);
   const [elapsed] = useCardState(cardKey, "elapsed", 0);
   const { markDirty, canRecordData } = useCardSession();
-  const ratePerMin = elapsed > 0 ? count / (elapsed / 60_000) : 0;
+  const ratePerHour = elapsed > 0 ? count / (elapsed / 3_600_000) : 0;
   const increment = () => {
     setCount((c) => c + 1);
     markDirty();
@@ -54,7 +54,7 @@ export function useRateChip(cardKey: string) {
     markDirty();
     playSoundEffect("tallyDown");
   };
-  return { count, ratePerMin, increment, decrement, canRecordData };
+  return { count, ratePerHour, increment, decrement, canRecordData };
 }
 
 export function RateCard({
@@ -141,12 +141,12 @@ export function RateCard({
   // whether anyone's tallied anything — it's the denominator a rate needs
   // — so hasData is true (there's a real clock running) well before any
   // instance is tallied, and the rate itself is 0 rather than undefined.
-  const ratePerMin = elapsed > 0 ? count / (elapsed / 60_000) : 0;
+  const ratePerHour = elapsed > 0 ? count / (elapsed / 3_600_000) : 0;
   useReportCardStatus(cardKey, count > 0 || elapsed > 0, isComplete, {
     title,
     kind: "rate",
     value: `${count}`,
-    unit: `${ratePerMin.toFixed(1)} per minute`,
+    unit: `${ratePerHour.toFixed(1)} per hour`,
   });
 
   useEffect(() => {
@@ -245,7 +245,7 @@ export function RateCard({
               <DrawerQuickFacts
                 icon={<RateIcon />}
                 kind="rate"
-                dataTypeLabel="Rate (per minute)"
+                dataTypeLabel="Rate (per hour)"
                 phase={phase}
                 stats={[
                   ...(minDurationSec !== undefined
@@ -392,7 +392,7 @@ export function RateCard({
         title={title}
         dataTypeIcon={<RateIcon />}
         kind="rate"
-        dataTypeLabel="Rate / Min"
+        dataTypeLabel="Rate / Hr"
         isActive={isActive}
         onActivate={onActivate}
         reorderEditing={reorderEditing}
@@ -414,7 +414,7 @@ export function RateCard({
             <DrawerQuickFacts
               icon={<RateIcon />}
               kind="rate"
-              dataTypeLabel="Rate (per minute)"
+              dataTypeLabel="Rate (per hour)"
               phase={phase}
               stats={[
                 ...(minDurationSec !== undefined
@@ -485,7 +485,7 @@ export function RateCard({
       <CardShell
         title={title}
         phase={phase}
-        dataType="Rate / Min"
+        dataType="Rate / Hr"
         dataTypeIcon={<RateIcon />}
         kind="rate"
         isActive={isActive}
@@ -512,7 +512,7 @@ export function RateCard({
             <DrawerQuickFacts
               icon={<RateIcon />}
               kind="rate"
-              dataTypeLabel="Rate (per minute)"
+              dataTypeLabel="Rate (per hour)"
               phase={phase}
               stats={[
                 ...(minDurationSec !== undefined

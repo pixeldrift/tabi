@@ -53,7 +53,7 @@ export const DATA_TYPE_INFO: Record<CardKind, DataTypeInfo> = {
     shortLabel: "Rate",
     icon: createElement(RateIcon),
     description:
-      "Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate, such as count per minute or hour. This lets sessions of different lengths still be compared fairly.",
+      "Counts occurrences the same way Frequency does, but divides by the length of the observation to produce a rate — count per hour. This lets sessions of different lengths still be compared fairly.",
   },
   duration: {
     label: "Duration",

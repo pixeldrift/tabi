@@ -333,9 +333,9 @@ const BUILT_IN_CARDS: CardConfig[] = [
     behaviorRole: "interfering",
     phase: "Baseline",
     description:
-      "During a timed observation, tally each flop/drop. Rate is reported as occurrences per minute.",
+      "During a timed observation, tally each flop/drop. Rate is reported as occurrences per hour.",
     teachingProcedure: {
-      goal: "Reduce Phineas's flopping/dropping-to-floor behavior to fewer than 1 occurrence per minute across a timed observation, as it currently interferes with transitions and participation.",
+      goal: "Reduce Phineas's flopping/dropping-to-floor behavior to fewer than 60 occurrences per hour across a timed observation, as it currently interferes with transitions and participation.",
       rationale:
         "Flopping is believed to function as escape from task demands or transitions; tracking rate (not just raw count) lets us compare across sessions of different lengths and see if antecedent strategies are reducing it.",
       procedure:
@@ -361,7 +361,7 @@ const BUILT_IN_CARDS: CardConfig[] = [
     minDurationSec: 60,
     locked: true,
     teachingProcedure: {
-      goal: "Increase Phineas's independent AAC-mediated requests to at least 1 per minute across the session, as his primary functional communication mode.",
+      goal: "Increase Phineas's independent AAC-mediated requests to at least 60 per hour across the session, as his primary functional communication mode.",
       rationale:
         "Consistent AAC use is the foundation for reducing frustration-driven behavior and building a communication repertoire that will scale as vocabulary grows.",
       procedure:
@@ -415,9 +415,9 @@ const BUILT_IN_CARDS: CardConfig[] = [
     behaviorRole: "interfering",
     phase: "Intervention",
     description:
-      "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per minute.",
+      "During a timed observation, tally each head-banging instance. Rate is reported as occurrences per hour.",
     teachingProcedure: {
-      goal: "Reduce Phineas's head-banging to fewer than 1 occurrence per minute across a timed observation, prioritized as a safety-critical target.",
+      goal: "Reduce Phineas's head-banging to fewer than 60 occurrences per hour across a timed observation, prioritized as a safety-critical target.",
       rationale:
         "Head-banging carries immediate physical risk and is tracked by rate (not just count) so intensity/frequency changes are visible across observations of different lengths.",
       procedure:
