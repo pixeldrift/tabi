@@ -1195,7 +1195,13 @@ export function StatusBar({
                             aria-hidden="true"
                           >
                             <svg
-                              className="block w-full h-full"
+                              // overflow-visible: the side walls sit exactly on the
+                              // viewBox edges (x=0 and x=100), so half their stroke
+                              // width falls outside it — the default SVG behavior is
+                              // to clip there, which thinned out just the sides
+                              // (the top curve's points all sit safely inside the
+                              // viewBox, so its stroke was never clipped).
+                              className="block w-full h-full overflow-visible"
                               viewBox="0 0 100 100"
                               preserveAspectRatio="none"
                             >
