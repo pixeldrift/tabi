@@ -1521,19 +1521,24 @@ export function StatusBar({
       {/* Blends the content pane's own border-t (routes/index.tsx) under
           whichever tab is active — see the tabBlend effect above for why
           this has to live outside data-status-bar's overflow-hidden rather
-          than as a child of the active tab itself. h-0.5 (2px) rather than
-          the default h-px when cat ears are on — that border is 2px there
-          too (matching the ears' own stroke, see tabSeamBorderClass in
-          routes/index.tsx), so a 1px patch only covered half of it,
-          leaving a thin sliver visible under the active tab. sm: drops
-          back to h-px alongside the border's own sm:border-t reverting to
-          1px on desktop, where ears never show. */}
+          than as a child of the active tab itself. h-1 (4px) rather than
+          the default h-px when cat ears are on — that border is only 2px
+          there (matching the ears' own stroke, see tabSeamBorderClass in
+          routes/index.tsx), but the active tab's own box already sits a
+          px or so past data-status-bar's own overflow-hidden edge (a
+          pre-existing rounding quirk — extending the ear SVG itself
+          further down to compensate does nothing, since anything past
+          that edge is clipped before it can render). Doubling the patch
+          rather than just matching the 2px covers that slop without
+          needing to chase its exact size. sm: drops back to h-px
+          alongside the border's own sm:border-t reverting to 1px on
+          desktop, where ears never show. */}
       {tabBlend && (
         <div
           aria-hidden
           className={cn(
             "fixed z-40 bg-background pointer-events-none",
-            catEarsEnabled ? "h-0.5 sm:h-px" : "h-px",
+            catEarsEnabled ? "h-1 sm:h-px" : "h-px",
           )}
           style={{ top: tabBlend.top, left: tabBlend.left, width: tabBlend.width }}
         />
