@@ -208,21 +208,10 @@ checked off. See git history for what's already shipped.
 
 ### ⚙️ Functionality / Features
 
-- [ ] 🟡 Multi-instance Task Analysis entry (step-by-step + trial navigation,
-      dual nav pattern) — a true necessary feature, not just polish, hence
-      near the top of this list
-- [ ] 🟡 Settings: "Add a new goal" section at the top of the page — A guided
-      workflow to pick a data-collection type and fill in its details (TA
-      steps; correct/incorrect/no-response/prompt-level options; min/max for
-      others), plus free-text sections for the standard drawer content
-      (rationale, procedure, etc.). Leaving a standard section blank should
-      simply omit it from the resulting card's drawer, matching today's
-      SD/Correction/Materials behavior — or a checkbox per section could let
-      the BCBA explicitly opt sections in/out instead — plus an area to add
-      one or more custom sections beyond the standard set. Ideally shows a
-      live preview of the resulting card as the form is filled in, and
-      supports editing in place afterward (access permitting). Lives on the
-      Settings tab for now — likely to move somewhere more prominent later
+- [ ] 🟡 Validate the multi-instance Task Analysis navigation paradigm
+      (step-by-step + trial dual-nav) with real RBTs — it's built and
+      shipped, but the interaction pattern itself hasn't been tested against
+      actual use yet, and may need rework based on what that turns up
 - [ ] 🔴 Hierarchical goal structure: Organize targets into categories and
       sub-categories (a learning tree) instead of today's flat card list —
       a data-model change, not just a UI one. What the tree view mode below
@@ -241,16 +230,6 @@ checked off. See git history for what's already shipped.
       recording data vs. who's submitting it, and let a tech see their
       appointment ending with another tech taking over. Needs a clear
       distinction between "appointment" and "session"
-- [ ] 🟡 "Named trials" — a Percent Correct variant (or a mode on the
-      existing Trial kind) for a fixed, named list of items — each one must
-      be explicitly scored correct/incorrect, and unscored items are simply
-      excluded from the percentage rather than silently counting as
-      incorrect. Distinct from Checklist, whose whole point is the opposite:
-      a fixed list where leaving an item untouched just means it didn't come
-      up, not that it failed — Named Trials is for cases where the BCBA
-      wants every item explicitly accounted for each session (e.g. a fixed
-      assessment battery), which is real added RBT burden Checklist
-      deliberately avoids by design
 - [ ] 🔴 Admin text-editing page — a helper page, linked from Settings, where
       every piece of descriptive prose in the app (anything beyond a plain
       label/title — helper text, placeholders, empty-state copy, tooltips,
@@ -272,7 +251,6 @@ checked off. See git history for what's already shipped.
       that direction — e.g. a stopwatch combined with a number sign somehow
       (a split face reading as both? a small number sign in place of hands?).
       Needs actual visual iteration/approval, not a blind swap
-
 
 ### 🗄️ Long-term Roadmap - Potential Future Features
 
@@ -353,4 +331,4 @@ and scheduling items below all need to respect that split.
       on the RBT side. Deprioritized to the bottom of this list — this demo
       isn't focused on supervisor/BCBA-side functions
 
-_Roadmap last updated: 2026-08-29_
+_Roadmap last updated: 2026-09-01_
