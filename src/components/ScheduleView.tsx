@@ -76,11 +76,13 @@ import {
   DAYS,
   ASSIGNED_ROOM_TOKEN,
   ASSIGNED_ROOM_COUNT,
+  resolveTransfer,
   type Day,
   type AlertMode,
   type AlertSettings,
   type PrimingSettings,
   type Appointment,
+  type TransferParty,
 } from "@/components/ScheduleContext";
 import {
   EDIT_MODE_DURATION_MS,
@@ -984,8 +986,12 @@ export function ScheduleView({
     // Appointments carry the exact same alertCfg/priming shape (and their
     // own add/edit dialog's AlertsBlock lets a user configure it) but were
     // never actually checked here — every appointment alert was silently
-    // dead regardless of what its dialog said.
+    // dead regardless of what its dialog said. "direct" ones are handled in
+    // their own loop below instead (Arrival/Transfer/Dismissal wording, and
+    // — unlike every other appointment here — an end-boundary alert too),
+    // so they're skipped in this generic one to avoid firing both.
     for (const appt of active.appointments) {
+      if (appt.kind !== "related-service") continue;
       const startMin = toMin(appt.start);
       const alertCfg = appt.alertCfg ?? DEFAULT_ALERT;
       const priming = appt.priming;
@@ -1023,6 +1029,62 @@ export function ScheduleView({
             activityAt: activityAtFromSimTime(startMin, nowMin),
             live: inSession && nowMin - primeMin <= STALE_ALERT_GRACE_MIN,
           });
+        }
+      }
+    }
+    // "direct" appointments get the same alertCfg/priming-driven pair as
+    // every other appointment above, at BOTH boundaries rather than just
+    // the start — this is what actually delivers the "5-minute warning,
+    // then an alarm when it happens" for a dismissal/hand-off too, not
+    // only an arrival. Wording matches directMarkers' own icon/text so the
+    // notification and the schedule row it points back to agree.
+    for (const appt of active.appointments) {
+      if (appt.kind !== "direct") continue;
+      for (const boundary of ["start", "end"] as const) {
+        const boundaryMin = toMin(boundary === "start" ? appt.start : appt.end);
+        const alertCfg = appt.alertCfg ?? DEFAULT_ALERT;
+        const priming = appt.priming;
+        const party = resolveTransfer(appt, active.appointments, boundary);
+        const isArrival = boundary === "start";
+        const title =
+          party.type === "guardian" ? (isArrival ? "Arrival" : "Dismissal") : "Transfer";
+        const body =
+          party.type === "guardian"
+            ? isArrival
+              ? "Received from guardian"
+              : "Going home with guardian"
+            : `${isArrival ? "From" : "To"} ${party.name}`;
+        const dedupeBase = `${appt.id}:${boundary}`;
+        if (alertCfg.mode !== "off" && prevMin < boundaryMin && nowMin >= boundaryMin) {
+          pushNotification({
+            dedupeKey: `alert-now:${dedupeBase}:${dayKey}`,
+            kind: "alert-now",
+            title,
+            body,
+            icon: alertCfg.mode === "audio" ? "bell-chime" : "bell",
+            autofadeMs: alertCfg.autofade ? notificationPrefs.notificationDurationMs : undefined,
+            allowSnooze: alertCfg.allowSnooze,
+            sourceRef: { type: "activity", id: appt.id },
+            activityAt: activityAtFromSimTime(boundaryMin, nowMin),
+            live: inSession && nowMin - boundaryMin <= STALE_ALERT_GRACE_MIN,
+          });
+        }
+        if (priming && priming.mode !== "off") {
+          const primeMin = boundaryMin - priming.minutesPrior;
+          if (prevMin < primeMin && nowMin >= primeMin) {
+            pushNotification({
+              dedupeKey: `alert-priming:${dedupeBase}:${dayKey}`,
+              kind: "alert-priming",
+              title,
+              body,
+              icon: priming.mode === "audio" ? "bell-chime" : "bell",
+              autofadeMs: priming.autofade ? notificationPrefs.notificationDurationMs : undefined,
+              allowSnooze: priming.allowSnooze,
+              sourceRef: { type: "activity", id: appt.id },
+              activityAt: activityAtFromSimTime(boundaryMin, nowMin),
+              live: inSession && nowMin - primeMin <= STALE_ALERT_GRACE_MIN,
+            });
+          }
         }
       }
     }
@@ -1327,40 +1389,119 @@ export function ScheduleView({
   // hides the rendered elements via CSS (see `hidden` below), the same
   // instant show/hide as the Icons toggle, rather than mounting/unmounting
   // them and triggering their entrance animation.
+  // Only related-service appointments (Speech, OT, etc.) get the plain
+  // overlay-bar treatment below — a "direct" appointment can span hours
+  // (the RBT's own session), and covering the activities underneath it for
+  // that whole span the same way a 30-minute Speech pull-out does would
+  // hide the very rows this view exists to show. Those get their own
+  // boundary-marker treatment instead — see directMarkers below.
   const visibleAppts = useMemo(() => {
-    return active.appointments.map((a) => {
-      if (layoutMode === "proportional") {
-        const top = (toMin(a.start) - dayStart) * PX_PER_MIN;
-        const height = Math.max(toMin(a.end) - toMin(a.start), MIN_ROW_MIN) * PX_PER_MIN;
-        return { appt: a, top, height };
-      }
-      // Collapsed mode: rows are uniform height regardless of real duration,
-      // so pinning to a row's full top/bottom (as if the appt spanned the
-      // whole row) misrepresents where within the row it actually falls.
-      // Interpolate proportionally within each row's own real time span
-      // instead, same idea as proportional mode but scoped per-row.
-      const pxWithinRow = (row: (typeof itemRowLayout)[number], minutes: number) => {
-        const rowStart = toMin(row.item.start);
-        const rowEnd = toMin(row.item.end);
-        const span = Math.max(rowEnd - rowStart, 1);
-        const frac = Math.min(1, Math.max(0, (minutes - rowStart) / span));
-        return row.top + frac * row.height;
-      };
-      const aStart = toMin(a.start);
-      const aEnd = toMin(a.end);
-      const startRow =
-        itemRowLayout.find((r) => aStart >= toMin(r.item.start) && aStart < toMin(r.item.end)) ??
-        itemRowLayout.find((r) => toMin(r.item.start) >= aStart) ??
-        itemRowLayout[itemRowLayout.length - 1];
-      const endRow =
-        itemRowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
-        startRow;
-      const top = startRow ? pxWithinRow(startRow, aStart) : 0;
-      const bottom = endRow ? pxWithinRow(endRow, aEnd) : top + COLLAPSED_ROW_PX;
-      const MIN_APPT_PX = 20;
-      return { appt: a, top, height: Math.max(bottom - top, MIN_APPT_PX) };
-    });
+    return active.appointments
+      .filter((a) => a.kind === "related-service")
+      .map((a) => {
+        if (layoutMode === "proportional") {
+          const top = (toMin(a.start) - dayStart) * PX_PER_MIN;
+          const height = Math.max(toMin(a.end) - toMin(a.start), MIN_ROW_MIN) * PX_PER_MIN;
+          return { appt: a, top, height };
+        }
+        // Collapsed mode: rows are uniform height regardless of real duration,
+        // so pinning to a row's full top/bottom (as if the appt spanned the
+        // whole row) misrepresents where within the row it actually falls.
+        // Interpolate proportionally within each row's own real time span
+        // instead, same idea as proportional mode but scoped per-row.
+        const pxWithinRow = (row: (typeof itemRowLayout)[number], minutes: number) => {
+          const rowStart = toMin(row.item.start);
+          const rowEnd = toMin(row.item.end);
+          const span = Math.max(rowEnd - rowStart, 1);
+          const frac = Math.min(1, Math.max(0, (minutes - rowStart) / span));
+          return row.top + frac * row.height;
+        };
+        const aStart = toMin(a.start);
+        const aEnd = toMin(a.end);
+        const startRow =
+          itemRowLayout.find((r) => aStart >= toMin(r.item.start) && aStart < toMin(r.item.end)) ??
+          itemRowLayout.find((r) => toMin(r.item.start) >= aStart) ??
+          itemRowLayout[itemRowLayout.length - 1];
+        const endRow =
+          itemRowLayout.find((r) => aEnd > toMin(r.item.start) && aEnd <= toMin(r.item.end)) ??
+          startRow;
+        const top = startRow ? pxWithinRow(startRow, aStart) : 0;
+        const bottom = endRow ? pxWithinRow(endRow, aEnd) : top + COLLAPSED_ROW_PX;
+        const MIN_APPT_PX = 20;
+        return { appt: a, top, height: Math.max(bottom - top, MIN_APPT_PX) };
+      });
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
+
+  // One marker per boundary ("start"/"end") of every "direct" appointment
+  // — a single point in time, not a box, so this only needs a Y position
+  // rather than visibleAppts' own top+height. Same per-row interpolation
+  // as visibleAppts' own collapsed-mode branch (a boundary can land
+  // mid-row — e.g. an appointment ending at 1:00p inside a 12:30-1:15
+  // activity), reimplemented locally rather than shared: visibleAppts'
+  // version deliberately treats a "start" and an "end" landing on the same
+  // exact row boundary slightly differently (see its own startRow/endRow),
+  // which doesn't matter here since a marker is a single point either way.
+  const directMarkers = useMemo(() => {
+    const pxForTime = (minutes: number) => {
+      if (layoutMode === "proportional") return (minutes - dayStart) * PX_PER_MIN;
+      const row =
+        itemRowLayout.find((r) => minutes >= toMin(r.item.start) && minutes < toMin(r.item.end)) ??
+        itemRowLayout.find((r) => toMin(r.item.start) >= minutes) ??
+        itemRowLayout[itemRowLayout.length - 1];
+      if (!row) return 0;
+      const rowStart = toMin(row.item.start);
+      const rowEnd = toMin(row.item.end);
+      const span = Math.max(rowEnd - rowStart, 1);
+      const frac = Math.min(1, Math.max(0, (minutes - rowStart) / span));
+      return row.top + frac * row.height;
+    };
+    const markers: {
+      key: string;
+      apptId: string;
+      boundary: "start" | "end";
+      top: number;
+      time: string;
+      party: TransferParty;
+    }[] = [];
+    for (const a of active.appointments) {
+      if (a.kind !== "direct") continue;
+      markers.push({
+        key: `${a.id}-start`,
+        apptId: a.id,
+        boundary: "start",
+        top: pxForTime(toMin(a.start)),
+        time: a.start,
+        party: resolveTransfer(a, active.appointments, "start"),
+      });
+      markers.push({
+        key: `${a.id}-end`,
+        apptId: a.id,
+        boundary: "end",
+        top: pxForTime(toMin(a.end)),
+        time: a.end,
+        party: resolveTransfer(a, active.appointments, "end"),
+      });
+    }
+    return markers;
+  }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
+
+  // Combined time range(s) actually covered by a "direct" appointment —
+  // empty for a client with no customized "direct" blocks at all (a
+  // standard group-rotation schedule, say), in which case nothing below
+  // ever fades; every activity just renders full-strength as it does today.
+  const directRanges = useMemo(
+    () =>
+      active.appointments
+        .filter((a) => a.kind === "direct")
+        .map((a) => [toMin(a.start), toMin(a.end)] as const),
+    [active.appointments],
+  );
+  const isOutsideDirectRange = (item: ScheduleItem) => {
+    if (directRanges.length === 0) return false;
+    const start = toMin(item.start);
+    const end = toMin(item.end);
+    return !directRanges.some(([rs, re]) => start < re && end > rs);
+  };
 
   return (
     // pt-2: the small top gap this view wants used to live on the scroll
@@ -1992,6 +2133,14 @@ export function ScheduleView({
             const actualDurMin = toMin(it.end) - toMin(it.start);
             const gridLines =
               layoutMode === "proportional" ? Math.max(0, Math.floor((actualDurMin - 1) / 5)) : 0;
+            // Outside every "direct" appointment's own range (client picked
+            // up/handed off already, or not received yet) — same idea as
+            // the roadmap's own "dim non-relevant rows," just driven by the
+            // direct-session boundary instead of a per-tech appointment
+            // window. opacity-40 matches this file's one other dimmed/
+            // disabled convention (the paused-actions button's own
+            // disabled:opacity-40) rather than picking a new value.
+            const faded = isOutsideDirectRange(it);
             return (
               <div
                 key={it.id}
@@ -2000,7 +2149,8 @@ export function ScheduleView({
                   else rowRefs.current.delete(it.id);
                 }}
                 className={cn(
-                  "absolute left-0 right-0 z-10",
+                  "absolute left-0 right-0 z-10 transition-opacity",
+                  faded && "opacity-40",
                   // Elevated once flashed — the pulse's thicker border needs
                   // to paint over neighboring rows (which share z-10 and
                   // would otherwise occlude it, since later siblings in the
@@ -2276,6 +2426,40 @@ export function ScheduleView({
                   </div>
                 </div>
               </motion.div>
+            );
+          })}
+
+          {/* "Direct" appointment boundary markers — Arrival/Dismissal
+              (guardian) or Transfer from/to (another staff member),
+              auto-resolved by resolveTransfer. -translate-y-1/2 centers the
+              marker ON its exact moment, same idiom the "now" chevron above
+              uses for the same reason: `top` alone would put its *edge*
+              there, not its center. Plain text throughout (no PersonPill)
+              — nesting that pill's own background/padding inside this
+              badge's colored one read as two conflicting pill shapes
+              stacked together rather than one clean tag. */}
+          {directMarkers.map((m) => {
+            const isArrival = m.boundary === "start";
+            const icon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : "🤝";
+            const text =
+              m.party.type === "guardian"
+                ? isArrival
+                  ? "Arrival"
+                  : "Dismissal"
+                : `${isArrival ? "Transfer from" : "Transfer to"} ${m.party.name}`;
+            return (
+              <div
+                key={m.key}
+                className="absolute left-1 right-1 z-30 flex items-center gap-1.5 -translate-y-1/2 pointer-events-none"
+                style={{ top: m.top }}
+              >
+                <div className="h-px flex-1 bg-purple-300" />
+                <span className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-purple-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap">
+                  <span aria-hidden>{icon}</span>
+                  {text}
+                </span>
+                <div className="h-px flex-1 bg-purple-300" />
+              </div>
             );
           })}
         </div>
@@ -3402,6 +3586,11 @@ function AppointmentDialog({
       type,
       provider: provider.trim() || "—",
       tag: coTreat ? "Co-Treat" : appt?.tag === "Handoff Session" ? "Handoff Session" : undefined,
+      // This dialog only ever creates/edits related-service appointments
+      // (Speech, OT, etc. — there's no "direct session" option in its own
+      // form above); preserving appt?.kind rather than hardcoding it just
+      // means editing one someday wouldn't silently reclassify it.
+      kind: appt?.kind ?? "related-service",
       alertCfg,
       priming,
     });

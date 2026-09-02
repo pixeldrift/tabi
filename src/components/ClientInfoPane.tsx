@@ -331,6 +331,10 @@ function AboutMeSection({
   const { use24HourTime } = useSettings();
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set(ABOUT_ME_ROW_IDS));
   const allCollapsed = collapsedIds.size === ABOUT_ME_ROW_IDS.length;
+  // Excludes "direct" appointments — the RBT's own session, shown on the
+  // Schedule tab itself (Arrival/Transfer/Dismissal markers), isn't a
+  // "related service" the way Speech or OT pull-outs are.
+  const relatedServiceAppts = phineasAppointments.filter((a) => a.kind === "related-service");
 
   const toggleRow = (id: string) => {
     setCollapsedIds((prev) => {
@@ -464,17 +468,17 @@ function AboutMeSection({
           id="relatedServices"
           emoji="🤝"
           label="Related Services"
-          value={phineasAppointments
+          value={relatedServiceAppts
             .map((a) => `${a.type}: ${a.provider} · ${formatApptSchedule(a, use24HourTime)}`)
             .join("\n")}
           collapsed={collapsedIds.has("relatedServices")}
           onToggle={toggleRow}
         >
           <div className="space-y-1">
-            {phineasAppointments.length === 0 ? (
+            {relatedServiceAppts.length === 0 ? (
               <p className="text-foreground/60">No related services on the schedule.</p>
             ) : (
-              phineasAppointments.map((a) => {
+              relatedServiceAppts.map((a) => {
                 // `provider` is free text typed into the appointment form
                 // (ClientInfoPane has no id for it), not a guaranteed
                 // STAFF_DIRECTORY member — an outside provider (a dentist,

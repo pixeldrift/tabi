@@ -1,5 +1,6 @@
 import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { useSettings } from "./SettingsContext";
+import { CURRENT_STAFF_NAME } from "./StaffDirectory";
 
 // Kept separate from ScheduleView's other state (schedule items, edit mode,
 // layout mode, etc.) — this is the one slice ClientInfoPane's Related
@@ -63,6 +64,25 @@ export type PrimingSettings = AlertSettings & { minutesPrior: number };
 
 export type ApptTag = "Co-Treat" | "Handoff Session";
 
+// "direct" is the RBT's own 1:1 session with the client — same Appointment
+// shape as everything else (see the type below), just rendered differently
+// (ScheduleView fades activities outside its range and overlays Arrival/
+// Transfer/Dismissal markers at its edges, rather than the plain overlay
+// bar every "related-service" appointment — Speech, OT, etc. — gets). A
+// client can have more than one "direct" appointment in a day (a morning
+// tech, a different one covering lunch, the first tech again after) —
+// nothing here assumes just one.
+export type AppointmentKind = "direct" | "related-service";
+
+// Who the client is with immediately before a "direct" appointment starts,
+// or immediately after it ends. `name` (not a staffId) deliberately matches
+// `Appointment.provider`'s own free-text convention — see resolveTransfer
+// below for why: it's populated either by copying a neighboring
+// appointment's own `provider` string, or set by hand, and only resolved
+// against STAFF_DIRECTORY (via findStaffIdByName) at render time, same as
+// ClientInfoPane already does for `provider` itself.
+export type TransferParty = { type: "guardian" } | { type: "staff"; name: string };
+
 export type Appointment = {
   id: string;
   start: string; // "HH:MM" 24h
@@ -71,9 +91,43 @@ export type Appointment = {
   type: string;
   provider: string;
   tag?: ApptTag;
+  kind: AppointmentKind;
   alertCfg?: AlertSettings;
   priming?: PrimingSettings;
+  // Manual overrides for the "direct"-kind boundary markers below — leave
+  // unset to let resolveTransfer auto-detect from adjacent appointments.
+  // Meaningless (ignored) on a "related-service" appointment.
+  transferFrom?: TransferParty;
+  transferTo?: TransferParty;
 };
+
+/** What's actually shown at a "direct" appointment's start ("transferFrom")
+ *  or end ("transferTo") boundary: a manual override if one's set, else
+ *  whichever OTHER appointment in the same day happens to end/start at
+ *  that exact moment (its own `provider` becomes the transfer party — this
+ *  is what makes a lunch-cover relay, or a Speech/OT handoff, link up with
+ *  zero manual entry the instant that neighboring appointment exists), else
+ *  guardian — nothing adjacent means the client is arriving from/leaving to
+ *  family. Pure and side-effect-free: recomputed from the current
+ *  appointment list on every call rather than cached, so editing one
+ *  appointment's time immediately updates whichever neighbor was
+ *  auto-linked to it. */
+export function resolveTransfer(
+  appt: Appointment,
+  all: Appointment[],
+  boundary: "start" | "end",
+): TransferParty {
+  const manual = boundary === "start" ? appt.transferFrom : appt.transferTo;
+  if (manual) return manual;
+  const time = boundary === "start" ? appt.start : appt.end;
+  const neighbor = all.find(
+    (other) =>
+      other.id !== appt.id &&
+      other.days.some((d) => appt.days.includes(d)) &&
+      (boundary === "start" ? other.end === time : other.start === time),
+  );
+  return neighbor ? { type: "staff", name: neighbor.provider } : { type: "guardian" };
+}
 
 // Same show's universe as the rest of the cast (StaffDirectory,
 // ClientInfoPane) — Vanessa (SLP) and Jeremy (OT) are Phineas's actual
@@ -87,6 +141,7 @@ export const PHINEAS_APPTS: Appointment[] = [
     type: "Speech Therapy",
     provider: "Vanessa Doofenshmirtz",
     tag: "Co-Treat",
+    kind: "related-service",
   },
   {
     id: "ap2",
@@ -96,6 +151,39 @@ export const PHINEAS_APPTS: Appointment[] = [
     type: "Occupational Therapy",
     provider: "Jeremy Johnson",
     tag: "Handoff Session",
+    kind: "related-service",
+  },
+  // The RBT's own 1:1 session, split in two around ap2 above — ap2 is
+  // tagged "Handoff Session" (the tech steps away, unlike ap1's "Co-Treat"
+  // which the tech stays present through, so that one doesn't split
+  // anything), and it happens to end exactly where "ap3" starts and start
+  // exactly where "ap4" ends — resolveTransfer picks that up on its own,
+  // no transferFrom/transferTo set here at all. ap1 (Co-Treat) simply falls
+  // inside ap3's own range with no effect on it.
+  {
+    id: "ap3",
+    start: "10:00",
+    end: "13:00",
+    days: [...DAYS],
+    type: "Direct Session",
+    provider: CURRENT_STAFF_NAME,
+    kind: "direct",
+    // Priming defaults to "off" everywhere else in this file (see
+    // DEFAULT_PRIMING's own TODO in ScheduleView.tsx) — set explicitly here
+    // so the demo actually shows the 5-minute warning ahead of the
+    // dismissal/transfer alarm at ap3/ap4's own boundaries, not just the
+    // at-time one.
+    priming: { mode: "visual", allowSnooze: true, autofade: true, minutesPrior: 5 },
+  },
+  {
+    id: "ap4",
+    start: "13:30",
+    end: "18:00",
+    days: [...DAYS],
+    type: "Direct Session",
+    provider: CURRENT_STAFF_NAME,
+    kind: "direct",
+    priming: { mode: "visual", allowSnooze: true, autofade: true, minutesPrior: 5 },
   },
 ];
 
