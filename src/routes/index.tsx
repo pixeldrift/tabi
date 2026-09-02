@@ -2830,43 +2830,50 @@ function MorphContent({
   // hide the old/new content pair briefly overlapping) and lifting it once
   // settled lets any static shadow bleed past the box normally at rest.
   //
-  // `height` always tracks the measured scrollHeight — for a mode switch
-  // AND for a resize a card triggers on its own (CardShell's own
-  // expandedView twirl-down, a trial's row growing, a frequency counter
-  // growing). What differs is the `transition` used to reach it (below):
-  // eased over CARD_MORPH_TRANSITION while isTransitioning (a mode switch,
-  // where two genuinely different DOM subtrees need to visibly morph
-  // between two sizes), or duration:0 otherwise. Zero-duration matters for
-  // in-place growth specifically — those already have their own real-time
-  // answer for "how tall am I right now" (CardShell's own CSS
-  // grid-template-rows reveal), so this wrapper just needs to snap to
-  // match every measured frame, not layer a second, separately-eased
-  // animation on top with its own debounce lag. A debounced, eased copy
-  // chasing the real height on its own delayed timeline is what let
-  // already-grown content bleed past this not-yet-caught-up wrapper into
-  // the next sibling, painting UNDER that sibling's own opaque card
-  // background (a first attempt at clipping this wrapper to fix that
-  // instead traded it for a worse bug: this plain, unrounded wrapper
-  // became the visible bottom edge for however long the clip lasted,
-  // squaring off the card's own rounded corners and border every time it
-  // grew — and a later attempt at clipping just during that settling
-  // window fixed that but broke the shadow, see above). What's left is a
-  // single frame or two of ResizeObserver's own reporting cycle where
-  // fast-growing content can bleed a few pixels into the next sibling
-  // before this wrapper catches up — real, but small enough (verified
-  // ~20px for one frame, versus the original's ~80px for 300+ms) that it
-  // reads as an imperceptible flicker rather than the visible "content
-  // sliding out from underneath" bug this exists to fix. Only debouncing
-  // while isTransitioning keeps the mode-switch settling protected from
-  // re-triggering its eased animation off content jitter (fonts, images) —
-  // a duration:0 snap has no animation to re-trigger, so growth updates
-  // commit immediately, every frame.
+  // `height` always tracks the measured scrollHeight — for a mode switch AND
+  // for a resize a card triggers on its own (CardShell's own expandedView
+  // twirl-down, a trial's row growing, a frequency counter growing) — but
+  // the render below (see its own comment) now only ever APPLIES that
+  // number to this wrapper's actual height while isTransitioning; in-place
+  // growth keeps this state fresh purely so a mode switch starting right
+  // after one has an accurate, current number to morph from, not because
+  // this wrapper's own on-screen size still depends on it.
+  //
+  // That split exists because chasing the real height for in-place growth
+  // — even snapped with duration:0, no separate easing of its own — still
+  // has to round-trip through ResizeObserver's own batching, a setState, a
+  // re-render, and a repaint before this wrapper's height actually catches
+  // up, while the content growing inside it (ExpandableArea's own 300ms
+  // twirl-down, say) is animating continuously via its own independent rAF
+  // loop the whole time. A first attempt at just debouncing-and-easing a
+  // copy of the real height made that gap huge (~80px for 300+ms) by
+  // adding its own lag on top; clipping this wrapper to fix that traded it
+  // for a worse bug (a plain, unrounded edge squaring off the card's own
+  // rounded corners while still mid-grow, or — clipping only during
+  // settling — a hard-clipped shadow, see above). Snapping the copy with no
+  // easing of its own (the current in-place-growth behavior) narrowed the
+  // window a lot, but never closed it — confirmed on real, especially
+  // throttled hardware (a low-battery iPhone), the remaining round-trip lag
+  // still reads as this wrapper staying stale and too-short for a real,
+  // visible span, its still-growing content spilling out past its own
+  // (overflow:visible) edge and rendering on top of the next card below —
+  // not the "single frame" this was once measured at under lighter load.
+  // Not applying the number as this wrapper's own height at all outside a
+  // mode switch has no round trip to fall behind on in the first place:
+  // plain CSS block layout just grows the box exactly as fast as its
+  // content does, same as any ordinary element on the page.
   const measureDebounceRef = useRef<number | null>(null);
   useEffect(() => {
     const el = measureRef.current;
     if (!el) return;
     const commit = () => setHeight(el.scrollHeight);
     const measure = () => {
+      // Debouncing is only for keeping a settling mode-switch's own eased
+      // animation from re-triggering off content jitter (fonts, images) —
+      // committing immediately outside a transition doesn't have that
+      // animation to re-trigger, and this state needs to genuinely stay
+      // live/current regardless of whether the render above is using it
+      // for anything right now, for the reason its own comment gives.
       if (!isTransitioning) {
         commit();
         return;
@@ -2891,12 +2898,38 @@ function MorphContent({
     <motion.div
       className="w-full"
       style={{ overflow: isTransitioning ? "hidden" : "visible" }}
-      animate={{ height: height ?? "auto" }}
+      // Only actually CONSTRAINS height while a real mode switch is
+      // crossfading two different subtrees — that's the one case that needs
+      // a measured number to morph between (a plain "auto" pop would show a
+      // jump-cut, not a smooth size change). In-place growth (a card's own
+      // expandedView twirl-down, a checklist row scoring, a counter growing)
+      // instead gets a literal, unchanging "auto" target here — Motion sees
+      // the same value render over render and never touches this element's
+      // height at all, leaving it to plain CSS block layout, which tracks
+      // whatever's actually growing inside it with zero added latency. The
+      // measured-number route used to run for THIS case too (see the
+      // ResizeObserver comment above) specifically to dodge Motion's own
+      // "auto" transition quirks, at the cost of a real, visible lag: the
+      // number only updates once a whole browser-batches-ResizeObserver ->
+      // setState -> re-render -> repaint round trip lands, while the actual
+      // content inside (e.g. ExpandableArea's own 300ms twirl-down) keeps
+      // growing continuously via its own independent rAF-driven animation —
+      // on real hardware under any load (confirmed on a low-battery/
+      // throttled iPhone) that round trip can fall meaningfully more than a
+      // frame behind, and since this wrapper stays overflow:visible outside
+      // a transition (to avoid clipping the active card's own shadow — see
+      // above), the growing content bled out past this now-stale, too-short
+      // box and rendered ON TOP of the next card below it. A literal "auto"
+      // has no round trip to fall behind on in the first place. Once a real
+      // mode switch starts, this reads `height` fresh off the same
+      // continuously-updated ResizeObserver state as before — untouched —
+      // so the crossfade still morphs from an accurate, current number.
+      animate={{ height: isTransitioning ? (height ?? "auto") : "auto" }}
       // The very first measurement (initial mount) snaps instantly — there's
       // no prior state to visually transition from, and animating "auto" to
       // itself would otherwise be a no-op anyway. Every later mode switch
-      // gets the real eased transition; in-place growth always snaps (see
-      // the ResizeObserver comment above).
+      // gets the real eased transition; in-place growth needs no transition
+      // at all now (see the animate prop's own comment above).
       transition={
         isFirstMeasure.current || !isTransitioning ? { duration: 0 } : CARD_MORPH_TRANSITION
       }
