@@ -38,6 +38,7 @@ import roomTherapyPhoto2 from "@/assets/images/placeholders/room-therapy-2.jpg";
 import roomTherapyPhoto3 from "@/assets/images/placeholders/room-therapy-3.jpg";
 import roomTherapyPhoto4 from "@/assets/images/placeholders/room-therapy-4.jpg";
 import roomPlayPhoto from "@/assets/images/placeholders/room-play.jpg";
+import roomBigGymPhoto from "@/assets/images/placeholders/room-big-gym.jpg";
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
 import { SmileyIcon } from "./icons/SmileyIcon";
@@ -2860,10 +2861,10 @@ function BuildingMapSVG({
 // below just cycle in order (Room 1/5/9 share one, Room 2/6/10 the next,
 // and so on) purely so ten rooms in a row don't all show the identical
 // photo — they're not meant to mean anything about a particular room.
-// Kitchen/bathrooms/gyms+classroom each still get their own single stand-in
-// since no variety shots exist for those yet. Swap any of these for real
-// photos once the clinic has them; the rest of the dialog doesn't care
-// where the image comes from.
+// Kitchen/bathrooms/Classroom+Small Gym each still get their own single
+// stand-in since no variety shots exist for those yet (Big Gym has its own
+// real photo below). Swap any of these for real photos once the clinic has
+// them; the rest of the dialog doesn't care where the image comes from.
 const TREATMENT_ROOM_PHOTOS = [
   roomTherapyPhoto,
   roomTherapyPhoto2,
@@ -2873,11 +2874,12 @@ const TREATMENT_ROOM_PHOTOS = [
 function roomPhotoFor(room: string): string {
   if (room.endsWith("Bathroom")) return roomBathroomPhoto;
   if (room === "Kitchen") return roomKitchenPhoto;
+  if (room === "Big Gym") return roomBigGymPhoto;
   const treatmentIndex = TREATMENT_ROOMS.indexOf(room);
   if (treatmentIndex !== -1) {
     return TREATMENT_ROOM_PHOTOS[treatmentIndex % TREATMENT_ROOM_PHOTOS.length];
   }
-  return roomPlayPhoto; // Classroom, Big Gym, Small Gym
+  return roomPlayPhoto; // Classroom, Small Gym
 }
 
 // A plain Google Maps search link and Apple's own equivalent, computed
