@@ -14,7 +14,7 @@ import baljeetPhoto from "@/assets/images/people/baljeet.jpeg";
 import vanessaPhoto from "@/assets/images/people/vanessa.jpeg";
 import jeremyPhoto from "@/assets/images/people/jeremy.jpeg";
 
-interface StaffRecord {
+export interface StaffRecord {
   /** Stable lookup key — a real backend's primary key, e.g. an employee id.
    *  Everything that refers to a staff member (session attribution,
    *  presence, "current user") should pass this around instead of `name`:
@@ -225,7 +225,11 @@ export function PersonPill({ staffId, size = "md" }: { staffId: string; size?: "
   );
 }
 
-function StaffProfileDialog({
+/** The profile card PersonPill opens on tap, exported separately so
+ *  another interactive element (ScheduleView's own transfer markers) can
+ *  open the exact same card without re-implementing it or wrapping a
+ *  second PersonPill inside its own already-styled control. */
+export function StaffProfileDialog({
   staff,
   open,
   onOpenChange,

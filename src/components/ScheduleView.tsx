@@ -28,6 +28,7 @@ import {
   ArrowRightToLine,
   ArrowLeft,
   MapPin,
+  User,
 } from "lucide-react";
 import locationBuildingPhoto from "@/assets/images/placeholders/location-building.jpg";
 import roomBathroomPhoto from "@/assets/images/placeholders/room-bathroom.jpg";
@@ -84,6 +85,11 @@ import {
   type Appointment,
   type TransferParty,
 } from "@/components/ScheduleContext";
+import {
+  STAFF_DIRECTORY,
+  findStaffIdByName,
+  StaffProfileDialog,
+} from "@/components/StaffDirectory";
 import {
   EDIT_MODE_DURATION_MS,
   EDIT_MODE_STAGGER_MS,
@@ -1441,6 +1447,10 @@ export function ScheduleView({
   // version deliberately treats a "start" and an "end" landing on the same
   // exact row boundary slightly differently (see its own startRow/endRow),
   // which doesn't matter here since a marker is a single point either way.
+  // Which transfer marker's profile card (StaffProfileDialog) is open, by
+  // marker key — a single shared slot rather than one per marker, same as
+  // every other "one dialog, whichever row opened it" pattern in this file.
+  const [transferProfileOpenFor, setTransferProfileOpenFor] = useState<string | null>(null);
   const directMarkers = useMemo(() => {
     const pxForTime = (minutes: number) => {
       if (layoutMode === "proportional") return (minutes - dayStart) * PX_PER_MIN;
@@ -2434,22 +2444,31 @@ export function ScheduleView({
               auto-resolved by resolveTransfer. -translate-y-1/2 centers the
               marker ON its exact moment, same idiom the "now" chevron above
               uses for the same reason: `top` alone would put its *edge*
-              there, not its center. Plain text throughout (no PersonPill)
-              — nesting that pill's own background/padding inside this
-              badge's colored one read as two conflicting pill shapes
-              stacked together rather than one clean tag. bg-green-600, the
-              same dark green as the "CO-TREAT" badge below (not a
-              separate accent color), since both are the same kind of
-              small schedule-level status flag. */}
+              there, not its center. bg-green-600, the same dark green as
+              the "CO-TREAT" badge below (not a separate accent color),
+              since both are the same kind of small schedule-level status
+              flag. A resolvable staff party makes the WHOLE badge itself
+              the tap target (not a PersonPill nested inside it — two
+              backgrounds stacked together read as conflicting pill shapes,
+              see StaffProfileDialog's own doc comment for why this reuses
+              its dialog directly instead), opening the same profile card
+              PersonPill would; guardian, or a provider name that doesn't
+              match anyone in STAFF_DIRECTORY (an outside provider with no
+              record at all), stays a plain non-interactive label. */}
           {directMarkers.map((m) => {
             const isArrival = m.boundary === "start";
-            const icon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : "🤝";
-            const text =
+            const label =
               m.party.type === "guardian"
                 ? isArrival
                   ? "Arrival"
                   : "Dismissal"
-                : `${isArrival ? "Transfer from" : "Transfer to"} ${m.party.name}`;
+                : `${isArrival ? "Transfer from" : "Transfer to"}`;
+            const icon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : "🤝";
+            const partyName = m.party.type === "staff" ? m.party.name : null;
+            const staffId = partyName ? findStaffIdByName(partyName) : null;
+            const staff = staffId ? STAFF_DIRECTORY[staffId] : null;
+            const badgeClassName =
+              "pointer-events-auto inline-flex items-center gap-1 rounded-full bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap";
             return (
               <div
                 key={m.key}
@@ -2457,10 +2476,31 @@ export function ScheduleView({
                 style={{ top: m.top }}
               >
                 <div className="h-px flex-1 bg-green-300" />
-                <span className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap">
-                  <span aria-hidden>{icon}</span>
-                  {text}
-                </span>
+                {staff ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setTransferProfileOpenFor(m.key)}
+                      className={cn(badgeClassName, "hover:bg-green-700 transition-colors")}
+                    >
+                      <span aria-hidden>{icon}</span>
+                      {label}
+                      <User className="size-2.5 shrink-0" fill="currentColor" strokeWidth={0} />
+                      {partyName}
+                    </button>
+                    <StaffProfileDialog
+                      staff={staff}
+                      open={transferProfileOpenFor === m.key}
+                      onOpenChange={(v) => setTransferProfileOpenFor(v ? m.key : null)}
+                    />
+                  </>
+                ) : (
+                  <span className={badgeClassName}>
+                    <span aria-hidden>{icon}</span>
+                    {label}
+                    {partyName && ` ${partyName}`}
+                  </span>
+                )}
                 <div className="h-px flex-1 bg-green-300" />
               </div>
             );
