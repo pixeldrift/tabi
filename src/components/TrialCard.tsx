@@ -699,10 +699,20 @@ export function TrialCard({
                       // standard view's own `-bottom-2`, gets clipped by
                       // SwipeStrip's native `overflow-x-auto` scroller,
                       // which per spec forces overflow-y to `auto` too).
+                      //
+                      // The centered item's own number renders 3x that
+                      // resting size (see fontSize above), reaching much
+                      // further down into this same fixed-height slot — the
+                      // resting offset above sat right under/inside that
+                      // enlarged glyph instead of below it, reading as
+                      // sitting on the same line rather than its own row.
+                      // isCenter gets its own offset, closer to the slot's
+                      // true bottom edge, to actually clear the bigger
+                      // glyph.
                       <span
                         className={cn(
                           "absolute left-1/2 -translate-x-1/2 size-1 rounded-full bg-foreground/35",
-                          large ? "bottom-[14px]" : "bottom-[10px]",
+                          isCenter ? "bottom-0" : large ? "bottom-[14px]" : "bottom-[10px]",
                         )}
                         aria-hidden
                       />
