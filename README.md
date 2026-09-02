@@ -212,6 +212,17 @@ checked off. See git history for what's already shipped.
       (step-by-step + trial dual-nav) with real RBTs — it's built and
       shipped, but the interaction pattern itself hasn't been tested against
       actual use yet, and may need rework based on what that turns up
+- [ ] 🟡 Schedule icon linked to a data card's own timeline — "Potty Time"
+      was removed as a scheduled activity (ScheduleView.tsx's ACTIVITIES)
+      on the idea that a fixed block on the schedule can't say whether a
+      check actually happened or what it found the way logging it as
+      interval data can. In its place: a small icon on the relevant
+      schedule row/location, driven by a linked data card's real logged
+      entries (e.g. an Interval-kind "Dry check" card) — showing something
+      like time-since-last-check or a quick dry/wet indicator pulled from
+      that card's own timeline, rather than a separate static reminder
+      block. Needs a way to associate a schedule row with a specific data
+      card first (nothing links the two today).
 - [ ] 🟡 Advanced sync details — an expandable section in the "Session Data
       Status" popup (StatusBar.tsx's SaveIndicator) that lists exactly what
       changed since the last sync (which cards, which trials/entries) when

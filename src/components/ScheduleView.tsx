@@ -121,8 +121,19 @@ const TREATMENT_ROOMS = Array.from({ length: ASSIGNED_ROOM_COUNT }, (_, i) => `R
 const COMMON_AREAS = LOCATIONS.slice(1);
 const ALL_ROOMS = [...TREATMENT_ROOMS, ...COMMON_AREAS];
 
+// "Arrive/Pairing"/"Pack Up/Dismissal" and "Potty Time" are deliberately
+// gone from this list, not just today's schedules — see the roadmap for
+// why:
+// - Arrival/dismissal/transfer are now handled by the "direct" appointment
+//   boundary markers ScheduleView overlays on the timeline (see
+//   directMarkers), which already cover the same ground with real
+//   custody-transfer info attached, not just a label. Held for now rather
+//   than removed for good, in case a customized schedule still wants its
+//   own settling-in/packing-up block alongside those markers.
+// - Toileting moved to interval data collection on the data sheet — a
+//   scheduled "Potty Time" block couldn't say whether an actual check
+//   happened or what it found the way a data card can.
 const ACTIVITIES = [
-  "Arrive/Pairing",
   "Sensory Play",
   "Snack",
   "Lunch",
@@ -133,16 +144,13 @@ const ACTIVITIES = [
   "Peer Play",
   "Client Choice",
   "Discreet Trials",
-  "Potty Time",
   "Cooking",
   "Cleanup",
   "Reading",
-  "Pack Up/Dismissal",
   "Custom",
 ] as const;
 
 const ACTIVITY_ICONS: Record<string, string> = {
-  "Arrive/Pairing": "👋",
   "Sensory Play": "🫘",
   Snack: "🍎",
   Lunch: "🥪",
@@ -153,11 +161,9 @@ const ACTIVITY_ICONS: Record<string, string> = {
   "Peer Play": "🧩",
   "Client Choice": "⭐",
   "Discreet Trials": "📋",
-  "Potty Time": "💩",
   Cooking: "🍳",
   Cleanup: "🧹",
   Reading: "📖",
-  "Pack Up/Dismissal": "🎒",
   Custom: "✨",
 };
 
@@ -417,7 +423,7 @@ const GROUP_A: ScheduleItem[] = [
     id: "a13",
     start: "17:30",
     end: "18:00",
-    activity: "Pack Up/Dismissal",
+    activity: "Cleanup",
     location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
@@ -516,7 +522,7 @@ const GROUP_B: ScheduleItem[] = [
     id: "b12",
     start: "17:15",
     end: "18:00",
-    activity: "Pack Up/Dismissal",
+    activity: "Cleanup",
     location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
@@ -615,49 +621,48 @@ const GROUP_C: ScheduleItem[] = [
     id: "c12",
     start: "17:15",
     end: "18:00",
-    activity: "Pack Up/Dismissal",
+    activity: "Cleanup",
     location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
 
-// "Sensory Play" (formerly 11:15–11:45) was removed on purpose, leaving a
-// real blank stretch mid-morning to demonstrate the edit mode's
-// "Add Activity" gap buttons — which now render for any contiguous gap, not
-// just the one before the first item or after the last.
+// Gapless 10:00-15:00 — matches PHINEAS_APPTS' own "direct" appointment
+// blocks (ap3/ap5/ap4) exactly at both ends, since ScheduleView now
+// overlays a real Arrival marker at 10:00 and a real Dismissal marker at
+// 15:00; a blank stretch at either edge would leave those markers
+// pointing at nothing. No "Arrive/Pairing," "Pack Up/Dismissal," or
+// "Potty Time" items — the first two are on hold (see ACTIVITIES' own
+// comment) now that arrival/dismissal/transfer are handled by those
+// markers instead, and toileting moved to interval data collection on the
+// data sheet rather than a scheduled block (also ACTIVITIES' own comment).
 const PHINEAS: ScheduleItem[] = [
   {
-    id: "p1",
-    start: "10:00",
-    end: "10:20",
-    activity: "Arrive/Pairing",
-    location: ASSIGNED_ROOM_TOKEN,
-    alert: "visual",
-  },
-  {
-    id: "p2",
-    start: "10:20",
-    end: "10:30",
-    activity: "Potty Time",
-    location: "Solo Bathroom",
-    alert: "off",
-  },
-  {
     id: "p3",
-    start: "10:30",
-    end: "11:15",
+    start: "10:00",
+    end: "10:45",
     activity: "Discreet Trials",
     location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
   {
-    id: "p5",
-    start: "11:45",
-    end: "12:00",
-    activity: "Potty Time",
-    location: "Learner Bathroom",
+    id: "p4",
+    start: "10:45",
+    end: "11:30",
+    activity: "Sensory Play",
+    location: ASSIGNED_ROOM_TOKEN,
     alert: "off",
   },
+  {
+    id: "p5",
+    start: "11:30",
+    end: "12:00",
+    activity: "Social Group",
+    location: "Classroom",
+    alert: "audio",
+  },
+  // 12:00-12:30 — Isabella covers (see PHINEAS_APPTS' "ap-lunch"), matching
+  // this exactly so the Transfer markers land right at Lunch's own edges.
   {
     id: "p6",
     start: "12:00",
@@ -675,67 +680,27 @@ const PHINEAS: ScheduleItem[] = [
     alert: "audio",
   },
   {
-    id: "p8",
-    start: "13:15",
-    end: "13:30",
-    activity: "Potty Time",
-    location: "Classroom Bathroom",
-    alert: "off",
-  },
-  {
     id: "p9",
-    start: "13:30",
-    end: "14:00",
+    start: "13:15",
+    end: "13:45",
     activity: "Snack",
     location: "Kitchen",
     alert: "visual",
   },
   {
     id: "p10",
-    start: "14:00",
-    end: "14:45",
+    start: "13:45",
+    end: "14:30",
     activity: "Imaginative Play",
     location: "Classroom",
     alert: "off",
   },
   {
     id: "p11",
-    start: "14:45",
-    end: "15:30",
+    start: "14:30",
+    end: "15:00",
     activity: "Peer Play",
     location: "Small Gym",
-    alert: "audio",
-  },
-  {
-    id: "p12",
-    start: "15:30",
-    end: "15:45",
-    activity: "Potty Time",
-    location: "Learner Bathroom",
-    alert: "off",
-  },
-  {
-    id: "p13",
-    start: "15:45",
-    end: "16:30",
-    activity: "Client Choice",
-    location: "Classroom",
-    alert: "off",
-  },
-  {
-    id: "p14",
-    start: "16:30",
-    end: "17:30",
-    activity: "Reading",
-    location: "Classroom",
-    alert: "visual",
-  },
-  {
-    id: "p15",
-    start: "17:30",
-    end: "18:00",
-    activity: "Pack Up/Dismissal",
-    location: ASSIGNED_ROOM_TOKEN,
     alert: "audio",
   },
 ];
@@ -1492,7 +1457,21 @@ export function ScheduleView({
         party: resolveTransfer(a, active.appointments, "end"),
       });
     }
-    return markers;
+    // A lunch-cover relay (or any back-to-back "direct" blocks) has one
+    // appointment's end exactly where the next one's start is — the loop
+    // above pushes a marker for BOTH sides of that shared instant, which
+    // resolveTransfer resolves to the same real transfer described from
+    // two directions ("Transfer to Isabella" / "Transfer from Perry" at
+    // the very same 12:00). Keeping only the first-seen marker per exact
+    // `time` collapses that pair into the one that's already generated
+    // first for every appointment (its own "end"), rather than showing
+    // both stacked on top of each other.
+    const seenTimes = new Set<string>();
+    return markers.filter((m) => {
+      if (seenTimes.has(m.time)) return false;
+      seenTimes.add(m.time);
+      return true;
+    });
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
 
   // Combined time range(s) actually covered by a "direct" appointment —

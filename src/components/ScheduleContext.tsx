@@ -152,19 +152,24 @@ export const PHINEAS_APPTS: Appointment[] = [
     provider: "Jeremy Johnson",
     kind: "related-service",
   },
-  // The RBT's own 1:1 session, split in two around ap2 above. Untagged
-  // (unlike ap1's "Co-Treat", which is why that one doesn't split
-  // anything) — whether an appointment splits a "direct" appointment isn't
-  // driven by its tag at all, just by whether its start/end happens to
-  // land exactly on another appointment's own boundary. ap2 ends exactly
-  // where "ap3" starts and starts exactly where "ap4" ends, so
-  // resolveTransfer picks that up on its own with no transferFrom/
-  // transferTo set here. ap1 (Co-Treat) simply falls inside ap3's own
-  // range with no effect on it.
+  // The RBT's own 1:1 session — 10:00-3:00, split in three around the
+  // lunch break rather than ap2 above: Isabella (an RBT already on
+  // Phineas' own caseload — see STAFF_DIRECTORY) covers 12:00-12:30 while
+  // the primary tech is at lunch, then hands back. Nothing here is tagged
+  // or otherwise marked as a handoff point — whether an appointment splits
+  // a "direct" appointment isn't driven by a tag at all, just by whether
+  // its start/end happens to land exactly on another appointment's own
+  // boundary, and these three do by construction (ap3 ends exactly where
+  // ap-lunch starts, ap-lunch ends exactly where ap4 starts), so
+  // resolveTransfer chains all three — guardian -> Perry -> Isabella ->
+  // Perry -> guardian — with no transferFrom/transferTo set anywhere here.
+  // ap1 and ap2 (Co-Treat and untagged respectively) simply fall inside
+  // whichever of these three their own time lands in, with no effect on
+  // the split.
   {
     id: "ap3",
     start: "10:00",
-    end: "13:00",
+    end: "12:00",
     days: [...DAYS],
     type: "Direct Session",
     provider: CURRENT_STAFF_NAME,
@@ -172,14 +177,24 @@ export const PHINEAS_APPTS: Appointment[] = [
     // Priming defaults to "off" everywhere else in this file (see
     // DEFAULT_PRIMING's own TODO in ScheduleView.tsx) — set explicitly here
     // so the demo actually shows the 5-minute warning ahead of the
-    // dismissal/transfer alarm at ap3/ap4's own boundaries, not just the
-    // at-time one.
+    // dismissal/transfer alarm at each block's own boundaries, not just
+    // the at-time one.
+    priming: { mode: "visual", allowSnooze: true, autofade: true, minutesPrior: 5 },
+  },
+  {
+    id: "ap-lunch",
+    start: "12:00",
+    end: "12:30",
+    days: [...DAYS],
+    type: "Direct Session",
+    provider: "Isabella Garcia-Shapiro",
+    kind: "direct",
     priming: { mode: "visual", allowSnooze: true, autofade: true, minutesPrior: 5 },
   },
   {
     id: "ap4",
-    start: "13:30",
-    end: "18:00",
+    start: "12:30",
+    end: "15:00",
     days: [...DAYS],
     type: "Direct Session",
     provider: CURRENT_STAFF_NAME,
