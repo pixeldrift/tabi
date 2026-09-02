@@ -29,9 +29,13 @@ import {
   ArrowLeft,
   MapPin,
 } from "lucide-react";
+import locationBuildingPhoto from "@/assets/images/placeholders/location-building.jpg";
 import roomBathroomPhoto from "@/assets/images/placeholders/room-bathroom.jpg";
 import roomKitchenPhoto from "@/assets/images/placeholders/room-kitchen.jpg";
 import roomTherapyPhoto from "@/assets/images/placeholders/room-therapy.jpg";
+import roomTherapyPhoto2 from "@/assets/images/placeholders/room-therapy-2.jpg";
+import roomTherapyPhoto3 from "@/assets/images/placeholders/room-therapy-3.jpg";
+import roomTherapyPhoto4 from "@/assets/images/placeholders/room-therapy-4.jpg";
 import roomPlayPhoto from "@/assets/images/placeholders/room-play.jpg";
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
@@ -54,6 +58,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useSlidingArrowOffset } from "@/hooks/useSlidingArrowOffset";
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -178,16 +184,48 @@ function resolveLocation(location: string, assignedRoom: string): string {
   return location === ASSIGNED_ROOM_TOKEN ? assignedRoom : location;
 }
 
-// This demo's one clinic — its own name/branch/address, surfaced by
-// RoomInfoDialog below so a therapist unfamiliar with this location (e.g.
-// covering from another branch) can confirm where they actually are, not
-// just which room number. Same "Tri-State Area" the rest of this cast lives
-// in (see PHINEAS_APPTS' own comment).
-const CLINIC_INFO = {
-  name: "Tri-State Area Therapy",
-  branch: "Main Branch",
-  address: "123 Behavioral Analysis Rd., Danville",
-};
+// This demo's clinic chain — surfaced by RoomInfoDialog below so a
+// therapist unfamiliar with a location (e.g. covering from another branch)
+// can confirm where they actually are, not just which room number. Every
+// entry shares the same "Tri-State Area" name the rest of this cast lives
+// in (see PHINEAS_APPTS' own comment) — only the branch/address/photo
+// differ. Main Branch (index 0) is the one this client's own schedule
+// actually lives at, and the only one RoomInfoDialog opens into by default;
+// the other four exist purely so "view other locations" has somewhere to
+// go, sharing the same placeholder photo since this demo only has the one
+// real exterior shot.
+const CLINIC_LOCATIONS: { name: string; branch: string; address: string; photo: string }[] = [
+  {
+    name: "Tri-State Area Therapy",
+    branch: "Main Branch",
+    address: "123 Behavioral Analysis Rd., Danville",
+    photo: locationBuildingPhoto,
+  },
+  {
+    name: "Tri-State Area Therapy",
+    branch: "Riverside Branch",
+    address: "48 Riverside Pkwy, Danville",
+    photo: locationBuildingPhoto,
+  },
+  {
+    name: "Tri-State Area Therapy",
+    branch: "Northgate Branch",
+    address: "902 Northgate Ave, Danville",
+    photo: locationBuildingPhoto,
+  },
+  {
+    name: "Tri-State Area Therapy",
+    branch: "Eastwood Branch",
+    address: "215 Eastwood Blvd, Danville",
+    photo: locationBuildingPhoto,
+  },
+  {
+    name: "Tri-State Area Therapy",
+    branch: "Lakeview Branch",
+    address: "77 Lakeview Terrace, Danville",
+    photo: locationBuildingPhoto,
+  },
+];
 
 const APPOINTMENT_TYPES = [
   "Speech Therapy",
@@ -2612,58 +2650,117 @@ function BuildingMapSVG({
 }
 
 // One placeholder photo per ROOM TYPE, not per specific room — this app has
-// no real per-room photography, so every numbered treatment room shares the
-// same stand-in image, and the three bathrooms share another, etc. Swap
-// these for real photos once the clinic has them; the rest of the dialog
-// doesn't care where the image comes from.
+// no real per-room photography. The four numbered-treatment-room variants
+// below just cycle in order (Room 1/5/9 share one, Room 2/6/10 the next,
+// and so on) purely so ten rooms in a row don't all show the identical
+// photo — they're not meant to mean anything about a particular room.
+// Kitchen/bathrooms/gyms+classroom each still get their own single stand-in
+// since no variety shots exist for those yet. Swap any of these for real
+// photos once the clinic has them; the rest of the dialog doesn't care
+// where the image comes from.
+const TREATMENT_ROOM_PHOTOS = [
+  roomTherapyPhoto,
+  roomTherapyPhoto2,
+  roomTherapyPhoto3,
+  roomTherapyPhoto4,
+];
 function roomPhotoFor(room: string): string {
   if (room.endsWith("Bathroom")) return roomBathroomPhoto;
   if (room === "Kitchen") return roomKitchenPhoto;
-  if (TREATMENT_ROOMS.includes(room)) return roomTherapyPhoto;
+  const treatmentIndex = TREATMENT_ROOMS.indexOf(room);
+  if (treatmentIndex !== -1) {
+    return TREATMENT_ROOM_PHOTOS[treatmentIndex % TREATMENT_ROOM_PHOTOS.length];
+  }
   return roomPlayPhoto; // Classroom, Big Gym, Small Gym
 }
 
-// A plain Google Maps search link and Apple's own equivalent — offered as
-// an explicit choice (OpenInMapsDialog below) rather than picking one
-// automatically, since there's no reliable way to detect which app the
-// user actually wants from inside a web view.
-const CLINIC_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLINIC_INFO.address)}`;
-const CLINIC_APPLE_MAPS_URL = `https://maps.apple.com/?address=${encodeURIComponent(CLINIC_INFO.address)}`;
+// A plain Google Maps search link and Apple's own equivalent, computed
+// fresh per address (now that there's more than one — see CLINIC_LOCATIONS)
+// rather than baked into a single module-level constant.
+function mapsUrls(address: string) {
+  return {
+    apple: `https://maps.apple.com/?address=${encodeURIComponent(address)}`,
+    google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
+  };
+}
 
-/** Same two-stacked-buttons shape as StatusBar's own pause-or-leave dialog —
- *  a familiar "pick one of two paths forward" pattern rather than a new one
- *  invented just for this. Both links close this dialog on tap so it isn't
- *  left sitting open behind the new tab/app the link just opened. */
-function OpenInMapsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** The address as a small anchored popover — not a full dialog of its own —
+ *  offering an explicit Apple Maps / Google Maps choice rather than picking
+ *  one automatically (there's no reliable way to detect which app the user
+ *  actually wants from inside a web view). Same self-contained
+ *  trigger+Popover shape TrialCard's own PromptLevelButton uses: this owns
+ *  its open state and renders both the address link and the popup it
+ *  opens, rather than the parent managing a separate boolean for it. */
+function AddressMapsPopover({ address }: { address: string }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  const urls = mapsUrls(address);
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-blue-400/80 ring-2 ring-inset ring-blue-400/80 rounded-xl">
-        <DialogHeader className="text-left sm:text-left">
-          <DialogTitle>Open in Maps</DialogTitle>
-          <DialogDescription className="text-left">{CLINIC_INFO.address}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          ref={anchorRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1 text-[11px] text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-800 max-w-full"
+        >
+          <MapPin className="size-3 shrink-0" />
+          <span className="truncate">{address}</span>
+        </button>
+      </PopoverAnchor>
+      <PopoverContent
+        ref={contentRef}
+        side="bottom"
+        align="start"
+        collisionPadding={8}
+        // z-[110]: this popover portals to document.body, same as the
+        // RoomInfoDialog it opens from (Dialog's own z-[100] — see
+        // DialogOverlay's comment) — has to outrank that raw z-index or it
+        // renders invisibly behind the dialog's opaque content.
+        className="group z-[110] w-auto min-w-[9rem] rounded-2xl border-2 border-blue-400 bg-card p-1.5 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+      >
+        <div className="flex flex-col gap-0.5">
           <a
-            href={CLINIC_APPLE_MAPS_URL}
+            href={urls.apple}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onClose}
-            className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
+            onClick={() => setOpen(false)}
+            className="rounded-lg px-3 py-1.5 text-left text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors"
           >
             Apple Maps
           </a>
           <a
-            href={CLINIC_MAPS_URL}
+            href={urls.google}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onClose}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-600 text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
+            onClick={() => setOpen(false)}
+            className="rounded-lg px-3 py-1.5 text-left text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors"
           >
             Google Maps
           </a>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+        {/* Arrow — points back at the address it opened from, same idiom as
+            PromptLevelButton's own popover arrow (see its comment), just
+            mirrored for this popover's own preferred side="bottom" (content
+            below the trigger, arrow at the content's top edge pointing up)
+            instead of PromptLevelButton's side="top" default — the
+            group-data override below only ever applies if Radix's own
+            collision detection flips this one to sit above its trigger
+            instead. */}
+        <div
+          className={cn(
+            "absolute h-3 w-3 -translate-x-1/2 rotate-45 border-blue-400 bg-card",
+            "-top-[6px] border-l-2 border-t-2",
+            "group-data-[side=top]:top-auto group-data-[side=top]:-bottom-[6px]",
+            "group-data-[side=top]:border-l-0 group-data-[side=top]:border-t-0",
+            "group-data-[side=top]:border-r-2 group-data-[side=top]:border-b-2",
+          )}
+          style={{ left: arrowLeft ?? "1.25rem" }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -2729,13 +2826,15 @@ const ROOM_DAILY_SCHEDULE: Record<string, { label: string; start: string; end: s
  *  background (`bg-background`, not a plain white override) matches
  *  StaffDirectory's own profile popup rather than standing out from it.
  *
- *  `room === null` is this dialog's own base view: the building's floor
- *  plan with nothing highlighted, browsable straight from here. Tapping any
- *  room (a schedule row's location, or a rect in the floor plan itself)
- *  drills into that room's own view — same floor plan, now highlighted,
- *  its own photo, and what's actually happening there today — with a back
- *  arrow in place of the base view's plain title, returning to the floor
- *  plan rather than closing outright. */
+ *  Three stacked views share this one dialog, navigated with the same
+ *  back-arrow-in-the-header idiom at every level rather than three separate
+ *  dialogs: a locations list (`pickingLocation`), a single location's own
+ *  floor plan (`room === null`, this dialog's real base view — Main Branch
+ *  by default, see the reset effect below), and a specific room within it
+ *  (`room` set). `room === null` doesn't mean "nothing to show" here the
+ *  way it used to before locations existed — it's "showing the location
+ *  itself," now with its own photo alongside the floor plan, same shape as
+ *  a room's own photo+plan pairing. */
 function RoomInfoDialog({
   open,
   room,
@@ -2751,59 +2850,117 @@ function RoomInfoDialog({
   onSelectRoom: (room: string) => void;
   use24HourTime: boolean;
 }) {
-  const [mapsChooserOpen, setMapsChooserOpen] = useState(false);
+  const [locationIndex, setLocationIndex] = useState(0);
+  const [pickingLocation, setPickingLocation] = useState(false);
+  // Every fresh open starts back at Main Branch with the picker closed —
+  // this client's own schedule only ever really lives there, so a room
+  // opened directly from a schedule row (skipping the location view
+  // entirely) should never land under whichever OTHER branch a previous
+  // visit happened to leave selected.
+  useEffect(() => {
+    if (open) {
+      setLocationIndex(0);
+      setPickingLocation(false);
+    }
+  }, [open]);
+  const location = CLINIC_LOCATIONS[locationIndex];
   const schedule = room ? ROOM_DAILY_SCHEDULE[room] : undefined;
 
-  return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="w-[85vw] max-w-sm gap-0 rounded-2xl border-2 border-blue-400 bg-background p-0 text-stone-700 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
-          <div className="flex items-center gap-1.5 py-2 pl-2 pr-10 border-b border-border rounded-t-2xl">
-            {room && (
-              <button
-                type="button"
-                onClick={onBack}
-                aria-label="Back to floor plan"
-                className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
-              >
-                <ArrowLeft className="size-4" />
-              </button>
-            )}
-            <DialogHeader className="min-w-0 flex-1 text-left space-y-0">
-              <DialogTitle
-                className={cn("flex items-center gap-1.5 truncate", room ? "text-lg" : "text-base")}
-              >
-                {room && <span aria-hidden>{locationIcon(room)}</span>}
-                {room ?? CLINIC_INFO.name}
-              </DialogTitle>
-              <DialogDescription className="text-xs truncate">
-                {room ? (
-                  <>
-                    {CLINIC_INFO.name} &middot; {CLINIC_INFO.branch}
-                  </>
-                ) : (
-                  CLINIC_INFO.branch
-                )}
-              </DialogDescription>
-              <button
-                type="button"
-                onClick={() => setMapsChooserOpen(true)}
-                className="flex items-center gap-1 text-[11px] text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-800 max-w-full"
-              >
-                <MapPin className="size-3 shrink-0" />
-                <span className="truncate">{CLINIC_INFO.address}</span>
-              </button>
-            </DialogHeader>
-          </div>
+  const handleBack = () => {
+    if (room) {
+      onBack();
+    } else if (pickingLocation) {
+      setPickingLocation(false);
+    } else {
+      setPickingLocation(true);
+    }
+  };
+  // Every view has a back arrow now — even the location view itself, whose
+  // target is "go pick a different location" rather than "go up a level"
+  // like the other two. There's no true top of this stack to leave one off
+  // of; "go back" just means something different depending on where it's
+  // pressed.
+  const backLabel = room ? "Back to floor plan" : pickingLocation ? "Back" : "Other locations";
 
-          <div className="flex flex-col gap-3 p-4">
-            {room && (
-              <img
-                src={roomPhotoFor(room)}
-                alt={`${room} photo`}
-                className="w-full h-32 object-cover rounded-lg border border-stone-200"
-              />
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="w-[85vw] max-w-sm gap-0 rounded-2xl border-2 border-blue-400 bg-background p-0 text-stone-700 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center gap-1.5 py-2 pl-2 pr-10 border-b border-border rounded-t-2xl">
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label={backLabel}
+            title={backLabel}
+            className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+          <DialogHeader className="min-w-0 flex-1 text-left space-y-0">
+            {pickingLocation ? (
+              <DialogTitle className="text-base">Choose a Location</DialogTitle>
+            ) : (
+              <>
+                <DialogTitle
+                  className={cn(
+                    "flex items-center gap-1.5 truncate",
+                    room ? "text-lg" : "text-base",
+                  )}
+                >
+                  {room && <span aria-hidden>{locationIcon(room)}</span>}
+                  {room ?? location.name}
+                </DialogTitle>
+                <DialogDescription className="text-xs truncate">
+                  {room ? (
+                    <>
+                      {location.name} &middot; {location.branch}
+                    </>
+                  ) : (
+                    location.branch
+                  )}
+                </DialogDescription>
+                <AddressMapsPopover address={location.address} />
+              </>
             )}
+          </DialogHeader>
+        </div>
+
+        {pickingLocation ? (
+          <div className="flex flex-col gap-1.5 p-3">
+            {CLINIC_LOCATIONS.map((loc, i) => (
+              <button
+                key={loc.branch}
+                type="button"
+                onClick={() => {
+                  setLocationIndex(i);
+                  setPickingLocation(false);
+                }}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border p-2 text-left transition-colors",
+                  i === locationIndex
+                    ? "border-blue-400 bg-blue-50"
+                    : "border-stone-200 bg-white hover:bg-stone-50",
+                )}
+              >
+                <img
+                  src={loc.photo}
+                  alt=""
+                  aria-hidden
+                  className="size-12 rounded-md object-cover shrink-0 border border-stone-200"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{loc.branch}</p>
+                  <p className="text-xs text-muted-foreground truncate">{loc.address}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 p-4">
+            <img
+              src={room ? roomPhotoFor(room) : location.photo}
+              alt={room ? `${room} photo` : `${location.branch} exterior`}
+              className="w-full h-32 object-cover rounded-lg border border-stone-200"
+            />
             <BuildingMapSVG highlight={room} onSelect={onSelectRoom} />
             {room && (
               <div>
@@ -2825,10 +2982,9 @@ function RoomInfoDialog({
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
-      <OpenInMapsDialog open={mapsChooserOpen} onClose={() => setMapsChooserOpen(false)} />
-    </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
