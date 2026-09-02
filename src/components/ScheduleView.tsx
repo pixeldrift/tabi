@@ -29,6 +29,8 @@ import {
   ArrowLeft,
   MapPin,
   User,
+  ArrowDownToLine,
+  ArrowDownFromLine,
 } from "lucide-react";
 import locationBuildingPhoto from "@/assets/images/placeholders/location-building.jpg";
 import roomBathroomPhoto from "@/assets/images/placeholders/room-bathroom.jpg";
@@ -90,6 +92,7 @@ import {
   STAFF_DIRECTORY,
   findStaffIdByName,
   StaffProfileDialog,
+  CURRENT_STAFF_NAME,
 } from "@/components/StaffDirectory";
 import {
   EDIT_MODE_DURATION_MS,
@@ -1438,9 +1441,15 @@ export function ScheduleView({
       top: number;
       time: string;
       party: TransferParty;
+      // Whether the appointment THIS boundary belongs to is the signed-in
+      // RBT's own — everything on this schedule renders from their
+      // perspective, so this is what decides which of two markers sharing
+      // an exact instant actually gets shown (see the dedup below).
+      isOwn: boolean;
     }[] = [];
     for (const a of active.appointments) {
       if (a.kind !== "direct") continue;
+      const isOwn = a.provider === CURRENT_STAFF_NAME;
       markers.push({
         key: `${a.id}-start`,
         apptId: a.id,
@@ -1448,6 +1457,7 @@ export function ScheduleView({
         top: pxForTime(toMin(a.start)),
         time: a.start,
         party: resolveTransfer(a, active.appointments, "start"),
+        isOwn,
       });
       markers.push({
         key: `${a.id}-end`,
@@ -1456,6 +1466,7 @@ export function ScheduleView({
         top: pxForTime(toMin(a.end)),
         time: a.end,
         party: resolveTransfer(a, active.appointments, "end"),
+        isOwn,
       });
     }
     // A lunch-cover relay (or any back-to-back "direct" blocks) has one
@@ -1464,17 +1475,19 @@ export function ScheduleView({
     // resolveTransfer resolves to the same real transfer described from
     // two directions ("Transfer to Isabella," from the block that's
     // ending, vs. "Transfer from Perry," from the block that's starting).
-    // Collapsing that pair to just the "start" side's own phrasing is the
-    // one that's actually useful to read: whoever's picking up the client
-    // there wants to know who they're receiving from, not to be told who
-    // they themselves are (which is all "Transfer to Perry" says when
-    // you're Perry). Keyed by time, latest "start" always wins over an
-    // "end" at the same instant regardless of which was pushed first;
-    // Arrival/Dismissal are untouched since nothing else shares their time.
+    // The one worth keeping is whichever belongs to the signed-in RBT's
+    // own appointment — that's the boundary that's actually about "us":
+    // receiving if it's our own block starting, passing off if it's our
+    // own block ending. If neither side is ours (someone else's whole
+    // relay, or malformed data), fall back to "start"/receiving as the
+    // more generically useful default. Keyed by time; Arrival/Dismissal
+    // are untouched since nothing else shares their instant.
+    const priority = (m: (typeof markers)[number]) =>
+      m.isOwn ? 2 : m.boundary === "start" ? 1 : 0;
     const byTime = new Map<string, (typeof markers)[number]>();
     for (const m of markers) {
       const existing = byTime.get(m.time);
-      if (!existing || m.boundary === "start") byTime.set(m.time, m);
+      if (!existing || priority(m) > priority(existing)) byTime.set(m.time, m);
     }
     return Array.from(byTime.values());
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
@@ -2447,12 +2460,25 @@ export function ScheduleView({
                   ? "Arrival"
                   : "Dismissal"
                 : `${isArrival ? "Transfer from" : "Transfer to"}`;
-            const icon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : "🤝";
+            // Guardian keeps its own wave/home emoji; a staff transfer gets
+            // one of these two instead of a generic handshake — which one
+            // depends on the boundary, not on who the other party is,
+            // since this whole schedule already renders from the
+            // signed-in RBT's own perspective (see directMarkers' own
+            // isOwn/priority comment): "start" is always something WE are
+            // receiving, "end" is always something WE are passing off.
+            const emojiIcon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : null;
+            const TransferIcon = isArrival ? ArrowDownToLine : ArrowDownFromLine;
             const partyName = m.party.type === "staff" ? m.party.name : null;
             const staffId = partyName ? findStaffIdByName(partyName) : null;
             const staff = staffId ? STAFF_DIRECTORY[staffId] : null;
             const badgeClassName =
               "pointer-events-auto inline-flex items-center gap-1 rounded-full bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap";
+            const iconEl = emojiIcon ? (
+              <span aria-hidden>{emojiIcon}</span>
+            ) : (
+              <TransferIcon className="size-2.5 shrink-0" aria-hidden />
+            );
             return (
               <div
                 key={m.key}
@@ -2467,7 +2493,7 @@ export function ScheduleView({
                       onClick={() => setTransferProfileOpenFor(m.key)}
                       className={cn(badgeClassName, "hover:bg-green-700 transition-colors")}
                     >
-                      <span aria-hidden>{icon}</span>
+                      {iconEl}
                       {label}
                       <User className="size-2.5 shrink-0" fill="currentColor" strokeWidth={0} />
                       {partyName}
@@ -2480,7 +2506,7 @@ export function ScheduleView({
                   </>
                 ) : (
                   <span className={badgeClassName}>
-                    <span aria-hidden>{icon}</span>
+                    {iconEl}
                     {label}
                     {partyName && ` ${partyName}`}
                   </span>
