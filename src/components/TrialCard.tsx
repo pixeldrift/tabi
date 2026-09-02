@@ -29,7 +29,6 @@ import { renderBreakableTitle } from "./BreakableTitle";
 import { playSoundEffect } from "@/lib/soundEffects";
 import { cn } from "@/lib/utils";
 import { ACTION_BUTTON_COLORS } from "@/lib/actionButtonColors";
-import { HORIZONTAL_FADE_MASK } from "./IntervalCard";
 
 export type TrialResult = "correct" | "incorrect" | "no-response" | null;
 
@@ -79,6 +78,22 @@ export interface TrialCardProps extends CardEditAndDrawerProps {
 const BUBBLE = 18; // small bubble diameter
 const BUBBLE_CENTER = 56; // center bubble diameter
 const GAP = 6; // tighter spacing
+
+// The large-density tile's own nav arrows (size-7 = 28px, positioned at
+// -left-2/-right-2 = -8px) reach 20px in from the strip's edge — IntervalCard's
+// shared HORIZONTAL_FADE_MASK only fades the outer 6% of the strip, which on
+// this tile's own (much narrower) width faded out well short of that 20px,
+// leaving trial numbers still fully opaque, and still legible, directly
+// under the arrow circle. Fixed pixels (not a percentage) so the fade
+// always covers the arrow's real footprint regardless of the tile's
+// measured width, with a few px of margin past it so a number is already
+// gone, not just fading, by the time it would reach the arrow.
+const TRIAL_STRIP_FADE_MASK = {
+  WebkitMaskImage:
+    "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+  maskImage:
+    "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+} as const;
 
 /** Same Check/X/CircleSlash2 glyphs the action buttons below the bubble
  *  track already use for these three outcomes — shown small underneath the
@@ -627,11 +642,11 @@ export function TrialCard({
             </>
           )}
           {/* Large density only — fades trailing trial numbers out before
-              they reach the tile's own edge, so they read as sliding away
-              rather than sitting directly under the nav arrows just outside
-              it (same HORIZONTAL_FADE_MASK convention IntervalCard's own
-              timelines use). */}
-          <div style={large ? HORIZONTAL_FADE_MASK : undefined}>
+              they reach the nav arrows sitting over this same strip (see
+              TRIAL_STRIP_FADE_MASK's own comment on why a plain percentage
+              mask like IntervalCard's own timelines use isn't wide enough
+              here). */}
+          <div style={large ? TRIAL_STRIP_FADE_MASK : undefined}>
             <SwipeStrip
               count={trials.length}
               current={current}
