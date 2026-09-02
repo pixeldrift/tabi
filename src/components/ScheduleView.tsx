@@ -29,6 +29,10 @@ import {
   ArrowLeft,
   MapPin,
 } from "lucide-react";
+import roomBathroomPhoto from "@/assets/images/placeholders/room-bathroom.jpg";
+import roomKitchenPhoto from "@/assets/images/placeholders/room-kitchen.jpg";
+import roomTherapyPhoto from "@/assets/images/placeholders/room-therapy.jpg";
+import roomPlayPhoto from "@/assets/images/placeholders/room-play.jpg";
 import { CollapseIcon } from "./icons/CollapseIcon";
 import { ProportionalRowsIcon } from "./icons/ProportionalRowsIcon";
 import { SmileyIcon } from "./icons/SmileyIcon";
@@ -2270,8 +2274,6 @@ export function ScheduleView({
         onClose={() => setRoomInfoDialogOpen(false)}
         onBack={() => setRoomInfoRoom(null)}
         onSelectRoom={setRoomInfoRoom}
-        items={items}
-        assignedRoom={assignedRoom}
         use24HourTime={use24HourTime}
       />
 
@@ -2444,116 +2446,302 @@ function ConfirmDialog({
   );
 }
 
-// A schematic directory-style floor plan — not an actual architectural
-// layout (this app has no real per-room position data), just the building's
-// rooms grouped into their two wings (numbered treatment rooms vs. named
-// common areas) and grid-arranged like adjoining rooms sharing walls, which
-// reads as "a floor plan" without needing hand-placed coordinates for each
-// one. `highlight` is a resolved room/area name (never ASSIGNED_ROOM_TOKEN
-// itself) — whichever cell matches it renders as the current room; `null`
-// (the dialog's own base view) highlights nothing, just a plain directory.
-// Every cell is clickable either way, via `onSelect` — the map itself is
-// how you navigate to a room, not just a static illustration of the one
-// you already picked.
-function BuildingFloorPlan({
+// A hand-computed vector floor plan (not an actual architectural layout —
+// this app has no real per-room position data), laid out once as plain
+// rects/labels rather than hand-placed per room: a 5x2 grid of numbered
+// treatment rooms on the left, the four named common areas as a 2x2 block
+// on the right, and the three bathrooms as a slim strip underneath those.
+// Reads as a genuine "vector schematic" floor plan while staying entirely
+// formula-driven, so adding/removing a room never means re-plotting
+// coordinates by hand.
+const MAP_VB_W = 320;
+const MAP_VB_H = 200;
+const MAP_PAD = 6;
+const MAP_GAP = 2.5;
+
+interface MapRoomRect {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function computeBuildingMapRects(): MapRoomRect[] {
+  const rects: MapRoomRect[] = [];
+
+  // Treatment wing: 5 columns x 2 rows, occupying the left ~60% of the
+  // building.
+  const twX = MAP_PAD;
+  const twY = MAP_PAD;
+  const twW = 190;
+  const twH = MAP_VB_H - MAP_PAD * 2;
+  const tCols = 5;
+  const tRows = 2;
+  const tCellW = (twW - MAP_GAP * (tCols - 1)) / tCols;
+  const tCellH = (twH - MAP_GAP * (tRows - 1)) / tRows;
+  TREATMENT_ROOMS.forEach((name, i) => {
+    const col = i % tCols;
+    const row = Math.floor(i / tCols);
+    rects.push({
+      name,
+      x: twX + col * (tCellW + MAP_GAP),
+      y: twY + row * (tCellH + MAP_GAP),
+      w: tCellW,
+      h: tCellH,
+    });
+  });
+
+  // Common-area wing: the right side. Kitchen/Classroom/Big Gym/Small Gym
+  // as a 2x2 block on top; the three bathrooms as a shorter strip below
+  // that, sized to fit whatever room the 2x2 block leaves.
+  const cwX = twX + twW + 8;
+  const cwW = MAP_VB_W - MAP_PAD - cwX;
+  const mainNames = COMMON_AREAS.slice(0, 4);
+  const bathNames = COMMON_AREAS.slice(4);
+  const mainH = twH * 0.6;
+  const mCols = 2;
+  const mRows = 2;
+  const mCellW = (cwW - MAP_GAP * (mCols - 1)) / mCols;
+  const mCellH = (mainH - MAP_GAP * (mRows - 1)) / mRows;
+  mainNames.forEach((name, i) => {
+    const col = i % mCols;
+    const row = Math.floor(i / mCols);
+    rects.push({
+      name,
+      x: cwX + col * (mCellW + MAP_GAP),
+      y: twY + row * (mCellH + MAP_GAP),
+      w: mCellW,
+      h: mCellH,
+    });
+  });
+  const bathY = twY + mainH + 8;
+  const bathH = twH - mainH - 8;
+  const bCellW = (cwW - MAP_GAP * (bathNames.length - 1)) / bathNames.length;
+  bathNames.forEach((name, i) => {
+    rects.push({ name, x: cwX + i * (bCellW + MAP_GAP), y: bathY, w: bCellW, h: bathH });
+  });
+
+  return rects;
+}
+
+// Full names don't fit a cell this small — treatment rooms show just their
+// number (the icon+title above already spells the room out in full once
+// selected), and the bathrooms get a short "X. Bath" form distinct enough
+// from each other and from the plain "Kitchen"/"Classroom" labels beside
+// them.
+function mapCellLabel(name: string): string {
+  if (TREATMENT_ROOMS.includes(name)) return name.replace("Room ", "");
+  if (name === "Classroom Bathroom") return "Cls. Bath";
+  if (name === "Learner Bathroom") return "Lrn. Bath";
+  if (name === "Solo Bathroom") return "Solo Bath";
+  return name;
+}
+
+/** `highlight` is a resolved room/area name (never ASSIGNED_ROOM_TOKEN
+ *  itself) — whichever rect matches it renders as the current room; `null`
+ *  (the dialog's own base view) highlights nothing, just a plain directory.
+ *  Every rect is clickable either way, via `onSelect` — the map itself is
+ *  how you navigate to a room, not just a static illustration of the one
+ *  you already picked. */
+function BuildingMapSVG({
   highlight,
   onSelect,
 }: {
   highlight: string | null;
   onSelect: (room: string) => void;
 }) {
+  const rects = useMemo(computeBuildingMapRects, []);
   return (
-    <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
-        Treatment Rooms
-      </p>
-      <div className="grid grid-cols-5 gap-1 mb-3">
-        {TREATMENT_ROOMS.map((r) => (
-          <FloorPlanCell
-            key={r}
-            icon={locationIcon(r)}
-            label={r.replace("Room ", "")}
-            highlighted={r === highlight}
-            onClick={() => onSelect(r)}
-          />
-        ))}
-      </div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
-        Common Areas
-      </p>
-      <div className="grid grid-cols-4 gap-1">
-        {COMMON_AREAS.map((r) => (
-          <FloorPlanCell
-            key={r}
-            icon={locationIcon(r)}
-            label={r}
-            highlighted={r === highlight}
-            onClick={() => onSelect(r)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FloorPlanCell({
-  icon,
-  label,
-  highlighted,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  highlighted: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center justify-center gap-0.5 rounded-sm border px-1 py-1.5 text-center leading-tight transition-colors",
-        highlighted
-          ? "border-blue-400 bg-blue-100 text-blue-700 ring-2 ring-blue-300"
-          : "border-stone-200 bg-white text-stone-500 hover:bg-stone-100 hover:border-stone-300",
-      )}
+    <svg
+      viewBox={`0 0 ${MAP_VB_W} ${MAP_VB_H}`}
+      role="img"
+      aria-label="Building floor plan"
+      className="w-full h-auto rounded-lg border border-stone-200 bg-stone-50"
     >
-      <span className="text-xs leading-none" aria-hidden>
-        {icon}
-      </span>
-      <span className="text-[9px] font-medium">{label}</span>
-    </button>
+      <rect
+        x={1}
+        y={1}
+        width={MAP_VB_W - 2}
+        height={MAP_VB_H - 2}
+        rx={4}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        className="text-stone-300"
+      />
+      {rects.map((r) => {
+        const isHi = r.name === highlight;
+        return (
+          <g
+            key={r.name}
+            role="button"
+            aria-label={r.name}
+            onClick={() => onSelect(r.name)}
+            className="cursor-pointer"
+          >
+            <rect
+              x={r.x}
+              y={r.y}
+              width={r.w}
+              height={r.h}
+              rx={2}
+              strokeWidth={isHi ? 2 : 1}
+              className={cn(
+                "transition-colors",
+                isHi
+                  ? "fill-blue-100 stroke-blue-400"
+                  : "fill-white stroke-stone-300 hover:fill-stone-100",
+              )}
+            />
+            <text
+              x={r.x + r.w / 2}
+              y={r.y + r.h / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{ fontSize: r.w < 40 ? 6.5 : 8 }}
+              className={cn("select-none font-medium", isHi ? "fill-blue-700" : "fill-stone-500")}
+            >
+              {mapCellLabel(r.name)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
-// A plain Google Maps search link — works the same everywhere (desktop
-// opens the Maps website; mobile browsers/OS already intercept it with
-// their own native "open in Maps app?" handoff, no custom confirmation UI
-// needed to get that behavior).
+// One placeholder photo per ROOM TYPE, not per specific room — this app has
+// no real per-room photography, so every numbered treatment room shares the
+// same stand-in image, and the three bathrooms share another, etc. Swap
+// these for real photos once the clinic has them; the rest of the dialog
+// doesn't care where the image comes from.
+function roomPhotoFor(room: string): string {
+  if (room.endsWith("Bathroom")) return roomBathroomPhoto;
+  if (room === "Kitchen") return roomKitchenPhoto;
+  if (TREATMENT_ROOMS.includes(room)) return roomTherapyPhoto;
+  return roomPlayPhoto; // Classroom, Big Gym, Small Gym
+}
+
+// A plain Google Maps search link and Apple's own equivalent — offered as
+// an explicit choice (OpenInMapsDialog below) rather than picking one
+// automatically, since there's no reliable way to detect which app the
+// user actually wants from inside a web view.
 const CLINIC_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CLINIC_INFO.address)}`;
+const CLINIC_APPLE_MAPS_URL = `https://maps.apple.com/?address=${encodeURIComponent(CLINIC_INFO.address)}`;
+
+/** Same two-stacked-buttons shape as StatusBar's own pause-or-leave dialog —
+ *  a familiar "pick one of two paths forward" pattern rather than a new one
+ *  invented just for this. Both links close this dialog on tap so it isn't
+ *  left sitting open behind the new tab/app the link just opened. */
+function OpenInMapsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-xs border-2 border-blue-400/80 ring-2 ring-inset ring-blue-400/80 rounded-xl">
+        <DialogHeader className="text-left sm:text-left">
+          <DialogTitle>Open in Maps</DialogTitle>
+          <DialogDescription className="text-left">{CLINIC_INFO.address}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0 items-stretch">
+          <a
+            href={CLINIC_APPLE_MAPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="btn-bevel inline-flex h-11 items-center justify-center gap-2 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-600 text-white text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
+          >
+            Apple Maps
+          </a>
+          <a
+            href={CLINIC_MAPS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-600 text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
+          >
+            Google Maps
+          </a>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Placeholder daily lineup for every room in the building — not this
+// client's own schedule (see resolveLocation's callers for that), a
+// separate, fake multi-client roster standing in for real front-desk
+// booking data this app doesn't have yet. Treatment rooms list whoever's
+// individual session is booked there (first name + last initial, the same
+// privacy-conscious convention StaffDirectory's own caseload list uses —
+// see its comment); common areas list the group activity happening instead.
+// The three bathrooms are used ad hoc, never booked, so they intentionally
+// have no entries — RoomInfoDialog's own empty state covers that.
+const ROOM_DAILY_SCHEDULE: Record<string, { label: string; start: string; end: string }[]> = {
+  "Room 1": [
+    { label: "Ava M.", start: "09:00", end: "10:00" },
+    { label: "Noah P.", start: "13:00", end: "14:00" },
+  ],
+  "Room 2": [
+    { label: "Liam K.", start: "09:00", end: "09:45" },
+    { label: "Mia S.", start: "11:00", end: "12:00" },
+  ],
+  "Room 3": [{ label: "Ethan R.", start: "10:00", end: "11:00" }],
+  "Room 4": [
+    { label: "Sophia T.", start: "08:30", end: "09:30" },
+    { label: "Lucas W.", start: "14:00", end: "15:00" },
+  ],
+  "Room 5": [{ label: "Isabella G.", start: "12:00", end: "13:00" }],
+  "Room 6": [
+    { label: "Mason D.", start: "09:30", end: "10:30" },
+    { label: "Zoe H.", start: "15:00", end: "16:00" },
+  ],
+  "Room 7": [{ label: "Aiden C.", start: "10:30", end: "11:30" }],
+  "Room 8": [
+    { label: "Chloe B.", start: "08:00", end: "09:00" },
+    { label: "Ryan F.", start: "13:30", end: "14:30" },
+  ],
+  "Room 9": [{ label: "Emma L.", start: "11:30", end: "12:30" }],
+  "Room 10": [{ label: "Owen V.", start: "14:30", end: "15:30" }],
+  Kitchen: [
+    { label: "Lunch", start: "12:00", end: "12:30" },
+    { label: "Snack", start: "15:00", end: "15:15" },
+  ],
+  Classroom: [
+    { label: "Social Skills Group", start: "10:00", end: "11:00" },
+    { label: "Group Instruction", start: "13:00", end: "14:00" },
+  ],
+  "Big Gym": [
+    { label: "Gross Motor Play", start: "09:30", end: "10:15" },
+    { label: "Social Group", start: "14:30", end: "15:15" },
+  ],
+  "Small Gym": [{ label: "Sensory Play", start: "11:00", end: "11:45" }],
+  "Classroom Bathroom": [],
+  "Learner Bathroom": [],
+  "Solo Bathroom": [],
+};
 
 /** Styled like StatusBar's own person-presence popup (rounded-2xl, a blue
  *  border, a bordered title row rather than the plain Dialog default) and
  *  sized to its own content instead of stretching edge to edge — a Dialog
  *  underneath, not a true anchored Popover, since this needs to open from
  *  many different trigger sites (every schedule row's own location, plus
- *  every cell in its own floor plan) rather than one fixed spot.
+ *  every rect in its own floor plan) rather than one fixed spot. The sand
+ *  background (`bg-background`, not a plain white override) matches
+ *  StaffDirectory's own profile popup rather than standing out from it.
  *
  *  `room === null` is this dialog's own base view: the building's floor
  *  plan with nothing highlighted, browsable straight from here. Tapping any
- *  room (a schedule row's location, or a cell in the floor plan itself)
+ *  room (a schedule row's location, or a rect in the floor plan itself)
  *  drills into that room's own view — same floor plan, now highlighted,
- *  plus what's actually happening there today — with a back arrow in place
- *  of the base view's plain title, returning to the floor plan rather than
- *  closing outright. */
+ *  its own photo, and what's actually happening there today — with a back
+ *  arrow in place of the base view's plain title, returning to the floor
+ *  plan rather than closing outright. */
 function RoomInfoDialog({
   open,
   room,
   onClose,
   onBack,
   onSelectRoom,
-  items,
-  assignedRoom,
   use24HourTime,
 }: {
   open: boolean;
@@ -2561,89 +2749,86 @@ function RoomInfoDialog({
   onClose: () => void;
   onBack: () => void;
   onSelectRoom: (room: string) => void;
-  /** The active schedule's own items — filtered below to whichever ones
-   *  resolve to `room`, so the dialog can show what's actually happening
-   *  there today rather than just naming the space. */
-  items: ScheduleItem[];
-  assignedRoom: string;
   use24HourTime: boolean;
 }) {
-  const activitiesHere = room
-    ? items
-        .filter((it) => resolveLocation(it.location, assignedRoom) === room)
-        .sort((a, b) => toMin(a.start) - toMin(b.start))
-    : [];
+  const [mapsChooserOpen, setMapsChooserOpen] = useState(false);
+  const schedule = room ? ROOM_DAILY_SCHEDULE[room] : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="w-[85vw] max-w-sm gap-0 rounded-2xl border-2 border-blue-400 bg-white p-0 text-stone-700 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
-        <div className="flex items-center gap-1.5 py-2 pl-2 pr-10 border-b border-border rounded-t-2xl">
-          {room && (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back to floor plan"
-              className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
-            >
-              <ArrowLeft className="size-4" />
-            </button>
-          )}
-          <DialogHeader className="min-w-0 flex-1 text-left space-y-0">
-            <DialogTitle className="flex items-center gap-1.5 text-base truncate">
-              {room && <span aria-hidden>{locationIcon(room)}</span>}
-              {room ?? CLINIC_INFO.name}
-            </DialogTitle>
-            <DialogDescription className="text-xs truncate">
-              {room ? (
-                <>
-                  {CLINIC_INFO.name} &middot; {CLINIC_INFO.branch}
-                </>
-              ) : (
-                CLINIC_INFO.branch
-              )}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="w-[85vw] max-w-sm gap-0 rounded-2xl border-2 border-blue-400 bg-background p-0 text-stone-700 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]">
+          <div className="flex items-center gap-1.5 py-2 pl-2 pr-10 border-b border-border rounded-t-2xl">
+            {room && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back to floor plan"
+                className="grid place-items-center size-7 shrink-0 rounded-full text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+            )}
+            <DialogHeader className="min-w-0 flex-1 text-left space-y-0">
+              <DialogTitle
+                className={cn("flex items-center gap-1.5 truncate", room ? "text-lg" : "text-base")}
+              >
+                {room && <span aria-hidden>{locationIcon(room)}</span>}
+                {room ?? CLINIC_INFO.name}
+              </DialogTitle>
+              <DialogDescription className="text-xs truncate">
+                {room ? (
+                  <>
+                    {CLINIC_INFO.name} &middot; {CLINIC_INFO.branch}
+                  </>
+                ) : (
+                  CLINIC_INFO.branch
+                )}
+              </DialogDescription>
+              <button
+                type="button"
+                onClick={() => setMapsChooserOpen(true)}
+                className="flex items-center gap-1 text-[11px] text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-800 max-w-full"
+              >
+                <MapPin className="size-3 shrink-0" />
+                <span className="truncate">{CLINIC_INFO.address}</span>
+              </button>
+            </DialogHeader>
+          </div>
 
-        <div className="flex flex-col gap-3 p-4">
-          <BuildingFloorPlan highlight={room} onSelect={onSelectRoom} />
-          <a
-            href={CLINIC_MAPS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-start gap-2 text-sm text-blue-700 underline decoration-dotted underline-offset-2 hover:text-blue-800"
-          >
-            <MapPin className="size-4 shrink-0 mt-0.5" />
-            <span>{CLINIC_INFO.address}</span>
-          </a>
-          {room && (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-1.5">
-                Today's Activities Here
-              </p>
-              {activitiesHere.length > 0 ? (
-                <ul className="flex flex-col gap-1">
-                  {activitiesHere.map((it) => (
-                    <li key={it.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-xs tabular-nums text-stone-400 shrink-0 w-12">
-                        {fmt12(it.start, use24HourTime)}
-                      </span>
-                      <span className="truncate">
-                        {it.activity === "Custom" ? (it.customName ?? "Custom") : it.activity}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground/70">
-                  Nothing on today's schedule is in this room.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex flex-col gap-3 p-4">
+            {room && (
+              <img
+                src={roomPhotoFor(room)}
+                alt={`${room} photo`}
+                className="w-full h-32 object-cover rounded-lg border border-stone-200"
+              />
+            )}
+            <BuildingMapSVG highlight={room} onSelect={onSelectRoom} />
+            {room && (
+              <div>
+                <p className="text-xs font-semibold text-stone-600 mb-1.5">Today:</p>
+                {schedule && schedule.length > 0 ? (
+                  <ul className="flex flex-col gap-1">
+                    {schedule.map((s, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm">
+                        <span className="text-xs tabular-nums text-stone-400 shrink-0 w-24">
+                          {fmt12(s.start, use24HourTime)}&ndash;{fmt12(s.end, use24HourTime)}
+                        </span>
+                        <span className="truncate">{s.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground/70">Nothing scheduled here today.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <OpenInMapsDialog open={mapsChooserOpen} onClose={() => setMapsChooserOpen(false)} />
+    </>
   );
 }
 
