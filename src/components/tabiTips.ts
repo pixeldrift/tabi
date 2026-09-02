@@ -290,7 +290,7 @@ export const TABI_TIPS: TabiTip[] = [
     tab: "data",
     selector: '[data-tour="save-status"]',
     title: "Your data is safe",
-    body: "Even if you have a spotty connection, Tabi auto-syncs frequently in the background. Tap the cloud icon to force an instant save for peace of mind, or tap the status for precise details.",
+    body: "Even if you have a spotty connection, Tabi auto-syncs frequently in the background. Tap the cloud icon to force an instant sync for peace of mind, or tap the status for precise details.",
   },
   {
     id: "interval-progress",

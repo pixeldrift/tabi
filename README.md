@@ -212,6 +212,12 @@ checked off. See git history for what's already shipped.
       (step-by-step + trial dual-nav) with real RBTs — it's built and
       shipped, but the interaction pattern itself hasn't been tested against
       actual use yet, and may need rework based on what that turns up
+- [ ] 🟡 Advanced sync details — an expandable section in the "Session Data
+      Status" popup (StatusBar.tsx's SaveIndicator) that lists exactly what
+      changed since the last sync (which cards, which trials/entries) when
+      status is "On Device", instead of just the summary sentence. Mainly
+      useful for the rare case someone actually needs to know precisely
+      what's still local before, say, closing the tab.
 - [ ] 🔴 Hierarchical goal structure: Organize targets into categories and
       sub-categories (a learning tree) instead of today's flat card list —
       a data-model change, not just a UI one. What the tree view mode below

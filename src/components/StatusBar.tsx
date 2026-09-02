@@ -2127,7 +2127,7 @@ function SaveIndicator({
   const cloudColorClass = isDirty || isSaving ? "text-blue-500" : "text-stone-400";
   const SymbolIcon = isDirty ? ArrowUp : isSaving ? RefreshCw : Check;
 
-  const label = isSaving ? "Saving" : isDirty ? "Unsaved" : "Saved";
+  const label = isSaving ? "Syncing" : isDirty ? "On Device" : "Synced";
   const labelColor = isSaving || isDirty ? "text-blue-600" : "text-muted-foreground";
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -2143,9 +2143,9 @@ function SaveIndicator({
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
 
   return (
-    // data-tour on the whole pair, not just the "Saved" text button below —
+    // data-tour on the whole pair, not just the "Synced" text button below —
     // the save-status-indicator tip is about the status AND the cloud
-    // together ("Tap the cloud to force an instant save... or tap the
+    // together ("Tap the cloud to force an instant sync... or tap the
     // status for precise details"), so its own spotlight needs to cover
     // both rather than just the text half of what it's describing.
     <div className="flex items-center gap-1.5" data-tour="save-status">
@@ -2179,7 +2179,11 @@ function SaveIndicator({
           // sticky toolbar below sits at z-[60], so this content (default
           // z-50) needs to paint above that or its "Saved by" pill sits
           // underneath the toolbar and its clicks get intercepted there.
-          className="group relative z-[70] w-max rounded-2xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
+          // w-72 (not w-max): the reassurance sentence in the Status row
+          // below is a full clause, not a short label — left unbounded it
+          // stretches the box past a narrow phone's viewport edge instead
+          // of wrapping.
+          className="group relative z-[70] w-72 rounded-2xl border-2 border-blue-400 bg-white p-0 shadow-[0_10px_30px_-4px_rgba(0,0,0,0.25)]"
         >
           {/* Rotated-square idiom (NumberKeypad/DataToolbar's filter
               popover) — see PresenceIndicator's popover below for the full
@@ -2233,17 +2237,26 @@ function SaveIndicator({
                   />
                 </span>
                 <span className="font-medium">
-                  {status === "saving"
-                    ? "Saving changes…"
-                    : status === "dirty"
-                      ? "Unsaved changes"
-                      : "All changes saved"}
+                  {isSaving ? "Syncing…" : isDirty ? "On Device" : "Synced"}
                 </span>
               </div>
+              {/* The reassuring part: everything through the last sync is
+                  already safe in the cloud, so the only thing "On Device"
+                  is ever flagging is the handful of seconds of changes made
+                  since then — not the whole session. */}
+              <p className="mt-1 text-muted-foreground leading-snug">
+                {isSaving
+                  ? "Syncing your latest changes to the cloud…"
+                  : isDirty
+                    ? lastSavedAt
+                      ? `Synced to the cloud ${lowerFirst(formatRelativeFromNow(lastSavedAt, use24HourTime))}. Newest changes are safely on this device.`
+                      : "Not yet synced — this session's data is safely on this device."
+                    : "Current. All session data is synced to the cloud."}
+              </p>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Last Saved
+                Last Synced
               </div>
               <div className="tabular-nums leading-tight">
                 <div>{formatFullDate(lastSavedAt)}</div>
@@ -2252,7 +2265,7 @@ function SaveIndicator({
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Saved by
+                Synced by
               </div>
               <PersonPill staffId={CURRENT_STAFF_ID} />
             </div>
@@ -2263,8 +2276,8 @@ function SaveIndicator({
       <button
         type="button"
         onClick={isDirty ? onSync : undefined}
-        aria-label={isDirty ? "Save now" : isSaving ? "Saving" : "All changes saved"}
-        title={isDirty ? "Save now" : isSaving ? "Saving…" : "All changes saved"}
+        aria-label={isDirty ? "Sync now" : isSaving ? "Syncing" : "All changes synced"}
+        title={isDirty ? "Sync now" : isSaving ? "Syncing…" : "All changes synced"}
         className={cn(
           "relative grid place-items-center size-7 transition-colors",
           isDirty ? "cursor-pointer" : "cursor-default",
@@ -2318,6 +2331,13 @@ function formatFullTime(d: Date | null, use24Hour: boolean) {
   const hhmm = formatTimeOfDayForDisplay(`${hh}:${mm}`, false);
   const period = hhmm.slice(-1);
   return `${hhmm.slice(0, -1)}:${seconds}${period}`;
+}
+
+// For splicing formatRelativeFromNow's output ("Just now", "One minute
+// ago") into the middle of a sentence, where a mid-sentence capital reads
+// as a typo.
+function lowerFirst(s: string) {
+  return s.length ? s[0].toLowerCase() + s.slice(1) : s;
 }
 
 function formatRelativeFromNow(d: Date, use24Hour: boolean) {
