@@ -702,6 +702,12 @@ export function StatusBar({
   // its own separate schedule.
   const titleRowRef = useRef<HTMLDivElement>(null);
   const saveIndicatorWrapRef = useRef<HTMLDivElement>(null);
+  // Whether the Session Data Status popover (SaveIndicator) is open — read
+  // by the mini pill below to hide itself (visibility, not unmount — see
+  // its own comment) while that popover is showing, since the two occupy
+  // the same cramped top-right corner and its round pause button sits
+  // close enough for the popover's own rounded corner to graze it.
+  const [saveStatusOpen, setSaveStatusOpen] = useState(false);
   const miniDigitAnchorRef = useRef<HTMLSpanElement>(null);
   // NotificationBar renders between the title row and the tabs/mini-slot
   // nav below — an alert (e.g. a phase-change banner) popping in while a
@@ -962,7 +968,12 @@ export function StatusBar({
                   padding-right to get from its border-box back to that
                   child edge. */}
               <div ref={saveIndicatorWrapRef} className="pt-1 pr-1.5 sm:pr-2 -mr-4">
-                <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} onSync={forceSync} />
+                <SaveIndicator
+                  status={saveStatus}
+                  lastSavedAt={lastSavedAt}
+                  onSync={forceSync}
+                  onOpenChange={setSaveStatusOpen}
+                />
               </div>
             </div>
 
@@ -1459,7 +1470,17 @@ export function StatusBar({
                   "absolute z-50 flex items-stretch rounded-full border-2 bg-white overflow-hidden transition-colors",
                   toMini ? "border-blue-500" : "border-stone-300",
                 )}
-                style={{ transitionDuration: `${pillCssDurationMs}ms` }}
+                style={{
+                  transitionDuration: `${pillCssDurationMs}ms`,
+                  // Only in its mini (toMini) shape does this pill sit in
+                  // the same cramped top-right corner as the Session Data
+                  // Status popover's own trigger — hide it there (not
+                  // unmount, so nothing else reflows) rather than fighting
+                  // over that corner with the popover's own rounded edge.
+                  // The big/expanded form lives well clear of that popover,
+                  // so it's untouched.
+                  visibility: toMini && saveStatusOpen ? "hidden" : "visible",
+                }}
                 initial={false}
                 animate={{
                   top: target.top,
@@ -2115,10 +2136,15 @@ function SaveIndicator({
   status,
   lastSavedAt,
   onSync,
+  onOpenChange,
 }: {
   status: SaveStatus;
   lastSavedAt: Date | null;
   onSync: () => void;
+  // Lets the parent (StatusBar) know whether this popover is open, so it
+  // can hide the mini session pill while it's showing — see
+  // saveStatusOpen's own comment there for why.
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { use24HourTime } = useSettings();
   const isDirty = status === "dirty";
@@ -2129,7 +2155,11 @@ function SaveIndicator({
 
   const label = isSaving ? "Syncing" : isDirty ? "On Device" : "Synced";
   const labelColor = isSaving || isDirty ? "text-blue-600" : "text-muted-foreground";
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  const setOpen = (next: boolean) => {
+    setOpenState(next);
+    onOpenChange?.(next);
+  };
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   // margin=34, not the default 16: this popover's `align="end"` trigger
