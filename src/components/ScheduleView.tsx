@@ -1462,17 +1462,21 @@ export function ScheduleView({
     // appointment's end exactly where the next one's start is — the loop
     // above pushes a marker for BOTH sides of that shared instant, which
     // resolveTransfer resolves to the same real transfer described from
-    // two directions ("Transfer to Isabella" / "Transfer from Perry" at
-    // the very same 12:00). Keeping only the first-seen marker per exact
-    // `time` collapses that pair into the one that's already generated
-    // first for every appointment (its own "end"), rather than showing
-    // both stacked on top of each other.
-    const seenTimes = new Set<string>();
-    return markers.filter((m) => {
-      if (seenTimes.has(m.time)) return false;
-      seenTimes.add(m.time);
-      return true;
-    });
+    // two directions ("Transfer to Isabella," from the block that's
+    // ending, vs. "Transfer from Perry," from the block that's starting).
+    // Collapsing that pair to just the "start" side's own phrasing is the
+    // one that's actually useful to read: whoever's picking up the client
+    // there wants to know who they're receiving from, not to be told who
+    // they themselves are (which is all "Transfer to Perry" says when
+    // you're Perry). Keyed by time, latest "start" always wins over an
+    // "end" at the same instant regardless of which was pushed first;
+    // Arrival/Dismissal are untouched since nothing else shares their time.
+    const byTime = new Map<string, (typeof markers)[number]>();
+    for (const m of markers) {
+      const existing = byTime.get(m.time);
+      if (!existing || m.boundary === "start") byTime.set(m.time, m);
+    }
+    return Array.from(byTime.values());
   }, [active.appointments, layoutMode, dayStart, itemRowLayout]);
 
   // Combined time range(s) actually covered by a "direct" appointment —
