@@ -2341,8 +2341,8 @@ function formatShortDate(d: Date | null) {
 function formatDayHint(d: Date) {
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
-  if (days <= 0) return "today";
-  if (days === 1) return "yesterday";
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
   return null;
 }
@@ -2354,7 +2354,7 @@ function formatDayHint(d: Date) {
 function formatRelativeDuration(d: Date) {
   const diff = Date.now() - d.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
+  if (minutes < 1) return "Just now";
   if (minutes === 1) return "1 minute ago";
   if (minutes < 60) return `${minutes} minutes ago`;
   const hours = Math.floor(minutes / 60);

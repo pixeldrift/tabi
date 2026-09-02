@@ -2695,7 +2695,13 @@ function AddressMapsPopover({ address }: { address: string }) {
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef);
+  // margin=34, not the default 16: same rounded-2xl box + rotated h-3 w-3
+  // arrow square as SaveIndicator/PresenceIndicator's own popovers (see
+  // SaveIndicator's identical comment) — 16 isn't enough clearance for the
+  // corner's own radius plus the arrow's ~8.5px half-width, so the corner's
+  // curve shows through the arrow's fill whenever this narrow box's slider
+  // gets clamped near an edge. Same fix, same margin.
+  const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
   const urls = mapsUrls(address);
   return (
     <Popover open={open} onOpenChange={setOpen}>
