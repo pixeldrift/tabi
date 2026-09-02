@@ -28,10 +28,11 @@ import {
   CircleSlash2,
   User,
   LockKeyholeOpen,
-  LogOut,
 } from "lucide-react";
 import { InfoIcon } from "./icons/InfoIcon";
 import { DailyIcon } from "./icons/DailyIcon";
+import { MergeArrowIcon } from "./icons/MergeArrowIcon";
+import { ExitIcon } from "./icons/ExitIcon";
 import { PersonPill, staffName } from "./StaffDirectory";
 import { TailSwish } from "./TailSwish";
 import {
@@ -1391,7 +1392,12 @@ export function StatusBar({
               // button's own hit target/pill cutout.
               <Play className="size-6" fill="currentColor" strokeWidth={0} />
             ) : (
-              <ArrowRight className="size-6" strokeWidth={2.5} />
+              // Two branches merging into one arrow, not a plain forward
+              // arrow — this state means someone else already has the
+              // session running and tapping it joins you into that same
+              // session (see aria-label below), which a bare rightward
+              // arrow read as "resume" rather than "merge in."
+              <MergeArrowIcon className="size-6" />
             );
             // Pausing with someone else still in the session would stop
             // the timer for them too, which the button's own single tap
@@ -1589,7 +1595,7 @@ export function StatusBar({
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white hover:bg-stone-50 text-stone-600 text-sm font-medium px-4 transition-colors w-full whitespace-nowrap"
             >
               Exit and leave running
-              <LogOut className="size-4 shrink-0" />
+              <ExitIcon className="size-4 shrink-0" />
             </button>
           </DialogFooter>
         </DialogContent>

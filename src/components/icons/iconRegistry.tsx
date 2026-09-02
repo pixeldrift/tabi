@@ -119,6 +119,8 @@ import { HandshakeIcon } from "./HandshakeIcon";
 import { ApproveEditIcon } from "./ApproveEditIcon";
 import { ForwardChainingIcon } from "./ForwardChainingIcon";
 import { BackwardChainingIcon } from "./BackwardChainingIcon";
+import { MergeArrowIcon } from "./MergeArrowIcon";
+import { ExitIcon } from "./ExitIcon";
 
 export interface IconEntry {
   name: string;
@@ -281,6 +283,8 @@ export const ICON_GROUPS: IconGroup[] = [
       lucide("Ban", '"Minimums Not Met" section — End Session review', Ban),
       lucide("LockKeyholeOpen", "Unlock Review Mode button", LockKeyholeOpen),
       lucide("Clock", "Per-timed-period unit hint (Rate card)", Clock),
+      custom("Merge Arrow", "Join-session button on the big session pill", MergeArrowIcon),
+      custom("Exit", "'Exit and leave running' — pause-or-leave dialog", ExitIcon),
     ],
   },
   {
