@@ -2141,6 +2141,7 @@ function SaveIndicator({
   // safety net now that `alignOffset` below does the real work of keeping
   // the trigger off the corner in the first place.
   const arrowLeft = useSlidingArrowOffset(open, anchorRef, contentRef, 34);
+  const lastSyncedDayHint = lastSavedAt ? formatDayHint(lastSavedAt) : null;
 
   return (
     // data-tour on the whole pair, not just the "Synced" text button below —
@@ -2259,8 +2260,21 @@ function SaveIndicator({
                 Last Synced
               </div>
               <div className="tabular-nums leading-tight">
-                <div>{formatFullDate(lastSavedAt)}</div>
-                <div>{formatFullTime(lastSavedAt, use24HourTime)}</div>
+                <div>
+                  {formatFullTime(lastSavedAt, use24HourTime)}
+                  {lastSavedAt && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({formatRelativeDuration(lastSavedAt)})
+                    </span>
+                  )}
+                </div>
+                <div>
+                  {formatShortDate(lastSavedAt)}
+                  {lastSyncedDayHint && (
+                    <span className="text-muted-foreground"> ({lastSyncedDayHint})</span>
+                  )}
+                </div>
               </div>
             </div>
             <div>
@@ -2312,14 +2326,43 @@ function CloudShape({ className }: { className?: string }) {
   );
 }
 
-function formatFullDate(d: Date | null) {
+// Abbreviated form for the "Last Synced" popup row (e.g. "Wed, Sep 2") —
+// that row leads with the time, so the date here only needs to disambiguate
+// which day, not restate it in full the way formatRelativeFromNow's
+// long-form fallback does elsewhere.
+function formatShortDate(d: Date | null) {
   if (!d) return "—";
-  return d.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+// The "(today)" / "(yesterday)" hint next to that abbreviated date — null
+// past a week out, where a day-count stops being more useful than the date
+// itself already sitting right there.
+function formatDayHint(d: Date) {
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return null;
+}
+
+// The "(1 minute ago)" hint next to the exact synced time — pure elapsed
+// duration, unlike formatRelativeFromNow's day-plus fallback which folds in
+// a weekday/time of its own (redundant here since the exact time is right
+// beside it, and the date row right below already carries the day).
+function formatRelativeDuration(d: Date) {
+  const diff = Date.now() - d.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes === 1) return "1 minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
 }
 
 function formatFullTime(d: Date | null, use24Hour: boolean) {
