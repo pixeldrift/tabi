@@ -1611,33 +1611,26 @@ function IndexInner({
   // The effect above doesn't actually cover a display-mode switch — its own
   // dependency array only watches activeId/keepActiveCardCentered, so a
   // pure mode change (same active card, same setting) never re-checks
-  // visibility. The scroll-anchor effect below only stops the active card
-  // from silently drifting mid-morph; it doesn't guarantee the reflowed
-  // result lands anywhere visible. Delayed to match CARD_MORPH_TRANSITION
-  // (same settle window used elsewhere, e.g. the drawer-slide effect above)
-  // so this doesn't fight that anchor's own scroll compensation while it's
-  // still running.
+  // visibility. This is the one that does: rather than tracking the active
+  // card's position throughout the whole morph and continuously
+  // scrollBy()-ing to hold it steady frame by frame — which, on a big enough
+  // reflow (say, list mode's tall single column down to a dense grid), reads
+  // as the page itself auto-scrolling for the length of the transition,
+  // distracting rather than helpful the further it has to travel — this
+  // just waits for MorphContent's own height-crossfade to finish, then jumps
+  // straight to the card's final centered/visible spot in one instant,
+  // unanimated snap. No motion to watch means no "how far did it just
+  // scroll" to be distracted by.
   useEffect(() => {
-    // This, the position-anchor effect below, and the suppressCardLayout
-    // unsuppend timer above all target the same CARD_MORPH_TRANSITION-based
-    // duration, on the assumption all three finish in step — but this one's
-    // a plain setTimeout, the anchor's own loop is rAF-clocked, and
-    // suppressCardLayout flipping back on re-enables each card wrapper's own
-    // `layout="position"` FLIP, which can itself keep reflowing content for
-    // another transition's worth of time. If this runs before the anchor's
-    // cleanup, the anchor's temporary bottom padding is still holding the
-    // card exactly where it was, so the "already visible" check below
-    // trivially passes and this does nothing — then that cleanup removes the
-    // padding and the browser clamps scrollTop to the container's now much
-    // shorter real content, with nothing left to correct the drift; and even
-    // once that's accounted for, layout re-enabling on other cards can still
-    // shift things again right after this already ran. Polling
-    // anchorActiveRef (rather than trusting the shared duration) guarantees
-    // this always runs strictly after the anchor's own cleanup, and
-    // reapplying a couple more times over the following stretch — the same
+    // This and the suppressCardLayout unsuppend timer above both target the
+    // same CARD_MORPH_TRANSITION-based duration, on the assumption both
+    // finish in step — but suppressCardLayout flipping back on re-enables
+    // each card wrapper's own `layout="position"` FLIP, which can itself
+    // keep reflowing content for another transition's worth of time.
+    // Reapplying a couple more times over the following stretch — the same
     // "keep correcting for a short window" idea the tab-restore layout
     // effect elsewhere in this file already uses for an analogous race —
-    // catches whatever the FLIP settling disturbs afterward.
+    // catches whatever that FLIP settling disturbs afterward.
     let id: number;
     let reapplyCount = 0;
     // Instant, not smooth: a `smooth` scrollBy computes its target distance
@@ -1657,10 +1650,6 @@ function IndexInner({
       else scrollCardFullyIntoView(el, container, "instant");
     };
     const attempt = () => {
-      if (anchorActiveRef.current) {
-        id = window.setTimeout(attempt, 50);
-        return;
-      }
       correct();
       reapplyCount++;
       if (reapplyCount < 6) id = window.setTimeout(attempt, 150);
@@ -1670,32 +1659,19 @@ function IndexInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayMode]);
 
-  // Anchors the active card's on-screen top position while the display mode
-  // switches — cards above it are mid-flight through their own MorphContent
-  // height animation, which would otherwise silently drift the active card
-  // up/down underneath the user for the whole transition. This runs after
-  // every render (no dependency array) so activeTopRef always holds the
-  // active card's PREVIOUS position by the time a mode switch's own commit
-  // fires — a `useLayoutEffect` scoped just to `[displayMode]` would still
-  // measure the card AFTER that commit's own instant reflow already
-  // happened, one frame too late to correct before paint. A short
-  // requestAnimationFrame loop then keeps canceling further drift for the
-  // rest of the morph's duration rather than only correcting once at the
-  // end. Switching to a more condensed mode can shrink the page's total
-  // height by more than the user's current scroll offset, so the browser
-  // clamps scrollY on its own the instant that happens — fighting that
-  // clamp frame-by-frame is what produced a worse jump than doing nothing,
-  // so a temporary bottom padding pads the page out for the duration of the
-  // transition, guaranteeing there's always room to scroll to hold the
-  // anchor, then it's removed once the morph settles.
   // Suppresses each card wrapper's own `layout="position"` specifically
   // during a mode-switch's morph — that prop exists to smoothly reposition
   // cards when siblings are added/removed elsewhere (filtering, submit,
   // discard), but during a mode switch its own FLIP-based repositioning
-  // fights the scroll anchor above, since both are independently trying to
-  // keep the active card visually in the same spot — competing over the
-  // same handful of frames produced a worse, jittery result than either
-  // alone. Derived synchronously during render (not in an effect) so it
+  // fought the old scroll-anchor this used to have (see git history), since
+  // both independently tried to keep the active card visually in the same
+  // spot — competing over the same handful of frames produced a worse,
+  // jittery result than either alone. No more anchor to fight now that mode
+  // switches just wait-then-snap (the effect above), but suppressing this
+  // FLIP during the morph is still correct on its own: an instant reflow
+  // reads as belonging to the same instant morph MorphContent itself already
+  // plays, rather than a second, independently-timed animation layered on
+  // top of it. Derived synchronously during render (not in an effect) so it
   // takes effect on the very same commit the mode switch itself lands on.
   const [prevModeForLayout, setPrevModeForLayout] = useState(displayMode);
   const [suppressCardLayout, setSuppressCardLayout] = useState(false);
@@ -1713,19 +1689,13 @@ function IndexInner({
   }, [suppressCardLayout]);
 
   // Border pulse on the active card whenever the display mode switches —
-  // see ActivePulseContext's own comment for the full shape/rationale
-  // (a context each card-kind's leaf render target reads directly, rather
-  // than a measured `position: fixed` overlay this component would have
-  // to keep positioned itself). This is just the trigger: pulseActive
-  // flips true for a fixed window, pulseGen bumps once per switch to
-  // restart the CSS animation. Deliberately not flipped true until AFTER
-  // the anchor effect right below finishes scrollBy()-ing the container to
-  // hold the active card's on-screen position steady for the whole morph —
-  // a card rendering its own pulse as a real child sidesteps any risk of
-  // drifting out of alignment with a `position: fixed` overlay, but
-  // starting the pulse mid-morph would still have looked like it was
-  // playing on top of a card that hadn't finished settling into its new
-  // spot yet.
+  // see ActivePulseContext's own comment for the full shape/rationale (a
+  // context each card-kind's leaf render target reads directly, rather than
+  // a measured `position: fixed` overlay this component would have to keep
+  // positioned itself). This is just the trigger: pulseActive flips true for
+  // a fixed window, pulseGen bumps once per switch to restart the CSS
+  // animation — see the effect below for why it's delayed rather than
+  // firing immediately.
   const [pulseActive, setPulseActive] = useState(false);
   const [pulseGen, setPulseGen] = useState(0);
   const pulseStartTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
@@ -1739,84 +1709,42 @@ function IndexInner({
   );
   const pulseContextValue = useMemo(() => ({ pulseActive, pulseGen }), [pulseActive, pulseGen]);
 
-  const activeTopRef = useRef<number | null>(null);
+  // Used only to tell a genuine mode switch (fire the pulse) apart from
+  // every other reason this component re-renders (don't) — no longer paired
+  // with a measured pixel position now that mode switches don't track/hold
+  // the active card's on-screen spot during the morph at all (see the
+  // scroll effect above's own comment).
   const prevDisplayModeRef = useRef(displayMode);
-  const anchorRafRef = useRef(0);
-  // True for exactly as long as the tick loop below is actively holding the
-  // active card's on-screen position — read by the "bring fully into view"
-  // recheck effect further down so it can wait its own turn instead of
-  // racing this rAF loop's independently-clocked finish (see that effect's
-  // own comment for why the two stepping on each other was the actual bug).
-  const anchorActiveRef = useRef(false);
-  // No dependency array — see this effect's own long comment above for why
-  // it deliberately needs to run after every render, not just on
-  // activeId/displayMode changes. The pulse trigger added below is safe
+  // No dependency array — needs to see every render so this always compares
+  // against the truly-previous displayMode by the time a switch's own
+  // commit fires, not one render late. The pulse trigger inside is safe
   // despite that: setPulseActive/setPulseGen only ever fire later, from
   // inside a setTimeout callback, never synchronously inside this effect
   // itself — by the time either one actually runs and triggers a
-  // re-render, isModeSwitch's own ref update above has long since made
-  // the very next run of this effect see isModeSwitch as false again, so
-  // it can't loop.
+  // re-render, the ref update below has long since made the very next run
+  // of this effect see isModeSwitch as false again, so it can't loop.
   useLayoutEffect(() => {
-    const el = cardRefs.current.get(activeId);
-    const container = dataContentRef.current;
-    if (!el || !container) return;
     const isModeSwitch = prevDisplayModeRef.current !== displayMode;
     prevDisplayModeRef.current = displayMode;
-    const durationMs = CARD_MORPH_TRANSITION.duration * 1000 + 50;
-
-    if (isModeSwitch) {
-      // Only actually waits for the anchor loop below when it's going to
-      // run at all (activeTopRef.current !== null — see its own guard);
-      // otherwise (e.g. the very first switch this page load) there's no
-      // scroll settling to wait for, so this fires on the next tick
-      // instead of stalling a whole extra durationMs for nothing.
-      clearTimeout(pulseStartTimeoutRef.current);
-      clearTimeout(pulseEndTimeoutRef.current);
-      pulseStartTimeoutRef.current = setTimeout(
-        () => {
-          setPulseGen((g) => g + 1);
-          setPulseActive(true);
-          pulseEndTimeoutRef.current = setTimeout(() => setPulseActive(false), 1300);
-        },
-        activeTopRef.current !== null ? durationMs : 0,
-      );
-    }
-
-    if (isModeSwitch && activeTopRef.current !== null) {
-      cancelAnimationFrame(anchorRafRef.current);
-      anchorActiveRef.current = true;
-      // Guarantees the container has enough scroll slack to actually apply
-      // scrollBy deltas mid-morph, before the reflowing content below has
-      // grown to fill it on its own — padding on the scrolling element
-      // itself counts toward its own scrollHeight, same as body padding
-      // used to for the page when this scrolled at the window level.
-      const prevPaddingBottom = container.style.paddingBottom;
-      container.style.paddingBottom = `${container.clientHeight}px`;
-
-      const initialDelta = el.getBoundingClientRect().top - activeTopRef.current;
-      if (initialDelta !== 0) container.scrollBy(0, initialDelta);
-
-      let anchorTop = el.getBoundingClientRect().top;
-      const start = performance.now();
-      const tick = (now: number) => {
-        const newTop = el.getBoundingClientRect().top;
-        const delta = newTop - anchorTop;
-        if (delta !== 0) container.scrollBy(0, delta);
-        anchorTop = el.getBoundingClientRect().top;
-        if (now - start < durationMs) {
-          anchorRafRef.current = requestAnimationFrame(tick);
-        } else {
-          container.style.paddingBottom = prevPaddingBottom;
-          anchorActiveRef.current = false;
-        }
-      };
-      anchorRafRef.current = requestAnimationFrame(tick);
-    }
-
-    activeTopRef.current = el.getBoundingClientRect().top;
+    if (!isModeSwitch) return;
+    // Waits for MorphContent's own height-crossfade to finish (the same
+    // window the scroll-correction effect above waits out) before flashing
+    // — a card rendering its own pulse as a real child, rather than a
+    // measured `position: fixed` overlay this component would have to keep
+    // positioned itself, means starting it mid-morph would still have read
+    // as playing on top of a card that hadn't finished settling into its
+    // new spot yet.
+    clearTimeout(pulseStartTimeoutRef.current);
+    clearTimeout(pulseEndTimeoutRef.current);
+    pulseStartTimeoutRef.current = setTimeout(
+      () => {
+        setPulseGen((g) => g + 1);
+        setPulseActive(true);
+        pulseEndTimeoutRef.current = setTimeout(() => setPulseActive(false), 1300);
+      },
+      CARD_MORPH_TRANSITION.duration * 1000 + 50,
+    );
   });
-  useEffect(() => () => cancelAnimationFrame(anchorRafRef.current), []);
 
   // Which single-unit animation the card list should play, and a remount
   // key. Idle never shows cards at all any more (see cardsHidden's own
