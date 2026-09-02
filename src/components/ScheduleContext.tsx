@@ -62,7 +62,7 @@ export type AlertSettings = {
 };
 export type PrimingSettings = AlertSettings & { minutesPrior: number };
 
-export type ApptTag = "Co-Treat" | "Handoff Session";
+export type ApptTag = "Co-Treat";
 
 // "direct" is the RBT's own 1:1 session with the client — same Appointment
 // shape as everything else (see the type below), just rendered differently
@@ -150,16 +150,17 @@ export const PHINEAS_APPTS: Appointment[] = [
     days: ["Tue", "Thu"],
     type: "Occupational Therapy",
     provider: "Jeremy Johnson",
-    tag: "Handoff Session",
     kind: "related-service",
   },
-  // The RBT's own 1:1 session, split in two around ap2 above — ap2 is
-  // tagged "Handoff Session" (the tech steps away, unlike ap1's "Co-Treat"
-  // which the tech stays present through, so that one doesn't split
-  // anything), and it happens to end exactly where "ap3" starts and start
-  // exactly where "ap4" ends — resolveTransfer picks that up on its own,
-  // no transferFrom/transferTo set here at all. ap1 (Co-Treat) simply falls
-  // inside ap3's own range with no effect on it.
+  // The RBT's own 1:1 session, split in two around ap2 above. Untagged
+  // (unlike ap1's "Co-Treat", which is why that one doesn't split
+  // anything) — whether an appointment splits a "direct" appointment isn't
+  // driven by its tag at all, just by whether its start/end happens to
+  // land exactly on another appointment's own boundary. ap2 ends exactly
+  // where "ap3" starts and starts exactly where "ap4" ends, so
+  // resolveTransfer picks that up on its own with no transferFrom/
+  // transferTo set here. ap1 (Co-Treat) simply falls inside ap3's own
+  // range with no effect on it.
   {
     id: "ap3",
     start: "10:00",

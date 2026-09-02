@@ -254,9 +254,10 @@ checked off. See git history for what's already shipped.
       pull-out; `resolveTransfer` in `ScheduleContext.tsx` auto-links a
       "direct" appointment's Arrival/Transfer/Dismissal boundaries to
       whichever appointment ends/starts at the exact same moment — a
-      lunch-cover relay between two RBTs, or a Speech/OT appointment tagged
-      `"Handoff Session"`, falling back to guardian when nothing's
-      adjacent). What's still missing is a way to actually use it by hand:
+      lunch-cover relay between two RBTs, or an untagged (not "Co-Treat")
+      Speech/OT appointment the tech steps away from, falling back to
+      guardian when nothing's adjacent). What's still missing is a way to
+      actually use it by hand:
       today's Add/Edit Appointment dialog only ever produces
       "related-service" appointments, with no `kind` toggle to create a
       "direct" one, and no guardian/staff picker to override what

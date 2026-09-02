@@ -2437,7 +2437,10 @@ export function ScheduleView({
               there, not its center. Plain text throughout (no PersonPill)
               — nesting that pill's own background/padding inside this
               badge's colored one read as two conflicting pill shapes
-              stacked together rather than one clean tag. */}
+              stacked together rather than one clean tag. bg-green-600, the
+              same dark green as the "CO-TREAT" badge below (not a
+              separate accent color), since both are the same kind of
+              small schedule-level status flag. */}
           {directMarkers.map((m) => {
             const isArrival = m.boundary === "start";
             const icon = m.party.type === "guardian" ? (isArrival ? "👋" : "🏠") : "🤝";
@@ -2453,12 +2456,12 @@ export function ScheduleView({
                 className="absolute left-1 right-1 z-30 flex items-center gap-1.5 -translate-y-1/2 pointer-events-none"
                 style={{ top: m.top }}
               >
-                <div className="h-px flex-1 bg-purple-300" />
-                <span className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-purple-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap">
+                <div className="h-px flex-1 bg-green-300" />
+                <span className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 shadow-sm whitespace-nowrap">
                   <span aria-hidden>{icon}</span>
                   {text}
                 </span>
-                <div className="h-px flex-1 bg-purple-300" />
+                <div className="h-px flex-1 bg-green-300" />
               </div>
             );
           })}
@@ -3585,7 +3588,7 @@ function AppointmentDialog({
       days,
       type,
       provider: provider.trim() || "—",
-      tag: coTreat ? "Co-Treat" : appt?.tag === "Handoff Session" ? "Handoff Session" : undefined,
+      tag: coTreat ? "Co-Treat" : undefined,
       // This dialog only ever creates/edits related-service appointments
       // (Speech, OT, etc. — there's no "direct session" option in its own
       // form above); preserving appt?.kind rather than hardcoding it just
