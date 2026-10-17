@@ -1476,6 +1476,18 @@ function IndexInner({
     [cards, order, filters, searchQuery, favorites, hidden, hasData, completion, editMode],
   );
 
+  // A filter/search change can drop the active card out of visibleCards,
+  // which unmounts its row and the shared DataDetailsDrawer it alone
+  // mounts — taking the pull tab with it. Re-point activeId at the first
+  // still-visible card (closing the drawer first, not just re-targeting
+  // it, so a card the user never tapped can't pop open on its own).
+  useEffect(() => {
+    if (visibleCards.length === 0) return;
+    if (visibleCards.some((c) => c.id === activeId)) return;
+    setDrawerOpen(false);
+    setActiveId(visibleCards[0].id);
+  }, [visibleCards, activeId]);
+
   // The bookmark bar's own two source lists — see getOrderedCards' own
   // comment on why these stay independent of the main toolbar's filters.
   const favoriteCards = useMemo(
