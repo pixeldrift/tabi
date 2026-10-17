@@ -153,24 +153,52 @@ export function DataToolbar({ availableKinds, availablePhases, children }: DataT
     // is often still null on this effect's very first run — refs are
     // re-read fresh on every frame below instead of captured once; and (2)
     // Radix/Floating UI keeps re-measuring and re-asserting its OWN position
-    // across the first several frames after mount (content size settling,
-    // the open animation), silently clobbering a write from a frame or two
-    // ago. Polling for a couple dozen frames plus a short settle timeout
-    // makes sure ours is both applied at all and the one that sticks.
-    const rafIds: number[] = [];
-    let frame = 0;
-    const loop = () => {
+    // for several frames after anything that could move the anchor (mount,
+    // content size settling, the open animation, or — see below — the
+    // status bar resizing), silently clobbering a write from a frame or two
+    // ago if we only write once. `settle()` polls for a couple dozen frames
+    // plus a short timeout so ours is both applied at all and the one that
+    // sticks; it's reused below, not just run once at open. A shared frame
+    // budget (rather than each call spawning its own 20-frame loop) means a
+    // burst of calls in quick succession — e.g. every intermediate frame of
+    // a banner's own height animation — still just runs one rAF chain, each
+    // call simply topping the budget back up.
+    let framesLeft = 0;
+    let rafId: number | null = null;
+    const pump = () => {
       update();
-      frame += 1;
-      if (frame < 20) rafIds.push(requestAnimationFrame(loop));
+      framesLeft -= 1;
+      rafId = framesLeft > 0 ? requestAnimationFrame(pump) : null;
     };
-    rafIds.push(requestAnimationFrame(loop));
+    const settle = () => {
+      framesLeft = 20;
+      if (rafId === null) rafId = requestAnimationFrame(pump);
+    };
+    settle();
     const settleId = window.setTimeout(update, 300);
-    window.addEventListener("resize", update);
+    window.addEventListener("resize", settle);
+    // The open-time burst above only covers Radix's own initial settling —
+    // it says nothing about a layout shift that happens later while the
+    // popover just sits there open, e.g. a notification banner animating in
+    // above the toolbar (NotificationBar's own `layout` height transition)
+    // and pushing the filter button down. The app shell is a fixed-height,
+    // internally-scrolling layout (see IndexInner), not a page that grows
+    // `document.body`, so the signal to watch is the header container's own
+    // box (`[data-status-bar]`, see StatusBar's own comment on it and this
+    // toolbar sharing one ancestor) — its height is driven by its content,
+    // including the notification banner, so it resizes exactly when the
+    // button's position below it changes. Re-running the same settle burst
+    // (not a single `update()`) matters here too: Radix/Floating UI reacts
+    // to that same layout shift on its own and re-asserts its own position
+    // a frame or two after ours, so one synchronous write loses the race.
+    const statusBarEl = document.querySelector("[data-status-bar]");
+    const ro = statusBarEl ? new ResizeObserver(settle) : null;
+    ro?.observe(statusBarEl!);
     return () => {
-      rafIds.forEach(cancelAnimationFrame);
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.clearTimeout(settleId);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("resize", settle);
+      ro?.disconnect();
     };
   }, [filterOpen]);
 
